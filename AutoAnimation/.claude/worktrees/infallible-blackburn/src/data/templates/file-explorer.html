@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>macOS Finder Window</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg-color);
+  }
+
+  .finder-window {
+    width: 80vw;
+    height: 72vh;
+    background: #ffffff;
+    border-radius: 1.2vw;
+    box-shadow: 0 2.5vh 8vh rgba(0,0,0,0.25), 0 0.5vh 2vh rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    opacity: 0;
+    transform: scale(0.92) translateY(3vh);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    border: 1px solid rgba(0,0,0,0.12);
+  }
+  .finder-window.visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  .finder-window.exiting {
+    opacity: 0;
+    transform: scale(0.95) translateY(-2vh);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  /* Title Bar */
+  .title-bar {
+    height: 5.5vh;
+    min-height: 36px;
+    background: linear-gradient(180deg, #e8e8e8 0%, #d6d6d6 100%);
+    border-bottom: 1px solid #b8b8b8;
+    display: flex;
+    align-items: center;
+    padding: 0 1.5vw;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .traffic-lights {
+    display: flex;
+    gap: 0.55vw;
+  }
+  .traffic-light {
+    width: 1.1vw;
+    height: 1.1vw;
+    min-width: 10px;
+    min-height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.12);
+  }
+  .tl-close { background: #ff5f57; }
+  .tl-minimize { background: #febc2e; }
+  .tl-maximize { background: #28c840; }
+
+  .title-text {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(11px, 1.3vw, 16px);
+    font-weight: 500;
+    color: #4a4a4a;
+    display: flex;
+    align-items: center;
+    gap: 0.4vw;
+  }
+  .title-icon { font-size: clamp(12px, 1.5vw, 18px); }
+
+  .nav-buttons {
+    position: absolute;
+    left: 8vw;
+    display: flex;
+    gap: 0.3vw;
+  }
+  .nav-btn {
+    width: 2.2vw;
+    height: 2.2vw;
+    min-width: 18px;
+    min-height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a8a8a;
+    font-size: clamp(10px, 1.2vw, 16px);
+  }
+
+  /* Breadcrumb */
+  .breadcrumb-bar {
+    height: 3.5vh;
+    min-height: 24px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #d4d4d4;
+    display: flex;
+    align-items: center;
+    padding: 0 1.5vw;
+    font-size: clamp(10px, 1.1vw, 13px);
+    color: #666;
+    flex-shrink: 0;
+  }
+  .breadcrumb-segment {
+    display: flex;
+    align-items: center;
+    gap: 0.3vw;
+  }
+  .breadcrumb-separator {
+    margin: 0 0.4vw;
+    color: #aaa;
+    font-size: clamp(8px, 0.9vw, 12px);
+  }
+  .breadcrumb-active { color: #333; font-weight: 500; }
+
+  /* Content area */
+  .content-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 18vw;
+    min-width: 130px;
+    background: #f5f5f7;
+    border-right: 1px solid #d4d4d4;
+    padding: 1.2vh 0;
+    overflow: hidden;
+  }
+  .sidebar-section-label {
+    font-size: clamp(9px, 0.9vw, 11px);
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.8vh 1.2vw 0.4vh;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6vw;
+    padding: 0.5vh 1.2vw;
+    font-size: clamp(10px, 1.15vw, 14px);
+    color: #333;
+    cursor: default;
+    border-radius: 0.4vw;
+    margin: 0 0.4vw;
+    transition: background 0.15s;
+  }
+  .sidebar-item.active {
+    background: var(--accent-color);
+    color: white;
+  }
+  .sidebar-icon { font-size: clamp(12px, 1.3vw, 16px); }
+
+  /* File list */
+  .file-list {
+    flex: 1;
+    padding: 0;
+    overflow-y: auto;
+  }
+  .file-list-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    padding: 0.7vh 1.5vw;
+    font-size: clamp(9px, 1vw, 12px);
+    font-weight: 500;
+    color: #888;
+    border-bottom: 1px solid #e0e0e0;
+    background: #fafafa;
+    flex-shrink: 0;
+  }
+  .file-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    padding: 0.7vh 1.5vw;
+    font-size: clamp(10px, 1.1vw, 14px);
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: center;
+    opacity: 0;
+    transform: translateX(-1vw);
+    transition: opacity 0.35s ease, transform 0.35s ease, background 0.2s;
+  }
+  .file-row.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .file-row.selected {
+    background: var(--accent-color);
+    color: white;
+    border-radius: 0.3vw;
+  }
+  .file-row.exiting {
+    opacity: 0;
+    transform: translateX(1vw);
+  }
+  .file-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5vw;
+    font-weight: 400;
+  }
+  .file-icon { font-size: clamp(14px, 1.6vw, 22px); }
+  .file-meta {
+    color: #888;
+    font-size: clamp(9px, 1vw, 12px);
+  }
+  .file-row.selected .file-meta { color: rgba(255,255,255,0.8); }
+
+  /* Status bar */
+  .status-bar {
+    height: 3vh;
+    min-height: 20px;
+    background: #f5f5f7;
+    border-top: 1px solid #d4d4d4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5vw;
+    font-size: clamp(9px, 0.95vw, 12px);
+    color: #888;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="finder-window" id="finderWindow">
+  <div class="title-bar">
+    <div class="traffic-lights">
+      <div class="traffic-light tl-close"></div>
+      <div class="traffic-light tl-minimize"></div>
+      <div class="traffic-light tl-maximize"></div>
+    </div>
+    <div class="nav-buttons">
+      <div class="nav-btn">&lsaquo;</div>
+      <div class="nav-btn">&rsaquo;</div>
+    </div>
+    <div class="title-text">
+      <span class="title-icon">📁</span>
+      <span id="windowTitle"></span>
+    </div>
+  </div>
+  <div class="breadcrumb-bar" id="breadcrumb"></div>
+  <div class="content-area">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="file-list-wrapper" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="file-list-header">
+        <span>Name</span><span>Size</span><span>Kind</span><span>Date Modified</span>
+      </div>
+      <div class="file-list" id="fileList"></div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span id="statusItems"></span>
+    <span id="statusAvail">48.2 GB available</span>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  windowTitle: 'Projects',
+  folders: ['Applications', 'Desktop', 'Documents', 'Downloads', 'Music', 'Pictures'],
+  files: [
+    { name: 'Brand Guidelines.pdf', type: 'PDF Document', size: '4.2 MB', modified: 'Dec 15, 2024' },
+    { name: 'Quarterly Report', type: 'Folder', size: '--', modified: 'Jan 8, 2025' },
+    { name: 'design-system.fig', type: 'Figma File', size: '18.7 MB', modified: 'Jan 12, 2025' },
+    { name: 'presentation.key', type: 'Keynote', size: '32.1 MB', modified: 'Jan 15, 2025' },
+    { name: 'Assets', type: 'Folder', size: '--', modified: 'Jan 18, 2025' },
+    { name: 'app-icon.png', type: 'PNG Image', size: '256 KB', modified: 'Jan 20, 2025' },
+    { name: 'meeting-notes.md', type: 'Markdown', size: '12 KB', modified: 'Jan 22, 2025' },
+    { name: 'prototype-v3.sketch', type: 'Sketch File', size: '9.4 MB', modified: 'Jan 24, 2025' },
+    { name: 'Exports', type: 'Folder', size: '--', modified: 'Jan 25, 2025' },
+    { name: 'analytics-dashboard.tsx', type: 'TypeScript', size: '8 KB', modified: 'Jan 26, 2025' }
+  ],
+  currentPath: 'Macintosh HD > Users > designer > Projects',
+  bgColor: '#e8e4df',
+  accentColor: '#007aff',
+  cycleDuration: 10
+};
+
+document.body.style.setProperty('--bg-color', CONFIG.bgColor);
+document.body.style.setProperty('--accent-color', CONFIG.accentColor);
+
+function getFileIcon(type) {
+  const t = type.toLowerCase();
+  if (t === 'folder') return '📁';
+  if (t.includes('pdf')) return '📄';
+  if (t.includes('image') || t.includes('png') || t.includes('jpg')) return '🖼️';
+  if (t.includes('keynote') || t.includes('presentation')) return '📊';
+  if (t.includes('figma') || t.includes('sketch')) return '🎨';
+  if (t.includes('markdown') || t.includes('text')) return '📝';
+  if (t.includes('typescript') || t.includes('javascript')) return '💻';
+  if (t.includes('music') || t.includes('audio')) return '🎵';
+  return '📄';
+}
+
+function getSidebarIcon(name) {
+  const n = name.toLowerCase();
+  if (n === 'applications') return '🖥️';
+  if (n === 'desktop') return '🗂️';
+  if (n === 'documents') return '📄';
+  if (n === 'downloads') return '⬇️';
+  if (n === 'music') return '🎵';
+  if (n === 'pictures') return '🖼️';
+  return '📁';
+}
+
+// Build sidebar
+const sidebarEl = document.getElementById('sidebar');
+let sidebarHTML = '<div class="sidebar-section-label">Favorites</div>';
+CONFIG.folders.forEach((f, i) => {
+  sidebarHTML += `<div class="sidebar-item ${i === 2 ? 'active' : ''}" data-idx="${i}">
+    <span class="sidebar-icon">${getSidebarIcon(f)}</span>${f}
+  </div>`;
+});
+sidebarHTML += '<div class="sidebar-section-label" style="margin-top:1.5vh;">Locations</div>';
+sidebarHTML += '<div class="sidebar-item"><span class="sidebar-icon">💻</span>Macintosh HD</div>';
+sidebarHTML += '<div class="sidebar-item"><span class="sidebar-icon">☁️</span>iCloud Drive</div>';
+sidebarEl.innerHTML = sidebarHTML;
+
+// Build breadcrumb
+const breadcrumbEl = document.getElementById('breadcrumb');
+const pathSegments = CONFIG.currentPath.split(' > ');
+breadcrumbEl.innerHTML = pathSegments.map((seg, i) =>
+  `<span class="breadcrumb-segment ${i === pathSegments.length - 1 ? 'breadcrumb-active' : ''}">${seg}</span>` +
+  (i < pathSegments.length - 1 ? '<span class="breadcrumb-separator">›</span>' : '')
+).join('');
+
+// Set title
+document.getElementById('windowTitle').textContent = CONFIG.windowTitle;
+
+// Build file rows
+const fileListEl = document.getElementById('fileList');
+CONFIG.files.forEach((file) => {
+  const row = document.createElement('div');
+  row.className = 'file-row';
+  row.innerHTML = `
+    <span class="file-name"><span class="file-icon">${getFileIcon(file.type)}</span>${file.name}</span>
+    <span class="file-meta">${file.size}</span>
+    <span class="file-meta">${file.type}</span>
+    <span class="file-meta">${file.modified}</span>
+  `;
+  fileListEl.appendChild(row);
+});
+
+const statusItemsEl = document.getElementById('statusItems');
+const finderWindow = document.getElementById('finderWindow');
+const fileRows = document.querySelectorAll('.file-row');
+
+// Animation cycle
+const cycleDurationMs = CONFIG.cycleDuration * 1000;
+let cycleStart = 0;
+let phase = 'intro'; // intro, showFiles, selectFiles, hold, exit
+
+function runCycle(timestamp) {
+  if (!cycleStart) cycleStart = timestamp;
+  const elapsed = timestamp - cycleStart;
+  const totalFiles = fileRows.length;
+
+  if (phase === 'intro') {
+    finderWindow.classList.add('visible');
+    finderWindow.classList.remove('exiting');
+    phase = 'showFiles';
+    statusItemsEl.textContent = `${totalFiles} items`;
+  }
+
+  if (phase === 'showFiles') {
+    const fileStartTime = 600;
+    const stagger = 120;
+    let allVisible = true;
+    fileRows.forEach((row, i) => {
+      const showTime = fileStartTime + i * stagger;
+      if (elapsed >= showTime) {
+        row.classList.add('visible');
+        row.classList.remove('exiting');
+      } else {
+        allVisible = false;
+      }
+    });
+    if (allVisible && elapsed >= fileStartTime + totalFiles * stagger + 300) {
+      phase = 'selectFiles';
+      this._selectIndex = 0;
+      this._lastSelectTime = elapsed;
+    }
+  }
+
+  if (phase === 'selectFiles') {
+    const selectInterval = 600;
+    if (elapsed - this._lastSelectTime >= selectInterval) {
+      fileRows.forEach(r => r.classList.remove('selected'));
+      if (this._selectIndex < totalFiles) {
+        fileRows[this._selectIndex].classList.add('selected');
+        this._selectIndex++;
+        this._lastSelectTime = elapsed;
+      } else {
+        fileRows.forEach(r => r.classList.remove('selected'));
+        phase = 'hold';
+        this._holdStart = elapsed;
+      }
+    }
+  }
+
+  if (phase === 'hold') {
+    const holdDuration = Math.max(500, cycleDurationMs - elapsed - 800);
+    if (elapsed - this._holdStart >= Math.min(holdDuration, 2000)) {
+      phase = 'exit';
+    }
+  }
+
+  if (phase === 'exit') {
+    const stagger = 60;
+    fileRows.forEach((row, i) => {
+      setTimeout(() => {
+        row.classList.add('exiting');
+        row.classList.remove('visible', 'selected');
+      }, i * stagger);
+    });
+    setTimeout(() => {
+      finderWindow.classList.remove('visible');
+      finderWindow.classList.add('exiting');
+    }, totalFiles * stagger + 200);
+    setTimeout(() => {
+      // Reset everything
+      finderWindow.classList.remove('visible', 'exiting');
+      fileRows.forEach(r => {
+        r.classList.remove('visible', 'selected', 'exiting');
+      });
+      phase = 'intro';
+      cycleStart = 0;
+      requestAnimationFrame(runCycle);
+    }, totalFiles * stagger + 1000);
+    return;
+  }
+
+  if (elapsed < cycleDurationMs) {
+    requestAnimationFrame(runCycle);
+  } else {
+    // Force restart
+    phase = 'exit';
+    requestAnimationFrame(runCycle);
+  }
+}
+
+requestAnimationFrame(runCycle);
+</script>
+</body>
+</html>

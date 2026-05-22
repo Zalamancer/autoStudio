@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Music Album Player</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:100vw;height:100vh;overflow:hidden;background:#1a1210;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;color:#fff}
+  .container{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .bg-glow{position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(12vw);opacity:0;transition:opacity 1.5s}
+  .bg-glow-1{background:radial-gradient(circle,rgba(180,90,40,0.3),transparent);top:-10vh;left:-10vw}
+  .bg-glow-2{background:radial-gradient(circle,rgba(120,60,30,0.25),transparent);bottom:-15vh;right:-10vw}
+  .player-wrap{display:flex;align-items:center;gap:4vw;opacity:0;transform:translateY(3vh)}
+  .vinyl-section{position:relative;width:32vw;height:32vw;flex-shrink:0}
+  .vinyl{position:absolute;width:32vw;height:32vw;border-radius:50%;background:radial-gradient(circle at 50% 50%,#111 0%,#111 8%,#1a1a1a 8.5%,#222 9%,#1a1a1a 12%,#222 12.5%,#1a1a1a 15%,#222 15.5%,#1a1a1a 18%,#222 18.5%,#1a1a1a 21%,transparent 21.5%),radial-gradient(circle at 50% 50%,transparent 42%,#1a1a1a 42.5%,#222 43%,#1a1a1a 46%,#222 46.5%,#1a1a1a 49%,#222 49.5%,#111 50%);background-color:#181818;box-shadow:0 0 3vw rgba(0,0,0,0.6),inset 0 0 2vw rgba(255,255,255,0.03);transform:translateX(-15vw) rotate(0deg);opacity:0}
+  .vinyl::before{content:'';position:absolute;top:50%;left:50%;width:8%;height:8%;background:radial-gradient(circle,#444,#222);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0.5vw rgba(0,0,0,0.8)}
+  .vinyl::after{content:'';position:absolute;top:50%;left:50%;width:1.5%;height:1.5%;background:#666;border-radius:50%;transform:translate(-50%,-50%)}
+  .vinyl.spinning{animation:spin 3s linear infinite}
+  .album-cover{position:absolute;top:50%;left:50%;width:40%;height:40%;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;z-index:1}
+  .album-art{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5vw;font-weight:700;letter-spacing:0.1vw}
+  .vinyl-shine{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,transparent 50%,rgba(255,255,255,0.02) 100%);pointer-events:none}
+  .tonearm-pivot{position:absolute;top:-2vw;right:-1vw;width:2vw;height:2vw;z-index:5}
+  .tonearm{position:absolute;top:50%;left:50%;width:16vw;height:0.4vw;background:linear-gradient(90deg,#888,#aaa,#888);transform-origin:0 50%;transform:rotate(-30deg);border-radius:0.2vw;transition:transform 1.2s cubic-bezier(0.25,0.1,0.25,1)}
+  .tonearm::before{content:'';position:absolute;left:-0.8vw;top:-0.8vw;width:2vw;height:2vw;background:radial-gradient(circle,#999,#555);border-radius:50%;box-shadow:0 0.2vw 0.8vw rgba(0,0,0,0.5)}
+  .tonearm::after{content:'';position:absolute;right:-0.3vw;top:-0.6vw;width:0.8vw;height:1.6vw;background:linear-gradient(180deg,#bbb,#777);border-radius:0.1vw;transform:rotate(15deg)}
+  .tonearm.playing{transform:rotate(-10deg)}
+  .info-section{flex-shrink:0;max-width:32vw;opacity:0;transform:translateX(3vw)}
+  .genre-badge{display:inline-block;padding:0.4vh 1.2vw;border-radius:2vw;font-size:1.2vw;font-weight:600;letter-spacing:0.15vw;text-transform:uppercase;margin-bottom:1.5vh;opacity:0;transform:translateY(1vh)}
+  .album-title{font-size:4vw;font-weight:800;line-height:1.1;margin-bottom:0.8vh;opacity:0;transform:translateY(1vh)}
+  .artist-name{font-size:2vw;opacity:0.7;margin-bottom:0.5vh;opacity:0;transform:translateY(1vh)}
+  .release-year{font-size:1.3vw;opacity:0.4;margin-bottom:3vh;opacity:0;transform:translateY(1vh)}
+  .track-list{list-style:none;margin-bottom:3vh}
+  .track-item{display:flex;align-items:center;gap:1vw;padding:0.8vh 0;font-size:1.4vw;opacity:0;transform:translateX(-1vw);border-bottom:1px solid rgba(255,255,255,0.06)}
+  .track-num{width:2vw;text-align:right;opacity:0.3;font-variant-numeric:tabular-nums}
+  .track-name{flex:1}
+  .track-dur{opacity:0.3;font-variant-numeric:tabular-nums}
+  .track-item.active{color:#e8a04c}
+  .track-item.active .track-num,.track-item.active .track-dur{opacity:0.8}
+  .now-playing-dot{width:0.6vw;height:0.6vw;border-radius:50%;background:#e8a04c;margin-right:0.3vw;opacity:0}
+  .track-item.active .now-playing-dot{animation:pulse-dot 1s ease-in-out infinite;opacity:1}
+  .progress-section{margin-bottom:2vh;opacity:0;transform:translateY(1vh)}
+  .progress-bar-bg{width:100%;height:0.4vh;background:rgba(255,255,255,0.1);border-radius:0.2vh;overflow:hidden;margin-bottom:0.8vh}
+  .progress-bar-fill{width:0%;height:100%;border-radius:0.2vh;transition:width 0.3s linear}
+  .progress-times{display:flex;justify-content:space-between;font-size:1.1vw;opacity:0.4;font-variant-numeric:tabular-nums}
+  .controls{display:flex;align-items:center;gap:2vw;opacity:0;transform:translateY(1vh)}
+  .ctrl-btn{width:3.5vw;height:3.5vw;border-radius:50%;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s}
+  .ctrl-btn.play{width:5vw;height:5vw;border-color:rgba(255,255,255,0.4)}
+  .ctrl-btn svg{fill:#fff;width:40%;height:40%}
+  .ctrl-btn.play svg{width:45%;height:45%;margin-left:5%}
+  @keyframes spin{from{transform:translateX(0) rotate(0deg)}to{transform:translateX(0) rotate(360deg)}}
+  @keyframes pulse-dot{0%,100%{opacity:0.4;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}
+  @keyframes fadeAll{0%{opacity:1}95%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="bg-glow bg-glow-1" id="bgGlow1"></div>
+  <div class="bg-glow bg-glow-2" id="bgGlow2"></div>
+  <div class="player-wrap" id="playerWrap">
+    <div class="vinyl-section">
+      <div class="vinyl" id="vinyl">
+        <div class="album-cover">
+          <div class="album-art" id="albumArt"></div>
+        </div>
+        <div class="vinyl-shine"></div>
+      </div>
+      <div class="tonearm-pivot">
+        <div class="tonearm" id="tonearm"></div>
+      </div>
+    </div>
+    <div class="info-section" id="infoSection">
+      <div class="genre-badge" id="genreBadge"></div>
+      <div class="album-title" id="albumTitle"></div>
+      <div class="artist-name" id="artistName"></div>
+      <div class="release-year" id="releaseYear"></div>
+      <ul class="track-list" id="trackList"></ul>
+      <div class="progress-section" id="progressSection">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <div class="progress-times"><span id="timeCurrent">0:00</span><span id="timeTotal">3:42</span></div>
+      </div>
+      <div class="controls" id="controls">
+        <div class="ctrl-btn"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" transform="scale(-1,1) translate(-24,0)"/></svg></div>
+        <div class="ctrl-btn play" id="playBtn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="ctrl-btn"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const CONFIG = {
+  albumTitle: "Midnight Echoes",
+  artistName: "Luna Rivera",
+  releaseYear: "2024",
+  genre: "Neo Soul",
+  accentColor: "#e8a04c",
+  accentColorRGB: "232,160,76",
+  albumArtBg: "linear-gradient(135deg, #4a2c17, #8b5e3c, #c9854f)",
+  albumArtInitials: "LR",
+  tracks: [
+    { name: "Golden Hour", duration: "3:42" },
+    { name: "Velvet Rain", duration: "4:15" },
+    { name: "Echoes of You", duration: "3:58" },
+    { name: "Neon Drift", duration: "4:32" },
+    { name: "Moonlit Waves", duration: "3:21" }
+  ],
+  backgroundColor: "#1a1210",
+  cycleDuration: 14000
+};
+
+document.body.style.background = CONFIG.backgroundColor;
+document.getElementById('albumArt').style.background = CONFIG.albumArtBg;
+document.getElementById('albumArt').textContent = CONFIG.albumArtInitials;
+document.getElementById('genreBadge').textContent = CONFIG.genre;
+document.getElementById('genreBadge').style.background = `rgba(${CONFIG.accentColorRGB},0.15)`;
+document.getElementById('genreBadge').style.color = CONFIG.accentColor;
+document.getElementById('albumTitle').textContent = CONFIG.albumTitle;
+document.getElementById('artistName').textContent = CONFIG.artistName;
+document.getElementById('releaseYear').textContent = CONFIG.releaseYear;
+document.getElementById('progressFill').style.background = `linear-gradient(90deg, ${CONFIG.accentColor}, ${CONFIG.accentColor}dd)`;
+document.getElementById('timeTotal').textContent = CONFIG.tracks[0].duration;
+
+const playBtn = document.getElementById('playBtn');
+playBtn.style.borderColor = `${CONFIG.accentColor}88`;
+
+const trackListEl = document.getElementById('trackList');
+CONFIG.tracks.forEach((t, i) => {
+  const li = document.createElement('li');
+  li.className = 'track-item';
+  li.id = `track-${i}`;
+  li.innerHTML = `<div class="now-playing-dot"></div><span class="track-num">${i + 1}</span><span class="track-name">${t.name}</span><span class="track-dur">${t.duration}</span>`;
+  trackListEl.appendChild(li);
+});
+
+function anim(el, props, dur, delay = 0) {
+  return new Promise(r => {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: `all ${dur}ms cubic-bezier(0.25,0.1,0.25,1)`, ...props });
+      setTimeout(r, dur);
+    }, delay);
+  });
+}
+
+function setProgress(pct, elapsed) {
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  const mins = Math.floor(elapsed / 60);
+  const secs = Math.floor(elapsed % 60);
+  document.getElementById('timeCurrent').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+let progressInterval = null;
+
+function resetAll() {
+  const wrap = document.getElementById('playerWrap');
+  const vinyl = document.getElementById('vinyl');
+  const tonearm = document.getElementById('tonearm');
+  const info = document.getElementById('infoSection');
+  const glow1 = document.getElementById('bgGlow1');
+  const glow2 = document.getElementById('bgGlow2');
+  wrap.style.transition = 'none';
+  wrap.style.opacity = '0';
+  wrap.style.transform = 'translateY(3vh)';
+  vinyl.style.transition = 'none';
+  vinyl.style.opacity = '0';
+  vinyl.style.transform = 'translateX(-15vw) rotate(0deg)';
+  vinyl.classList.remove('spinning');
+  tonearm.style.transition = 'none';
+  tonearm.style.transform = 'rotate(-30deg)';
+  info.style.transition = 'none';
+  info.style.opacity = '0';
+  info.style.transform = 'translateX(3vw)';
+  glow1.style.opacity = '0';
+  glow2.style.opacity = '0';
+  const badge = document.getElementById('genreBadge');
+  const title = document.getElementById('albumTitle');
+  const artist = document.getElementById('artistName');
+  const year = document.getElementById('releaseYear');
+  const prog = document.getElementById('progressSection');
+  const ctrls = document.getElementById('controls');
+  [badge, title, artist, year, prog, ctrls].forEach(el => {
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(1vh)';
+  });
+  document.querySelectorAll('.track-item').forEach(t => {
+    t.style.transition = 'none';
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-1vw)';
+    t.classList.remove('active');
+  });
+  setProgress(0, 0);
+  if (progressInterval) clearInterval(progressInterval);
+}
+
+async function runCycle() {
+  resetAll();
+  await new Promise(r => setTimeout(r, 50));
+  const wrap = document.getElementById('playerWrap');
+  const vinyl = document.getElementById('vinyl');
+  const tonearm = document.getElementById('tonearm');
+  const info = document.getElementById('infoSection');
+  const glow1 = document.getElementById('bgGlow1');
+  const glow2 = document.getElementById('bgGlow2');
+
+  // Background glows
+  glow1.style.transition = 'opacity 1.5s';
+  glow1.style.opacity = '1';
+  glow2.style.transition = 'opacity 1.5s';
+  glow2.style.opacity = '1';
+
+  // Player wrap fade in
+  await anim(wrap, { opacity: '1', transform: 'translateY(0)' }, 800, 200);
+
+  // Vinyl slides in
+  await anim(vinyl, { opacity: '1', transform: 'translateX(0) rotate(0deg)' }, 1000);
+
+  // Tonearm swings to playing position
+  tonearm.style.transition = 'transform 1.2s cubic-bezier(0.25,0.1,0.25,1)';
+  tonearm.classList.add('playing');
+  tonearm.style.transform = 'rotate(-10deg)';
+  await new Promise(r => setTimeout(r, 600));
+
+  // Vinyl starts spinning
+  vinyl.style.transition = 'none';
+  vinyl.classList.add('spinning');
+
+  // Info section appears
+  await anim(info, { opacity: '1', transform: 'translateX(0)' }, 600);
+
+  // Genre badge
+  const badge = document.getElementById('genreBadge');
+  await anim(badge, { opacity: '1', transform: 'translateY(0)' }, 400);
+
+  // Title
+  const title = document.getElementById('albumTitle');
+  await anim(title, { opacity: '1', transform: 'translateY(0)' }, 400, 100);
+
+  // Artist
+  const artist = document.getElementById('artistName');
+  await anim(artist, { opacity: '0.7', transform: 'translateY(0)' }, 400, 50);
+
+  // Year
+  const year = document.getElementById('releaseYear');
+  await anim(year, { opacity: '0.4', transform: 'translateY(0)' }, 300, 50);
+
+  // Tracks appear one by one
+  const tracks = document.querySelectorAll('.track-item');
+  for (let i = 0; i < tracks.length; i++) {
+    anim(tracks[i], { opacity: '1', transform: 'translateX(0)' }, 350, i * 120);
+  }
+  await new Promise(r => setTimeout(r, tracks.length * 120 + 350));
+
+  // First track active
+  tracks[0].classList.add('active');
+
+  // Progress and controls
+  const prog = document.getElementById('progressSection');
+  const ctrls = document.getElementById('controls');
+  await anim(prog, { opacity: '1', transform: 'translateY(0)' }, 400);
+  anim(ctrls, { opacity: '1', transform: 'translateY(0)' }, 400);
+
+  // Animate progress bar
+  let elapsed = 0;
+  const totalSec = 222; // 3:42
+  progressInterval = setInterval(() => {
+    elapsed += 0.8;
+    const pct = Math.min((elapsed / totalSec) * 100, 100);
+    setProgress(pct, elapsed);
+  }, 50);
+
+  // After some time, switch to next track
+  await new Promise(r => setTimeout(r, 3000));
+  tracks[0].classList.remove('active');
+  tracks[1].classList.add('active');
+  document.getElementById('timeTotal').textContent = CONFIG.tracks[1].duration;
+  elapsed = 0;
+  setProgress(0, 0);
+
+  await new Promise(r => setTimeout(r, 2500));
+
+  // Tonearm lifts
+  if (progressInterval) clearInterval(progressInterval);
+  tonearm.style.transition = 'transform 1s cubic-bezier(0.25,0.1,0.25,1)';
+  tonearm.style.transform = 'rotate(-30deg)';
+  vinyl.classList.remove('spinning');
+
+  // Fade out
+  await new Promise(r => setTimeout(r, 500));
+  await anim(wrap, { opacity: '0', transform: 'translateY(-2vh)' }, 1000);
+  glow1.style.opacity = '0';
+  glow2.style.opacity = '0';
+  await new Promise(r => setTimeout(r, 800));
+
+  runCycle();
+}
+
+runCycle();
+</script>
+</body>
+</html>

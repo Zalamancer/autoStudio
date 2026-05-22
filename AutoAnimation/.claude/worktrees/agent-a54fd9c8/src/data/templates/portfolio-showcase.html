@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Showcase</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Helvetica Neue', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #fff;
+  }
+  canvas#bgCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+    pointer-events: none;
+  }
+  .content {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 4vh 4vw;
+  }
+
+  /* Header */
+  .header {
+    text-align: center; margin-bottom: 3vh;
+    opacity: 0; transform: translateY(-30px);
+  }
+  .header-name {
+    font-size: clamp(28px, 6vw, 56px); font-weight: 800;
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .header-title {
+    font-size: clamp(11px, 1.6vw, 16px); font-weight: 300;
+    letter-spacing: 0.35em; text-transform: uppercase;
+    margin-top: 1vh; opacity: 0.5;
+  }
+  .header-line {
+    width: 0; height: 2px; margin: 1.5vh auto 0;
+    border-radius: 1px;
+  }
+
+  /* Project Grid */
+  .projects-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 2vh 2vw; width: 80vw; max-width: 640px;
+    margin-bottom: 3vh;
+  }
+  .project-card {
+    border-radius: 12px; overflow: hidden; position: relative;
+    aspect-ratio: 16/10;
+    opacity: 0; transform: scale(0.6);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .project-gradient {
+    position: absolute; inset: 0;
+    opacity: 0.85;
+  }
+  .project-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.7) 100%);
+  }
+  .project-info {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 10% 10% 8%;
+  }
+  .project-name {
+    font-size: clamp(12px, 2vw, 18px); font-weight: 700;
+    line-height: 1.2; margin-bottom: 0.5vh;
+  }
+  .project-tag {
+    display: inline-block;
+    font-size: clamp(7px, 1vw, 10px); font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(4px);
+  }
+  .project-shimmer {
+    position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    transform: skewX(-15deg);
+  }
+
+  /* Skills Row */
+  .skills-row {
+    display: flex; flex-wrap: wrap; gap: 1vh 1vw;
+    justify-content: center; margin-bottom: 3vh;
+    max-width: 640px;
+  }
+  .skill-badge {
+    font-size: clamp(8px, 1.2vw, 12px); font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0.6vh 1.2vw; border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(6px);
+    opacity: 0; transform: translateY(15px);
+    white-space: nowrap;
+  }
+
+  /* CTA / Contact */
+  .cta-section {
+    text-align: center;
+    opacity: 0; transform: translateY(20px);
+  }
+  .cta-text {
+    font-size: clamp(10px, 1.4vw, 14px); font-weight: 300;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    opacity: 0.4;
+  }
+  .cta-link {
+    font-size: clamp(13px, 2vw, 20px); font-weight: 600;
+    margin-top: 0.5vh;
+  }
+  .cta-underline {
+    width: 0; height: 1px; margin: 0.5vh auto 0;
+    opacity: 0.6;
+  }
+
+  /* Corner Labels */
+  .corner-label {
+    position: fixed;
+    font-family: 'Courier New', monospace;
+    font-size: 8px; letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.15);
+    z-index: 20;
+  }
+  .cl-tl { top: 2vh; left: 2vw; }
+  .cl-br { bottom: 2vh; right: 2vw; text-align: right; }
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div class="overlay" id="overlay"></div>
+
+<div class="content">
+  <div class="header" id="header">
+    <div class="header-name" id="nameEl"></div>
+    <div class="header-title" id="titleEl"></div>
+    <div class="header-line" id="headerLine"></div>
+  </div>
+
+  <div class="projects-grid" id="projectsGrid"></div>
+
+  <div class="skills-row" id="skillsRow"></div>
+
+  <div class="cta-section" id="ctaSection">
+    <div class="cta-text" id="ctaLabel"></div>
+    <div class="cta-link" id="ctaLink"></div>
+    <div class="cta-underline" id="ctaUnderline"></div>
+  </div>
+</div>
+
+<div class="corner-label cl-tl" id="cornerTL">PORTFOLIO.2025</div>
+<div class="corner-label cl-br" id="cornerBR">SHOWCASE</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  name: 'Alex Carter',
+  title: 'Creative Developer & Designer',
+  projects: [
+    { name: 'Nebula Dashboard', category: 'Web App', color: '#6366F1' },
+    { name: 'Bloom Identity', category: 'Branding', color: '#EC4899' },
+    { name: 'Synthwave Player', category: 'UI Design', color: '#14B8A6' },
+    { name: 'Arcane Portfolio', category: 'Development', color: '#F59E0B' }
+  ],
+  skills: ['React', 'TypeScript', 'Three.js', 'Figma', 'Node.js', 'Motion Design'],
+  ctaLabel: 'Get in Touch',
+  ctaContact: 'hello@alexcarter.dev',
+  bgColor: '#0A0A10',
+  accentColor: '#6366F1',
+  cycleDuration: 14000
+};
+
+// ── Apply CONFIG to DOM ──
+document.body.style.background = CONFIG.bgColor;
+document.getElementById('nameEl').textContent = CONFIG.name;
+document.getElementById('titleEl').textContent = CONFIG.title;
+document.getElementById('ctaLabel').textContent = CONFIG.ctaLabel;
+document.getElementById('ctaLink').textContent = CONFIG.ctaContact;
+
+// ── Background Canvas (floating geometric shapes) ──
+var canvas = document.getElementById('bgCanvas');
+var ctx = canvas.getContext('2d');
+var W, H;
+var shapes = [];
+
+function resizeCanvas() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function hexToRgb(hex) {
+  var r = parseInt(hex.slice(1,3),16);
+  var g = parseInt(hex.slice(3,5),16);
+  var b = parseInt(hex.slice(5,7),16);
+  return { r: r, g: g, b: b };
+}
+
+function createShape() {
+  var types = ['circle', 'triangle', 'square', 'diamond', 'ring'];
+  return {
+    x: Math.random() * W,
+    y: Math.random() * H,
+    size: 8 + Math.random() * 40,
+    type: types[Math.floor(Math.random() * types.length)],
+    speedX: (Math.random() - 0.5) * 0.3,
+    speedY: (Math.random() - 0.5) * 0.25 - 0.08,
+    rotation: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.005,
+    opacity: 0.02 + Math.random() * 0.06,
+    pulse: Math.random() * Math.PI * 2,
+    pulseSpeed: 0.008 + Math.random() * 0.012
+  };
+}
+for (var i = 0; i < 18; i++) shapes.push(createShape());
+
+function drawShape(s) {
+  var a = s.opacity * (0.6 + 0.4 * Math.sin(s.pulse));
+  var c = hexToRgb(CONFIG.accentColor);
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(s.rotation);
+  ctx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + a + ')';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (a * 0.15) + ')';
+
+  if (s.type === 'circle') {
+    ctx.beginPath(); ctx.arc(0, 0, s.size, 0, Math.PI * 2); ctx.stroke(); ctx.fill();
+  } else if (s.type === 'ring') {
+    ctx.beginPath(); ctx.arc(0, 0, s.size, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, s.size * 0.6, 0, Math.PI * 2); ctx.stroke();
+  } else if (s.type === 'triangle') {
+    ctx.beginPath();
+    ctx.moveTo(0, -s.size);
+    ctx.lineTo(s.size * 0.866, s.size * 0.5);
+    ctx.lineTo(-s.size * 0.866, s.size * 0.5);
+    ctx.closePath(); ctx.stroke(); ctx.fill();
+  } else if (s.type === 'square') {
+    ctx.strokeRect(-s.size * 0.7, -s.size * 0.7, s.size * 1.4, s.size * 1.4);
+    ctx.fillRect(-s.size * 0.7, -s.size * 0.7, s.size * 1.4, s.size * 1.4);
+  } else if (s.type === 'diamond') {
+    ctx.beginPath();
+    ctx.moveTo(0, -s.size);
+    ctx.lineTo(s.size * 0.7, 0);
+    ctx.lineTo(0, s.size);
+    ctx.lineTo(-s.size * 0.7, 0);
+    ctx.closePath(); ctx.stroke(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function updateShapes() {
+  for (var i = 0; i < shapes.length; i++) {
+    var s = shapes[i];
+    s.x += s.speedX; s.y += s.speedY;
+    s.rotation += s.rotSpeed; s.pulse += s.pulseSpeed;
+    if (s.x < -60) s.x = W + 60;
+    if (s.x > W + 60) s.x = -60;
+    if (s.y < -60) s.y = H + 60;
+    if (s.y > H + 60) s.y = -60;
+  }
+}
+
+function renderBg() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  var c = hexToRgb(CONFIG.accentColor);
+  ctx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.03)';
+  ctx.lineWidth = 0.5;
+  var gs = 80;
+  for (var gx = 0; gx < W; gx += gs) {
+    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+  }
+  for (var gy = 0; gy < H; gy += gs) {
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+  }
+
+  // Draw shapes
+  for (var i = 0; i < shapes.length; i++) drawShape(shapes[i]);
+  updateShapes();
+  requestAnimationFrame(renderBg);
+}
+renderBg();
+
+// ── Build Project Cards ──
+var gridEl = document.getElementById('projectsGrid');
+var cardEls = [];
+CONFIG.projects.forEach(function(p, idx) {
+  var card = document.createElement('div');
+  card.className = 'project-card';
+  card.innerHTML =
+    '<div class="project-gradient" style="background:linear-gradient(135deg,' + p.color + ',' + adjustColor(p.color, -40) + ')"></div>' +
+    '<div class="project-overlay"></div>' +
+    '<div class="project-shimmer" id="shimmer' + idx + '"></div>' +
+    '<div class="project-info">' +
+      '<div class="project-name">' + p.name + '</div>' +
+      '<div class="project-tag">' + p.category + '</div>' +
+    '</div>';
+  gridEl.appendChild(card);
+  cardEls.push(card);
+});
+
+function adjustColor(hex, amount) {
+  var r = Math.max(0, Math.min(255, parseInt(hex.slice(1,3),16) + amount));
+  var g = Math.max(0, Math.min(255, parseInt(hex.slice(3,5),16) + amount));
+  var b = Math.max(0, Math.min(255, parseInt(hex.slice(5,7),16) + amount));
+  return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+// ── Build Skill Badges ──
+var skillsEl = document.getElementById('skillsRow');
+var badgeEls = [];
+CONFIG.skills.forEach(function(sk) {
+  var badge = document.createElement('div');
+  badge.className = 'skill-badge';
+  badge.textContent = sk;
+  skillsEl.appendChild(badge);
+  badgeEls.push(badge);
+});
+
+// ── Animation Cycle ──
+var headerEl = document.getElementById('header');
+var headerLine = document.getElementById('headerLine');
+var ctaSection = document.getElementById('ctaSection');
+var ctaUnderline = document.getElementById('ctaUnderline');
+
+headerLine.style.background = CONFIG.accentColor;
+ctaUnderline.style.background = CONFIG.accentColor;
+
+// Easing
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInCubic(t) { return t * t * t; }
+function easeOutBack(t) { var c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+
+var cycleStart = 0;
+
+function animateCycle(now) {
+  if (!cycleStart) cycleStart = now;
+  var elapsed = now - cycleStart;
+  var dur = CONFIG.cycleDuration;
+  var t = elapsed / dur;
+
+  if (t > 1) {
+    cycleStart = now;
+    t = 0;
+    resetElements();
+  }
+
+  // Phase timing (normalized 0-1):
+  // Intro:  0.00 - 0.25
+  // Hold:   0.25 - 0.75
+  // Exit:   0.75 - 1.00
+
+  var introEnd = 0.25;
+  var holdEnd = 0.75;
+
+  // ── HEADER ──
+  var headerIn = Math.min(1, t / 0.08);
+  var headerOut = t > holdEnd ? Math.min(1, (t - holdEnd) / 0.08) : 0;
+  var headerAlpha = easeOutCubic(headerIn) * (1 - easeInCubic(headerOut));
+  var headerY = -30 * (1 - easeOutCubic(headerIn)) + (headerOut > 0 ? -30 * easeInCubic(headerOut) : 0);
+  headerEl.style.opacity = headerAlpha;
+  headerEl.style.transform = 'translateY(' + headerY + 'px)';
+
+  // Header underline
+  var lineIn = Math.max(0, Math.min(1, (t - 0.06) / 0.1));
+  var lineOut = t > holdEnd ? Math.min(1, (t - holdEnd - 0.02) / 0.08) : 0;
+  var lineW = easeOutCubic(lineIn) * (1 - easeInCubic(lineOut));
+  headerLine.style.width = (lineW * 60) + 'px';
+
+  // ── PROJECT CARDS (staggered) ──
+  for (var ci = 0; ci < cardEls.length; ci++) {
+    var cardDelay = 0.05 + ci * 0.04;
+    var cardIn = Math.max(0, Math.min(1, (t - cardDelay) / 0.1));
+    var cardOut = t > holdEnd ? Math.max(0, Math.min(1, (t - holdEnd - ci * 0.03) / 0.08)) : 0;
+
+    var cardScale = 0.6 + 0.4 * easeOutBack(cardIn);
+    var cardAlpha = easeOutCubic(cardIn) * (1 - easeInCubic(cardOut));
+    if (cardOut > 0) cardScale *= (1 - 0.3 * easeInCubic(cardOut));
+
+    cardEls[ci].style.opacity = cardAlpha;
+    cardEls[ci].style.transform = 'scale(' + cardScale + ')';
+
+    // Shimmer effect during hold
+    var shimmerEl = document.getElementById('shimmer' + ci);
+    if (shimmerEl && t > introEnd && t < holdEnd) {
+      var shimmerT = ((t - introEnd) / (holdEnd - introEnd) + ci * 0.15) % 1;
+      var shimmerX = -100 + shimmerT * 300;
+      shimmerEl.style.left = shimmerX + '%';
+    }
+  }
+
+  // ── SKILL BADGES (staggered from center) ──
+  var badgeCount = badgeEls.length;
+  for (var bi = 0; bi < badgeCount; bi++) {
+    var distFromCenter = Math.abs(bi - (badgeCount - 1) / 2);
+    var badgeDelay = 0.15 + distFromCenter * 0.025;
+    var badgeIn = Math.max(0, Math.min(1, (t - badgeDelay) / 0.08));
+    var badgeOut = t > holdEnd ? Math.max(0, Math.min(1, (t - holdEnd - 0.04 - bi * 0.015) / 0.06)) : 0;
+
+    var badgeAlpha = easeOutCubic(badgeIn) * (1 - easeInCubic(badgeOut));
+    var badgeY = 15 * (1 - easeOutCubic(badgeIn)) + (badgeOut > 0 ? 15 * easeInCubic(badgeOut) : 0);
+
+    badgeEls[bi].style.opacity = badgeAlpha;
+    badgeEls[bi].style.transform = 'translateY(' + badgeY + 'px)';
+  }
+
+  // ── CTA SECTION ──
+  var ctaIn = Math.max(0, Math.min(1, (t - 0.2) / 0.08));
+  var ctaOut = t > holdEnd ? Math.max(0, Math.min(1, (t - holdEnd - 0.06) / 0.06)) : 0;
+  var ctaAlpha = easeOutCubic(ctaIn) * (1 - easeInCubic(ctaOut));
+  var ctaY = 20 * (1 - easeOutCubic(ctaIn)) + (ctaOut > 0 ? 20 * easeInCubic(ctaOut) : 0);
+  ctaSection.style.opacity = ctaAlpha;
+  ctaSection.style.transform = 'translateY(' + ctaY + 'px)';
+
+  // CTA underline
+  var ctaLineIn = Math.max(0, Math.min(1, (t - 0.22) / 0.1));
+  var ctaLineOut = t > holdEnd ? Math.min(1, (t - holdEnd - 0.06) / 0.06) : 0;
+  var ctaLineW = easeOutCubic(ctaLineIn) * (1 - easeInCubic(ctaLineOut));
+  ctaUnderline.style.width = (ctaLineW * 100) + 'px';
+
+  requestAnimationFrame(animateCycle);
+}
+
+function resetElements() {
+  headerEl.style.opacity = 0;
+  for (var ci = 0; ci < cardEls.length; ci++) {
+    cardEls[ci].style.opacity = 0;
+    cardEls[ci].style.transform = 'scale(0.6)';
+  }
+  for (var bi = 0; bi < badgeEls.length; bi++) {
+    badgeEls[bi].style.opacity = 0;
+    badgeEls[bi].style.transform = 'translateY(15px)';
+  }
+  ctaSection.style.opacity = 0;
+}
+
+requestAnimationFrame(animateCycle);
+</script>
+</body>
+</html>

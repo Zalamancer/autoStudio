@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X Post</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #000000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #e7e9ea;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .x-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5vh 4vw;
+    border-bottom: 1px solid #2f3336;
+    opacity: 0;
+  }
+  .x-logo { font-size: 2.8vh; font-weight: 900; }
+  .x-tabs {
+    display: flex; width: 100%;
+  }
+  .x-tab {
+    flex: 1; text-align: center;
+    padding: 1.5vh 0;
+    font-size: 1.4vh; font-weight: 500;
+    color: #71767b;
+    border-bottom: 1px solid #2f3336;
+    opacity: 0;
+  }
+  .x-tab.active {
+    color: #e7e9ea;
+    border-bottom: 2px solid #1d9bf0;
+  }
+  .post-area {
+    padding: 2vh 4vw;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .post {
+    display: flex; gap: 2vw;
+    padding-bottom: 2vh;
+    border-bottom: 1px solid #2f3336;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .post-avatar {
+    width: 5vh; height: 5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .post-body { flex: 1; }
+  .post-header {
+    display: flex; align-items: center; gap: 1vw;
+    margin-bottom: 0.5vh;
+  }
+  .post-name { font-size: 1.5vh; font-weight: 700; }
+  .post-verified {
+    width: 1.6vh; height: 1.6vh;
+    background: #1d9bf0;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9vh; color: #fff;
+  }
+  .post-handle { font-size: 1.3vh; color: #71767b; }
+  .post-time { font-size: 1.3vh; color: #71767b; }
+  .post-text {
+    font-size: 1.7vh; line-height: 1.5;
+    margin-bottom: 1.5vh;
+  }
+  .post-text .hashtag { color: #1d9bf0; }
+  .post-image {
+    width: 100%; height: 20vh;
+    border-radius: 1.5vh;
+    margin-bottom: 1.5vh;
+    border: 1px solid #2f3336;
+  }
+  .post-actions {
+    display: flex; justify-content: space-between;
+    max-width: 80%;
+  }
+  .post-action {
+    display: flex; align-items: center; gap: 1vw;
+    font-size: 1.2vh; color: #71767b;
+  }
+  .post-action .icon { font-size: 1.8vh; }
+  .engagement-bar {
+    display: flex; gap: 3vw;
+    padding: 1.5vh 0;
+    border-bottom: 1px solid #2f3336;
+    margin-left: 7vh;
+    opacity: 0;
+  }
+  .eng-item {
+    font-size: 1.2vh; color: #71767b;
+  }
+  .eng-item strong {
+    color: #e7e9ea;
+    font-variant-numeric: tabular-nums;
+  }
+  .reply-section {
+    padding: 1.5vh 0;
+    margin-left: 7vh;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .reply {
+    display: flex; gap: 2vw;
+    margin-bottom: 2vh;
+  }
+  .reply-avatar {
+    width: 3.5vh; height: 3.5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .reply-body { flex: 1; }
+  .reply-header {
+    display: flex; align-items: center; gap: 1vw;
+    margin-bottom: 0.3vh;
+  }
+  .reply-name { font-size: 1.3vh; font-weight: 700; }
+  .reply-handle { font-size: 1.1vh; color: #71767b; }
+  .reply-text { font-size: 1.4vh; line-height: 1.4; color: #e7e9ea; }
+  .reply-actions {
+    display: flex; gap: 4vw;
+    margin-top: 0.5vh;
+    font-size: 1vh; color: #71767b;
+  }
+  .trending-section {
+    border-top: 1px solid #2f3336;
+    padding: 2vh 4vw;
+    opacity: 0;
+  }
+  .trending-header {
+    font-size: 2vh; font-weight: 800;
+    margin-bottom: 1.5vh;
+  }
+  .trend-item {
+    margin-bottom: 1.5vh;
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  .trend-category { font-size: 1vh; color: #71767b; }
+  .trend-name { font-size: 1.4vh; font-weight: 700; }
+  .trend-posts { font-size: 1vh; color: #71767b; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="x-header" id="xHeader">
+    <div class="x-logo" id="logoText">&#x1D54F;</div>
+  </div>
+
+  <div style="display:flex;width:100%;">
+    <div class="x-tab active" id="tab1">For You</div>
+    <div class="x-tab" id="tab2">Following</div>
+  </div>
+
+  <div class="post-area">
+    <div class="post" id="mainPost">
+      <div class="post-avatar" id="postAvatar" style="background: #1d9bf0;"></div>
+      <div class="post-body">
+        <div class="post-header">
+          <span class="post-name" id="postName">Elon Musk</span>
+          <div class="post-verified">&#x2713;</div>
+          <span class="post-handle" id="postHandle">@elonmusk</span>
+          <span class="post-time">&middot; <span id="postTime">4h</span></span>
+        </div>
+        <div class="post-text" id="postText">The future of AI is incredibly exciting. We're building systems that will fundamentally transform how humans interact with technology. <span class="hashtag">#AI</span> <span class="hashtag">#Future</span></div>
+        <div class="post-image" id="postImage" style="background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);"></div>
+        <div class="post-actions">
+          <div class="post-action"><span class="icon">&#x1F4AC;</span><span id="replyCount">12.4K</span></div>
+          <div class="post-action"><span class="icon">&#x1F501;</span><span id="retweetCount">45.2K</span></div>
+          <div class="post-action"><span class="icon">&#x2665;</span><span id="likeCount">234K</span></div>
+          <div class="post-action"><span class="icon">&#x1F4CA;</span><span id="viewCount">18.5M</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="engagement-bar" id="engBar">
+      <div class="eng-item"><strong id="retweetStat">45,231</strong> Reposts</div>
+      <div class="eng-item"><strong id="quoteStat">2,847</strong> Quotes</div>
+      <div class="eng-item"><strong id="likeStat">234,102</strong> Likes</div>
+    </div>
+
+    <div class="reply-section" id="replySection">
+      <div class="reply">
+        <div class="reply-avatar" id="reply1Avatar" style="background: #f97316;"></div>
+        <div class="reply-body">
+          <div class="reply-header">
+            <span class="reply-name" id="reply1Name">Tech Insider</span>
+            <span class="reply-handle" id="reply1Handle">@techinsider</span>
+          </div>
+          <div class="reply-text" id="reply1Text">This is exactly what we've been reporting on. The pace of development is unprecedented.</div>
+          <div class="reply-actions"><span>&#x1F4AC; 42</span><span>&#x1F501; 128</span><span>&#x2665; 1,204</span></div>
+        </div>
+      </div>
+      <div class="reply">
+        <div class="reply-avatar" id="reply2Avatar" style="background: #a855f7;"></div>
+        <div class="reply-body">
+          <div class="reply-header">
+            <span class="reply-name" id="reply2Name">AI Researcher</span>
+            <span class="reply-handle" id="reply2Handle">@airesearch</span>
+          </div>
+          <div class="reply-text" id="reply2Text">Important to also consider the safety implications. Exciting times but we need responsible development.</div>
+          <div class="reply-actions"><span>&#x1F4AC; 89</span><span>&#x1F501; 312</span><span>&#x2665; 2,847</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    displayName: 'Elon Musk',
+    handle: '@elonmusk',
+    avatarColor: '#1d9bf0',
+    postTime: '4h',
+    postText: 'The future of AI is incredibly exciting. We\'re building systems that will fundamentally transform how humans interact with technology. #AI #Future',
+    replyCount: '12.4K',
+    retweetCount: '45.2K',
+    likeCount: '234K',
+    viewCount: '18.5M',
+    reply1Name: 'Tech Insider',
+    reply1Handle: '@techinsider',
+    reply1Text: 'This is exactly what we\'ve been reporting on. The pace of development is unprecedented.',
+    reply2Name: 'AI Researcher',
+    reply2Handle: '@airesearch',
+    reply2Text: 'Important to also consider the safety implications. Exciting times but we need responsible development.',
+    imageGradient1: '#1a1a2e',
+    imageGradient2: '#0f3460',
+    bgColor: '#000000',
+    accentColor: '#1d9bf0',
+    cycleDuration: 14000
+  };
+
+  document.getElementById('postName').textContent = CONFIG.displayName;
+  document.getElementById('postHandle').textContent = CONFIG.handle;
+  document.getElementById('postAvatar').style.background = CONFIG.avatarColor;
+  document.getElementById('postTime').textContent = CONFIG.postTime;
+  document.getElementById('postText').innerHTML = CONFIG.postText.replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
+  document.getElementById('replyCount').textContent = CONFIG.replyCount;
+  document.getElementById('retweetCount').textContent = CONFIG.retweetCount;
+  document.getElementById('likeCount').textContent = CONFIG.likeCount;
+  document.getElementById('viewCount').textContent = CONFIG.viewCount;
+  document.getElementById('reply1Name').textContent = CONFIG.reply1Name;
+  document.getElementById('reply1Handle').textContent = CONFIG.reply1Handle;
+  document.getElementById('reply1Text').textContent = CONFIG.reply1Text;
+  document.getElementById('reply2Name').textContent = CONFIG.reply2Name;
+  document.getElementById('reply2Handle').textContent = CONFIG.reply2Handle;
+  document.getElementById('reply2Text').textContent = CONFIG.reply2Text;
+  document.getElementById('postImage').style.background = 'linear-gradient(135deg, ' + CONFIG.imageGradient1 + ', ' + CONFIG.imageGradient2 + ')';
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.6s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    ['xHeader','tab1','tab2','mainPost','engBar','replySection'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      if (['mainPost','replySection'].includes(id)) el.style.transform = 'translateY(10px)';
+    });
+    void document.getElementById('xHeader').offsetWidth;
+
+    anim(document.getElementById('xHeader'), { opacity: '1' }, 200);
+    anim(document.getElementById('tab1'), { opacity: '1' }, 400);
+    anim(document.getElementById('tab2'), { opacity: '1' }, 400);
+    anim(document.getElementById('mainPost'), { opacity: '1', transform: 'translateY(0)' }, 800);
+    anim(document.getElementById('engBar'), { opacity: '1' }, 2500);
+    anim(document.getElementById('replySection'), { opacity: '1', transform: 'translateY(0)' }, 3500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

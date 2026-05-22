@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Center</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0f14; font-family: 'Courier New', monospace; color: #c8d6e5; }
+  .container { width: 100%; height: 100%; position: relative; }
+
+  @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0.2; } }
+  @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+  .header {
+    position: absolute; top: 2vh; left: 3vw; right: 3vw;
+    display: flex; justify-content: space-between; align-items: center;
+    opacity: 0; transition: opacity 0.8s;
+  }
+  .header-title { font-size: 2.2vh; font-weight: 700; letter-spacing: 0.2em; color: #00e676; text-shadow: 0 0 10px rgba(0,230,118,0.4); }
+  .header-time { font-size: 1.6vh; color: #5a6a8a; font-variant-numeric: tabular-nums; }
+
+  .rack-section {
+    position: absolute; top: 8vh; left: 3vw; width: 35vw; bottom: 25vh;
+    opacity: 0; transition: opacity 0.8s;
+  }
+  .rack { background: #111820; border: 1px solid #1e2d3d; border-radius: 0.5vh; padding: 1vh; margin-bottom: 1vh; }
+  .rack-header { font-size: 1.3vh; color: #5a6a8a; letter-spacing: 0.1em; margin-bottom: 0.8vh; display: flex; justify-content: space-between; }
+  .rack-status { color: #00e676; font-size: 1.1vh; }
+  .rack-status.warn { color: #ffab00; }
+  .server-row { display: flex; gap: 0.4vw; margin-bottom: 0.4vh; align-items: center; }
+  .server-unit { height: 1.8vh; flex: 1; background: #1a242e; border-radius: 0.2vh; position: relative; display: flex; align-items: center; padding: 0 0.5vw; }
+  .led-row { display: flex; gap: 0.3vw; }
+  .led { width: 0.5vh; height: 0.5vh; border-radius: 50%; }
+  .led.green { background: #00e676; box-shadow: 0 0 4px #00e676; animation: blink 1.2s infinite; }
+  .led.amber { background: #ffab00; box-shadow: 0 0 4px #ffab00; animation: blink 0.8s infinite; }
+  .led.blue { background: #448aff; box-shadow: 0 0 4px #448aff; animation: pulse 2s infinite; }
+  .led.red { background: #ff1744; box-shadow: 0 0 6px #ff1744; animation: blink 0.5s infinite; }
+  .led.off { background: #2a3540; }
+  .server-label { font-size: 0.9vh; color: #5a6a8a; margin-left: auto; }
+
+  .gauges-section {
+    position: absolute; top: 8vh; left: 42vw; width: 26vw; bottom: 25vh;
+    display: flex; flex-direction: column; gap: 2vh;
+    opacity: 0; transition: opacity 0.8s;
+  }
+  .gauge { text-align: center; }
+  .gauge-label { font-size: 1.3vh; color: #5a6a8a; letter-spacing: 0.1em; margin-bottom: 0.8vh; }
+  .gauge-ring-wrap { position: relative; width: 12vh; height: 12vh; margin: 0 auto; }
+  .gauge-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .gauge-bg { fill: none; stroke: #1a242e; stroke-width: 6; }
+  .gauge-fill { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1); }
+  .gauge-value { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2.5vh; font-weight: 700; }
+  .gauge-unit { font-size: 1vh; color: #5a6a8a; }
+
+  .graph-section {
+    position: absolute; top: 8vh; right: 3vw; width: 26vw; height: 30vh;
+    opacity: 0; transition: opacity 0.8s;
+  }
+  .graph-title { font-size: 1.3vh; color: #5a6a8a; letter-spacing: 0.1em; margin-bottom: 0.5vh; }
+  .graph-canvas { width: 100%; height: calc(100% - 3vh); background: #111820; border: 1px solid #1e2d3d; border-radius: 0.5vh; display: block; }
+
+  .alerts-section {
+    position: absolute; bottom: 2vh; left: 3vw; right: 3vw; height: 20vh;
+    opacity: 0; transition: opacity 0.8s;
+  }
+  .alerts-title { font-size: 1.3vh; color: #5a6a8a; letter-spacing: 0.1em; margin-bottom: 0.8vh; }
+  .alert-item {
+    background: #111820; border-left: 3px solid #00e676;
+    padding: 0.8vh 1.5vw; margin-bottom: 0.5vh; border-radius: 0 0.3vh 0.3vh 0;
+    font-size: 1.2vh; display: flex; justify-content: space-between;
+    transform: translateX(110%); transition: transform 0.5s cubic-bezier(0.22,1,0.36,1);
+  }
+  .alert-item.warn { border-left-color: #ffab00; }
+  .alert-item.critical { border-left-color: #ff1744; }
+  .alert-time { color: #5a6a8a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header" id="header">
+    <div class="header-title" id="headerTitle">DATA CENTER ALPHA</div>
+    <div class="header-time" id="headerTime">00:00:00 UTC</div>
+  </div>
+
+  <div class="rack-section" id="rackSection">
+    <div class="rack" id="rack1">
+      <div class="rack-header"><span>RACK 01 — PRIMARY</span><span class="rack-status">ONLINE</span></div>
+    </div>
+    <div class="rack" id="rack2">
+      <div class="rack-header"><span>RACK 02 — COMPUTE</span><span class="rack-status">ONLINE</span></div>
+    </div>
+    <div class="rack" id="rack3">
+      <div class="rack-header"><span>RACK 03 — STORAGE</span><span class="rack-status warn">DEGRADED</span></div>
+    </div>
+  </div>
+
+  <div class="gauges-section" id="gaugesSection">
+    <div class="gauge">
+      <div class="gauge-label">CPU UTILIZATION</div>
+      <div class="gauge-ring-wrap">
+        <svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="42"/><circle class="gauge-fill" id="cpuRing" cx="50" cy="50" r="42" stroke="#00e676" stroke-dasharray="264" stroke-dashoffset="264"/></svg>
+        <div class="gauge-value" style="color:#00e676"><span id="cpuVal">0</span>%<span class="gauge-unit">CPU</span></div>
+      </div>
+    </div>
+    <div class="gauge">
+      <div class="gauge-label">MEMORY USAGE</div>
+      <div class="gauge-ring-wrap">
+        <svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="42"/><circle class="gauge-fill" id="ramRing" cx="50" cy="50" r="42" stroke="#448aff" stroke-dasharray="264" stroke-dashoffset="264"/></svg>
+        <div class="gauge-value" style="color:#448aff"><span id="ramVal">0</span>%<span class="gauge-unit">RAM</span></div>
+      </div>
+    </div>
+    <div class="gauge">
+      <div class="gauge-label">NETWORK I/O</div>
+      <div class="gauge-ring-wrap">
+        <svg viewBox="0 0 100 100"><circle class="gauge-bg" cx="50" cy="50" r="42"/><circle class="gauge-fill" id="netRing" cx="50" cy="50" r="42" stroke="#7c4dff" stroke-dasharray="264" stroke-dashoffset="264"/></svg>
+        <div class="gauge-value" style="color:#7c4dff"><span id="netVal">0</span>%<span class="gauge-unit">NET</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="graph-section" id="graphSection">
+    <div class="graph-title">TRAFFIC — REQUESTS/SEC</div>
+    <canvas class="graph-canvas" id="graphCanvas"></canvas>
+  </div>
+
+  <div class="alerts-section" id="alertsSection">
+    <div class="alerts-title">SYSTEM ALERTS</div>
+    <div id="alertsList"></div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  serverName: 'DATA CENTER ALPHA',
+  cpuUsage: 73,
+  ramUsage: 58,
+  networkLoad: 42,
+  alerts: [
+    { text: 'Rack 03 disk array entering degraded mode — RAID rebuild initiated', level: 'warn', time: '2m ago' },
+    { text: 'Network throughput nominal at 8.4 Gbps', level: 'ok', time: '5m ago' },
+    { text: 'Temperature spike detected in cooling zone B3', level: 'critical', time: '8m ago' },
+    { text: 'Backup completed successfully — 2.4 TB replicated', level: 'ok', time: '12m ago' },
+    { text: 'SSL certificate renewal scheduled for 03:00 UTC', level: 'ok', time: '15m ago' }
+  ],
+  accentColor: '#00e676',
+  bgColor: '#0a0f14',
+  cycleDuration: 14000
+};
+
+function buildRacks() {
+  const racks = [
+    { el: document.getElementById('rack1'), servers: 6 },
+    { el: document.getElementById('rack2'), servers: 8 },
+    { el: document.getElementById('rack3'), servers: 5 }
+  ];
+  racks.forEach(function(rack) {
+    for (var i = 0; i < rack.servers; i++) {
+      var row = document.createElement('div');
+      row.className = 'server-row';
+      var unit = document.createElement('div');
+      unit.className = 'server-unit';
+      var leds = document.createElement('div');
+      leds.className = 'led-row';
+      var colors = ['green','green','blue','amber','green','off'];
+      for (var j = 0; j < 4; j++) {
+        var led = document.createElement('div');
+        led.className = 'led ' + colors[Math.floor(Math.random() * colors.length)];
+        led.style.animationDelay = (Math.random() * 2).toFixed(1) + 's';
+        leds.appendChild(led);
+      }
+      unit.appendChild(leds);
+      var label = document.createElement('span');
+      label.className = 'server-label';
+      label.textContent = 'U' + (i + 1);
+      unit.appendChild(label);
+      row.appendChild(unit);
+      rack.el.appendChild(row);
+    }
+  });
+}
+
+var graphCanvas = document.getElementById('graphCanvas');
+var gCtx = graphCanvas.getContext('2d');
+var graphData = [];
+var maxPoints = 60;
+
+function initGraph() {
+  var rect = graphCanvas.getBoundingClientRect();
+  graphCanvas.width = rect.width * devicePixelRatio;
+  graphCanvas.height = rect.height * devicePixelRatio;
+  graphData = [];
+  for (var i = 0; i < maxPoints; i++) graphData.push(30 + Math.random() * 40);
+}
+
+function drawGraph() {
+  var w = graphCanvas.width, h = graphCanvas.height;
+  gCtx.fillStyle = '#111820';
+  gCtx.fillRect(0, 0, w, h);
+
+  gCtx.strokeStyle = 'rgba(30,45,61,0.5)';
+  gCtx.lineWidth = 1;
+  for (var i = 0; i < 5; i++) {
+    var y = (h / 5) * i;
+    gCtx.beginPath(); gCtx.moveTo(0, y); gCtx.lineTo(w, y); gCtx.stroke();
+  }
+
+  graphData.push(30 + Math.random() * 50 + 10 * Math.sin(Date.now() / 1000));
+  if (graphData.length > maxPoints) graphData.shift();
+
+  var grad = gCtx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(0,230,118,0.3)');
+  grad.addColorStop(1, 'rgba(0,230,118,0)');
+
+  gCtx.beginPath();
+  gCtx.moveTo(0, h);
+  for (var i = 0; i < graphData.length; i++) {
+    var x = (w / (maxPoints - 1)) * i;
+    var py = h - (graphData[i] / 100) * h;
+    gCtx.lineTo(x, py);
+  }
+  gCtx.lineTo(w, h);
+  gCtx.fillStyle = grad;
+  gCtx.fill();
+
+  gCtx.beginPath();
+  for (var i = 0; i < graphData.length; i++) {
+    var x = (w / (maxPoints - 1)) * i;
+    var py = h - (graphData[i] / 100) * h;
+    if (i === 0) gCtx.moveTo(x, py);
+    else gCtx.lineTo(x, py);
+  }
+  gCtx.strokeStyle = '#00e676';
+  gCtx.lineWidth = 2 * devicePixelRatio;
+  gCtx.stroke();
+}
+
+function updateClock() {
+  var now = new Date();
+  document.getElementById('headerTime').textContent =
+    String(now.getUTCHours()).padStart(2, '0') + ':' +
+    String(now.getUTCMinutes()).padStart(2, '0') + ':' +
+    String(now.getUTCSeconds()).padStart(2, '0') + ' UTC';
+}
+
+function animateGauge(ringId, valId, target) {
+  var ring = document.getElementById(ringId);
+  var valEl = document.getElementById(valId);
+  var circumference = 264;
+  var offset = circumference - (target / 100) * circumference;
+  ring.style.strokeDashoffset = offset;
+  var current = 0;
+  var step = target / 40;
+  var interval = setInterval(function() {
+    current = Math.min(current + step, target);
+    valEl.textContent = Math.round(current);
+    if (current >= target) clearInterval(interval);
+  }, 30);
+}
+
+function showAlerts() {
+  var list = document.getElementById('alertsList');
+  list.innerHTML = '';
+  CONFIG.alerts.forEach(function(a, i) {
+    var div = document.createElement('div');
+    div.className = 'alert-item' + (a.level === 'warn' ? ' warn' : a.level === 'critical' ? ' critical' : '');
+    div.innerHTML = '<span>' + a.text + '</span><span class="alert-time">' + a.time + '</span>';
+    list.appendChild(div);
+    setTimeout(function() { div.style.transform = 'translateX(0)'; }, 200 + i * 200);
+  });
+}
+
+function animLoop() {
+  drawGraph();
+  requestAnimationFrame(animLoop);
+}
+
+function runCycle() {
+  var header = document.getElementById('header');
+  var rackSection = document.getElementById('rackSection');
+  var gaugesSection = document.getElementById('gaugesSection');
+  var graphSection = document.getElementById('graphSection');
+  var alertsSection = document.getElementById('alertsSection');
+  var els = [header, rackSection, gaugesSection, graphSection, alertsSection];
+
+  els.forEach(function(el) { el.style.transition = 'none'; el.style.opacity = '0'; });
+  ['cpuRing','ramRing','netRing'].forEach(function(id) {
+    document.getElementById(id).style.transition = 'none';
+    document.getElementById(id).style.strokeDashoffset = '264';
+  });
+  ['cpuVal','ramVal','netVal'].forEach(function(id) { document.getElementById(id).textContent = '0'; });
+  document.querySelectorAll('.alert-item').forEach(function(el) { el.style.transform = 'translateX(110%)'; });
+
+  void header.offsetWidth;
+
+  setTimeout(function() { header.style.transition = 'opacity 0.6s'; header.style.opacity = '1'; }, 200);
+  setTimeout(function() { rackSection.style.transition = 'opacity 0.8s'; rackSection.style.opacity = '1'; }, 500);
+  setTimeout(function() { gaugesSection.style.transition = 'opacity 0.8s'; gaugesSection.style.opacity = '1'; }, 700);
+  setTimeout(function() { graphSection.style.transition = 'opacity 0.8s'; graphSection.style.opacity = '1'; }, 900);
+  setTimeout(function() { alertsSection.style.transition = 'opacity 0.8s'; alertsSection.style.opacity = '1'; }, 1000);
+
+  setTimeout(function() {
+    ['cpuRing','ramRing','netRing'].forEach(function(id) {
+      document.getElementById(id).style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1)';
+    });
+    animateGauge('cpuRing', 'cpuVal', CONFIG.cpuUsage);
+    animateGauge('ramRing', 'ramVal', CONFIG.ramUsage);
+    animateGauge('netRing', 'netVal', CONFIG.networkLoad);
+  }, 1200);
+
+  setTimeout(showAlerts, 1500);
+
+  setTimeout(function() {
+    els.forEach(function(el) { el.style.transition = 'opacity 1s'; el.style.opacity = '0'; });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+document.getElementById('headerTitle').textContent = CONFIG.serverName;
+buildRacks();
+initGraph();
+setInterval(updateClock, 1000);
+updateClock();
+animLoop();
+runCycle();
+</script>
+</body>
+</html>

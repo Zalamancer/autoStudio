@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polaroid Scatter Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #2c2417;
+    font-family: 'Georgia', serif;
+  }
+
+  /* Cork board texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .polaroid {
+    position: absolute;
+    opacity: 0;
+    transform-origin: center center;
+    will-change: transform, opacity;
+    cursor: default;
+    user-select: none;
+  }
+
+  .polaroid-frame {
+    background: #fefefe;
+    padding: 10px 10px 40px 10px;
+    box-shadow: 2px 4px 12px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+    position: relative;
+  }
+
+  .polaroid-image {
+    width: 140px;
+    height: 140px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .polaroid-color {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Slight vintage vignette */
+  .polaroid-image::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.2);
+  }
+
+  .polaroid-caption {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    text-align: center;
+    font-size: 11px;
+    font-style: italic;
+    color: #555;
+    font-family: 'Georgia', serif;
+  }
+
+  /* Push pin */
+  .push-pin {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    z-index: 2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  @keyframes dropIn {
+    0% { opacity: 0; transform: var(--drop-start); }
+    50% { opacity: 1; transform: var(--drop-mid); }
+    75% { transform: var(--drop-bounce); }
+    100% { opacity: var(--final-opacity); transform: var(--drop-end); }
+  }
+
+  @keyframes blowAway {
+    0% { opacity: var(--final-opacity); transform: var(--drop-end); }
+    40% { opacity: 0.6; transform: var(--blow-mid); }
+    100% { opacity: 0; transform: var(--blow-end); }
+  }
+
+  /* String/wire decoration */
+  .wire {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    height: 1px;
+    background: rgba(200,180,150,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  captions: ['summer vibes', 'golden hour', 'memories', 'good times', 'wanderlust', 'nostalgia', 'dreaming', 'sunsets'],
+  imageColors: ['#c62828', '#1565c0', '#2e7d32', '#f57f17', '#6a1b9a', '#00838f', '#d84315', '#e91e63'],
+  pinColors: ['#cc3333', '#3366cc', '#33aa44', '#cc9900', '#9933cc', '#33aaaa', '#dd5500', '#cc3366'],
+  bgColor: '#2c2417',
+  maxRotation: 15,
+  polaroidCount: 8,
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  // Horizontal wires across the board
+  for (let i = 0; i < 3; i++) {
+    const wire = document.createElement('div');
+    wire.className = 'wire';
+    wire.style.top = (25 + i * 25) + '%';
+    wire.style.left = '5%';
+    wire.style.right = '5%';
+    wire.style.transform = `rotate(${(Math.random() - 0.5) * 3}deg)`;
+    stage.appendChild(wire);
+  }
+}
+
+function createPolaroids() {
+  const elements = [];
+  const count = CONFIG.polaroidCount;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 199 + 73);
+
+    const polaroid = document.createElement('div');
+    polaroid.className = 'polaroid';
+
+    const frame = document.createElement('div');
+    frame.className = 'polaroid-frame';
+
+    const pin = document.createElement('div');
+    pin.className = 'push-pin';
+    pin.style.background = CONFIG.pinColors[i % CONFIG.pinColors.length];
+
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'polaroid-image';
+
+    const colorBlock = document.createElement('div');
+    colorBlock.className = 'polaroid-color';
+    colorBlock.style.background = CONFIG.imageColors[i % CONFIG.imageColors.length];
+    imgContainer.appendChild(colorBlock);
+
+    const caption = document.createElement('div');
+    caption.className = 'polaroid-caption';
+    caption.textContent = CONFIG.captions[i % CONFIG.captions.length];
+
+    frame.appendChild(imgContainer);
+    frame.appendChild(caption);
+    polaroid.appendChild(pin);
+    polaroid.appendChild(frame);
+
+    // Position scattered across the canvas
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const baseX = (vw * 0.1) + col * (vw * 0.22);
+    const baseY = (vh * 0.08) + row * (vh * 0.42);
+    const offsetX = (rng() - 0.5) * vw * 0.08;
+    const offsetY = (rng() - 0.5) * vh * 0.08;
+
+    polaroid.style.left = (baseX + offsetX) + 'px';
+    polaroid.style.top = (baseY + offsetY) + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.9 + rng() * 0.1;
+
+    polaroid.style.setProperty('--drop-start', `translate(0, -100px) rotate(${rotation + 20}deg) scale(0.5)`);
+    polaroid.style.setProperty('--drop-mid', `translate(0, 8px) rotate(${rotation - 3}deg) scale(1.02)`);
+    polaroid.style.setProperty('--drop-bounce', `translate(0, -4px) rotate(${rotation + 1}deg) scale(0.99)`);
+    polaroid.style.setProperty('--drop-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    polaroid.style.setProperty('--final-opacity', String(finalOpacity));
+
+    const blowX = (rng() - 0.5) * 400;
+    const blowY = -150 - rng() * 200;
+    polaroid.style.setProperty('--blow-mid', `translate(${blowX * 0.3}px, ${blowY * 0.3}px) rotate(${rotation + 15}deg) scale(1.05)`);
+    polaroid.style.setProperty('--blow-end', `translate(${blowX}px, ${blowY}px) rotate(${rotation + 40}deg) scale(0.6)`);
+
+    stage.appendChild(polaroid);
+    elements.push(polaroid);
+  }
+  return elements;
+}
+
+function runAnimation(elements) {
+  const count = elements.length;
+  const dropStagger = 350;
+  const dropDuration = 600;
+  const holdDuration = 3000;
+  const blowStagger = 200;
+  const blowDuration = 550;
+  const pauseBeforeLoop = 800;
+
+  const totalDropTime = (count - 1) * dropStagger + dropDuration;
+  const totalBlowTime = (count - 1) * blowStagger + blowDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    elements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalDropTime) {
+      elements.forEach((el, i) => {
+        const wordStart = i * dropStagger;
+        if (elapsed >= wordStart && !el.dataset.in) {
+          el.dataset.in = '1';
+          el.style.animation = `dropIn ${dropDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalDropTime + holdDuration) {
+    } else if (elapsed < totalDropTime + holdDuration + totalBlowTime) {
+      const blowElapsed = elapsed - totalDropTime - holdDuration;
+      elements.forEach((el, i) => {
+        const ri = count - 1 - i;
+        const wordStart = ri * blowStagger;
+        if (blowElapsed >= wordStart && !el.dataset.out) {
+          el.dataset.out = '1';
+          el.style.animation = `blowAway ${blowDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalDropTime + holdDuration + totalBlowTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      elements.forEach(el => { delete el.dataset.in; delete el.dataset.out; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(animationFrame);
+}
+
+createDecorations();
+let polaroids = createPolaroids();
+runAnimation(polaroids);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    polaroids = createPolaroids();
+    runAnimation(polaroids);
+  }, 300);
+});
+</script>
+</body>
+</html>

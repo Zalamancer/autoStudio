@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Launch</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; color: #fff; }
+.scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+.stars { position: absolute; inset: 0; }
+.star { position: absolute; background: #fff; border-radius: 50%; }
+@keyframes twinkle { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+.rocket { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); z-index: 5; transition: bottom 4s cubic-bezier(0.25,0.1,0.25,1); }
+.rocket-body { width: 5vw; height: 16vh; background: linear-gradient(180deg, #e74c3c 0%, #ecf0f1 20%, #ecf0f1 80%, #2c3e50 100%); border-radius: 2.5vw 2.5vw 0 0; position: relative; }
+.rocket-nose { width: 0; height: 0; border-left: 2.5vw solid transparent; border-right: 2.5vw solid transparent; border-bottom: 4vh solid #e74c3c; position: absolute; top: -4vh; }
+.rocket-window { width: 1.8vw; height: 1.8vw; background: #3498db; border-radius: 50%; border: 2px solid #2c3e50; position: absolute; top: 30%; left: 50%; transform: translateX(-50%); }
+.rocket-fin-l { width: 0; height: 0; border-top: 3.5vh solid transparent; border-right: 1.8vw solid #c0392b; position: absolute; bottom: 0; left: -1.8vw; }
+.rocket-fin-r { width: 0; height: 0; border-top: 3.5vh solid transparent; border-left: 1.8vw solid #c0392b; position: absolute; bottom: 0; right: -1.8vw; }
+.flame { position: absolute; bottom: -7vh; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.5s; }
+.flame-core { width: 2.5vw; height: 7vh; background: linear-gradient(180deg, #f1c40f, #e67e22, #e74c3c); border-radius: 0 0 50% 50%; margin: 0 auto; animation: flicker 0.08s infinite alternate; }
+@keyframes flicker { 0% { transform: scaleX(0.9) scaleY(0.95); } 100% { transform: scaleX(1.1) scaleY(1.05); } }
+.countdown { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 14vh; font-weight: 900; text-shadow: 0 0 40px rgba(231,76,60,0.8); opacity: 0; z-index: 10; transition: all 0.3s; }
+.hud { position: absolute; top: 3vh; left: 3vw; font-size: 1.5vh; color: #3498db; line-height: 2.2; opacity: 0; transition: opacity 1s; }
+.hud-right { position: absolute; top: 3vh; right: 3vw; text-align: right; font-size: 1.5vh; color: #2ecc71; line-height: 2.2; opacity: 0; transition: opacity 1s; }
+.mission { position: absolute; bottom: 5vh; left: 50%; transform: translateX(-50%); font-size: 2.5vh; letter-spacing: 0.3em; font-weight: 700; color: rgba(255,255,255,0.5); opacity: 0; transition: opacity 1s; }
+.shake { animation: shake 0.12s infinite; }
+@keyframes shake { 0%,100% { transform: translateX(-50%); } 25% { transform: translate(calc(-50% + 2px), 1px); } 75% { transform: translate(calc(-50% - 2px), -1px); } }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="stars" id="stars"></div>
+  <div class="rocket" id="rocket">
+    <div class="rocket-body"><div class="rocket-nose"></div><div class="rocket-window"></div><div class="rocket-fin-l"></div><div class="rocket-fin-r"></div></div>
+    <div class="flame" id="flame"><div class="flame-core"></div></div>
+  </div>
+  <div class="countdown" id="countdown"></div>
+  <div class="hud" id="hud">MISSION CONTROL<br>STATUS: STANDBY<br>FUEL: 100%<br>TEMP: NOMINAL</div>
+  <div class="hud-right" id="hudRight">TELEMETRY<br>ALT: 0 km<br>VEL: 0 m/s<br>G-FORCE: 1.0</div>
+  <div class="mission" id="mission">ARTEMIS VII</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  missionName: 'ARTEMIS VII',
+  countdownFrom: 5,
+  bgColor: '#070b1a',
+  starCount: 180,
+  cycleDuration: 16000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.getElementById('scene').style.background = CONFIG.bgColor;
+document.getElementById('mission').textContent = CONFIG.missionName;
+
+var starsEl = document.getElementById('stars');
+for (var i = 0; i < CONFIG.starCount; i++) {
+  var s = document.createElement('div'); s.className = 'star';
+  s.style.cssText = 'left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+(1+Math.random()*2)+'px;height:'+(1+Math.random()*2)+'px;opacity:'+(0.3+Math.random()*0.7)+';animation:twinkle '+(2+Math.random()*3)+'s infinite alternate';
+  starsEl.appendChild(s);
+}
+
+function runLaunch() {
+  var rocket = document.getElementById('rocket');
+  var flame = document.getElementById('flame');
+  var cd = document.getElementById('countdown');
+  var hud = document.getElementById('hud');
+  var hudR = document.getElementById('hudRight');
+  var mission = document.getElementById('mission');
+
+  rocket.style.transition = 'none'; rocket.style.bottom = '20%'; flame.style.opacity = '0';
+  cd.style.opacity = '0'; cd.style.fontSize = '14vh';
+  hud.style.opacity = '0'; hudR.style.opacity = '0'; mission.style.opacity = '0';
+  rocket.classList.remove('shake');
+  void rocket.offsetWidth;
+
+  setTimeout(function(){ hud.style.opacity='1'; hudR.style.opacity='1'; mission.style.opacity='1'; }, 500);
+
+  var count = CONFIG.countdownFrom;
+  function tick() {
+    if (count > 0) {
+      cd.textContent = count; cd.style.opacity = '1';
+      cd.style.transform = 'translate(-50%,-50%) scale(1.3)';
+      setTimeout(function(){ cd.style.transform = 'translate(-50%,-50%) scale(1)'; }, 200);
+      count--; setTimeout(tick, 1000);
+    } else {
+      cd.textContent = 'LIFTOFF'; cd.style.fontSize = '7vh';
+      flame.style.opacity = '1'; rocket.classList.add('shake');
+      hud.innerHTML = 'MISSION CONTROL<br>STATUS: LAUNCH<br>FUEL: 94%<br>TEMP: NOMINAL';
+      setTimeout(function(){
+        rocket.style.transition = 'bottom 4s cubic-bezier(0.25,0.1,0.25,1)';
+        rocket.style.bottom = '120%';
+        hudR.innerHTML = 'TELEMETRY<br>ALT: 12.4 km<br>VEL: 1,840 m/s<br>G-FORCE: 3.2';
+      }, 800);
+      setTimeout(function(){ cd.style.opacity = '0'; }, 2000);
+      setTimeout(function(){ hud.style.opacity='0'; hudR.style.opacity='0'; mission.style.opacity='0'; }, 5000);
+      setTimeout(runLaunch, CONFIG.cycleDuration - CONFIG.countdownFrom*1000);
+    }
+  }
+  setTimeout(tick, 1500);
+}
+
+runLaunch();
+</script>
+</body>
+</html>

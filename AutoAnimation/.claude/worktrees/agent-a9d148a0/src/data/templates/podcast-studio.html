@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Podcast Recording Studio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  body { background: #0f0820; color: #e8e0f8; }
+
+  /* === Background === */
+  .bg-gradient {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 50% 35%, #1a0a3a 0%, #0f0820 50%, #08041a 100%);
+  }
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.025;
+    background-image:
+      linear-gradient(rgba(180,140,255,0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(180,140,255,0.12) 1px, transparent 1px);
+    background-size: 4vw 4vh;
+  }
+  .glow-orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 1; }
+  .orb-top { width: 45vw; height: 45vw; top: -18vw; left: 20%; background: radial-gradient(circle, rgba(120,60,220,0.1) 0%, transparent 70%); }
+  .orb-bottom { width: 38vw; height: 38vw; bottom: -12vw; right: -5vw; background: radial-gradient(circle, rgba(200,40,80,0.06) 0%, transparent 70%); }
+  .orb-left { width: 28vw; height: 28vw; top: 40%; left: -8vw; z-index: 1; }
+
+  /* === Ambient particles (canvas) === */
+  .particles-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+  /* === Recording indicator === */
+  .rec-indicator {
+    position: fixed; top: 4vh; right: 4vw; z-index: 10;
+    display: flex; align-items: center; gap: 0.8vw;
+    background: rgba(20,10,40,0.55); border: 1px solid rgba(255,50,60,0.25);
+    border-radius: 1.2vh; padding: 0.8vh 1.5vw;
+    backdrop-filter: blur(12px);
+    opacity: 0; transform: translateX(30px);
+  }
+  .rec-dot {
+    width: 1.2vh; height: 1.2vh; border-radius: 50%;
+    background: #ff2040;
+    box-shadow: 0 0 8px #ff2040, 0 0 18px rgba(255,32,64,0.35);
+    animation: recPulse 1s ease-in-out infinite;
+  }
+  @keyframes recPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.25; transform: scale(0.7); } }
+  .rec-label {
+    font-size: 1.5vh; font-weight: 800; letter-spacing: 0.22em;
+    color: #ff4060; text-transform: uppercase;
+  }
+
+  /* === Timer === */
+  .timer {
+    position: fixed; top: 4vh; left: 50%; transform: translateX(-50%);
+    z-index: 10; font-family: 'Courier New', monospace;
+    font-size: 3.2vh; font-weight: 700; color: rgba(200,180,240,0.75);
+    text-shadow: 0 0 14px rgba(120,60,220,0.35);
+    letter-spacing: 0.15em; font-variant-numeric: tabular-nums;
+    opacity: 0;
+  }
+
+  /* === Episode info card === */
+  .episode-card {
+    position: fixed; top: 14vh; left: 5vw; z-index: 10;
+    background: linear-gradient(135deg, rgba(28,14,58,0.82), rgba(18,8,42,0.7));
+    border: 1px solid rgba(120,80,200,0.18);
+    border-left: 3px solid var(--accent, #ff3c64);
+    border-radius: 1.2vh; padding: 2.5vh 2.5vw;
+    backdrop-filter: blur(14px); max-width: 40vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    opacity: 0; transform: translateX(-60px);
+  }
+  .ep-number {
+    font-size: 1.25vh; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent, #ff3c64); margin-bottom: 0.8vh;
+  }
+  .pod-name {
+    font-size: 2.8vh; font-weight: 800; line-height: 1.2; margin-bottom: 0.5vh;
+    background: linear-gradient(135deg, #f0e8ff, #c0a8f0);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .ep-title {
+    font-size: 1.7vh; font-weight: 500; color: rgba(200,180,240,0.65); line-height: 1.4;
+  }
+
+  /* === Microphone (CSS drawn) === */
+  .mic-wrap {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -55%);
+    z-index: 4; opacity: 0;
+  }
+  .mic-head {
+    width: 7.5vw; height: 10.5vw; max-width: 72px; max-height: 100px;
+    border-radius: 50% 50% 48% 48%;
+    background: linear-gradient(160deg, #4a3a6a, #2a1a4a);
+    border: 0.3vw solid #6b5a8a;
+    margin: 0 auto; position: relative;
+    box-shadow: 0 0 28px rgba(120,60,220,0.25), inset 0 0 18px rgba(0,0,0,0.25);
+  }
+  .mic-grille {
+    position: absolute; top: 8%; left: 8%; right: 8%; bottom: 22%;
+    border-radius: 50% 50% 42% 42%;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(100,80,140,0.25) 2px, rgba(100,80,140,0.25) 3.5px);
+    opacity: 0.65;
+  }
+  .mic-stand {
+    width: 0.5vw; max-width: 5px; height: 7vh;
+    background: linear-gradient(180deg, #6b5a8a, #3a2a5a);
+    margin: 0 auto; border-radius: 0.3vw;
+  }
+  .mic-base {
+    width: 5.5vw; max-width: 54px; height: 0.7vh;
+    background: linear-gradient(90deg, transparent, #6b5a8a, transparent);
+    margin: 0 auto; border-radius: 0.5vw;
+  }
+  .mic-glow-ring {
+    position: absolute; top: -2.5vw; left: -3.5vw; right: -3.5vw; bottom: -2.5vw;
+    border-radius: 50%; z-index: -1; filter: blur(22px);
+    animation: micGlow 3s ease-in-out infinite alternate;
+  }
+  @keyframes micGlow { 0% { opacity: 0.35; transform: scale(0.92); } 100% { opacity: 1; transform: scale(1.12); } }
+
+  /* === Sound wave rings === */
+  .ring-wrap {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -55%);
+    z-index: 3; pointer-events: none;
+  }
+  .sound-ring {
+    position: absolute; top: 50%; left: 50%;
+    border: 1.5px solid var(--accent, #ff3c64);
+    border-radius: 50%; opacity: 0;
+  }
+  @keyframes ringExpand {
+    0%   { width: 8vw; height: 8vw; margin-left: -4vw; margin-top: -4vw; opacity: 0.55; }
+    100% { width: 52vw; height: 52vw; margin-left: -26vw; margin-top: -26vw; opacity: 0; }
+  }
+
+  /* === Audio waveform (CSS bars) === */
+  .waveform {
+    position: fixed; bottom: 14vh; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: flex-end; justify-content: center; gap: 0.35vw;
+    height: 14vh; z-index: 3; opacity: 0;
+  }
+  .w-bar {
+    width: 0.65vw; min-width: 3px; border-radius: 0.4vw;
+    animation: waveOsc var(--wd, 1.1s) ease-in-out infinite alternate;
+    animation-delay: var(--wdl, 0s);
+    box-shadow: 0 0 6px var(--accent-dim, rgba(255,60,100,0.2));
+  }
+  @keyframes waveOsc {
+    0%   { height: var(--wmin, 1.2vh); opacity: 0.45; }
+    100% { height: var(--wmax, 10vh); opacity: 1; }
+  }
+
+  /* === Guest lower-third === */
+  .lower-third {
+    position: fixed; bottom: 5vh; left: 5vw; z-index: 10;
+    display: flex; align-items: stretch;
+    opacity: 0; transform: translateX(-50px);
+  }
+  .lt-bar {
+    width: 0.4vw; min-width: 3px;
+    background: linear-gradient(180deg, var(--accent, #ff3c64), rgba(120,60,220,0.7));
+    border-radius: 0.25vw 0 0 0.25vw;
+  }
+  .lt-body {
+    background: linear-gradient(90deg, rgba(28,14,58,0.82), rgba(18,8,42,0.55));
+    border: 1px solid rgba(120,80,200,0.12); border-left: none;
+    border-radius: 0 0.9vh 0.9vh 0;
+    padding: 1.4vh 2.2vw; backdrop-filter: blur(12px);
+  }
+  .lt-tag {
+    font-size: 1.05vh; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent, #ff3c64); margin-bottom: 0.2vh;
+  }
+  .lt-name { font-size: 2.1vh; font-weight: 700; color: #f0e8ff; }
+  .lt-host { font-size: 1.2vh; color: rgba(200,180,240,0.45); margin-top: 0.15vh; }
+
+  /* === Floating music notes === */
+  .notes-wrap { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+  .m-note {
+    position: absolute; opacity: 0;
+    animation: noteUp var(--nd, 7s) ease-out infinite;
+    animation-delay: var(--ndl, 0s);
+    filter: drop-shadow(0 0 5px var(--accent-dim, rgba(255,60,100,0.25)));
+  }
+  @keyframes noteUp {
+    0%   { transform: translateY(0) rotate(0deg) scale(0.4); opacity: 0; }
+    8%   { opacity: 0.65; transform: translateY(-2vh) rotate(-8deg) scale(1); }
+    75%  { opacity: 0.2; }
+    100% { transform: translateY(-42vh) rotate(22deg) scale(0.55); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Backgrounds -->
+<div class="bg-gradient"></div>
+<div class="bg-grid"></div>
+<div class="glow-orb orb-top"></div>
+<div class="glow-orb orb-bottom"></div>
+<div class="glow-orb orb-left" id="orbLeft"></div>
+<canvas class="particles-canvas" id="ptcCanvas"></canvas>
+
+<!-- Recording indicator -->
+<div class="rec-indicator" id="recInd">
+  <div class="rec-dot"></div>
+  <span class="rec-label">RECORDING</span>
+</div>
+
+<!-- Timer -->
+<div class="timer" id="timer">00:00</div>
+
+<!-- Episode card -->
+<div class="episode-card" id="epCard">
+  <div class="ep-number" id="epNum">EPISODE #42</div>
+  <div class="pod-name" id="podName">The Creative Mind</div>
+  <div class="ep-title" id="epTitle">Unlocking the Power of Visual Storytelling</div>
+</div>
+
+<!-- Sound wave rings -->
+<div class="ring-wrap" id="ringWrap"></div>
+
+<!-- Microphone -->
+<div class="mic-wrap" id="micWrap">
+  <div class="mic-glow-ring" id="micGlow"></div>
+  <div class="mic-head"><div class="mic-grille"></div></div>
+  <div class="mic-stand"></div>
+  <div class="mic-base"></div>
+</div>
+
+<!-- Waveform bars -->
+<div class="waveform" id="waveform"></div>
+
+<!-- Guest lower-third -->
+<div class="lower-third" id="lt">
+  <div class="lt-bar" id="ltBar"></div>
+  <div class="lt-body">
+    <div class="lt-tag" id="ltTag">GUEST</div>
+    <div class="lt-name" id="ltName">Sarah Mitchell</div>
+    <div class="lt-host" id="ltHost">Hosted by Alex Rivera</div>
+  </div>
+</div>
+
+<!-- Music notes -->
+<div class="notes-wrap" id="notesWrap"></div>
+
+<script>
+// === EDITABLE CONFIG ===
+var CONFIG = {
+  podcastName: 'The Creative Mind',
+  episodeTitle: 'Unlocking the Power of Visual Storytelling',
+  episodeNumber: 42,
+  hostName: 'Alex Rivera',
+  guestName: 'Sarah Mitchell',
+  cycleDuration: 14000,
+  accentColor: '#ff3c64'
+};
+
+// === PostMessage bridge ===
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+    applyConfig();
+  }
+});
+
+// === Color helpers ===
+function hexRgb(h) {
+  return { r: parseInt(h.slice(1,3),16), g: parseInt(h.slice(3,5),16), b: parseInt(h.slice(5,7),16) };
+}
+
+function setAccent() {
+  var c = hexRgb(CONFIG.accentColor);
+  var root = document.documentElement;
+  root.style.setProperty('--accent', CONFIG.accentColor);
+  root.style.setProperty('--accent-dim', 'rgba('+c.r+','+c.g+','+c.b+',0.22)');
+  document.getElementById('micGlow').style.background =
+    'radial-gradient(circle, rgba('+c.r+','+c.g+','+c.b+',0.14) 0%, transparent 70%)';
+  document.getElementById('orbLeft').style.background =
+    'radial-gradient(circle, rgba('+c.r+','+c.g+','+c.b+',0.07) 0%, transparent 70%)';
+}
+
+function applyConfig() {
+  document.getElementById('podName').textContent = CONFIG.podcastName;
+  document.getElementById('epTitle').textContent = CONFIG.episodeTitle;
+  document.getElementById('epNum').textContent = 'EPISODE #' + CONFIG.episodeNumber;
+  document.getElementById('ltName').textContent = CONFIG.guestName;
+  document.getElementById('ltHost').textContent = 'Hosted by ' + CONFIG.hostName;
+  setAccent();
+  // Rebuild accent-dependent elements
+  buildBars();
+  buildRings();
+  buildNotes();
+}
+
+// === Waveform bars ===
+function buildBars() {
+  var el = document.getElementById('waveform');
+  el.innerHTML = '';
+  var count = 30;
+  var c = hexRgb(CONFIG.accentColor);
+  for (var i = 0; i < count; i++) {
+    var bar = document.createElement('div');
+    bar.className = 'w-bar';
+    var center = Math.abs(i - count / 2) / (count / 2);
+    var minH = 1 + center * 2.2;
+    var maxH = 3.5 + (1 - center) * 9;
+    var dur = 0.55 + Math.random() * 0.8;
+    bar.style.setProperty('--wmin', minH + 'vh');
+    bar.style.setProperty('--wmax', maxH + 'vh');
+    bar.style.setProperty('--wd', dur + 's');
+    bar.style.setProperty('--wdl', (i * 0.055) + 's');
+    bar.style.height = minH + 'vh';
+    // Gradient from accent to purple
+    var mix = i / (count - 1);
+    var pr = Math.round(c.r * (1 - mix * 0.5) + 100 * mix * 0.5);
+    var pg = Math.round(c.g * (1 - mix * 0.7) + 50 * mix * 0.7);
+    var pb = Math.round(c.b * (1 - mix * 0.3) + 220 * mix * 0.3);
+    bar.style.background = 'linear-gradient(180deg, rgb('+pr+','+pg+','+pb+'), rgba(100,50,180,0.45))';
+    el.appendChild(bar);
+  }
+}
+
+// === Sound rings ===
+function buildRings() {
+  var wrap = document.getElementById('ringWrap');
+  wrap.innerHTML = '';
+  for (var i = 0; i < 5; i++) {
+    var ring = document.createElement('div');
+    ring.className = 'sound-ring';
+    var dur = 2.5 + Math.random() * 1.5;
+    ring.style.animation = 'ringExpand ' + dur + 's ease-out ' + (i * 0.7) + 's infinite';
+    wrap.appendChild(ring);
+  }
+}
+
+// === Floating music notes ===
+function buildNotes() {
+  var wrap = document.getElementById('notesWrap');
+  wrap.innerHTML = '';
+  var chars = ['\u266A', '\u266B', '\u266C', '\u2669'];
+  for (var i = 0; i < 12; i++) {
+    var n = document.createElement('div');
+    n.className = 'm-note';
+    n.textContent = chars[Math.floor(Math.random() * chars.length)];
+    n.style.left = (8 + Math.random() * 82) + 'vw';
+    n.style.bottom = (5 + Math.random() * 12) + 'vh';
+    n.style.fontSize = (1.8 + Math.random() * 2) + 'vh';
+    n.style.color = 'var(--accent)';
+    n.style.setProperty('--nd', (5 + Math.random() * 5) + 's');
+    n.style.setProperty('--ndl', (i * 0.85 + Math.random() * 0.5) + 's');
+    wrap.appendChild(n);
+  }
+}
+
+// === Ambient particles ===
+var cvs = document.getElementById('ptcCanvas');
+var cx = cvs.getContext('2d');
+var PW, PH;
+var dots = [];
+
+function resizeCvs() { PW = cvs.width = window.innerWidth; PH = cvs.height = window.innerHeight; }
+resizeCvs();
+window.addEventListener('resize', resizeCvs);
+
+function Dot() {
+  this.x = Math.random() * PW;
+  this.y = Math.random() * PH;
+  this.r = Math.random() * 1.6 + 0.3;
+  this.vx = (Math.random() - 0.5) * 0.18;
+  this.vy = (Math.random() - 0.5) * 0.12;
+  this.phase = Math.random() * Math.PI * 2;
+  this.ps = Math.random() * 0.018 + 0.005;
+}
+Dot.prototype.step = function(t) {
+  this.x += this.vx; this.y += this.vy;
+  if (this.x < -5) this.x = PW + 5;
+  if (this.x > PW + 5) this.x = -5;
+  if (this.y < -5) this.y = PH + 5;
+  if (this.y > PH + 5) this.y = -5;
+  this.alpha = 0.06 + Math.sin(t * this.ps + this.phase) * 0.12 + 0.12;
+};
+Dot.prototype.draw = function() {
+  var c = hexRgb(CONFIG.accentColor);
+  cx.beginPath();
+  cx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+  cx.fillStyle = 'rgba('+c.r+','+c.g+','+c.b+','+(this.alpha * 0.45)+')';
+  cx.fill();
+  var g = cx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 3.5);
+  g.addColorStop(0, 'rgba('+c.r+','+c.g+','+c.b+','+(this.alpha * 0.12)+')');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  cx.fillStyle = g;
+  cx.fillRect(this.x - this.r * 3.5, this.y - this.r * 3.5, this.r * 7, this.r * 7);
+};
+for (var di = 0; di < 45; di++) dots.push(new Dot());
+
+var fc = 0;
+function animDots() {
+  fc++;
+  cx.clearRect(0, 0, PW, PH);
+  for (var i = 0; i < dots.length; i++) { dots[i].step(fc); dots[i].draw(); }
+  requestAnimationFrame(animDots);
+}
+animDots();
+
+// === Timer ===
+var tmStart = 0;
+var tmRaf = null;
+function tickTimer() {
+  var ms = Date.now() - tmStart;
+  var ts = Math.floor(ms / 1000);
+  var m = Math.floor(ts / 60);
+  var s = ts % 60;
+  document.getElementById('timer').textContent =
+    String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  tmRaf = requestAnimationFrame(tickTimer);
+}
+
+// === Transition helpers ===
+function fadeIn(el, dur, delay, from) {
+  el.style.transition = 'none';
+  el.style.opacity = '0';
+  if (from) el.style.transform = from;
+  void el.offsetWidth;
+  setTimeout(function() {
+    el.style.transition = 'opacity '+dur+'ms ease, transform '+dur+'ms cubic-bezier(0.22,1,0.36,1)';
+    el.style.opacity = '1';
+    if (from) {
+      // Neutralise transform: keep centering transforms, zero out offsets
+      var neutral = from
+        .replace(/translateX\([^)]+\)/, 'translateX(0)')
+        .replace(/translateY\([^)]+\)/, 'translateY(0)')
+        .replace(/scale\([^)]+\)/, 'scale(1)')
+        .replace(/scaleY\([^)]+\)/, 'scaleY(1)');
+      el.style.transform = neutral;
+    }
+  }, delay);
+}
+
+function fadeOut(el, dur, delay, to) {
+  setTimeout(function() {
+    el.style.transition = 'opacity '+dur+'ms ease, transform '+dur+'ms ease-in';
+    el.style.opacity = '0';
+    if (to) el.style.transform = to;
+  }, delay);
+}
+
+// === Main cycle ===
+function runCycle() {
+  if (tmRaf) cancelAnimationFrame(tmRaf);
+
+  var recInd = document.getElementById('recInd');
+  var timer  = document.getElementById('timer');
+  var epCard = document.getElementById('epCard');
+  var micWrap = document.getElementById('micWrap');
+  var waveform = document.getElementById('waveform');
+  var lt = document.getElementById('lt');
+
+  applyConfig();
+
+  // Reset everything
+  [recInd, timer, epCard, micWrap, waveform, lt].forEach(function(el) {
+    el.style.transition = 'none'; el.style.opacity = '0';
+  });
+  recInd.style.transform = 'translateX(30px)';
+  epCard.style.transform = 'translateX(-60px)';
+  lt.style.transform = 'translateX(-50px)';
+  timer.style.transform = 'translateX(-50%) translateY(-18px)';
+  micWrap.style.transform = 'translate(-50%, -55%) scale(0.65)';
+  waveform.style.transform = 'translateX(-50%) scaleY(0)';
+  void recInd.offsetWidth;
+
+  // --- Entrances ---
+
+  // Microphone (300ms)
+  fadeIn(micWrap, 800, 300, 'translate(-50%, -55%) scale(0.65)');
+
+  // Recording indicator (600ms)
+  fadeIn(recInd, 600, 600, 'translateX(30px)');
+
+  // Timer (850ms)
+  setTimeout(function() {
+    tmStart = Date.now();
+    timer.style.transition = 'opacity 600ms ease, transform 600ms cubic-bezier(0.22,1,0.36,1)';
+    timer.style.opacity = '1';
+    timer.style.transform = 'translateX(-50%) translateY(0)';
+    tickTimer();
+  }, 850);
+
+  // Waveform bars (1250ms)
+  fadeIn(waveform, 800, 1250, 'translateX(-50%) scaleY(0)');
+
+  // Episode card (1900ms)
+  fadeIn(epCard, 800, 1900, 'translateX(-60px)');
+
+  // Lower-third (2700ms)
+  fadeIn(lt, 700, 2700, 'translateX(-50px)');
+
+  // --- Exits ---
+  var exitAt = CONFIG.cycleDuration - 2400;
+
+  fadeOut(lt, 600, exitAt, 'translateX(-40px)');
+  fadeOut(epCard, 650, exitAt + 150, 'translateX(-50px)');
+  fadeOut(waveform, 550, exitAt + 300, 'translateX(-50%) scaleY(0)');
+  fadeOut(timer, 500, exitAt + 420, 'translateX(-50%) translateY(-14px)');
+  fadeOut(recInd, 500, exitAt + 520, 'translateX(25px)');
+  fadeOut(micWrap, 750, exitAt + 620, 'translate(-50%, -55%) scale(0.65)');
+
+  setTimeout(function() {
+    if (tmRaf) cancelAnimationFrame(tmRaf);
+  }, exitAt + 200);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+// === Boot ===
+setAccent();
+applyConfig();
+runCycle();
+</script>
+</body>
+</html>

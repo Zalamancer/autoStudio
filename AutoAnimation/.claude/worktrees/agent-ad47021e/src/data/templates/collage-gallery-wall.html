@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gallery Wall Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #e8e4df; }
+  body::before { content:''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.06) 100%); }
+  #stage { position: absolute; inset: 0; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr); gap: 24px; padding: 40px; }
+
+  .frame { position: relative; opacity: 0; will-change: transform, opacity; display: flex; align-items: center; justify-content: center; }
+  .frame-outer { background: #fff; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06); position: relative; width: 90%; height: 85%; display: flex; align-items: center; justify-content: center; }
+  .frame-mat { border: 1px solid #e0dcd6; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .frame-art { width: 100%; height: 100%; }
+  .frame-label { position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%); font-family: 'Arial', sans-serif; font-size: 9px; color: #888; letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; }
+  .frame.wide { grid-column: span 2; }
+  .frame.tall { grid-row: span 2; }
+
+  @keyframes hangIn { 0% { opacity: 0; transform: translateY(-30px) rotate(-3deg); } 60% { transform: translateY(3px) rotate(0.5deg); } 100% { opacity: 1; transform: translateY(0) rotate(0); } }
+  @keyframes unhang { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(30px) rotate(3deg); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  artworks: [
+    { color: '#c62828', label: 'Untitled No. 1', wide: false, tall: false },
+    { color: '#1565c0', label: 'Blue Horizon', wide: true, tall: false },
+    { color: '#2e7d32', label: 'Green Study', wide: false, tall: false },
+    { color: '#f57f17', label: 'Gold Leaf', wide: false, tall: true },
+    { color: '#6a1b9a', label: 'Violet Hour', wide: false, tall: false },
+    { color: '#00838f', label: 'Teal Abstract', wide: false, tall: false },
+    { color: '#d84315', label: 'Burnt Ochre', wide: true, tall: false },
+    { color: '#283593', label: 'Deep Indigo', wide: false, tall: false },
+  ],
+  bgColor: '#e8e4df',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.artworks.forEach(a => {
+    const frame = document.createElement('div');
+    frame.className = 'frame' + (a.wide ? ' wide' : '') + (a.tall ? ' tall' : '');
+    const outer = document.createElement('div'); outer.className = 'frame-outer';
+    const mat = document.createElement('div'); mat.className = 'frame-mat';
+    const art = document.createElement('div'); art.className = 'frame-art'; art.style.background = a.color;
+    mat.appendChild(art); outer.appendChild(mat);
+    const label = document.createElement('div'); label.className = 'frame-label'; label.textContent = a.label;
+    outer.appendChild(label); frame.appendChild(outer);
+    stage.appendChild(frame); els.push(frame);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=350, inD=550, hold=3500, outS=250, outD=450, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`hangIn ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`unhang ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

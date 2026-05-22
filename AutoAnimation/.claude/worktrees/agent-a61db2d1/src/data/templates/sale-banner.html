@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flash Sale Banner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #ffffff;
+  }
+  .scene {
+    width: 100%; height: 100%;
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+
+  /* Light streaks */
+  .streaks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .streak {
+    position: absolute;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.15), transparent);
+    animation: streakMove linear infinite;
+    opacity: 0;
+  }
+  @keyframes streakMove {
+    0% { transform: translateY(-100vh) rotate(15deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(100vh) rotate(15deg); opacity: 0; }
+  }
+
+  /* Confetti */
+  .confetti-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+  .confetti {
+    position: absolute;
+    width: 1vw; height: 1vw;
+    opacity: 0;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0.3; }
+  }
+
+  /* Sparkles */
+  .sparkle-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  .sparkle {
+    position: absolute;
+    width: 0.5vh; height: 0.5vh;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0;
+    box-shadow: 0 0 6px 2px rgba(255,255,255,0.6);
+  }
+  @keyframes sparkle {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  /* Sale tag top */
+  .sale-tag {
+    position: absolute;
+    top: 4vh; left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 5vh;
+    padding: 0.8vh 3vw;
+    font-size: 1.8vh;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .sale-tag.visible { transform: translateX(-50%) scale(1); }
+
+  /* Discount number */
+  .discount-block {
+    text-align: center;
+    z-index: 10;
+    position: relative;
+    opacity: 0;
+    transform: scale(0.3);
+    transition: opacity 0.5s, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .discount-block.visible { opacity: 1; transform: scale(1); }
+  .discount-number {
+    font-size: 18vh;
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    text-shadow: 0 0.5vh 3vh rgba(0,0,0,0.3);
+  }
+  .discount-pct {
+    font-size: 8vh;
+    font-weight: 900;
+    vertical-align: super;
+  }
+  .discount-off {
+    font-size: 5vh;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    display: block;
+    margin-top: -1vh;
+    opacity: 0.9;
+  }
+
+  /* Product info */
+  .product-info {
+    text-align: center;
+    z-index: 10;
+    position: relative;
+    margin-top: 3vh;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s, transform 0.6s cubic-bezier(0.22,1,0.36,1);
+  }
+  .product-info.visible { opacity: 1; transform: translateY(0); }
+  .product-name {
+    font-size: 3vh;
+    font-weight: 700;
+    margin-bottom: 1.5vh;
+    letter-spacing: 0.05em;
+  }
+  .price-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2vw;
+  }
+  .original-price {
+    font-size: 2.8vh;
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+  .sale-price {
+    font-size: 4vh;
+    font-weight: 900;
+  }
+
+  /* Price tags */
+  .price-tag {
+    display: inline-block;
+    padding: 0.5vh 1.5vw;
+    border-radius: 0.6vh;
+    font-weight: 800;
+    opacity: 0;
+    transform: rotateY(90deg);
+    transition: opacity 0.5s, transform 0.6s cubic-bezier(0.22,1,0.36,1);
+  }
+  .price-tag.visible { opacity: 1; transform: rotateY(0deg); }
+  .tag-original {
+    background: rgba(255,255,255,0.15);
+    font-size: 2.5vh;
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+  .tag-sale {
+    font-size: 3.5vh;
+  }
+
+  /* CTA */
+  .cta-btn {
+    margin-top: 3vh;
+    z-index: 10;
+    position: relative;
+    padding: 1.8vh 5vw;
+    border: none;
+    border-radius: 6vh;
+    font-size: 2.2vh;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s, transform 0.5s;
+    animation: none;
+  }
+  .cta-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
+    animation: ctaPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes ctaPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
+    50% { transform: scale(1.05); box-shadow: 0 0 20px 5px rgba(255,255,255,0.15); }
+  }
+
+  /* Countdown */
+  .countdown {
+    position: absolute;
+    bottom: 6vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2vw;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.6s;
+  }
+  .countdown.visible { opacity: 1; }
+  .cd-label {
+    font-size: 1.2vh;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 1vh;
+    text-align: center;
+  }
+  .cd-unit {
+    text-align: center;
+    min-width: 6vw;
+  }
+  .cd-num {
+    font-size: 4vh;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    padding: 1vh 1.5vw;
+    background: rgba(0,0,0,0.3);
+    border-radius: 1vh;
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+  }
+  .cd-txt {
+    font-size: 1vh;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.5;
+    margin-top: 0.5vh;
+  }
+  .cd-sep {
+    font-size: 3.5vh;
+    font-weight: 900;
+    opacity: 0.4;
+    align-self: center;
+    padding-bottom: 2vh;
+  }
+
+  /* Corner decoration */
+  .corner-deco {
+    position: absolute;
+    width: 15vw; height: 15vw;
+    border: 2px solid rgba(255,255,255,0.08);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .corner-tl { top: 2vh; left: 2vw; border-right: none; border-bottom: none; border-radius: 1vh 0 0 0; }
+  .corner-tr { top: 2vh; right: 2vw; border-left: none; border-bottom: none; border-radius: 0 1vh 0 0; }
+  .corner-bl { bottom: 2vh; left: 2vw; border-right: none; border-top: none; border-radius: 0 0 0 1vh; }
+  .corner-br { bottom: 2vh; right: 2vw; border-left: none; border-top: none; border-radius: 0 0 1vh 0; }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="streaks" id="streaks"></div>
+  <div class="confetti-layer" id="confetti"></div>
+  <div class="sparkle-layer" id="sparkles"></div>
+
+  <div class="corner-deco corner-tl"></div>
+  <div class="corner-deco corner-tr"></div>
+  <div class="corner-deco corner-bl"></div>
+  <div class="corner-deco corner-br"></div>
+
+  <div class="sale-tag" id="saleTag">FLASH SALE</div>
+
+  <div class="discount-block" id="discountBlock">
+    <span class="discount-number" id="discountNum">70</span><span class="discount-pct">%</span>
+    <span class="discount-off">OFF</span>
+  </div>
+
+  <div class="product-info" id="productInfo">
+    <div class="product-name" id="productName">Premium Wireless Headphones</div>
+    <div class="price-row">
+      <span class="price-tag tag-original" id="tagOriginal">$299.99</span>
+      <span class="price-tag tag-sale" id="tagSale">$89.99</span>
+    </div>
+  </div>
+
+  <button class="cta-btn" id="ctaBtn">SHOP NOW</button>
+
+  <div class="countdown" id="countdown">
+    <div class="cd-label" id="cdLabel">Sale Ends In</div>
+  </div>
+  <div class="countdown" id="cdTimer" style="bottom: 3vh;">
+    <div class="cd-unit"><div class="cd-num" id="cdH">02</div><div class="cd-txt">Hours</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-num" id="cdM">47</div><div class="cd-txt">Mins</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-num" id="cdS">33</div><div class="cd-txt">Secs</div></div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  discountPercent: 70,
+  productName: 'Premium Wireless Headphones',
+  originalPrice: '$299.99',
+  salePrice: '$89.99',
+  saleEndText: 'FLASH SALE',
+  ctaText: 'SHOP NOW',
+  bgGradient: ['#e83e8c', '#6f42c1', '#3b0764'],
+  accentColor: '#ffd700',
+  cycleDuration: 14000,
+};
+
+// Apply background gradient
+const scene = document.getElementById('scene');
+scene.style.background = `linear-gradient(135deg, ${CONFIG.bgGradient.join(', ')})`;
+
+// Apply accent
+const accentC = CONFIG.accentColor;
+document.getElementById('tagSale').style.background = accentC;
+document.getElementById('tagSale').style.color = '#000';
+document.getElementById('ctaBtn').style.background = accentC;
+document.getElementById('ctaBtn').style.color = '#000';
+
+// Populate
+document.getElementById('discountNum').textContent = CONFIG.discountPercent;
+document.getElementById('productName').textContent = CONFIG.productName;
+document.getElementById('tagOriginal').textContent = CONFIG.originalPrice;
+document.getElementById('tagSale').textContent = CONFIG.salePrice;
+document.getElementById('saleTag').textContent = CONFIG.saleEndText;
+document.getElementById('ctaBtn').textContent = CONFIG.ctaText;
+
+// Create light streaks
+const streaksEl = document.getElementById('streaks');
+for (let i = 0; i < 8; i++) {
+  const s = document.createElement('div');
+  s.className = 'streak';
+  s.style.left = (Math.random() * 100) + '%';
+  s.style.height = (20 + Math.random() * 30) + 'vh';
+  s.style.animationDuration = (3 + Math.random() * 4) + 's';
+  s.style.animationDelay = (Math.random() * 5) + 's';
+  s.style.opacity = '0.06';
+  streaksEl.appendChild(s);
+}
+
+// Confetti
+function spawnConfetti() {
+  const layer = document.getElementById('confetti');
+  layer.innerHTML = '';
+  const colors = [accentC, '#ff6b6b', '#4ecdc4', '#45b7d1', '#fff', '#f7dc6f'];
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = (Math.random() * 100) + '%';
+    c.style.top = '-5vh';
+    c.style.width = (0.5 + Math.random() * 1) + 'vw';
+    c.style.height = (0.5 + Math.random() * 1) + 'vw';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    c.style.animation = `confettiFall ${2 + Math.random() * 3}s linear ${Math.random() * 2}s`;
+    c.style.animationFillMode = 'forwards';
+    layer.appendChild(c);
+  }
+}
+
+// Sparkles
+function spawnSparkles() {
+  const layer = document.getElementById('sparkles');
+  layer.innerHTML = '';
+  for (let i = 0; i < 15; i++) {
+    const s = document.createElement('div');
+    s.className = 'sparkle';
+    s.style.left = (10 + Math.random() * 80) + '%';
+    s.style.top = (10 + Math.random() * 60) + '%';
+    s.style.width = s.style.height = (0.3 + Math.random() * 0.8) + 'vh';
+    s.style.animation = `sparkle ${0.8 + Math.random() * 1.2}s ease-in-out ${Math.random() * 3}s infinite`;
+    layer.appendChild(s);
+  }
+}
+
+// Countdown timer
+let countdownSec = 2 * 3600 + 47 * 60 + 33;
+function updateCountdown() {
+  countdownSec = Math.max(0, countdownSec - 1);
+  const h = Math.floor(countdownSec / 3600);
+  const m = Math.floor((countdownSec % 3600) / 60);
+  const s = countdownSec % 60;
+  document.getElementById('cdH').textContent = String(h).padStart(2, '0');
+  document.getElementById('cdM').textContent = String(m).padStart(2, '0');
+  document.getElementById('cdS').textContent = String(s).padStart(2, '0');
+}
+setInterval(updateCountdown, 1000);
+
+function runCycle() {
+  const saleTag = document.getElementById('saleTag');
+  const discountBlock = document.getElementById('discountBlock');
+  const productInfo = document.getElementById('productInfo');
+  const tagOriginal = document.getElementById('tagOriginal');
+  const tagSale = document.getElementById('tagSale');
+  const ctaBtn = document.getElementById('ctaBtn');
+  const countdown = document.getElementById('countdown');
+  const cdTimer = document.getElementById('cdTimer');
+
+  // Reset
+  saleTag.classList.remove('visible');
+  discountBlock.classList.remove('visible');
+  productInfo.classList.remove('visible');
+  tagOriginal.classList.remove('visible');
+  tagSale.classList.remove('visible');
+  ctaBtn.classList.remove('visible');
+  countdown.style.opacity = '0';
+  cdTimer.style.opacity = '0';
+
+  // Sequence
+  setTimeout(() => saleTag.classList.add('visible'), 300);
+  setTimeout(() => {
+    discountBlock.classList.add('visible');
+    spawnConfetti();
+    spawnSparkles();
+  }, 800);
+  setTimeout(() => productInfo.classList.add('visible'), 1800);
+  setTimeout(() => tagOriginal.classList.add('visible'), 2200);
+  setTimeout(() => tagSale.classList.add('visible'), 2600);
+  setTimeout(() => ctaBtn.classList.add('visible'), 3200);
+  setTimeout(() => {
+    countdown.style.opacity = '1';
+    cdTimer.style.opacity = '1';
+  }, 3800);
+
+  // Second confetti burst
+  setTimeout(() => spawnConfetti(), 7000);
+
+  // Fade out
+  setTimeout(() => {
+    saleTag.classList.remove('visible');
+    discountBlock.style.transition = 'opacity 0.8s, transform 0.8s';
+    discountBlock.classList.remove('visible');
+    productInfo.classList.remove('visible');
+    tagOriginal.classList.remove('visible');
+    tagSale.classList.remove('visible');
+    ctaBtn.classList.remove('visible');
+    countdown.style.opacity = '0';
+    cdTimer.style.opacity = '0';
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(() => {
+    discountBlock.style.transition = 'opacity 0.5s, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    runCycle();
+  }, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>

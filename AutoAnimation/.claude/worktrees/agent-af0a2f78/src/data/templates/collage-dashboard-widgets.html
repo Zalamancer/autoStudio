@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard Widgets Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #0d1117; font-family: 'Arial', sans-serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 14px; padding: 24px; }
+
+  .widget { background: #161b22; border-radius: 12px; border: 1px solid #21262d; padding: 16px; opacity: 0; will-change: transform, opacity; display: flex; flex-direction: column; overflow: hidden; }
+  .widget.wide { grid-column: span 2; }
+  .w-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .w-title { font-size: 11px; font-weight: 600; color: #c9d1d9; text-transform: uppercase; letter-spacing: 1px; }
+  .w-badge { font-size: 9px; padding: 2px 8px; border-radius: 10px; color: #fff; }
+  .w-value { font-size: 28px; font-weight: 700; color: #f0f6fc; margin-bottom: 4px; }
+  .w-change { font-size: 10px; margin-bottom: 10px; }
+  .w-change.up { color: #3fb950; }
+  .w-change.down { color: #f85149; }
+  .w-bars { display: flex; gap: 3px; align-items: flex-end; flex: 1; padding-top: 8px; }
+  .w-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 4px; opacity: 0.7; }
+
+  @keyframes widgetPop { 0% { opacity: 0; transform: scale(0.8); } 60% { transform: scale(1.02); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes widgetFade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.9); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  widgets: [
+    { title: 'Revenue', value: '$24.5K', change: '+12.3%', up: true, color: '#3fb950', badge: 'LIVE', wide: false, bars: [40,60,45,70,55,80,65] },
+    { title: 'Active Users', value: '1,247', change: '+5.8%', up: true, color: '#58a6ff', badge: '', wide: true, bars: [30,50,40,60,70,55,45,80,60,75,50,65] },
+    { title: 'Bounce Rate', value: '32.1%', change: '-2.4%', up: false, color: '#f85149', badge: '', wide: false, bars: [60,55,50,45,40,35,38] },
+    { title: 'Conversions', value: '384', change: '+8.1%', up: true, color: '#d2a8ff', badge: 'NEW', wide: false, bars: [20,35,50,45,60,70,80] },
+    { title: 'Page Views', value: '89.2K', change: '+15.7%', up: true, color: '#79c0ff', badge: '', wide: false, bars: [50,55,60,65,70,75,80] },
+    { title: 'Avg Session', value: '4m 23s', change: '-0.8%', up: false, color: '#ffa657', badge: '', wide: true, bars: [70,65,68,62,60,58,55,52,50,55,48,45] },
+    { title: 'Sign Ups', value: '156', change: '+22.5%', up: true, color: '#3fb950', badge: 'HOT', wide: false, bars: [25,40,35,55,60,70,85] },
+  ],
+  bgColor: '#0d1117',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.widgets.forEach(w => {
+    const el = document.createElement('div'); el.className = 'widget' + (w.wide ? ' wide' : '');
+    const header = document.createElement('div'); header.className = 'w-header';
+    const title = document.createElement('div'); title.className = 'w-title'; title.textContent = w.title;
+    header.appendChild(title);
+    if (w.badge) { const badge = document.createElement('div'); badge.className = 'w-badge'; badge.style.background = w.color; badge.textContent = w.badge; header.appendChild(badge); }
+    const value = document.createElement('div'); value.className = 'w-value'; value.textContent = w.value;
+    const change = document.createElement('div'); change.className = 'w-change ' + (w.up ? 'up' : 'down');
+    change.textContent = (w.up ? '\u25B2 ' : '\u25BC ') + w.change;
+    const bars = document.createElement('div'); bars.className = 'w-bars';
+    w.bars.forEach(h => { const bar = document.createElement('div'); bar.className = 'w-bar'; bar.style.height = h + '%'; bar.style.background = w.color; bars.appendChild(bar); });
+    el.appendChild(header); el.appendChild(value); el.appendChild(change); el.appendChild(bars);
+    stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=280, inD=450, hold=3500, outS=220, outD=380, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`widgetPop ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`widgetFade ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS Pricing Table</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background: #0a0e1a; display: flex; align-items: center; justify-content: center; }
+
+  .pricing-wrapper {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 3vh 4vw;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bg-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.06;
+    pointer-events: none;
+  }
+  .bg-glow-1 { width: 50vw; height: 50vw; top: -15vw; right: -10vw; background: var(--accent); }
+  .bg-glow-2 { width: 40vw; height: 40vw; bottom: -10vw; left: -10vw; background: var(--accent); }
+
+  .heading {
+    text-align: center;
+    margin-bottom: 3vh;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.7s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .heading.visible { opacity: 1; transform: translateY(0); }
+  .heading h1 {
+    font-size: 3.5vh;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin-bottom: 1vh;
+  }
+  .heading p {
+    font-size: 1.6vh;
+    color: #8892a4;
+  }
+
+  .cards-row {
+    display: flex;
+    gap: 2.5vw;
+    align-items: stretch;
+    max-width: 90vw;
+  }
+
+  .pricing-card {
+    flex: 1;
+    background: rgba(20, 28, 50, 0.7);
+    border: 1px solid rgba(100, 120, 180, 0.12);
+    border-radius: 2vh;
+    padding: 3vh 2.5vw;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+    transition: opacity 0.6s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    min-width: 22vw;
+  }
+  .pricing-card.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .pricing-card.highlighted {
+    border-color: var(--accent);
+    background: rgba(20, 28, 50, 0.9);
+    transform: translateY(40px) scale(0.95);
+  }
+  .pricing-card.highlighted.visible {
+    transform: translateY(-1vh) scale(1.03);
+  }
+
+  .popular-badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.1vh;
+    font-weight: 800;
+    padding: 0.4vh 2vw;
+    border-radius: 0 0 1vh 1vh;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .glow-ring {
+    position: absolute;
+    inset: -2px;
+    border-radius: 2vh;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  .highlighted .glow-ring {
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.15; box-shadow: inset 0 0 30px var(--accent), 0 0 30px var(--accent); }
+    50% { opacity: 0.3; box-shadow: inset 0 0 50px var(--accent), 0 0 50px var(--accent); }
+  }
+
+  .tier-name {
+    font-size: 2vh;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5vh;
+    margin-top: 1vh;
+  }
+
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5vw;
+    margin-bottom: 0.5vh;
+  }
+  .price-dollar { font-size: 1.8vh; font-weight: 700; color: #8892a4; }
+  .price-value {
+    font-size: 4.5vh;
+    font-weight: 900;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  .price-period {
+    font-size: 1.4vh;
+    color: #667;
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: rgba(100, 120, 180, 0.12);
+    margin: 1.5vh 0;
+  }
+
+  .features-list {
+    flex: 1;
+    list-style: none;
+  }
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    padding: 0.7vh 0;
+    font-size: 1.3vh;
+    color: #c0c8d8;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .feature-item.visible { opacity: 1; transform: translateX(0); }
+  .feature-icon {
+    width: 2vh;
+    height: 2vh;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1vh;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .feature-icon.check { background: rgba(0, 212, 100, 0.15); color: #00d464; }
+  .feature-icon.cross { background: rgba(255, 68, 102, 0.1); color: #ff4466; }
+
+  .cta-button {
+    margin-top: 2vh;
+    padding: 1.2vh 0;
+    border-radius: 1vh;
+    font-size: 1.4vh;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 0.05em;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .cta-button:hover { transform: translateY(-2px); }
+  .cta-default {
+    background: rgba(100, 120, 180, 0.15);
+    color: #c0c8d8;
+    border: 1px solid rgba(100, 120, 180, 0.2);
+  }
+  .cta-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+</style>
+</head>
+<body>
+<div class="pricing-wrapper" id="wrapper">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="heading" id="heading">
+    <h1 id="headingTitle">Simple, Transparent Pricing</h1>
+    <p id="headingSub">Choose the plan that fits your needs</p>
+  </div>
+  <div class="cards-row" id="cardsRow"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  title: 'Simple, Transparent Pricing',
+  subtitle: 'Choose the plan that fits your needs',
+  tiers: [
+    {
+      name: 'Free',
+      price: 0,
+      period: '/month',
+      highlighted: false,
+      features: [
+        { text: '1 Project', included: true },
+        { text: '500 MB Storage', included: true },
+        { text: 'Community Support', included: true },
+        { text: 'Basic Analytics', included: true },
+        { text: 'Custom Domain', included: false },
+        { text: 'API Access', included: false }
+      ]
+    },
+    {
+      name: 'Pro',
+      price: 29,
+      period: '/month',
+      highlighted: true,
+      features: [
+        { text: 'Unlimited Projects', included: true },
+        { text: '50 GB Storage', included: true },
+        { text: 'Priority Support', included: true },
+        { text: 'Advanced Analytics', included: true },
+        { text: 'Custom Domain', included: true },
+        { text: 'API Access', included: false }
+      ]
+    },
+    {
+      name: 'Enterprise',
+      price: 99,
+      period: '/month',
+      highlighted: false,
+      features: [
+        { text: 'Unlimited Everything', included: true },
+        { text: '500 GB Storage', included: true },
+        { text: 'Dedicated Support', included: true },
+        { text: 'Custom Analytics', included: true },
+        { text: 'Custom Domain', included: true },
+        { text: 'Full API Access', included: true }
+      ]
+    }
+  ],
+  bgColor: '#0a0e1a',
+  accentColor: '#7b5cfa',
+  cycleDuration: 12000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+document.getElementById('headingTitle').textContent = CONFIG.title;
+document.getElementById('headingSub').textContent = CONFIG.subtitle;
+
+function buildCards() {
+  const row = document.getElementById('cardsRow');
+  row.innerHTML = '';
+
+  CONFIG.tiers.forEach((tier, i) => {
+    const card = document.createElement('div');
+    card.className = 'pricing-card' + (tier.highlighted ? ' highlighted' : '');
+    card.innerHTML = `
+      ${tier.highlighted ? '<div class="glow-ring"></div><div class="popular-badge">MOST POPULAR</div>' : ''}
+      <div class="tier-name">${tier.name}</div>
+      <div class="price-row">
+        <span class="price-dollar">$</span>
+        <span class="price-value" data-target="${tier.price}">0</span>
+        <span class="price-period">${tier.period}</span>
+      </div>
+      <div class="divider"></div>
+      <ul class="features-list">
+        ${tier.features.map(f => `
+          <li class="feature-item">
+            <div class="feature-icon ${f.included ? 'check' : 'cross'}">${f.included ? '&#10003;' : '&#10005;'}</div>
+            <span>${f.text}</span>
+          </li>
+        `).join('')}
+      </ul>
+      <div class="cta-button ${tier.highlighted ? 'cta-primary' : 'cta-default'}">
+        ${tier.price === 0 ? 'Get Started Free' : 'Start Free Trial'}
+      </div>
+    `;
+    row.appendChild(card);
+  });
+}
+
+function animateCountUp(el, target, duration) {
+  const start = performance.now();
+  function step(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(ease * target);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function runIntro() {
+  const heading = document.getElementById('heading');
+  const cards = document.querySelectorAll('.pricing-card');
+
+  heading.classList.add('visible');
+
+  cards.forEach((card, i) => {
+    setTimeout(() => {
+      card.classList.add('visible');
+      // Animate price counter
+      const priceEl = card.querySelector('.price-value');
+      const target = parseInt(priceEl.dataset.target);
+      if (target > 0) {
+        animateCountUp(priceEl, target, 1200);
+      }
+      // Animate features
+      const features = card.querySelectorAll('.feature-item');
+      features.forEach((f, fi) => {
+        setTimeout(() => f.classList.add('visible'), 300 + fi * 100);
+      });
+    }, 300 + i * 250);
+  });
+}
+
+function runExit() {
+  const heading = document.getElementById('heading');
+  const cards = document.querySelectorAll('.pricing-card');
+
+  cards.forEach((card, i) => {
+    setTimeout(() => {
+      card.style.transition = 'opacity 0.4s, transform 0.5s cubic-bezier(0.55, 0, 1, 0.45)';
+      card.classList.remove('visible');
+      card.querySelectorAll('.feature-item').forEach(f => f.classList.remove('visible'));
+    }, i * 100);
+  });
+
+  setTimeout(() => heading.classList.remove('visible'), 200);
+}
+
+function runCycle() {
+  buildCards();
+  setTimeout(runIntro, 200);
+
+  setTimeout(() => {
+    runExit();
+    setTimeout(runCycle, 800);
+  }, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>

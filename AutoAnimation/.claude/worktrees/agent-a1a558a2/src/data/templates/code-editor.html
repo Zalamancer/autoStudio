@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Editor - VS Code Style</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #1e1e1e; font-family: 'Menlo', 'Courier New', monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#1e1e1e',
+  sidebarBg: '#252526',
+  tabBarBg: '#2d2d2d',
+  activeTabBg: '#1e1e1e',
+  tabBorder: '#1e1e1e',
+  tabText: '#969696',
+  activeTabText: '#ffffff',
+  lineNumColor: '#858585',
+  gutterBg: '#1e1e1e',
+  minimapBg: '#1e1e1e',
+  cursorColor: '#aeafad',
+  selectionBg: 'rgba(38,79,120,0.5)',
+  statusBarBg: '#007acc',
+  statusBarText: '#ffffff',
+  // Syntax colors (VS Code Dark+)
+  keyword: '#569cd6',      // blue
+  type: '#4ec9b0',         // teal
+  string: '#ce9178',       // orange
+  number: '#b5cea8',       // light green
+  comment: '#6a9955',      // green
+  function: '#dcdcaa',     // yellow
+  variable: '#9cdcfe',     // light blue
+  operator: '#d4d4d4',     // white
+  plain: '#d4d4d4',        // white
+  punctuation: '#d4d4d4',
+  decorator: '#dcdcaa',
+  fileName: 'App.tsx',
+  typingSpeed: 0.04,
+  codeLines: [
+    { tokens: [{ text: '// Main Application Component', color: 'comment' }] },
+    { tokens: [{ text: 'import ', color: 'keyword' }, { text: 'React', color: 'variable' }, { text: ', { ', color: 'plain' }, { text: 'useState', color: 'variable' }, { text: ', ', color: 'plain' }, { text: 'useEffect', color: 'variable' }, { text: ' } ', color: 'plain' }, { text: 'from ', color: 'keyword' }, { text: "'react'", color: 'string' }, { text: ';', color: 'plain' }] },
+    { tokens: [{ text: 'import ', color: 'keyword' }, { text: '{ ', color: 'plain' }, { text: 'motion', color: 'variable' }, { text: ' } ', color: 'plain' }, { text: 'from ', color: 'keyword' }, { text: "'framer-motion'", color: 'string' }, { text: ';', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: 'interface ', color: 'keyword' }, { text: 'AppProps', color: 'type' }, { text: ' {', color: 'plain' }] },
+    { tokens: [{ text: '  title', color: 'variable' }, { text: ': ', color: 'plain' }, { text: 'string', color: 'type' }, { text: ';', color: 'plain' }] },
+    { tokens: [{ text: '  count', color: 'variable' }, { text: ': ', color: 'plain' }, { text: 'number', color: 'type' }, { text: ';', color: 'plain' }] },
+    { tokens: [{ text: '  isActive', color: 'variable' }, { text: '?: ', color: 'plain' }, { text: 'boolean', color: 'type' }, { text: ';', color: 'plain' }] },
+    { tokens: [{ text: '}', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: 'const ', color: 'keyword' }, { text: 'App', color: 'function' }, { text: ': ', color: 'plain' }, { text: 'React.FC', color: 'type' }, { text: '<', color: 'plain' }, { text: 'AppProps', color: 'type' }, { text: '> = ({ ', color: 'plain' }, { text: 'title', color: 'variable' }, { text: ', ', color: 'plain' }, { text: 'count', color: 'variable' }, { text: ' }) => {', color: 'plain' }] },
+    { tokens: [{ text: '  const ', color: 'keyword' }, { text: '[', color: 'plain' }, { text: 'value', color: 'variable' }, { text: ', ', color: 'plain' }, { text: 'setValue', color: 'function' }, { text: '] = ', color: 'plain' }, { text: 'useState', color: 'function' }, { text: '<', color: 'plain' }, { text: 'number', color: 'type' }, { text: '>(', color: 'plain' }, { text: '0', color: 'number' }, { text: ');', color: 'plain' }] },
+    { tokens: [{ text: '  const ', color: 'keyword' }, { text: '[', color: 'plain' }, { text: 'items', color: 'variable' }, { text: ', ', color: 'plain' }, { text: 'setItems', color: 'function' }, { text: '] = ', color: 'plain' }, { text: 'useState', color: 'function' }, { text: '<', color: 'plain' }, { text: 'string[]', color: 'type' }, { text: '>([]);', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: '  ', color: 'plain' }, { text: 'useEffect', color: 'function' }, { text: '(() => {', color: 'plain' }] },
+    { tokens: [{ text: '    // Fetch data on mount', color: 'comment' }] },
+    { tokens: [{ text: '    const ', color: 'keyword' }, { text: 'fetchData', color: 'function' }, { text: ' = ', color: 'plain' }, { text: 'async ', color: 'keyword' }, { text: '() => {', color: 'plain' }] },
+    { tokens: [{ text: '      const ', color: 'keyword' }, { text: 'response', color: 'variable' }, { text: ' = ', color: 'plain' }, { text: 'await ', color: 'keyword' }, { text: 'fetch', color: 'function' }, { text: '(', color: 'plain' }, { text: '`/api/data/${count}`', color: 'string' }, { text: ');', color: 'plain' }] },
+    { tokens: [{ text: '      const ', color: 'keyword' }, { text: 'data', color: 'variable' }, { text: ' = ', color: 'plain' }, { text: 'await ', color: 'keyword' }, { text: 'response', color: 'variable' }, { text: '.', color: 'plain' }, { text: 'json', color: 'function' }, { text: '();', color: 'plain' }] },
+    { tokens: [{ text: '      ', color: 'plain' }, { text: 'setItems', color: 'function' }, { text: '(', color: 'plain' }, { text: 'data', color: 'variable' }, { text: '.', color: 'plain' }, { text: 'items', color: 'variable' }, { text: ');', color: 'plain' }] },
+    { tokens: [{ text: '      ', color: 'plain' }, { text: 'setValue', color: 'function' }, { text: '(', color: 'plain' }, { text: 'data', color: 'variable' }, { text: '.', color: 'plain' }, { text: 'total', color: 'variable' }, { text: ');', color: 'plain' }] },
+    { tokens: [{ text: '    };', color: 'plain' }] },
+    { tokens: [{ text: '    ', color: 'plain' }, { text: 'fetchData', color: 'function' }, { text: '();', color: 'plain' }] },
+    { tokens: [{ text: '  }, [', color: 'plain' }, { text: 'count', color: 'variable' }, { text: ']);', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: '  return ', color: 'keyword' }, { text: '(', color: 'plain' }] },
+    { tokens: [{ text: '    <', color: 'plain' }, { text: 'motion.div', color: 'type' }, { text: ' ', color: 'plain' }, { text: 'animate', color: 'variable' }, { text: '={{ ', color: 'plain' }, { text: 'opacity', color: 'variable' }, { text: ': ', color: 'plain' }, { text: '1', color: 'number' }, { text: ' }}>', color: 'plain' }] },
+    { tokens: [{ text: '      <', color: 'plain' }, { text: 'h1', color: 'type' }, { text: '>{', color: 'plain' }, { text: 'title', color: 'variable' }, { text: '}</', color: 'plain' }, { text: 'h1', color: 'type' }, { text: '>', color: 'plain' }] },
+    { tokens: [{ text: '      <', color: 'plain' }, { text: 'p', color: 'type' }, { text: '>Count: {', color: 'plain' }, { text: 'value', color: 'variable' }, { text: '}</', color: 'plain' }, { text: 'p', color: 'type' }, { text: '>', color: 'plain' }] },
+    { tokens: [{ text: '      {', color: 'plain' }, { text: 'items', color: 'variable' }, { text: '.', color: 'plain' }, { text: 'map', color: 'function' }, { text: '((', color: 'plain' }, { text: 'item', color: 'variable' }, { text: ') => (', color: 'plain' }] },
+    { tokens: [{ text: '        <', color: 'plain' }, { text: 'div ', color: 'type' }, { text: 'key', color: 'variable' }, { text: '={', color: 'plain' }, { text: 'item', color: 'variable' }, { text: '}>{', color: 'plain' }, { text: 'item', color: 'variable' }, { text: '}</', color: 'plain' }, { text: 'div', color: 'type' }, { text: '>', color: 'plain' }] },
+    { tokens: [{ text: '      ))}', color: 'plain' }] },
+    { tokens: [{ text: '    </motion.div>', color: 'plain' }] },
+    { tokens: [{ text: '  );', color: 'plain' }] },
+    { tokens: [{ text: '};', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: 'export ', color: 'keyword' }, { text: 'default ', color: 'keyword' }, { text: 'App', color: 'function' }, { text: ';', color: 'plain' }] }
+  ]
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let visibleLines = 0;
+let charProgress = 0;
+let currentLineChars = 0;
+let state = 'typing';
+let stateTimer = 0;
+let cursorBlink = true;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function getColor(colorName) {
+  return CONFIG[colorName] || CONFIG.plain;
+}
+
+function getLineText(line) {
+  return line.tokens.map(t => t.text).join('');
+}
+
+function drawTabBar() {
+  const tabH = H * 0.04;
+
+  ctx.fillStyle = CONFIG.tabBarBg;
+  ctx.fillRect(0, 0, W, tabH);
+
+  // Active tab
+  const tabW = W * 0.18;
+  ctx.fillStyle = CONFIG.activeTabBg;
+  ctx.fillRect(0, 0, tabW, tabH);
+
+  // Tab bottom border
+  ctx.fillStyle = CONFIG.statusBarBg;
+  ctx.fillRect(0, tabH - 2, tabW, 2);
+
+  // File icon
+  ctx.fillStyle = '#519aba';
+  ctx.font = `${W * 0.012}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('TS', W * 0.01, tabH * 0.65);
+
+  // File name
+  ctx.fillStyle = CONFIG.activeTabText;
+  ctx.font = `${W * 0.011}px -apple-system, sans-serif`;
+  ctx.fillText(CONFIG.fileName, W * 0.035, tabH * 0.65);
+
+  // Close X
+  ctx.fillStyle = CONFIG.tabText;
+  ctx.fillText('\u00d7', tabW - W * 0.015, tabH * 0.65);
+
+  // Other tabs
+  const otherTabs = ['index.ts', 'styles.css'];
+  otherTabs.forEach((name, i) => {
+    const tx = tabW + i * tabW;
+    ctx.fillStyle = CONFIG.tabBarBg;
+    ctx.fillRect(tx, 0, tabW, tabH);
+    ctx.fillStyle = CONFIG.tabText;
+    ctx.font = `${W * 0.011}px -apple-system, sans-serif`;
+    ctx.fillText(name, tx + W * 0.015, tabH * 0.65);
+  });
+
+  return tabH;
+}
+
+function drawBreadcrumb(tabH) {
+  const bH = H * 0.03;
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, tabH, W, bH);
+  ctx.fillStyle = CONFIG.tabText;
+  ctx.font = `${W * 0.009}px -apple-system, sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('src  >  components  >  ' + CONFIG.fileName, W * 0.06, tabH + bH * 0.65);
+  return tabH + bH;
+}
+
+function drawLineNumbers(startY) {
+  const lineH = H * 0.028;
+  const gutterW = W * 0.045;
+  const fontSize = W * 0.012;
+
+  ctx.fillStyle = CONFIG.gutterBg;
+  ctx.fillRect(0, startY, gutterW, H - startY);
+
+  const totalLines = Math.min(visibleLines + 1, CONFIG.codeLines.length);
+
+  for (let i = 0; i < totalLines; i++) {
+    const y = startY + (i + 1) * lineH;
+    if (y > H - H * 0.04) break;
+
+    const isCurrentLine = i === visibleLines && state === 'typing';
+    ctx.fillStyle = isCurrentLine ? CONFIG.activeTabText : CONFIG.lineNumColor;
+    ctx.font = `${fontSize}px Menlo, Courier New, monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillText((i + 1).toString(), gutterW - W * 0.008, y);
+
+    // Current line highlight
+    if (isCurrentLine) {
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(gutterW, y - lineH * 0.8, W * 0.85 - gutterW, lineH);
+    }
+  }
+
+  return gutterW;
+}
+
+function drawCode(startY, gutterW) {
+  const lineH = H * 0.028;
+  const fontSize = W * 0.012;
+  const codeX = gutterW + W * 0.012;
+
+  ctx.font = `${fontSize}px Menlo, Courier New, monospace`;
+  ctx.textAlign = 'left';
+
+  const totalLines = Math.min(visibleLines + 1, CONFIG.codeLines.length);
+
+  for (let i = 0; i < totalLines; i++) {
+    const line = CONFIG.codeLines[i];
+    const y = startY + (i + 1) * lineH;
+    if (y > H - H * 0.04) break;
+
+    let x = codeX;
+    const fullText = getLineText(line);
+    const isCurrentLine = i === visibleLines && state === 'typing';
+    const charsToShow = isCurrentLine ? currentLineChars : fullText.length;
+
+    let charsRendered = 0;
+    for (const token of line.tokens) {
+      const tokenStart = charsRendered;
+      const tokenEnd = charsRendered + token.text.length;
+      const visibleChars = Math.min(token.text.length, Math.max(0, charsToShow - tokenStart));
+
+      if (visibleChars > 0) {
+        const visibleText = token.text.substring(0, visibleChars);
+        ctx.fillStyle = getColor(token.color);
+        ctx.fillText(visibleText, x, y);
+        x += ctx.measureText(visibleText).width;
+      }
+
+      charsRendered += token.text.length;
+    }
+
+    // Cursor
+    if (isCurrentLine && cursorBlink) {
+      ctx.fillStyle = CONFIG.cursorColor;
+      ctx.fillRect(x, y - fontSize * 0.85, 2, fontSize * 1.1);
+    }
+  }
+}
+
+function drawMinimap(startY) {
+  const mapW = W * 0.06;
+  const mapX = W - mapW;
+  const lineH = 3;
+
+  ctx.fillStyle = CONFIG.minimapBg;
+  ctx.fillRect(mapX, startY, mapW, H - startY - H * 0.04);
+
+  const totalLines = Math.min(visibleLines + 1, CONFIG.codeLines.length);
+
+  for (let i = 0; i < totalLines; i++) {
+    const line = CONFIG.codeLines[i];
+    const y = startY + i * lineH + 5;
+    const text = getLineText(line);
+    const len = Math.min(text.length, 40);
+
+    if (len > 0) {
+      // Get dominant color
+      const mainToken = line.tokens.find(t => t.text.trim().length > 0);
+      const color = mainToken ? getColor(mainToken.color) : CONFIG.plain;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(mapX + 5 + text.search(/\S/) * 0.8, y, len * 0.8, 2);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Viewport indicator
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(mapX, startY, mapW, Math.min(totalLines * lineH, H * 0.3));
+}
+
+function drawStatusBar() {
+  const barH = H * 0.035;
+  const y = H - barH;
+
+  ctx.fillStyle = CONFIG.statusBarBg;
+  ctx.fillRect(0, y, W, barH);
+
+  ctx.fillStyle = CONFIG.statusBarText;
+  ctx.font = `${W * 0.009}px -apple-system, sans-serif`;
+  ctx.textAlign = 'left';
+
+  const lineNum = visibleLines + 1;
+  const colNum = currentLineChars + 1;
+  ctx.fillText(`Ln ${lineNum}, Col ${colNum}`, W * 0.02, y + barH * 0.65);
+  ctx.fillText('Spaces: 2', W * 0.12, y + barH * 0.65);
+  ctx.fillText('UTF-8', W * 0.22, y + barH * 0.65);
+  ctx.fillText('TypeScript React', W * 0.3, y + barH * 0.65);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('Prettier', W * 0.98, y + barH * 0.65);
+}
+
+function update() {
+  stateTimer += 0.016;
+  cursorBlink = Math.sin(time * 5) > 0;
+
+  if (state === 'typing') {
+    if (stateTimer > CONFIG.typingSpeed) {
+      stateTimer = 0;
+
+      if (visibleLines < CONFIG.codeLines.length) {
+        const line = CONFIG.codeLines[visibleLines];
+        const fullText = getLineText(line);
+
+        if (currentLineChars < fullText.length) {
+          currentLineChars++;
+        } else {
+          visibleLines++;
+          currentLineChars = 0;
+
+          // Empty lines appear instantly
+          while (visibleLines < CONFIG.codeLines.length && getLineText(CONFIG.codeLines[visibleLines]).length === 0) {
+            visibleLines++;
+          }
+        }
+      } else {
+        state = 'pause';
+        stateTimer = 0;
+      }
+    }
+  } else if (state === 'pause') {
+    if (stateTimer > 2.0) {
+      visibleLines = 0;
+      currentLineChars = 0;
+      state = 'typing';
+      stateTimer = 0;
+    }
+  }
+}
+
+function draw() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const tabH = drawTabBar();
+  const contentY = drawBreadcrumb(tabH);
+  const gutterW = drawLineNumbers(contentY);
+  update();
+  drawCode(contentY, gutterW);
+  drawMinimap(contentY);
+  drawStatusBar();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

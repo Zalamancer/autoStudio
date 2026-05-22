@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mind Map Tree</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1a2e; display: flex; align-items: center; justify-content: center; }
+canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="mindmap"></canvas>
+<script>
+const CONFIG = {
+  centerTopic: 'Strategy',
+  branches: [
+    { label: 'Marketing', children: ['Social Media', 'SEO', 'Ads'] },
+    { label: 'Product', children: ['Design', 'Engineering', 'Testing'] },
+    { label: 'Finance', children: ['Budget', 'Revenue', 'Forecast'] },
+    { label: 'Team', children: ['Hiring', 'Culture', 'Training'] },
+    { label: 'Growth', children: ['Partners', 'Markets', 'Innovation'] }
+  ],
+  nodeRadius: 0.035,
+  branchColors: ['#f472b6', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#fb923c'],
+  bgColor: '#1a1a2e',
+  animSpeed: 1.0
+};
+
+const canvas = document.getElementById('mindmap');
+const ctx = canvas.getContext('2d');
+
+let width, height, cx, cy;
+let animStart = 0;
+let nodes = [];
+let connections = [];
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+  cx = width / 2;
+  cy = height / 2;
+  buildGraph();
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function buildGraph() {
+  nodes = [];
+  connections = [];
+
+  const baseRadius = Math.min(width, height) * CONFIG.nodeRadius;
+  const mainDist = Math.min(width, height) * 0.22;
+  const subDist = Math.min(width, height) * 0.15;
+
+  // Center node
+  nodes.push({
+    x: cx, y: cy,
+    label: CONFIG.centerTopic,
+    color: '#ffffff',
+    radius: baseRadius * 1.4,
+    type: 'center',
+    delay: 0,
+    parent: -1
+  });
+
+  const branchCount = CONFIG.branches.length;
+
+  CONFIG.branches.forEach((branch, i) => {
+    const angle = (i / branchCount) * Math.PI * 2 - Math.PI / 2;
+    const bx = cx + Math.cos(angle) * mainDist;
+    const by = cy + Math.sin(angle) * mainDist;
+    const color = CONFIG.branchColors[i % CONFIG.branchColors.length];
+    const branchIdx = nodes.length;
+
+    nodes.push({
+      x: bx, y: by,
+      label: branch.label,
+      color: color,
+      radius: baseRadius * 1.1,
+      type: 'branch',
+      delay: 0.3 + i * 0.15,
+      parent: 0
+    });
+
+    connections.push({ from: 0, to: branchIdx, color: color, delay: 0.2 + i * 0.15 });
+
+    // Children
+    if (branch.children) {
+      const childSpread = Math.PI * 0.5;
+      const childStart = angle - childSpread / 2;
+      branch.children.forEach((child, j) => {
+        const childAngle = childStart + (j / Math.max(1, branch.children.length - 1)) * childSpread;
+        const childX = bx + Math.cos(childAngle) * subDist;
+        const childY = by + Math.sin(childAngle) * subDist;
+        const childIdx = nodes.length;
+
+        nodes.push({
+          x: childX, y: childY,
+          label: child,
+          color: color,
+          radius: baseRadius * 0.8,
+          type: 'child',
+          delay: 0.6 + i * 0.15 + j * 0.1,
+          parent: branchIdx
+        });
+
+        connections.push({ from: branchIdx, to: childIdx, color: color, delay: 0.55 + i * 0.15 + j * 0.1 });
+      });
+    }
+  });
+}
+
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function getNodeProgress(node, elapsed) {
+  const totalCycleDuration = 4.0 / CONFIG.animSpeed;
+  const expandDuration = 2.2 / CONFIG.animSpeed;
+  const holdDuration = 1.0 / CONFIG.animSpeed;
+  const collapseDuration = 0.8 / CONFIG.animSpeed;
+  const fullCycle = expandDuration + holdDuration + collapseDuration;
+
+  const cycleTime = elapsed % fullCycle;
+
+  if (cycleTime < expandDuration) {
+    // Expanding
+    const adjustedDelay = node.delay / CONFIG.animSpeed;
+    const t = Math.max(0, Math.min(1, (cycleTime - adjustedDelay) / 0.5));
+    return easeOutBack(t);
+  } else if (cycleTime < expandDuration + holdDuration) {
+    return 1;
+  } else {
+    // Collapsing
+    const collapseT = (cycleTime - expandDuration - holdDuration) / collapseDuration;
+    const maxDelay = nodes.reduce((m, n) => Math.max(m, n.delay), 0) / CONFIG.animSpeed;
+    const reverseDelay = (maxDelay - node.delay / CONFIG.animSpeed) * 0.3;
+    const t = Math.max(0, Math.min(1, (collapseT - reverseDelay) / 0.4));
+    return 1 - easeOutCubic(t);
+  }
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // Subtle dot grid
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  const spacing = 40;
+  for (let x = spacing; x < width; x += spacing) {
+    for (let y = spacing; y < height; y += spacing) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawConnection(conn, elapsed) {
+  const fromNode = nodes[conn.from];
+  const toNode = nodes[conn.to];
+  const fromProgress = getNodeProgress(fromNode, elapsed);
+  const toProgress = getNodeProgress(toNode, elapsed);
+  const progress = Math.min(fromProgress, toProgress);
+
+  if (progress <= 0) return;
+
+  const fx = fromNode.type === 'center' ? cx : fromNode.x;
+  const fy = fromNode.type === 'center' ? cy : fromNode.y;
+  const tx = fx + (toNode.x - fx) * progress;
+  const ty = fy + (toNode.y - fy) * progress;
+
+  const rgb = hexToRgb(conn.color);
+
+  // Line glow
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+
+  // Curved line via control point
+  const midX = (fx + tx) / 2;
+  const midY = (fy + ty) / 2;
+  const dx = tx - fx;
+  const dy = ty - fy;
+  const cpx = midX - dy * 0.15;
+  const cpy = midY + dx * 0.15;
+
+  ctx.quadraticCurveTo(cpx, cpy, tx, ty);
+  ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.15 * progress})`;
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // Main line
+  ctx.beginPath();
+  ctx.moveTo(fx, fy);
+  ctx.quadraticCurveTo(cpx, cpy, tx, ty);
+  ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.6 * progress})`;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Traveling dot
+  if (progress > 0.1 && progress < 1) {
+    const dotT = (progress - 0.1) / 0.9;
+    const dotX = (1 - dotT) * (1 - dotT) * fx + 2 * (1 - dotT) * dotT * cpx + dotT * dotT * tx;
+    const dotY = (1 - dotT) * (1 - dotT) * fy + 2 * (1 - dotT) * dotT * cpy + dotT * dotT * ty;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+    ctx.fillStyle = conn.color;
+    ctx.shadowColor = conn.color;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawNode(node, elapsed, time) {
+  const progress = getNodeProgress(node, elapsed);
+  if (progress <= 0.01) return;
+
+  const scale = progress;
+  const x = node.type === 'center' ? cx : (cx + (node.x - cx) * progress);
+  const y = node.type === 'center' ? cy : (cy + (node.y - cy) * progress);
+  const r = node.radius * scale;
+
+  const rgb = hexToRgb(node.color);
+
+  // Node shadow
+  ctx.beginPath();
+  const shadowGrad = ctx.createRadialGradient(x, y + 2, 0, x, y + 2, r * 2);
+  shadowGrad.addColorStop(0, `rgba(0, 0, 0, ${0.2 * progress})`);
+  shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.arc(x, y + 2, r * 2, 0, Math.PI * 2);
+  ctx.fillStyle = shadowGrad;
+  ctx.fill();
+
+  // Node background (rounded rect pill shape)
+  const textWidth = Math.max(r * 2, getTextWidth(node.label, node.type) + 20);
+  const nodeHeight = r * 1.6;
+  const borderRadius = nodeHeight / 2;
+
+  ctx.globalAlpha = progress;
+
+  // Glow
+  ctx.shadowColor = node.color;
+  ctx.shadowBlur = node.type === 'center' ? 25 : 15;
+
+  // Background fill
+  ctx.beginPath();
+  roundRect(ctx, x - textWidth / 2, y - nodeHeight / 2, textWidth, nodeHeight, borderRadius);
+  if (node.type === 'center') {
+    const grad = ctx.createLinearGradient(x - textWidth / 2, y, x + textWidth / 2, y);
+    grad.addColorStop(0, '#6366f1');
+    grad.addColorStop(1, '#8b5cf6');
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+  }
+  ctx.fill();
+
+  // Border
+  ctx.beginPath();
+  roundRect(ctx, x - textWidth / 2, y - nodeHeight / 2, textWidth, nodeHeight, borderRadius);
+  ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${node.type === 'center' ? 0.9 : 0.6})`;
+  ctx.lineWidth = node.type === 'center' ? 2.5 : 1.5;
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+
+  // Label
+  const fontSize = node.type === 'center' ? Math.max(14, r * 0.85) : node.type === 'branch' ? Math.max(11, r * 0.75) : Math.max(10, r * 0.7);
+  ctx.font = `${node.type === 'center' ? 'bold' : '500'} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = node.type === 'center' ? '#ffffff' : node.color;
+  ctx.fillText(node.label, x, y);
+
+  ctx.globalAlpha = 1;
+
+  // Pulse ring for center
+  if (node.type === 'center') {
+    const pulse = (Math.sin(time * 0.002) + 1) * 0.5;
+    ctx.beginPath();
+    ctx.arc(x, y, (textWidth / 2 + 8) + pulse * 6, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(99, 102, 241, ${0.15 - pulse * 0.1})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function getTextWidth(text, type) {
+  const baseRadius = Math.min(width, height) * CONFIG.nodeRadius;
+  const r = type === 'center' ? baseRadius * 1.4 : type === 'branch' ? baseRadius * 1.1 : baseRadius * 0.8;
+  const fontSize = type === 'center' ? Math.max(14, r * 0.85) : type === 'branch' ? Math.max(11, r * 0.75) : Math.max(10, r * 0.7);
+  ctx.font = `${type === 'center' ? 'bold' : '500'} ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  return ctx.measureText(text).width;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function animate(time) {
+  if (!animStart) animStart = time;
+  const elapsed = (time - animStart) / 1000;
+
+  drawBackground();
+
+  // Draw connections first
+  connections.forEach(conn => drawConnection(conn, elapsed));
+
+  // Draw nodes (children first, then branches, then center)
+  const sortedNodes = [...nodes].sort((a, b) => {
+    const order = { child: 0, branch: 1, center: 2 };
+    return (order[a.type] || 0) - (order[b.type] || 0);
+  });
+
+  sortedNodes.forEach(node => drawNode(node, elapsed, time));
+
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    resize();
+  }
+});
+
+resize();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

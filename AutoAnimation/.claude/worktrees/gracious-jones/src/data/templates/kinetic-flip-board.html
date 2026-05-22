@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flip Board</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --text-color: #FFFFFF;
+    --flip-color: #333333;
+    --bg-color: #1C1C1C;
+    --accent-color: #FFB800;
+    --letter-size: 64px;
+    --letter-gap: 6px;
+    --row-gap: 12px;
+    --flap-radius: 4px;
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    perspective: 1200px;
+  }
+
+  #board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--row-gap);
+    padding: 32px;
+  }
+
+  .word-row {
+    display: flex;
+    align-items: center;
+    gap: var(--letter-gap);
+    position: relative;
+  }
+
+  .word-row.has-divider::after {
+    content: '';
+    position: absolute;
+    bottom: calc(var(--row-gap) * -0.5 - 1px);
+    left: -16px;
+    right: -16px;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,0.06) 15%,
+      rgba(255,255,255,0.1) 50%,
+      rgba(255,255,255,0.06) 85%,
+      transparent 100%
+    );
+  }
+
+  .letter-cell {
+    width: var(--letter-size);
+    height: calc(var(--letter-size) * 1.3);
+    position: relative;
+    font-size: calc(var(--letter-size) * 0.7);
+    font-weight: 700;
+    line-height: calc(var(--letter-size) * 1.3);
+    text-align: center;
+    color: var(--text-color);
+    user-select: none;
+  }
+
+  /* Static top and bottom halves */
+  .flap-half {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    overflow: hidden;
+    background: var(--flip-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .flap-top {
+    top: 0;
+    border-radius: var(--flap-radius) var(--flap-radius) 0 0;
+    border-bottom: 1px solid rgba(0,0,0,0.5);
+    align-items: flex-end;
+  }
+
+  .flap-bottom {
+    bottom: 0;
+    border-radius: 0 0 var(--flap-radius) var(--flap-radius);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    align-items: flex-start;
+  }
+
+  .flap-top .flap-text {
+    transform: translateY(50%);
+  }
+
+  .flap-bottom .flap-text {
+    transform: translateY(-50%);
+  }
+
+  .flap-text {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-size: inherit;
+    font-weight: inherit;
+    font-family: inherit;
+    line-height: calc(var(--letter-size) * 1.3);
+    color: inherit;
+  }
+
+  /* Background gradient for depth */
+  .flap-top {
+    background: linear-gradient(180deg, var(--flip-color) 0%, color-mix(in srgb, var(--flip-color), black 12%) 100%);
+  }
+
+  .flap-bottom {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--flip-color), black 8%) 0%, var(--flip-color) 100%);
+  }
+
+  /* Shadow beneath each cell */
+  .letter-cell::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 4px;
+    right: 4px;
+    height: 4px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 0 0 2px 2px;
+    filter: blur(2px);
+    z-index: -1;
+  }
+
+  /* Animated flap overlay */
+  .flip-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 50%;
+    top: 0;
+    transform-origin: bottom center;
+    transform: rotateX(0deg);
+    backface-visibility: hidden;
+    z-index: 10;
+    overflow: hidden;
+    border-radius: var(--flap-radius) var(--flap-radius) 0 0;
+    pointer-events: none;
+  }
+
+  .flip-panel .flap-half {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 100%;
+  }
+
+  .flip-panel .flap-text {
+    transform: translateY(50%);
+  }
+
+  /* Front of the flip (old character top half) */
+  .flip-front {
+    background: linear-gradient(180deg, var(--flip-color) 0%, color-mix(in srgb, var(--flip-color), black 12%) 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.5);
+    z-index: 12;
+  }
+
+  .flip-front.flipping {
+    animation: flipDown var(--flip-duration) ease-in forwards;
+  }
+
+  /* Back of the flip (new character bottom half, revealed from top) */
+  .flip-back {
+    top: 50%;
+    transform-origin: top center;
+    transform: rotateX(180deg);
+    border-radius: 0 0 var(--flap-radius) var(--flap-radius);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--flip-color), black 8%) 0%, var(--flip-color) 100%);
+    z-index: 11;
+  }
+
+  .flip-back .flap-text {
+    transform: translateY(-50%);
+  }
+
+  .flip-back.flipping {
+    animation: flipUp var(--flip-duration) ease-out forwards;
+    animation-delay: calc(var(--flip-duration) * 0.45);
+  }
+
+  @keyframes flipDown {
+    0% {
+      transform: rotateX(0deg);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+    50% {
+      box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+    }
+    100% {
+      transform: rotateX(-90deg);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+  }
+
+  @keyframes flipUp {
+    0% {
+      transform: rotateX(180deg);
+      box-shadow: 0 -4px 8px rgba(0,0,0,0.3);
+    }
+    60% {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    80% {
+      transform: rotateX(-8deg);
+    }
+    100% {
+      transform: rotateX(0deg);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+  }
+
+  /* Accent dot markers on sides */
+  .accent-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    opacity: 0.5;
+    flex-shrink: 0;
+    margin: 0 4px;
+  }
+
+  /* Settled letter glow */
+  .letter-cell.settled .flap-top,
+  .letter-cell.settled .flap-bottom {
+    color: var(--accent-color);
+    transition: color 0.3s ease;
+  }
+
+  .letter-cell.settled::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: calc(var(--flap-radius) + 2px);
+    background: var(--accent-color);
+    opacity: 0.06;
+    z-index: -1;
+    transition: opacity 0.4s ease;
+  }
+
+  /* Mechanical rivets */
+  .letter-cell .rivet-left,
+  .letter-cell .rivet-right {
+    position: absolute;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #555, #222);
+    transform: translateY(-50%);
+    z-index: 20;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.15);
+  }
+
+  .letter-cell .rivet-left { left: 2px; }
+  .letter-cell .rivet-right { right: 2px; }
+
+  /* Board frame */
+  #board-frame {
+    background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow:
+      0 8px 32px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      inset 0 -1px 0 rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+
+  #board-inner {
+    background: var(--bg-color);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+  }
+</style>
+</head>
+<body>
+
+<div id="board-frame">
+  <div id="board-inner">
+    <div id="board"></div>
+  </div>
+</div>
+
+<script>
+const CONFIG = {
+  words: ['WORK', 'HARD', 'STAY', 'HUMBLE', 'BE', 'KIND'],
+  textColor: '#FFFFFF',
+  flipColor: '#333333',
+  bgColor: '#1C1C1C',
+  accentColor: '#FFB800',
+  flipSpeed: 60,
+  wordDelay: 800,
+  cycleDuration: 10000,
+  showDividers: true,
+};
+
+/* ---------- APPLY CONFIG TO CSS VARIABLES ---------- */
+const root = document.documentElement;
+root.style.setProperty('--text-color', CONFIG.textColor);
+root.style.setProperty('--flip-color', CONFIG.flipColor);
+root.style.setProperty('--bg-color', CONFIG.bgColor);
+root.style.setProperty('--accent-color', CONFIG.accentColor);
+document.body.style.background = CONFIG.bgColor;
+
+const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@&$%!?';
+const CYCLES_PER_LETTER = 6;
+const FLIP_DURATION_MS = CONFIG.flipSpeed * 2.5;
+
+root.style.setProperty('--flip-duration', FLIP_DURATION_MS + 'ms');
+
+const board = document.getElementById('board');
+let allCells = [];
+
+/* ---------- SIZING ---------- */
+function computeLetterSize() {
+  const maxWordLen = Math.max(...CONFIG.words.map(w => w.length));
+  const rows = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const availW = vw - 120;
+  const availH = vh - 120;
+  const sizeByW = Math.floor(availW / (maxWordLen + 0.5));
+  const sizeByH = Math.floor(availH / (rows * 1.6));
+  const size = Math.min(sizeByW, sizeByH, 100);
+  return Math.max(size, 28);
+}
+
+/* ---------- BUILD BOARD ---------- */
+function buildBoard() {
+  board.innerHTML = '';
+  allCells = [];
+  const letterSize = computeLetterSize();
+  root.style.setProperty('--letter-size', letterSize + 'px');
+  root.style.setProperty('--letter-gap', Math.max(3, Math.round(letterSize * 0.08)) + 'px');
+  root.style.setProperty('--row-gap', Math.max(6, Math.round(letterSize * 0.18)) + 'px');
+
+  CONFIG.words.forEach((word, wIdx) => {
+    const row = document.createElement('div');
+    row.className = 'word-row';
+    if (CONFIG.showDividers && wIdx < CONFIG.words.length - 1) {
+      row.classList.add('has-divider');
+    }
+
+    const dotL = document.createElement('div');
+    dotL.className = 'accent-dot';
+    row.appendChild(dotL);
+
+    const wordCells = [];
+    for (let i = 0; i < word.length; i++) {
+      const cell = createCell(' ');
+      row.appendChild(cell.el);
+      wordCells.push(cell);
+    }
+
+    const dotR = document.createElement('div');
+    dotR.className = 'accent-dot';
+    row.appendChild(dotR);
+
+    board.appendChild(row);
+    allCells.push({ word: word.toUpperCase(), cells: wordCells });
+  });
+}
+
+function createCell(char) {
+  const el = document.createElement('div');
+  el.className = 'letter-cell';
+
+  const topHalf = document.createElement('div');
+  topHalf.className = 'flap-half flap-top';
+  const topText = document.createElement('span');
+  topText.className = 'flap-text';
+  topText.textContent = char;
+  topHalf.appendChild(topText);
+
+  const bottomHalf = document.createElement('div');
+  bottomHalf.className = 'flap-half flap-bottom';
+  const bottomText = document.createElement('span');
+  bottomText.className = 'flap-text';
+  bottomText.textContent = char;
+  bottomHalf.appendChild(bottomText);
+
+  const rivetL = document.createElement('div');
+  rivetL.className = 'rivet-left';
+  const rivetR = document.createElement('div');
+  rivetR.className = 'rivet-right';
+
+  el.appendChild(topHalf);
+  el.appendChild(bottomHalf);
+  el.appendChild(rivetL);
+  el.appendChild(rivetR);
+
+  return {
+    el,
+    currentChar: char,
+    topText,
+    bottomText,
+    setChar(c) {
+      this.topText.textContent = c;
+      this.bottomText.textContent = c;
+      this.currentChar = c;
+    }
+  };
+}
+
+/* ---------- FLIP ANIMATION ---------- */
+function flipTo(cell, newChar) {
+  return new Promise(resolve => {
+    const oldChar = cell.currentChar;
+    if (oldChar === newChar) {
+      resolve();
+      return;
+    }
+
+    // Remove previous flip panels if any
+    cell.el.querySelectorAll('.flip-panel').forEach(p => p.remove());
+
+    // Front panel: shows OLD char top half, flips down
+    const front = document.createElement('div');
+    front.className = 'flip-panel flip-front';
+    const frontInner = document.createElement('div');
+    frontInner.className = 'flap-half';
+    const frontText = document.createElement('span');
+    frontText.className = 'flap-text';
+    frontText.textContent = oldChar;
+    frontInner.appendChild(frontText);
+    front.appendChild(frontInner);
+
+    // Back panel: shows NEW char bottom half, flips up from behind
+    const back = document.createElement('div');
+    back.className = 'flip-panel flip-back';
+    const backInner = document.createElement('div');
+    backInner.className = 'flap-half';
+    const backText = document.createElement('span');
+    backText.className = 'flap-text';
+    backText.textContent = newChar;
+    backInner.appendChild(backText);
+    back.appendChild(backInner);
+
+    cell.el.appendChild(front);
+    cell.el.appendChild(back);
+
+    // Update the static top half immediately to show new char beneath the flip
+    cell.topText.textContent = newChar;
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      front.classList.add('flipping');
+      back.classList.add('flipping');
+    });
+
+    const totalTime = FLIP_DURATION_MS * 1.5;
+    setTimeout(() => {
+      cell.bottomText.textContent = newChar;
+      cell.currentChar = newChar;
+      front.remove();
+      back.remove();
+      resolve();
+    }, totalTime);
+  });
+}
+
+function randomChar() {
+  return CHARSET[Math.floor(Math.random() * CHARSET.length)];
+}
+
+/* ---------- FLIP LETTER THROUGH RANDOM CHARS ---------- */
+function flipLetterWithScramble(cell, targetChar, numCycles) {
+  return new Promise(async resolve => {
+    for (let c = 0; c < numCycles; c++) {
+      const intermediate = randomChar();
+      await flipTo(cell, intermediate);
+      await wait(CONFIG.flipSpeed * 0.3);
+    }
+    await flipTo(cell, targetChar);
+    resolve();
+  });
+}
+
+/* ---------- FLIP WORD IN ---------- */
+async function flipWordIn(wordData) {
+  const { word, cells } = wordData;
+  const promises = [];
+
+  for (let i = 0; i < cells.length; i++) {
+    const delay = i * (CONFIG.flipSpeed * 1.2);
+    const cycles = CYCLES_PER_LETTER + Math.floor(Math.random() * 3);
+    const p = new Promise(resolve => {
+      setTimeout(async () => {
+        await flipLetterWithScramble(cells[i], word[i], cycles);
+        cells[i].el.classList.add('settled');
+        resolve();
+      }, delay);
+    });
+    promises.push(p);
+  }
+
+  await Promise.all(promises);
+}
+
+/* ---------- FLIP WORD OUT (SCRAMBLE TO BLANK) ---------- */
+async function flipWordOut(wordData) {
+  const { cells } = wordData;
+  const promises = [];
+
+  for (let i = cells.length - 1; i >= 0; i--) {
+    const delay = (cells.length - 1 - i) * (CONFIG.flipSpeed * 0.8);
+    const p = new Promise(resolve => {
+      setTimeout(async () => {
+        cells[i].el.classList.remove('settled');
+        const scrambles = 3 + Math.floor(Math.random() * 3);
+        await flipLetterWithScramble(cells[i], ' ', scrambles);
+        resolve();
+      }, delay);
+    });
+    promises.push(p);
+  }
+
+  await Promise.all(promises);
+}
+
+/* ---------- MAIN CYCLE ---------- */
+let running = true;
+
+async function runCycle() {
+  while (running) {
+    // Phase 1: Flip all words in, one word at a time
+    for (let w = 0; w < allCells.length; w++) {
+      await flipWordIn(allCells[w]);
+      if (w < allCells.length - 1) {
+        await wait(CONFIG.wordDelay);
+      }
+    }
+
+    // Phase 2: Hold all words visible
+    const flipInTime = allCells.reduce((sum, wd) => {
+      return sum + wd.cells.length * CONFIG.flipSpeed * 1.2 +
+        CYCLES_PER_LETTER * FLIP_DURATION_MS * 1.5;
+    }, 0) + CONFIG.wordDelay * (allCells.length - 1);
+
+    const holdTime = Math.max(CONFIG.cycleDuration - flipInTime * 0.4, 2000);
+    await wait(holdTime);
+
+    // Phase 3: Flip all words out simultaneously
+    const outPromises = allCells.map((wd, idx) => {
+      return new Promise(resolve => {
+        setTimeout(async () => {
+          await flipWordOut(wd);
+          resolve();
+        }, idx * 200);
+      });
+    });
+    await Promise.all(outPromises);
+
+    await wait(600);
+  }
+}
+
+function wait(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+/* ---------- INIT ---------- */
+function init() {
+  buildBoard();
+  runCycle();
+}
+
+window.addEventListener('resize', () => {
+  const letterSize = computeLetterSize();
+  root.style.setProperty('--letter-size', letterSize + 'px');
+  root.style.setProperty('--letter-gap', Math.max(3, Math.round(letterSize * 0.08)) + 'px');
+  root.style.setProperty('--row-gap', Math.max(6, Math.round(letterSize * 0.18)) + 'px');
+});
+
+init();
+</script>
+</body>
+</html>

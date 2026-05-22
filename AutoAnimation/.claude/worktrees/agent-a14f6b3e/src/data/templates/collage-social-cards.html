@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Social Cards Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #f3f4f6; font-family: 'Arial', sans-serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 16px; padding: 30px; }
+
+  .social { width: 240px; opacity: 0; will-change: transform, opacity; }
+  .social-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+  .social-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  .social-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
+  .social-user { flex: 1; }
+  .social-name { font-size: 12px; font-weight: 700; color: #1f2937; }
+  .social-handle { font-size: 10px; color: #9ca3af; }
+  .social-platform { font-size: 10px; font-weight: 700; }
+  .social-body { padding: 0 14px 10px; }
+  .social-text { font-size: 12px; color: #374151; line-height: 1.5; margin-bottom: 8px; }
+  .social-image { width: 100%; height: 80px; border-radius: 8px; margin-bottom: 8px; }
+  .social-footer { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid #f3f4f6; }
+  .social-stat { font-size: 10px; color: #6b7280; display: flex; align-items: center; gap: 4px; }
+  .stat-icon { font-size: 12px; }
+
+  @keyframes socialPop { 0% { opacity: 0; transform: scale(0.85) translateY(15px); } 60% { transform: scale(1.02) translateY(-2px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes socialFade { 0% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  posts: [
+    { color: '#3b82f6', name: 'Alex Dev', handle: '@alexdev', platform: '\ud83d\udd35', text: 'Just shipped the new feature! Performance improved by 40%', imgColor: '#dbeafe', likes: '2.4K', comments: '184', shares: '56' },
+    { color: '#ec4899', name: 'Sara Creative', handle: '@saracreative', platform: '\ud83d\udfe3', text: 'New design system is live. Dark mode included!', imgColor: '#fce7f3', likes: '5.1K', comments: '342', shares: '128' },
+    { color: '#10b981', name: 'Mike Maker', handle: '@mikemaker', platform: '\ud83d\udfe2', text: 'Building in public: Day 47. The MVP is taking shape.', imgColor: '#d1fae5', likes: '891', comments: '67', shares: '23' },
+    { color: '#f59e0b', name: 'Lisa PM', handle: '@lisapm', platform: '\ud83d\udfe1', text: 'Team velocity doubled after switching to async standups', imgColor: '#fef3c7', likes: '3.2K', comments: '256', shares: '89' },
+    { color: '#8b5cf6', name: 'Dan Cloud', handle: '@dancloud', platform: '\ud83d\udfe3', text: 'Infrastructure costs down 60%. Heres how we did it:', imgColor: '#ede9fe', likes: '7.8K', comments: '521', shares: '312' },
+    { color: '#ef4444', name: 'Kim AI', handle: '@kimai', platform: '\ud83d\udd34', text: 'Our AI model accuracy hit 98.5% on the benchmark', imgColor: '#fef2f2', likes: '12K', comments: '843', shares: '567' },
+  ],
+  bgColor: '#f3f4f6',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.posts.forEach(p => {
+    const el = document.createElement('div'); el.className = 'social';
+    const card = document.createElement('div'); card.className = 'social-card';
+    const header = document.createElement('div'); header.className = 'social-header';
+    const avatar = document.createElement('div'); avatar.className = 'social-avatar'; avatar.style.background = p.color;
+    avatar.textContent = p.name.split(' ').map(w => w[0]).join('');
+    const user = document.createElement('div'); user.className = 'social-user';
+    const name = document.createElement('div'); name.className = 'social-name'; name.textContent = p.name;
+    const handle = document.createElement('div'); handle.className = 'social-handle'; handle.textContent = p.handle;
+    user.appendChild(name); user.appendChild(handle);
+    const platform = document.createElement('div'); platform.className = 'social-platform'; platform.textContent = p.platform;
+    header.appendChild(avatar); header.appendChild(user); header.appendChild(platform);
+    const body = document.createElement('div'); body.className = 'social-body';
+    const text = document.createElement('div'); text.className = 'social-text'; text.textContent = p.text;
+    const img = document.createElement('div'); img.className = 'social-image'; img.style.background = p.imgColor;
+    body.appendChild(text); body.appendChild(img);
+    const footer = document.createElement('div'); footer.className = 'social-footer';
+    [{icon:'\u2665',val:p.likes},{icon:'\ud83d\udcac',val:p.comments},{icon:'\u21bb',val:p.shares}].forEach(s => {
+      const stat = document.createElement('div'); stat.className = 'social-stat';
+      const icon = document.createElement('span'); icon.className = 'stat-icon'; icon.textContent = s.icon;
+      stat.appendChild(icon); stat.appendChild(document.createTextNode(s.val)); footer.appendChild(stat);
+    });
+    card.appendChild(header); card.appendChild(body); card.appendChild(footer);
+    el.appendChild(card); stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=300, inD=480, hold=3500, outS=250, outD=400, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`socialPop ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`socialFade ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

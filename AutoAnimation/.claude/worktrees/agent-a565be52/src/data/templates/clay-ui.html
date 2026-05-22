@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clay UI</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #F0EDFF;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .container {
+    width: 92%; max-width: 420px;
+    display: flex; flex-direction: column; gap: 20px;
+    align-items: center;
+  }
+  /* Title */
+  .clay-title {
+    font-size: clamp(24px, 5vw, 36px); font-weight: 800;
+    color: #6C5CE7; letter-spacing: 2px;
+    animation: titleFloat 4s ease-in-out infinite;
+  }
+  @keyframes titleFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  /* Clay card */
+  .clay-card {
+    width: 100%; border-radius: 28px; padding: 24px;
+    background: #F0EDFF;
+    box-shadow:
+      12px 12px 24px rgba(166, 152, 230, 0.3),
+      -8px -8px 20px rgba(255, 255, 255, 0.9),
+      inset 0 0 0 rgba(166, 152, 230, 0);
+  }
+  /* Candy cards */
+  .candy-row {
+    display: flex; gap: 14px; justify-content: center;
+    flex-wrap: wrap;
+  }
+  .candy-card {
+    width: clamp(80px, 22vw, 110px); height: clamp(90px, 24vw, 120px);
+    border-radius: 24px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px;
+    box-shadow:
+      8px 8px 16px rgba(0,0,0,0.08),
+      -4px -4px 12px rgba(255,255,255,0.9),
+      inset 0 -3px 6px rgba(0,0,0,0.04);
+  }
+  .candy-1 { background: #FFB3BA; animation: candyBounce 3s ease-in-out infinite; }
+  .candy-2 { background: #BAE1FF; animation: candyBounce 3s ease-in-out infinite 0.5s; }
+  .candy-3 { background: #BAFFC9; animation: candyBounce 3s ease-in-out infinite 1s; }
+  @keyframes candyBounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    30% { transform: translateY(-8px) scale(1.03); }
+    60% { transform: translateY(2px) scale(0.98); }
+  }
+  .candy-icon { font-size: 28px; }
+  .candy-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: rgba(0,0,0,0.5);
+  }
+  /* Pill buttons */
+  .pills-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .pill-btn {
+    padding: 10px 24px; border-radius: 50px; border: none;
+    font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer;
+    box-shadow:
+      6px 6px 14px rgba(0,0,0,0.08),
+      -3px -3px 10px rgba(255,255,255,0.9),
+      inset 0 -2px 4px rgba(0,0,0,0.04);
+  }
+  .pill-1 { background: #DDA0DD; color: #5B2C6F; animation: pillPulse 2.5s ease-in-out infinite; }
+  .pill-2 { background: #FFD93D; color: #7D6608; animation: pillPulse 2.5s ease-in-out infinite 0.8s; }
+  .pill-3 { background: #6BCB77; color: #1E5128; animation: pillPulse 2.5s ease-in-out infinite 1.6s; }
+  @keyframes pillPulse {
+    0%, 100% { transform: scale(1); box-shadow: 6px 6px 14px rgba(0,0,0,0.08), -3px -3px 10px rgba(255,255,255,0.9); }
+    50% { transform: scale(1.05); box-shadow: 8px 8px 18px rgba(0,0,0,0.12), -4px -4px 14px rgba(255,255,255,0.95); }
+  }
+  /* Progress circles */
+  .progress-row {
+    display: flex; gap: 20px; justify-content: center; align-items: center;
+  }
+  .progress-ring {
+    width: 60px; height: 60px; position: relative;
+  }
+  .ring-bg {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: #F0EDFF;
+    box-shadow:
+      inset 4px 4px 8px rgba(166,152,230,0.25),
+      inset -4px -4px 8px rgba(255,255,255,0.8);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ring-value {
+    font-size: 14px; font-weight: 800; color: #6C5CE7;
+  }
+  .ring-svg {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    transform: rotate(-90deg);
+  }
+  .ring-track { fill: none; stroke: rgba(108,92,231,0.1); stroke-width: 4; }
+  .ring-fill { fill: none; stroke-width: 4; stroke-linecap: round; }
+  .rf-1 { stroke: #FF6B6B; animation: ringFill1 3s ease-in-out infinite; }
+  .rf-2 { stroke: #4ECDC4; animation: ringFill2 4s ease-in-out infinite; }
+  .rf-3 { stroke: #FFE66D; animation: ringFill3 3.5s ease-in-out infinite; }
+  @keyframes ringFill1 {
+    0%, 100% { stroke-dasharray: 0 151; }
+    50% { stroke-dasharray: 113 151; }
+  }
+  @keyframes ringFill2 {
+    0%, 100% { stroke-dasharray: 0 151; }
+    50% { stroke-dasharray: 90 151; }
+  }
+  @keyframes ringFill3 {
+    0%, 100% { stroke-dasharray: 0 151; }
+    50% { stroke-dasharray: 130 151; }
+  }
+  .ring-label {
+    font-size: 9px; text-align: center; margin-top: 6px;
+    font-weight: 700; color: rgba(0,0,0,0.35); letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  /* Blob shapes (background) */
+  .blob {
+    position: fixed; z-index: -1; border-radius: 50%;
+    filter: blur(60px); opacity: 0.3;
+  }
+  .blob-1 {
+    width: 300px; height: 300px; background: #DDA0DD;
+    top: -5%; right: -5%;
+    animation: blobMorph1 10s ease-in-out infinite;
+  }
+  .blob-2 {
+    width: 250px; height: 250px; background: #BAE1FF;
+    bottom: -8%; left: -5%;
+    animation: blobMorph2 12s ease-in-out infinite;
+  }
+  .blob-3 {
+    width: 200px; height: 200px; background: #BAFFC9;
+    top: 40%; left: 60%;
+    animation: blobMorph3 8s ease-in-out infinite;
+  }
+  @keyframes blobMorph1 {
+    0%, 100% { border-radius: 40% 60% 60% 40% / 60% 30% 70% 40%; transform: translate(0, 0); }
+    50% { border-radius: 60% 40% 30% 70% / 40% 60% 40% 60%; transform: translate(-30px, 20px); }
+  }
+  @keyframes blobMorph2 {
+    0%, 100% { border-radius: 60% 40% 50% 50% / 50% 60% 40% 50%; transform: translate(0, 0); }
+    50% { border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%; transform: translate(25px, -15px); }
+  }
+  @keyframes blobMorph3 {
+    0%, 100% { border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%; transform: translate(0, 0) scale(1); }
+    50% { border-radius: 60% 40% 60% 40% / 50% 50% 50% 50%; transform: translate(-20px, 15px) scale(1.1); }
+  }
+  /* Notification dot */
+  .notif-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: #FF6B6B;
+    position: absolute; top: -3px; right: -3px;
+    animation: notifPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes notifPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+  }
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="container">
+  <div class="clay-title" id="titleText">Clay UI</div>
+
+  <div class="clay-card">
+    <div class="candy-row">
+      <div class="candy-card candy-1" style="position:relative">
+        <div class="notif-dot"></div>
+        <div class="candy-icon">&#127912;</div>
+        <div class="candy-label">Create</div>
+      </div>
+      <div class="candy-card candy-2">
+        <div class="candy-icon">&#9889;</div>
+        <div class="candy-label">Render</div>
+      </div>
+      <div class="candy-card candy-3">
+        <div class="candy-icon">&#127925;</div>
+        <div class="candy-label">Audio</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pills-row">
+    <button class="pill-btn pill-1" id="pill1">Motion</button>
+    <button class="pill-btn pill-2" id="pill2">Effects</button>
+    <button class="pill-btn pill-3" id="pill3">Export</button>
+  </div>
+
+  <div class="clay-card">
+    <div class="progress-row">
+      <div>
+        <div class="progress-ring">
+          <div class="ring-bg"><span class="ring-value" id="rv1">75</span></div>
+          <svg class="ring-svg" viewBox="0 0 60 60">
+            <circle class="ring-track" cx="30" cy="30" r="24"/>
+            <circle class="ring-fill rf-1" cx="30" cy="30" r="24"/>
+          </svg>
+        </div>
+        <div class="ring-label">Speed</div>
+      </div>
+      <div>
+        <div class="progress-ring">
+          <div class="ring-bg"><span class="ring-value" id="rv2">60</span></div>
+          <svg class="ring-svg" viewBox="0 0 60 60">
+            <circle class="ring-track" cx="30" cy="30" r="24"/>
+            <circle class="ring-fill rf-2" cx="30" cy="30" r="24"/>
+          </svg>
+        </div>
+        <div class="ring-label">Quality</div>
+      </div>
+      <div>
+        <div class="progress-ring">
+          <div class="ring-bg"><span class="ring-value" id="rv3">88</span></div>
+          <svg class="ring-svg" viewBox="0 0 60 60">
+            <circle class="ring-track" cx="30" cy="30" r="24"/>
+            <circle class="ring-fill rf-3" cx="30" cy="30" r="24"/>
+          </svg>
+        </div>
+        <div class="ring-label">Style</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TITLE = 'Clay UI';
+const BG_COLOR = '#F0EDFF';
+const ACCENT = '#6C5CE7';
+const PILL_LABELS = ['Motion', 'Effects', 'Export'];
+// ==============================
+
+document.getElementById('titleText').textContent = TITLE;
+document.body.style.background = BG_COLOR;
+document.getElementById('pill1').textContent = PILL_LABELS[0];
+document.getElementById('pill2').textContent = PILL_LABELS[1];
+document.getElementById('pill3').textContent = PILL_LABELS[2];
+
+// Animate ring values
+function animateRings() {
+  const t = Date.now() / 1000;
+  document.getElementById('rv1').textContent = Math.round(50 + 25 * Math.sin(t * 0.7));
+  document.getElementById('rv2').textContent = Math.round(40 + 20 * Math.sin(t * 0.5));
+  document.getElementById('rv3').textContent = Math.round(55 + 33 * Math.sin(t * 0.6));
+  requestAnimationFrame(animateRings);
+}
+animateRings();
+</script>
+</body>
+</html>

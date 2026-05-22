@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spy Satellite Simulator</title>
+<link href="https://cdn.maptiler.com/maptiler-sdk-js/v2/maptiler-sdk.css" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #020408;
+    color: #e0e8f0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #map {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  #hud {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Loading screen */
+  #loading {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: #020408;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    transition: opacity 0.8s ease;
+  }
+  #loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #loading h2 {
+    font-family: 'Courier New', monospace;
+    font-weight: 400;
+    font-size: 13px;
+    letter-spacing: 6px;
+    color: #00e5ff;
+    text-transform: uppercase;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(0,229,255,0.15);
+    border-top-color: #00e5ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Hide default MapTiler controls */
+  .maplibregl-ctrl-top-left,
+  .maplibregl-ctrl-top-right,
+  .maplibregl-ctrl-bottom-left,
+  .maplibregl-ctrl-bottom-right {
+    display: none !important;
+  }
+
+  /* Visual mode filters applied to the map container */
+  #map.mode-nvg {
+    filter: sepia(1) hue-rotate(80deg) saturate(4) brightness(0.8);
+  }
+  #map.mode-flir {
+    filter: saturate(0) contrast(1.8) brightness(1.2) invert(0.9);
+  }
+  #map.mode-crt {
+    filter: saturate(0.7) contrast(1.3) brightness(0.9);
+  }
+
+  /* Target markers on map */
+  .sat-target-marker {
+    width: 20px;
+    height: 20px;
+    position: relative;
+  }
+  .sat-target-marker::before,
+  .sat-target-marker::after {
+    content: '';
+    position: absolute;
+    border: 1.5px solid #ff1744;
+  }
+  .sat-target-marker::before {
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 50%;
+    animation: target-pulse 1.5s ease-in-out infinite;
+  }
+  .sat-target-marker::after {
+    top: -4px; left: -4px; right: -4px; bottom: -4px;
+    border-radius: 50%;
+    border-style: dashed;
+    animation: target-rotate 6s linear infinite;
+  }
+  .sat-target-label {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #ff1744;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 0 6px rgba(255,23,68,0.8);
+  }
+  @keyframes target-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+  @keyframes target-rotate {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Satellite dot markers */
+  .sat-dot-marker {
+    width: 8px;
+    height: 8px;
+    background: #00e5ff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #00e5ff, 0 0 16px rgba(0,229,255,0.4);
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+  }
+  .sat-dot-marker.selected {
+    background: #00ff88;
+    box-shadow: 0 0 12px #00ff88, 0 0 24px rgba(0,255,136,0.5);
+  }
+  .sat-dot-label {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 8px;
+    letter-spacing: 1px;
+    color: #00e5ff;
+    white-space: nowrap;
+    text-shadow: 0 0 4px rgba(0,229,255,0.8);
+    pointer-events: none;
+  }
+  .sat-dot-marker.selected .sat-dot-label {
+    color: #00ff88;
+    text-shadow: 0 0 4px rgba(0,255,136,0.8);
+  }
+  .sat-dot-marker:hover {
+    transform: scale(1.5);
+    transition: transform 0.15s ease;
+  }
+
+  /* Ground station markers */
+  .gs-marker {
+    width: 10px;
+    height: 10px;
+    background: transparent;
+    border: 1.5px solid #ff9800;
+    position: relative;
+    transform: rotate(45deg);
+    box-shadow: 0 0 6px rgba(255,152,0,0.5);
+    pointer-events: none;
+  }
+  .gs-label {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-45deg);
+    font-family: 'Courier New', monospace;
+    font-size: 7px;
+    letter-spacing: 1px;
+    color: #ff9800;
+    white-space: nowrap;
+    text-shadow: 0 0 4px rgba(255,152,0,0.6);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <h2>Initializing Satellite Feed</h2>
+</div>
+
+<div id="map"></div>
+<canvas id="hud"></canvas>
+
+<script>
+// ─── CONFIG ───
+var CONFIG = {
+  // Text
+  missionName: 'OVERWATCH SIGMA-7',
+  classificationLevel: 'TOP SECRET // SCI',
+  // Visual
+  visualMode: 'normal',        // 'normal', 'nvg', 'flir', 'crt'
+  accentColor: '#00e5ff',
+  hudOpacity: 0.85,
+  showGrid: false,
+  showScanlines: true,
+  showOrbitalTracks: true,
+  // Colors
+  targetMarkerColor: '#ff1744',
+  satelliteMarkerColor: '#00e5ff',
+  selectedSatelliteColor: '#00ff88',
+  trailOpacity: 0.25,
+  selectedTrailOpacity: 0.7,
+  // Animation speeds
+  crosshairRotateSpeed: 0.3,
+  innerReticleSpeed: 0.5,
+  // Map
+  apiKey: 'fpF5klX6zPBvoCSt2vV8',
+  mapStyle: 'satellite',
+  center: [0, 20],
+  zoom: 2.5,
+  pitch: 0,
+  bearing: 0,
+  terrain3D: false,
+  // Auto-rotate
+  autoRotateSpeed: 3,
+  followTransitionDuration: 800,
+  // Satellite
+  activeSatellite: 'ISS',
+  satelliteTrailLength: 60,    // Minutes of ground track
+  showGroundStations: true,
+  // Frame sync
+  frameSyncEnabled: -1,
+  commands: [],
+  // Timing
+  timeSpeedMultiplier: 60,     // 60x real-time in interactive mode
+};
+
+// ─── State ───
+var map = null;
+var mapReady = false;
+var lastProcessedFrame = -1;
+var hudCanvas, hudCtx, W, H;
+var time = 0;
+var recBlink = true;
+var signalBars = [0.9, 0.85, 0.78, 0.7, 0.55];
+var hudVisible = true;
+var autoRotating = false;
+var rotationAnimId = null;
+var selectedSatellite = null;
+var followingSatellite = false;
+var targetMarkers = {};
+var satMarkers = {};
+var satTrailLayers = {};
+var gsMarkers = {};
+var lastTrailUpdate = 0;
+var MAX_TRAIL_POINTS = 500;
+
+// HUD bootup animation
+var hudBootTime = 0;
+var hudBooted = false;
+
+// Alert system
+var activeAlert = null;
+var alertStartTime = 0;
+
+// Target lock animation
+var targetLockState = null; // { targetId, startTime, phase, progress }
+
+// ─── TLE Data (real satellites) ───
+var TLE_DATA = [
+  { name: 'ISS', noradId: 25544,
+    tle1: '1 25544U 98067A   24100.50000000  .00016717  00000-0  10270-3 0  9002',
+    tle2: '2 25544  51.6400 200.0000 0007000  50.0000 310.0000 15.49000000000000' },
+  { name: 'HUBBLE', noradId: 20580,
+    tle1: '1 20580U 90037B   24100.50000000  .00000800  00000-0  40000-4 0  9003',
+    tle2: '2 20580  28.4700 100.0000 0002800 300.0000  60.0000 15.09000000000000' },
+  { name: 'LANDSAT-8', noradId: 39084,
+    tle1: '1 39084U 13008A   24100.50000000  .00000100  00000-0  20000-4 0  9004',
+    tle2: '2 39084  98.2100  50.0000 0001500 100.0000 260.0000 14.57000000000000' },
+  { name: 'NOAA-20', noradId: 43013,
+    tle1: '1 43013U 17073A   24100.50000000  .00000100  00000-0  22000-4 0  9005',
+    tle2: '2 43013  98.7400  30.0000 0001000 110.0000 250.0000 14.19000000000000' },
+  { name: 'GPS IIF-1', noradId: 36585,
+    tle1: '1 36585U 10022A   24100.50000000  .00000010  00000-0  10000-4 0  9006',
+    tle2: '2 36585  55.0400 150.0000 0050000 220.0000 140.0000  2.00560000000000' },
+  { name: 'TERRA', noradId: 25994,
+    tle1: '1 25994U 99068A   24100.50000000  .00000100  00000-0  25000-4 0  9007',
+    tle2: '2 25994  98.2100  70.0000 0001200  95.0000 265.0000 14.57000000000000' },
+  { name: 'AQUA', noradId: 27424,
+    tle1: '1 27424U 02022A   24100.50000000  .00000100  00000-0  23000-4 0  9008',
+    tle2: '2 27424  98.2100  80.0000 0001300  90.0000 270.0000 14.57000000000000' },
+  { name: 'SENTINEL-2A', noradId: 40697,
+    tle1: '1 40697U 15028A   24100.50000000  .00000100  00000-0  21000-4 0  9009',
+    tle2: '2 40697  98.5700  40.0000 0001200 100.0000 260.0000 14.31000000000000' },
+  { name: 'COSMOS 2542', noradId: 44835,
+    tle1: '1 44835U 19079A   24100.50000000  .00000050  00000-0  15000-4 0  9010',
+    tle2: '2 44835  97.9000 120.0000 0010000 200.0000 160.0000 14.53000000000000' },
+  { name: 'USA 224', noradId: 37348,
+    tle1: '1 37348U 11002A   24100.50000000  .00000500  00000-0  30000-4 0  9011',
+    tle2: '2 37348  97.9000  60.0000 0010000 250.0000 110.0000 14.90000000000000' },
+  { name: 'STARLINK-1007', noradId: 44713,
+    tle1: '1 44713U 19074A   24100.50000000  .00010000  00000-0  50000-4 0  9012',
+    tle2: '2 44713  53.0500 180.0000 0001500  80.0000 280.0000 15.06000000000000' },
+  { name: 'STARLINK-1130', noradId: 45044,
+    tle1: '1 45044U 20012A   24100.50000000  .00010000  00000-0  50000-4 0  9013',
+    tle2: '2 45044  53.0500 200.0000 0001500  90.0000 270.0000 15.06000000000000' },
+  { name: 'YAOGAN-30D', noradId: 42766,
+    tle1: '1 42766U 17034A   24100.50000000  .00000200  00000-0  18000-4 0  9014',
+    tle2: '2 42766  35.0000 250.0000 0015000 180.0000 180.0000 14.85000000000000' },
+  { name: 'GPS IIF-12', noradId: 41019,
+    tle1: '1 41019U 15062A   24100.50000000  .00000010  00000-0  10000-4 0  9015',
+    tle2: '2 41019  55.0200 270.0000 0040000 200.0000 160.0000  2.00560000000000' },
+  { name: 'METEOR-M2', noradId: 40069,
+    tle1: '1 40069U 14037A   24100.50000000  .00000100  00000-0  20000-4 0  9016',
+    tle2: '2 40069  98.5000 110.0000 0005000 300.0000  60.0000 14.21000000000000' },
+  { name: 'TIANGONG', noradId: 54216,
+    tle1: '1 54216U 22143A   24100.50000000  .00015000  00000-0  95000-4 0  9017',
+    tle2: '2 54216  41.4700 300.0000 0005000  40.0000 320.0000 15.62000000000000' },
+];
+
+// Parsed satellite records (populated after satellite.js loads)
+var satRecords = [];
+
+// ─── Ground Stations ───
+var GROUND_STATIONS = [
+  { name: 'PINE GAP', lng: 133.74, lat: -23.80 },
+  { name: 'MENWITH HILL', lng: -1.69, lat: 54.01 },
+  { name: 'BUCKLEY AFB', lng: -104.75, lat: 39.72 },
+  { name: 'NRO HQ', lng: -77.44, lat: 38.88 },
+  { name: 'MISAWA AB', lng: 141.37, lat: 40.70 },
+];
+
+// ─── Style mapping ───
+var STYLE_MAP = {
+  satellite: 'SATELLITE',
+  streets: 'STREETS',
+  topo: 'TOPO',
+  ocean: 'OCEAN',
+  winter: 'WINTER',
+  outdoor: 'OUTDOOR',
+  dataviz: 'DATAVIZ',
+  basic: 'BASIC',
+};
+
+function getStyleEnum(styleName) {
+  var key = (styleName || 'satellite').toLowerCase();
+  return maptilersdk.MapStyle[STYLE_MAP[key] || 'SATELLITE'];
+}
+
+// ─── Utility ───
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// ─── HUD Resize ───
+function resizeHud() {
+  hudCanvas = document.getElementById('hud');
+  hudCtx = hudCanvas.getContext('2d');
+  W = hudCanvas.width = window.innerWidth * devicePixelRatio;
+  H = hudCanvas.height = window.innerHeight * devicePixelRatio;
+  hudCanvas.style.width = window.innerWidth + 'px';
+  hudCanvas.style.height = window.innerHeight + 'px';
+}
+
+// ─── Parse TLE data ───
+function parseTLEData() {
+  if (typeof satellite === 'undefined') return;
+  satRecords = [];
+  var EARTH_RADIUS = 6371; // km
+  var MU = 398600.4418; // km³/s² (Earth gravitational parameter)
+  for (var i = 0; i < TLE_DATA.length; i++) {
+    var t = TLE_DATA[i];
+    try {
+      var satrec = satellite.twoline2satrec(t.tle1, t.tle2);
+      // Compute orbital elements from TLE
+      var meanMotion = satrec.no; // rad/min (from satellite.js internals)
+      var eccentricity = satrec.ecco;
+      var inclination = satrec.inclo * (180 / Math.PI); // Convert to degrees
+      // Period from mean motion: T = 2π / n (in minutes)
+      var periodMin = (2 * Math.PI) / meanMotion;
+      // Semi-major axis from period: a = (μ * T²/4π²)^(1/3), T in seconds
+      var periodSec = periodMin * 60;
+      var semiMajorAxis = Math.pow(MU * periodSec * periodSec / (4 * Math.PI * Math.PI), 1/3);
+      // Apogee/Perigee altitude
+      var apogee = semiMajorAxis * (1 + eccentricity) - EARTH_RADIUS;
+      var perigee = semiMajorAxis * (1 - eccentricity) - EARTH_RADIUS;
+
+      satRecords.push({
+        name: t.name,
+        noradId: t.noradId,
+        satrec: satrec,
+        lng: 0, lat: 0, alt: 0,
+        velocity: 0,
+        trail: [],
+        // Orbital elements (static)
+        periodMin: periodMin,
+        apogee: apogee,
+        perigee: perigee,
+        inclination: inclination,
+      });
+    } catch (e) {
+      // Skip invalid TLE
+    }
+  }
+}
+
+// ─── Propagate satellite positions ───
+function propagateSatellites(simDate) {
+  if (typeof satellite === 'undefined') return;
+
+  for (var i = 0; i < satRecords.length; i++) {
+    var sat = satRecords[i];
+    try {
+      var posAndVel = satellite.propagate(sat.satrec, simDate);
+      if (!posAndVel.position || posAndVel.position === true) continue;
+
+      var gmst = satellite.gstime(simDate);
+      var geo = satellite.eciToGeodetic(posAndVel.position, gmst);
+
+      var newLng = satellite.degreesLong(geo.longitude);
+      var newLat = satellite.degreesLat(geo.latitude);
+
+      // #2: NaN/invalid position guard
+      if (!isFinite(newLng) || !isFinite(newLat)) continue;
+
+      sat.lng = newLng;
+      sat.lat = newLat;
+      sat.alt = geo.height; // km
+
+      // Velocity in km/s
+      var vel = posAndVel.velocity;
+      if (vel && vel.x !== undefined) {
+        sat.velocity = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+      }
+
+      // Ground track trail
+      if (CONFIG.showOrbitalTracks) {
+        // Validate before pushing
+        if (isFinite(sat.lng) && isFinite(sat.lat)) {
+          sat.trail.push([sat.lng, sat.lat]);
+        }
+        var maxPoints = Math.min(Math.floor(CONFIG.satelliteTrailLength * 2), MAX_TRAIL_POINTS);
+        if (sat.trail.length > maxPoints) {
+          sat.trail = sat.trail.slice(sat.trail.length - maxPoints);
+        }
+      }
+    } catch (e) {
+      // Propagation can fail for edge cases
+    }
+  }
+}
+
+// ─── Update satellite markers on map ───
+// Split trail at antimeridian crossings into multiple segments
+function splitTrailAtAntimeridian(trail) {
+  if (trail.length < 2) return [trail];
+  var segments = [];
+  var current = [trail[0]];
+  for (var i = 1; i < trail.length; i++) {
+    var deltaLng = trail[i][0] - trail[i - 1][0];
+    if (Math.abs(deltaLng) > 180) {
+      // Antimeridian crossing — split here
+      segments.push(current);
+      current = [trail[i]];
+    } else {
+      current.push(trail[i]);
+    }
+  }
+  if (current.length > 0) segments.push(current);
+  return segments;
+}
+
+function updateSatelliteMarkers() {
+  if (!map || !mapReady) return;
+
+  var now = performance.now();
+  var shouldUpdateTrails = (now - lastTrailUpdate) > 500;
+
+  for (var i = 0; i < satRecords.length; i++) {
+    var sat = satRecords[i];
+    // #2: NaN/invalid position guard
+    if (!isFinite(sat.lng) || !isFinite(sat.lat)) continue;
+
+    var id = 'sat-' + sat.name;
+    var isSelected = selectedSatellite === sat.name;
+
+    if (!satMarkers[id]) {
+      // Create marker
+      var el = document.createElement('div');
+      el.className = 'sat-dot-marker' + (isSelected ? ' selected' : '');
+      var label = document.createElement('div');
+      label.className = 'sat-dot-label';
+      label.textContent = sat.name;
+      el.appendChild(label);
+
+      (function(satName) {
+        el.addEventListener('click', function() {
+          selectSatelliteByName(satName);
+        });
+      })(sat.name);
+
+      var marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
+        .setLngLat([sat.lng, sat.lat])
+        .addTo(map);
+      satMarkers[id] = { marker: marker, el: el };
+    } else {
+      satMarkers[id].marker.setLngLat([sat.lng, sat.lat]);
+      if (isSelected && !satMarkers[id].el.classList.contains('selected')) {
+        satMarkers[id].el.classList.add('selected');
+      } else if (!isSelected && satMarkers[id].el.classList.contains('selected')) {
+        satMarkers[id].el.classList.remove('selected');
+      }
+    }
+
+    // #21: Throttle trail GeoJSON updates to every 500ms
+    if (shouldUpdateTrails && CONFIG.showOrbitalTracks && sat.trail.length > 2) {
+      var trailId = 'trail-' + sat.name;
+      var sourceId = 'trail-src-' + sat.name;
+      var trailColor = isSelected ? CONFIG.selectedSatelliteColor : 'rgba(0,229,255,' + CONFIG.trailOpacity + ')';
+
+      // #1: Split trail at antimeridian to avoid cross-globe lines
+      var segments = splitTrailAtAntimeridian(sat.trail);
+      var geojson;
+      if (segments.length === 1) {
+        geojson = {
+          type: 'Feature', properties: {},
+          geometry: { type: 'LineString', coordinates: segments[0] }
+        };
+      } else {
+        geojson = {
+          type: 'Feature', properties: {},
+          geometry: { type: 'MultiLineString', coordinates: segments }
+        };
+      }
+
+      try {
+        var src = map.getSource(sourceId);
+        if (src) {
+          src.setData(geojson);
+          if (map.getLayer(trailId)) {
+            map.setPaintProperty(trailId, 'line-color', trailColor);
+            map.setPaintProperty(trailId, 'line-opacity', isSelected ? CONFIG.selectedTrailOpacity : CONFIG.trailOpacity);
+          }
+        } else {
+          map.addSource(sourceId, { type: 'geojson', data: geojson });
+          map.addLayer({
+            id: trailId,
+            type: 'line',
+            source: sourceId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': trailColor,
+              'line-width': isSelected ? 2 : 1,
+              'line-opacity': isSelected ? CONFIG.selectedTrailOpacity : CONFIG.trailOpacity,
+            }
+          });
+          satTrailLayers[trailId] = sourceId;
+        }
+      } catch(e) {}
+    }
+  }
+
+  if (shouldUpdateTrails) lastTrailUpdate = now;
+
+  // Follow selected satellite
+  if (followingSatellite && selectedSatellite) {
+    var sat = getSatByName(selectedSatellite);
+    if (sat) {
+      map.easeTo({ center: [sat.lng, sat.lat], duration: CONFIG.followTransitionDuration });
+    }
+  }
+}
+
+function getSatByName(name) {
+  for (var i = 0; i < satRecords.length; i++) {
+    if (satRecords[i].name === name) return satRecords[i];
+  }
+  return null;
+}
+
+function selectSatelliteByName(name) {
+  selectedSatellite = name;
+  followingSatellite = true;
+  var sat = getSatByName(name);
+  if (sat && map) {
+    map.flyTo({
+      center: [sat.lng, sat.lat],
+      zoom: Math.max(map.getZoom(), 4),
+      duration: 2000,
+      essential: true,
+    });
+  }
+}
+
+function deselectSatellite() {
+  selectedSatellite = null;
+  followingSatellite = false;
+}
+
+// ─── Auto-rotation ───
+function startAutoRotation() {
+  if (autoRotating) return;
+  autoRotating = true;
+  var lastTime = performance.now();
+  function rotate(now) {
+    if (!autoRotating || !map) return;
+    var delta = (now - lastTime) / 1000;
+    lastTime = now;
+    var center = map.getCenter();
+    center.lng += CONFIG.autoRotateSpeed * delta;
+    map.setCenter(center);
+    rotationAnimId = requestAnimationFrame(rotate);
+  }
+  rotationAnimId = requestAnimationFrame(rotate);
+}
+
+function stopAutoRotation() {
+  autoRotating = false;
+  if (rotationAnimId) {
+    cancelAnimationFrame(rotationAnimId);
+    rotationAnimId = null;
+  }
+}
+
+// ─── Terrain helpers ───
+function enableTerrain(exaggeration) {
+  if (!map) return;
+  try { map.enableTerrain(exaggeration || 1.5); } catch(e) {}
+}
+
+function disableTerrain() {
+  if (!map) return;
+  try { map.disableTerrain(); } catch(e) {}
+}
+
+// ─── Visual mode ───
+function applyVisualMode(mode) {
+  var mapEl = document.getElementById('map');
+  mapEl.className = '';
+  if (mode && mode !== 'normal') {
+    mapEl.className = 'mode-' + mode;
+  }
+  CONFIG.visualMode = mode || 'normal';
+}
+
+// ─── Initialize Map ───
+function initMap() {
+  maptilersdk.config.apiKey = CONFIG.apiKey;
+
+  map = new maptilersdk.Map({
+    container: 'map',
+    style: getStyleEnum(CONFIG.mapStyle),
+    center: CONFIG.center,
+    zoom: CONFIG.zoom,
+    pitch: CONFIG.pitch,
+    bearing: CONFIG.bearing,
+    attributionControl: false,
+    navigationControl: false,
+    geolocateControl: false,
+    projection: 'globe',
+    terrain: CONFIG.terrain3D,
+    terrainExaggeration: CONFIG.terrain3D ? 1.5 : 0,
+  });
+
+  map.on('load', function() {
+    mapReady = true;
+
+    try { map.setProjection({ type: 'globe' }); } catch(e) {}
+
+    if (CONFIG.terrain3D) enableTerrain(1.5);
+
+    setTimeout(function() {
+      document.getElementById('loading').classList.add('hidden');
+    }, 500);
+
+    // Apply initial visual mode
+    applyVisualMode(CONFIG.visualMode);
+
+    // Select initial satellite
+    if (CONFIG.activeSatellite) {
+      selectedSatellite = CONFIG.activeSatellite;
+    }
+
+    // #15: Add ground station markers
+    addGroundStationMarkers();
+
+    // Start auto-rotation in interactive mode
+    if (CONFIG.frameSyncEnabled === -1) {
+      startAutoRotation();
+    }
+
+    // Process pre-loaded commands in interactive mode
+    if (CONFIG.commands && CONFIG.commands.length > 0 && CONFIG.frameSyncEnabled === -1) {
+      CONFIG.commands.forEach(function(cmd) { executeCommand(cmd); });
+    }
+  });
+
+  map.on('mousedown', function() { stopAutoRotation(); followingSatellite = false; });
+  map.on('touchstart', function() { stopAutoRotation(); followingSatellite = false; });
+}
+
+// ─── Command Execution ───
+function executeCommand(cmd) {
+  if (!map || !mapReady) return;
+  var action = cmd.action;
+  var params = cmd.params || {};
+
+  stopAutoRotation();
+
+  switch (action) {
+    case 'flyTo':             cmdFlyTo(params); break;
+    case 'selectSatellite':   cmdSelectSatellite(params); break;
+    case 'deselectSatellite': cmdDeselectSatellite(); break;
+    case 'setVisualMode':     cmdSetVisualMode(params); break;
+    case 'addTarget':         cmdAddTarget(params); break;
+    case 'removeTarget':      cmdRemoveTarget(params); break;
+    case 'clearTargets':      cmdClearTargets(); break;
+    case 'setClassification': cmdSetClassification(params); break;
+    case 'setMission':        cmdSetMission(params); break;
+    case 'zoomToTarget':      cmdZoomToTarget(params); break;
+    case 'set3DTerrain':      cmdSet3DTerrain(params); break;
+    case 'setStyle':          cmdSetStyle(params); break;
+    case 'showGrid':          cmdShowGrid(params); break;
+    case 'hideUI':            cmdHideUI(); break;
+    case 'showUI':            cmdShowUI(); break;
+    case 'showAlert':         cmdShowAlert(params); break;
+    case 'lockTarget':        cmdLockTarget(params); break;
+    case 'setTimeSpeed':      cmdSetTimeSpeed(params); break;
+  }
+}
+
+function cmdFlyTo(params) {
+  followingSatellite = false;
+  map.flyTo({
+    center: [params.lng || 0, params.lat || 0],
+    zoom: params.zoom !== undefined ? params.zoom : map.getZoom(),
+    pitch: params.pitch !== undefined ? params.pitch : map.getPitch(),
+    bearing: params.bearing !== undefined ? params.bearing : map.getBearing(),
+    duration: params.duration || 2000,
+    curve: params.curve || 1.42,
+    essential: true,
+  });
+}
+
+function cmdSelectSatellite(params) {
+  if (params.name) selectSatelliteByName(params.name);
+}
+
+function cmdDeselectSatellite() {
+  deselectSatellite();
+}
+
+function cmdSetVisualMode(params) {
+  applyVisualMode(params.mode || 'normal');
+}
+
+function cmdAddTarget(params) {
+  var id = params.id || ('target-' + Date.now());
+  if (targetMarkers[id]) targetMarkers[id].remove();
+
+  var el = document.createElement('div');
+  el.className = 'sat-target-marker';
+  if (params.label) {
+    var label = document.createElement('div');
+    label.className = 'sat-target-label';
+    label.textContent = params.label;
+    el.appendChild(label);
+  }
+
+  var marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
+    .setLngLat([params.lng || 0, params.lat || 0])
+    .addTo(map);
+  targetMarkers[id] = marker;
+  // Store coordinates for zoomToTarget
+  marker._targetLng = params.lng || 0;
+  marker._targetLat = params.lat || 0;
+}
+
+function cmdRemoveTarget(params) {
+  if (params.id && targetMarkers[params.id]) {
+    targetMarkers[params.id].remove();
+    delete targetMarkers[params.id];
+  }
+}
+
+function cmdClearTargets() {
+  for (var id in targetMarkers) targetMarkers[id].remove();
+  targetMarkers = {};
+}
+
+function cmdSetClassification(params) {
+  if (params.level) CONFIG.classificationLevel = params.level;
+}
+
+function cmdSetMission(params) {
+  if (params.name) CONFIG.missionName = params.name;
+}
+
+function cmdZoomToTarget(params) {
+  followingSatellite = false;
+  var marker = targetMarkers[params.id];
+  if (marker) {
+    map.flyTo({
+      center: [marker._targetLng, marker._targetLat],
+      zoom: params.zoom || 14,
+      pitch: params.pitch || 45,
+      duration: 2000,
+      essential: true,
+    });
+  }
+}
+
+function cmdSet3DTerrain(params) {
+  if (params.enabled) enableTerrain(params.exaggeration || 1.5);
+  else disableTerrain();
+}
+
+function cmdSetStyle(params) {
+  try { map.setStyle(getStyleEnum(params.style || 'satellite')); } catch(e) {}
+}
+
+function cmdShowGrid(params) {
+  CONFIG.showGrid = params !== undefined ? !!params.enabled : !CONFIG.showGrid;
+}
+
+function cmdHideUI() { hudVisible = false; }
+function cmdShowUI() { hudVisible = true; }
+
+function cmdShowAlert(params) {
+  activeAlert = {
+    text: params.text || 'ALERT',
+    duration: (params.duration || 2000) / 1000, // convert to seconds
+  };
+  alertStartTime = time;
+}
+
+function cmdLockTarget(params) {
+  var targetId = params.id;
+  if (!targetMarkers[targetId]) return;
+  targetLockState = {
+    targetId: targetId,
+    startTime: time,
+    duration: (params.duration || 3000) / 1000,
+  };
+  // Also zoom to target
+  cmdZoomToTarget(params);
+}
+
+function cmdSetTimeSpeed(params) {
+  if (params.multiplier !== undefined && isFinite(params.multiplier)) {
+    CONFIG.timeSpeedMultiplier = Math.max(1, Math.min(3600, params.multiplier));
+  }
+}
+
+// ─── Frame Sync Handler ───
+window.__onFrameUpdate = function(frame, playing, fps, total) {
+  if (!mapReady) return;
+  if (!CONFIG.commands || CONFIG.commands.length === 0) return;
+
+  stopAutoRotation();
+
+  // Rewind detection
+  if (frame < lastProcessedFrame) {
+    lastProcessedFrame = -1;
+    cmdClearTargets();
+    deselectSatellite();
+    applyVisualMode('normal');
+    hudVisible = true;
+    CONFIG.missionName = 'OVERWATCH SIGMA-7';
+    CONFIG.classificationLevel = 'TOP SECRET // SCI';
+
+    map.jumpTo({
+      center: CONFIG.center,
+      zoom: CONFIG.zoom,
+      pitch: CONFIG.pitch,
+      bearing: CONFIG.bearing,
+    });
+
+    for (var i = 0; i < CONFIG.commands.length; i++) {
+      var cmd = CONFIG.commands[i];
+      if (cmd.frame !== undefined && cmd.frame <= frame) {
+        executeCommand(cmd);
+        lastProcessedFrame = cmd.frame;
+      }
+    }
+    return;
+  }
+
+  // Process commands up to current frame
+  for (var i = 0; i < CONFIG.commands.length; i++) {
+    var cmd = CONFIG.commands[i];
+    var cmdFrame = cmd.frame;
+    if (cmdFrame === undefined || cmdFrame === null) continue;
+    if (cmdFrame <= frame && cmdFrame > lastProcessedFrame) {
+      executeCommand(cmd);
+    }
+  }
+
+  lastProcessedFrame = frame;
+};
+
+// ═══════════════════════════════════════════════════════
+// ─── HUD DRAWING ───
+// ═══════════════════════════════════════════════════════
+
+// #8: Bootup fade-in helper — returns opacity 0..1 for staggered entry
+function bootFade(delayMs) {
+  if (!hudBooted) return 0;
+  var elapsed = (time - hudBootTime) * 1000;
+  if (elapsed < delayMs) return 0;
+  return Math.min(1, (elapsed - delayMs) / 400); // 400ms fade
+}
+
+function drawHud() {
+  if (!hudCtx) return;
+  hudCtx.clearRect(0, 0, W, H);
+  if (!hudVisible) return;
+
+  // #8: Initialize bootup time on first visible draw
+  if (!hudBooted) {
+    hudBootTime = time;
+    hudBooted = true;
+  }
+
+  hudCtx.globalAlpha = CONFIG.hudOpacity;
+
+  // #5: Vignette always-on (subtle)
+  drawVignette();
+
+  // Staggered bootup: each element fades in at different delays
+  var a;
+
+  a = bootFade(0);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawCornerBrackets(); }
+
+  a = bootFade(200);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawTopBar(); }
+
+  a = bootFade(400);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawCrosshair(); }
+
+  a = bootFade(600);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawCompassBar(); }
+
+  a = bootFade(800);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawSatelliteInfoPanel(); }
+
+  a = bootFade(1000);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawCoordinatesPanel(); }
+
+  a = bootFade(1200);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawSignalStrength(); }
+
+  a = bootFade(1400);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawTelemetryBars(); }
+
+  a = bootFade(1600);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawStatusPanels(); }
+
+  a = bootFade(400);
+  if (a > 0) { hudCtx.globalAlpha = CONFIG.hudOpacity * a; drawRecIndicator(); }
+
+  hudCtx.globalAlpha = CONFIG.hudOpacity;
+
+  // Target lock overlay (no bootup delay)
+  drawTargetLock();
+  // Alert overlay
+  drawAlert();
+  // Ground station link lines
+  drawGroundStationLinks();
+
+  if (CONFIG.showGrid) drawTacticalGrid();
+  if (CONFIG.showScanlines) drawScanlines();
+  if (CONFIG.visualMode === 'crt') drawCRTEffect();
+
+  hudCtx.globalAlpha = 1;
+}
+
+function drawTopBar() {
+  var c = hexToRgb(CONFIG.accentColor);
+
+  // Background bar
+  hudCtx.fillStyle = 'rgba(0,0,0,0.6)';
+  hudCtx.fillRect(0, 0, W, H * 0.055);
+
+  // Classification level (center)
+  hudCtx.font = 'bold ' + Math.round(H * 0.016) + 'px Courier New';
+  hudCtx.textAlign = 'center';
+  hudCtx.fillStyle = '#ff1744';
+  hudCtx.fillText(CONFIG.classificationLevel, W * 0.5, H * 0.025);
+
+  // Mission name (left)
+  hudCtx.font = Math.round(H * 0.013) + 'px Courier New';
+  hudCtx.textAlign = 'left';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.7)';
+  hudCtx.fillText('MISSION: ' + CONFIG.missionName, W * 0.02, H * 0.045);
+
+  // Timestamp (right)
+  var now = new Date();
+  var ts = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+  hudCtx.textAlign = 'right';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.6)';
+  hudCtx.fillText(ts, W * 0.98, H * 0.045);
+}
+
+function drawCrosshair() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var cx = W * 0.5;
+  var cy = H * 0.5;
+  var size = Math.min(W, H) * 0.05;
+
+  // #6: Glow effect on crosshair
+  hudCtx.shadowColor = CONFIG.accentColor;
+  hudCtx.shadowBlur = 8;
+
+  // Rotating outer reticle
+  hudCtx.save();
+  hudCtx.translate(cx, cy);
+  hudCtx.rotate(time * CONFIG.crosshairRotateSpeed);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.3)';
+  hudCtx.lineWidth = 1.5;
+  hudCtx.beginPath();
+  for (var i = 0; i < 4; i++) {
+    var a = (i * Math.PI / 2);
+    hudCtx.moveTo(Math.cos(a) * size * 0.6, Math.sin(a) * size * 0.6);
+    hudCtx.lineTo(Math.cos(a) * size, Math.sin(a) * size);
+  }
+  hudCtx.stroke();
+  hudCtx.restore();
+
+  // Inner rotating reticle (counter-rotating)
+  hudCtx.save();
+  hudCtx.translate(cx, cy);
+  hudCtx.rotate(-time * CONFIG.innerReticleSpeed);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.2)';
+  hudCtx.lineWidth = 1;
+  hudCtx.beginPath();
+  hudCtx.arc(0, 0, size * 0.45, 0, Math.PI * 0.5);
+  hudCtx.stroke();
+  hudCtx.beginPath();
+  hudCtx.arc(0, 0, size * 0.45, Math.PI, Math.PI * 1.5);
+  hudCtx.stroke();
+  hudCtx.restore();
+
+  // Static crosshair lines
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.5)';
+  hudCtx.lineWidth = 1;
+  var gap = size * 0.15;
+
+  hudCtx.beginPath();
+  hudCtx.moveTo(cx - size * 0.35, cy); hudCtx.lineTo(cx - gap, cy);
+  hudCtx.moveTo(cx + gap, cy); hudCtx.lineTo(cx + size * 0.35, cy);
+  hudCtx.moveTo(cx, cy - size * 0.35); hudCtx.lineTo(cx, cy - gap);
+  hudCtx.moveTo(cx, cy + gap); hudCtx.lineTo(cx, cy + size * 0.35);
+  hudCtx.stroke();
+
+  // Center dot
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.8)';
+  hudCtx.beginPath();
+  hudCtx.arc(cx, cy, 2, 0, Math.PI * 2);
+  hudCtx.fill();
+
+  // Reset shadow
+  hudCtx.shadowColor = 'transparent';
+  hudCtx.shadowBlur = 0;
+}
+
+function drawSatelliteInfoPanel() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var px = W * 0.74;
+  var py = H * 0.08;
+  var pw = W * 0.24;
+  var ph = H * 0.38; // Taller to fit orbital elements
+
+  // Panel background
+  hudCtx.fillStyle = 'rgba(0,0,0,0.5)';
+  hudCtx.fillRect(px, py, pw, ph);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.3)';
+  hudCtx.lineWidth = 1;
+  hudCtx.strokeRect(px, py, pw, ph);
+
+  // Header
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.15)';
+  hudCtx.fillRect(px, py, pw, H * 0.03);
+  hudCtx.font = 'bold ' + Math.round(H * 0.013) + 'px Courier New';
+  hudCtx.textAlign = 'left';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.9)';
+  hudCtx.fillText('SATELLITE DATA', px + 8, py + H * 0.022);
+
+  var lineH = H * 0.025;
+  var startY = py + H * 0.050;
+  var labelX = px + 8;
+
+  hudCtx.font = Math.round(H * 0.011) + 'px Courier New';
+
+  var sat = selectedSatellite ? getSatByName(selectedSatellite) : null;
+
+  var rows = [
+    ['DESIGNATION', sat ? sat.name : '---'],
+    ['NORAD ID', sat ? '' + sat.noradId : '---'],
+    ['ALTITUDE', sat ? sat.alt.toFixed(1) + ' km' : '---'],
+    ['VELOCITY', sat ? sat.velocity.toFixed(2) + ' km/s' : '---'],
+    ['LATITUDE', sat ? sat.lat.toFixed(4) + '\u00B0' : '---'],
+    ['LONGITUDE', sat ? sat.lng.toFixed(4) + '\u00B0' : '---'],
+    // #14: Orbital elements
+    ['PERIOD', sat ? sat.periodMin.toFixed(1) + ' min' : '---'],
+    ['APOGEE', sat ? sat.apogee.toFixed(1) + ' km' : '---'],
+    ['PERIGEE', sat ? sat.perigee.toFixed(1) + ' km' : '---'],
+    ['INCLIN.', sat ? sat.inclination.toFixed(2) + '\u00B0' : '---'],
+    ['STATUS', 'TRACKING'],
+  ];
+
+  for (var i = 0; i < rows.length; i++) {
+    var y = startY + i * lineH;
+    hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.5)';
+    hudCtx.textAlign = 'left';
+    hudCtx.fillText(rows[i][0], labelX, y);
+    hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.9)';
+    hudCtx.textAlign = 'right';
+    hudCtx.fillText(rows[i][1], px + pw - 8, y);
+  }
+
+  // Blinking tracking indicator
+  if (sat && Math.sin(time * 4) > 0) {
+    hudCtx.fillStyle = '#00ff88';
+    hudCtx.beginPath();
+    hudCtx.arc(px + pw - 14, startY + 10 * lineH - 4, 3, 0, Math.PI * 2);
+    hudCtx.fill();
+  }
+}
+
+function drawCoordinatesPanel() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var px = W * 0.02;
+  var py = H * 0.78;
+  var pw = W * 0.22;
+  var ph = H * 0.18;
+
+  hudCtx.fillStyle = 'rgba(0,0,0,0.5)';
+  hudCtx.fillRect(px, py, pw, ph);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.3)';
+  hudCtx.lineWidth = 1;
+  hudCtx.strokeRect(px, py, pw, ph);
+
+  // Header
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.15)';
+  hudCtx.fillRect(px, py, pw, H * 0.03);
+  hudCtx.font = 'bold ' + Math.round(H * 0.013) + 'px Courier New';
+  hudCtx.textAlign = 'left';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.9)';
+  hudCtx.fillText('CAMERA POSITION', px + 8, py + H * 0.022);
+
+  var lineH = H * 0.028;
+  var startY = py + H * 0.055;
+
+  hudCtx.font = Math.round(H * 0.012) + 'px Courier New';
+
+  var camCenter = map ? map.getCenter() : { lng: 0, lat: 0 };
+  var camZoom = map ? map.getZoom().toFixed(1) : '0';
+  var camBearing = map ? (((map.getBearing() % 360) + 360) % 360).toFixed(0) : '0';
+
+  var rows = [
+    ['LAT', camCenter.lat.toFixed(4) + '\u00B0'],
+    ['LNG', camCenter.lng.toFixed(4) + '\u00B0'],
+    ['ZOOM', camZoom + 'x'],
+    ['BEARING', camBearing + '\u00B0'],
+    ['MODE', CONFIG.visualMode.toUpperCase()],
+  ];
+
+  for (var i = 0; i < rows.length; i++) {
+    var y = startY + i * lineH;
+    hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.5)';
+    hudCtx.textAlign = 'left';
+    hudCtx.fillText(rows[i][0], px + 8, y);
+    hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.9)';
+    hudCtx.textAlign = 'right';
+    hudCtx.fillText(rows[i][1], px + pw - 8, y);
+  }
+}
+
+function drawSignalStrength() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var sx = W * 0.88;
+  var sy = H * 0.88;
+
+  hudCtx.font = Math.round(H * 0.011) + 'px Courier New';
+  hudCtx.textAlign = 'center';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.5)';
+  hudCtx.fillText('SIGNAL', sx, sy - 5);
+
+  for (var i = 0; i < 5; i++) {
+    var barH = 6 + i * 5;
+    var jitter = Math.sin(time * 3 + i * 1.5) * 0.15;
+    var strength = signalBars[i] + jitter;
+    var active = strength > 0.3;
+
+    hudCtx.fillStyle = active
+      ? 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.7)'
+      : 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.15)';
+    hudCtx.fillRect(sx - 20 + i * 10, sy + 25 - barH, 7, barH);
+  }
+}
+
+function drawCornerBrackets() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var m = W * 0.015;
+  var s = W * 0.03;
+
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.4)';
+  hudCtx.lineWidth = 2;
+
+  // Top-left
+  hudCtx.beginPath();
+  hudCtx.moveTo(m, m + s); hudCtx.lineTo(m, m); hudCtx.lineTo(m + s, m);
+  hudCtx.stroke();
+  // Top-right
+  hudCtx.beginPath();
+  hudCtx.moveTo(W - m - s, m); hudCtx.lineTo(W - m, m); hudCtx.lineTo(W - m, m + s);
+  hudCtx.stroke();
+  // Bottom-left
+  hudCtx.beginPath();
+  hudCtx.moveTo(m, H - m - s); hudCtx.lineTo(m, H - m); hudCtx.lineTo(m + s, H - m);
+  hudCtx.stroke();
+  // Bottom-right
+  hudCtx.beginPath();
+  hudCtx.moveTo(W - m - s, H - m); hudCtx.lineTo(W - m, H - m); hudCtx.lineTo(W - m, H - m - s);
+  hudCtx.stroke();
+}
+
+function drawCompassBar() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var bearing = map ? (((map.getBearing() % 360) + 360) % 360) : 0;
+  var barY = H * 0.06;
+  var barH = H * 0.025;
+  var barX = W * 0.3;
+  var barW = W * 0.4;
+
+  hudCtx.fillStyle = 'rgba(0,0,0,0.4)';
+  hudCtx.fillRect(barX, barY, barW, barH);
+
+  hudCtx.save();
+  hudCtx.beginPath();
+  hudCtx.rect(barX, barY, barW, barH);
+  hudCtx.clip();
+
+  var dirs = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+  var pixPerDeg = barW / 60;
+  var centerX = barX + barW / 2;
+
+  for (var d = Math.floor(bearing) - 40; d <= Math.ceil(bearing) + 40; d += 5) {
+    var normD = ((d % 360) + 360) % 360;
+    var x = centerX + (d - bearing) * pixPerDeg;
+    var label = dirs[normD];
+    var isMajor = label !== undefined;
+
+    hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (isMajor ? 0.5 : 0.15) + ')';
+    hudCtx.lineWidth = 1;
+    hudCtx.beginPath();
+    hudCtx.moveTo(x, barY + barH);
+    hudCtx.lineTo(x, barY + barH - (isMajor ? barH * 0.6 : barH * 0.3));
+    hudCtx.stroke();
+
+    if (isMajor) {
+      hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.8)';
+      hudCtx.font = 'bold ' + Math.round(H * 0.011) + 'px Courier New';
+      hudCtx.textAlign = 'center';
+      hudCtx.fillText(label, x, barY + barH * 0.35);
+    }
+  }
+  hudCtx.restore();
+
+  // Center indicator
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.9)';
+  hudCtx.beginPath();
+  hudCtx.moveTo(centerX, barY + barH + 2);
+  hudCtx.lineTo(centerX - 4, barY + barH + 8);
+  hudCtx.lineTo(centerX + 4, barY + barH + 8);
+  hudCtx.closePath();
+  hudCtx.fill();
+
+  // Heading readout
+  hudCtx.font = 'bold ' + Math.round(H * 0.013) + 'px Courier New';
+  hudCtx.textAlign = 'center';
+  hudCtx.fillText(Math.round(bearing).toString().padStart(3, '0') + '\u00B0', centerX, barY + barH + 20);
+}
+
+function drawRecIndicator() {
+  var rx = W * 0.02;
+  var ry = H * 0.065;
+
+  if (recBlink) {
+    hudCtx.fillStyle = 'rgba(255,23,68,0.9)';
+    hudCtx.beginPath();
+    hudCtx.arc(rx + 6, ry, 4, 0, Math.PI * 2);
+    hudCtx.fill();
+  }
+
+  hudCtx.fillStyle = 'rgba(255,255,255,0.8)';
+  hudCtx.font = 'bold ' + Math.round(H * 0.013) + 'px Courier New';
+  hudCtx.textAlign = 'left';
+  hudCtx.fillText('REC', rx + 16, ry + 4);
+}
+
+function drawTacticalGrid() {
+  var c = hexToRgb(CONFIG.accentColor);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.04)';
+  hudCtx.lineWidth = 0.5;
+  var gs = Math.min(W, H) * 0.04;
+  for (var x = 0; x < W; x += gs) {
+    hudCtx.beginPath(); hudCtx.moveTo(x, 0); hudCtx.lineTo(x, H); hudCtx.stroke();
+  }
+  for (var y = 0; y < H; y += gs) {
+    hudCtx.beginPath(); hudCtx.moveTo(0, y); hudCtx.lineTo(W, y); hudCtx.stroke();
+  }
+}
+
+function drawScanlines() {
+  hudCtx.fillStyle = 'rgba(0,0,0,0.03)';
+  for (var y = 0; y < H; y += 3) {
+    hudCtx.fillRect(0, y, W, 1);
+  }
+}
+
+// #11: Enhanced CRT mode
+function drawCRTEffect() {
+  // Stronger scanlines
+  hudCtx.fillStyle = 'rgba(0,0,0,0.06)';
+  for (var y = 0; y < H; y += 2) {
+    hudCtx.fillRect(0, y, W, 1);
+  }
+
+  // Chromatic aberration: slight RGB offset on HUD elements
+  // Draw faint colored copies of corner brackets to simulate RGB split
+  var offset = 2;
+  hudCtx.save();
+  hudCtx.globalAlpha = 0.06;
+  hudCtx.globalCompositeOperation = 'screen';
+  // Red channel shift
+  hudCtx.fillStyle = 'rgba(255,0,0,0.3)';
+  hudCtx.fillRect(offset, 0, W, H);
+  // Blue channel shift
+  hudCtx.fillStyle = 'rgba(0,0,255,0.3)';
+  hudCtx.fillRect(-offset, 0, W, H);
+  hudCtx.restore();
+
+  // Stronger phosphor glow vignette
+  var grad = hudCtx.createRadialGradient(W / 2, H / 2, H * 0.15, W / 2, H / 2, H * 0.9);
+  grad.addColorStop(0, 'rgba(0,229,255,0.04)');
+  grad.addColorStop(0.5, 'rgba(0,229,255,0.01)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+  hudCtx.fillStyle = grad;
+  hudCtx.fillRect(0, 0, W, H);
+
+  // Screen curvature vignette (darker corners)
+  var cornerGrad = hudCtx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.85);
+  cornerGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  cornerGrad.addColorStop(1, 'rgba(0,0,0,0.2)');
+  hudCtx.fillStyle = cornerGrad;
+  hudCtx.fillRect(0, 0, W, H);
+}
+
+// #5: Vignette effect (always-on, subtle)
+function drawVignette() {
+  var grad = hudCtx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.85);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.4)');
+  hudCtx.fillStyle = grad;
+  hudCtx.fillRect(0, 0, W, H);
+}
+
+// #9: Telemetry bars panel (bottom-right)
+function drawTelemetryBars() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var px = W * 0.76;
+  var py = H * 0.72;
+  var pw = W * 0.22;
+  var ph = H * 0.24;
+
+  hudCtx.fillStyle = 'rgba(0,0,0,0.45)';
+  hudCtx.fillRect(px, py, pw, ph);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.2)';
+  hudCtx.lineWidth = 1;
+  hudCtx.strokeRect(px, py, pw, ph);
+
+  // Header
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.12)';
+  hudCtx.fillRect(px, py, pw, H * 0.025);
+  hudCtx.font = 'bold ' + Math.round(H * 0.011) + 'px Courier New';
+  hudCtx.textAlign = 'left';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.8)';
+  hudCtx.fillText('SYSTEM TELEMETRY', px + 6, py + H * 0.018);
+
+  var labels = ['POWER', 'SIGNAL', 'LINK', 'UPLINK', 'THERMAL'];
+  var barStartY = py + H * 0.04;
+  var barH = H * 0.015;
+  var barSpacing = H * 0.036;
+  var barMarginX = 8;
+  var labelW = pw * 0.28;
+  var barW = pw * 0.48;
+  var valW = pw * 0.18;
+
+  hudCtx.font = Math.round(H * 0.010) + 'px Courier New';
+
+  for (var i = 0; i < labels.length; i++) {
+    var y = barStartY + i * barSpacing;
+    // Oscillating value
+    var val = 0.55 + 0.35 * Math.sin(time * 0.7 + i * 1.3);
+    var pct = Math.round(val * 100);
+    var isWarning = pct > 85;
+
+    // Label
+    hudCtx.textAlign = 'left';
+    hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.5)';
+    hudCtx.fillText(labels[i], px + barMarginX, y + barH * 0.8);
+
+    // Bar background
+    var bx = px + barMarginX + labelW;
+    hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.08)';
+    hudCtx.fillRect(bx, y, barW, barH);
+
+    // Bar fill
+    hudCtx.fillStyle = isWarning
+      ? 'rgba(255,152,0,0.7)'
+      : 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.5)';
+    hudCtx.fillRect(bx, y, barW * val, barH);
+
+    // Percentage
+    hudCtx.textAlign = 'right';
+    hudCtx.fillStyle = isWarning
+      ? 'rgba(255,152,0,0.9)'
+      : 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.8)';
+    hudCtx.fillText(pct + '%', px + pw - barMarginX, y + barH * 0.8);
+  }
+}
+
+// #10: Status system panels (bottom center area)
+function drawStatusPanels() {
+  var c = hexToRgb(CONFIG.accentColor);
+  var statuses = [
+    { id: 'SYS-01', label: 'NOMINAL', color: CONFIG.selectedSatelliteColor },
+    { id: 'PWR', label: 'ACTIVE', color: CONFIG.accentColor },
+    { id: 'LINK', label: 'ONLINE', color: CONFIG.accentColor },
+    { id: 'ECCM', label: 'READY', color: '#ff9800' },
+  ];
+
+  var boxW = W * 0.10;
+  var boxH = H * 0.03;
+  var gap = W * 0.008;
+  var totalW = statuses.length * boxW + (statuses.length - 1) * gap;
+  var startX = (W - totalW) / 2;
+  var sy = H * 0.945;
+
+  hudCtx.font = Math.round(H * 0.009) + 'px Courier New';
+
+  for (var i = 0; i < statuses.length; i++) {
+    var x = startX + i * (boxW + gap);
+    var s = statuses[i];
+    var sc = hexToRgb(s.color);
+
+    // Box background
+    hudCtx.fillStyle = 'rgba(0,0,0,0.5)';
+    hudCtx.fillRect(x, sy, boxW, boxH);
+    hudCtx.strokeStyle = 'rgba(' + sc.r + ',' + sc.g + ',' + sc.b + ',0.3)';
+    hudCtx.lineWidth = 0.5;
+    hudCtx.strokeRect(x, sy, boxW, boxH);
+
+    // Pulsing indicator dot
+    var dotAlpha = 0.5 + 0.5 * Math.sin(time * 3 + i * 1.5);
+    hudCtx.fillStyle = 'rgba(' + sc.r + ',' + sc.g + ',' + sc.b + ',' + dotAlpha.toFixed(2) + ')';
+    hudCtx.beginPath();
+    hudCtx.arc(x + 8, sy + boxH / 2, 2.5, 0, Math.PI * 2);
+    hudCtx.fill();
+
+    // ID + Label
+    hudCtx.textAlign = 'left';
+    hudCtx.fillStyle = 'rgba(' + sc.r + ',' + sc.g + ',' + sc.b + ',0.7)';
+    hudCtx.fillText(s.id, x + 16, sy + boxH * 0.42);
+    hudCtx.fillStyle = 'rgba(' + sc.r + ',' + sc.g + ',' + sc.b + ',0.9)';
+    hudCtx.fillText(s.label, x + 16, sy + boxH * 0.82);
+  }
+}
+
+// #12: Target lock animation system
+function drawTargetLock() {
+  if (!targetLockState) return;
+  var elapsed = time - targetLockState.startTime;
+  var progress = Math.min(1, elapsed / targetLockState.duration);
+
+  if (progress >= 1) { targetLockState = null; return; }
+
+  var c = hexToRgb(CONFIG.targetMarkerColor);
+  var cx = W * 0.5;
+  var cy = H * 0.5;
+  var size = Math.min(W, H) * 0.08;
+
+  hudCtx.save();
+  hudCtx.shadowColor = CONFIG.targetMarkerColor;
+  hudCtx.shadowBlur = 12;
+
+  // Phase 1 (0-40%): Corner brackets animate in
+  if (progress < 0.4) {
+    var p1 = progress / 0.4;
+    var bracketScale = 2 - p1; // 2x → 1x
+    var bracketAlpha = p1;
+    var bs = size * bracketScale;
+    var bl = bs * 0.3;
+
+    hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (bracketAlpha * 0.8).toFixed(2) + ')';
+    hudCtx.lineWidth = 2;
+
+    // Four corners
+    var corners = [[-1,-1],[1,-1],[-1,1],[1,1]];
+    for (var i = 0; i < 4; i++) {
+      var dx = corners[i][0], dy = corners[i][1];
+      hudCtx.beginPath();
+      hudCtx.moveTo(cx + dx * bs, cy + dy * (bs - bl));
+      hudCtx.lineTo(cx + dx * bs, cy + dy * bs);
+      hudCtx.lineTo(cx + dx * (bs - bl), cy + dy * bs);
+      hudCtx.stroke();
+    }
+  }
+
+  // Phase 2 (40-70%): Crosshairs + brackets at 1x
+  if (progress >= 0.4 && progress < 0.7) {
+    var p2 = (progress - 0.4) / 0.3;
+    var bl = size * 0.3;
+
+    // Brackets at final size
+    hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.8)';
+    hudCtx.lineWidth = 2;
+    var corners = [[-1,-1],[1,-1],[-1,1],[1,1]];
+    for (var i = 0; i < 4; i++) {
+      var dx = corners[i][0], dy = corners[i][1];
+      hudCtx.beginPath();
+      hudCtx.moveTo(cx + dx * size, cy + dy * (size - bl));
+      hudCtx.lineTo(cx + dx * size, cy + dy * size);
+      hudCtx.lineTo(cx + dx * (size - bl), cy + dy * size);
+      hudCtx.stroke();
+    }
+
+    // Inner crosshairs fade in
+    hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (p2 * 0.6).toFixed(2) + ')';
+    hudCtx.lineWidth = 1;
+    var innerSize = size * 0.5;
+    hudCtx.beginPath();
+    hudCtx.moveTo(cx - innerSize, cy); hudCtx.lineTo(cx - innerSize * 0.3, cy);
+    hudCtx.moveTo(cx + innerSize * 0.3, cy); hudCtx.lineTo(cx + innerSize, cy);
+    hudCtx.moveTo(cx, cy - innerSize); hudCtx.lineTo(cx, cy - innerSize * 0.3);
+    hudCtx.moveTo(cx, cy + innerSize * 0.3); hudCtx.lineTo(cx, cy + innerSize);
+    hudCtx.stroke();
+  }
+
+  // Phase 3 (70-100%): Diamond reticle + info
+  if (progress >= 0.7) {
+    var p3 = (progress - 0.7) / 0.3;
+    var bl = size * 0.3;
+
+    // Brackets
+    hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.8)';
+    hudCtx.lineWidth = 2;
+    var corners = [[-1,-1],[1,-1],[-1,1],[1,1]];
+    for (var i = 0; i < 4; i++) {
+      var dx = corners[i][0], dy = corners[i][1];
+      hudCtx.beginPath();
+      hudCtx.moveTo(cx + dx * size, cy + dy * (size - bl));
+      hudCtx.lineTo(cx + dx * size, cy + dy * size);
+      hudCtx.lineTo(cx + dx * (size - bl), cy + dy * size);
+      hudCtx.stroke();
+    }
+
+    // Diamond reticle
+    var ds = size * 0.35 * p3;
+    hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (p3 * 0.7).toFixed(2) + ')';
+    hudCtx.lineWidth = 1.5;
+    hudCtx.beginPath();
+    hudCtx.moveTo(cx, cy - ds);
+    hudCtx.lineTo(cx + ds, cy);
+    hudCtx.lineTo(cx, cy + ds);
+    hudCtx.lineTo(cx - ds, cy);
+    hudCtx.closePath();
+    hudCtx.stroke();
+  }
+
+  // Percentage counter
+  hudCtx.shadowBlur = 0;
+  hudCtx.shadowColor = 'transparent';
+  hudCtx.font = 'bold ' + Math.round(H * 0.016) + 'px Courier New';
+  hudCtx.textAlign = 'center';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.9)';
+  hudCtx.fillText('LOCK ' + Math.round(progress * 100) + '%', cx, cy + size + H * 0.03);
+
+  hudCtx.restore();
+}
+
+// #13: Alert/notification system
+function drawAlert() {
+  if (!activeAlert) return;
+  var elapsed = time - alertStartTime;
+  if (elapsed > activeAlert.duration) { activeAlert = null; return; }
+
+  var c = hexToRgb(CONFIG.accentColor);
+  var progress = elapsed / activeAlert.duration;
+  // Fade in first 15%, pulse middle, fade out last 15%
+  var alpha;
+  if (progress < 0.15) alpha = progress / 0.15;
+  else if (progress > 0.85) alpha = (1 - progress) / 0.15;
+  else alpha = 0.7 + 0.3 * Math.sin(time * 8);
+
+  var cx = W * 0.5;
+  var cy = H * 0.38;
+
+  // Background bar
+  var textLen = activeAlert.text.length;
+  var barW = Math.max(W * 0.3, textLen * H * 0.012);
+  hudCtx.fillStyle = 'rgba(0,0,0,' + (alpha * 0.6).toFixed(2) + ')';
+  hudCtx.fillRect(cx - barW / 2, cy - H * 0.02, barW, H * 0.04);
+  hudCtx.strokeStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + (alpha * 0.5).toFixed(2) + ')';
+  hudCtx.lineWidth = 1;
+  hudCtx.strokeRect(cx - barW / 2, cy - H * 0.02, barW, H * 0.04);
+
+  // Alert text
+  hudCtx.font = 'bold ' + Math.round(H * 0.018) + 'px Courier New';
+  hudCtx.textAlign = 'center';
+  hudCtx.fillStyle = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha.toFixed(2) + ')';
+  hudCtx.shadowColor = CONFIG.accentColor;
+  hudCtx.shadowBlur = 10;
+  hudCtx.fillText(activeAlert.text, cx, cy + H * 0.007);
+  hudCtx.shadowBlur = 0;
+  hudCtx.shadowColor = 'transparent';
+}
+
+// #15/#16: Ground station markers + satellite-to-ground link visualization
+function addGroundStationMarkers() {
+  if (!map || !mapReady || !CONFIG.showGroundStations) return;
+  for (var i = 0; i < GROUND_STATIONS.length; i++) {
+    var gs = GROUND_STATIONS[i];
+    var id = 'gs-' + gs.name;
+    if (gsMarkers[id]) continue;
+
+    var el = document.createElement('div');
+    el.className = 'gs-marker';
+    var label = document.createElement('div');
+    label.className = 'gs-label';
+    label.textContent = gs.name;
+    el.appendChild(label);
+
+    var marker = new maptilersdk.Marker({ element: el, anchor: 'center' })
+      .setLngLat([gs.lng, gs.lat])
+      .addTo(map);
+    gsMarkers[id] = marker;
+  }
+}
+
+function drawGroundStationLinks() {
+  if (!CONFIG.showGroundStations) return;
+  var c = hexToRgb(CONFIG.accentColor);
+
+  // Check each satellite for LOS to ground stations
+  for (var si = 0; si < satRecords.length; si++) {
+    var sat = satRecords[si];
+    if (!isFinite(sat.lng) || !isFinite(sat.lat)) continue;
+    if (sat.name !== selectedSatellite) continue; // Only show for selected
+
+    for (var gi = 0; gi < GROUND_STATIONS.length; gi++) {
+      var gs = GROUND_STATIONS[gi];
+      // Simple LOS check: distance < ~2500km ground range (rough horizon for LEO)
+      var dLat = (sat.lat - gs.lat) * Math.PI / 180;
+      var dLng = (sat.lng - gs.lng) * Math.PI / 180;
+      var a2 = Math.sin(dLat/2) * Math.sin(dLat/2) +
+               Math.cos(sat.lat * Math.PI/180) * Math.cos(gs.lat * Math.PI/180) *
+               Math.sin(dLng/2) * Math.sin(dLng/2);
+      var dist = 6371 * 2 * Math.atan2(Math.sqrt(a2), Math.sqrt(1 - a2));
+
+      // Horizon distance varies with altitude; rough: sqrt(2*R*h) where h=alt
+      var horizonDist = Math.sqrt(2 * 6371 * Math.max(sat.alt, 200));
+
+      if (dist < horizonDist) {
+        // Project satellite and ground station positions to canvas
+        if (!map) continue;
+        var satPx = map.project([sat.lng, sat.lat]);
+        var gsPx = map.project([gs.lng, gs.lat]);
+        var dpr = devicePixelRatio || 1;
+        var sx = satPx.x * dpr, sy = satPx.y * dpr;
+        var gx = gsPx.x * dpr, gy = gsPx.y * dpr;
+
+        // Animated dashed line
+        hudCtx.save();
+        hudCtx.strokeStyle = 'rgba(255,152,0,0.4)';
+        hudCtx.lineWidth = 1;
+        hudCtx.setLineDash([6, 4]);
+        hudCtx.lineDashOffset = -time * 20;
+        hudCtx.beginPath();
+        hudCtx.moveTo(sx, sy);
+        hudCtx.lineTo(gx, gy);
+        hudCtx.stroke();
+        hudCtx.setLineDash([]);
+        hudCtx.restore();
+      }
+    }
+  }
+}
+
+// ─── Main animation loop ───
+var lastFrameTime = 0;
+var simTime = new Date();
+
+function animate(timestamp) {
+  if (!lastFrameTime) lastFrameTime = timestamp;
+  var dt = Math.min(timestamp - lastFrameTime, 50) * 0.001;
+  lastFrameTime = timestamp;
+  time += dt;
+
+  // Blink REC indicator
+  if (Math.floor(time * 2) % 2 === 0) recBlink = !recBlink;
+
+  // Advance simulation time
+  simTime = new Date(simTime.getTime() + dt * 1000 * CONFIG.timeSpeedMultiplier);
+
+  // Propagate satellites every ~200ms
+  if (Math.floor(time * 5) !== Math.floor((time - dt) * 5)) {
+    propagateSatellites(simTime);
+    updateSatelliteMarkers();
+  }
+
+  // Draw HUD
+  drawHud();
+
+  requestAnimationFrame(animate);
+}
+
+// ─── Shared config handler (deduplicated) ───
+function handleConfigUpdate(cfg) {
+  try {
+    // #23: Validate critical numeric fields before applying
+    var numericFields = ['hudOpacity', 'zoom', 'pitch', 'bearing', 'autoRotateSpeed',
+      'followTransitionDuration', 'satelliteTrailLength', 'timeSpeedMultiplier',
+      'trailOpacity', 'selectedTrailOpacity', 'crosshairRotateSpeed', 'innerReticleSpeed'];
+    for (var i = 0; i < numericFields.length; i++) {
+      var k = numericFields[i];
+      if (cfg[k] !== undefined && !isFinite(Number(cfg[k]))) {
+        delete cfg[k]; // Drop invalid numeric values
+      }
+    }
+    Object.assign(CONFIG, cfg);
+    if (cfg.visualMode) applyVisualMode(cfg.visualMode);
+    if (cfg.activeSatellite) {
+      selectSatelliteByName(cfg.activeSatellite);
+    }
+    if (cfg.commands) {
+      lastProcessedFrame = -1; // Reset so commands re-execute
+    }
+  } catch(e) {}
+}
+
+// ─── Message handler for config updates ───
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.config &&
+      (e.data.type === 'configUpdate' || e.data.type === 'CONFIG_BULK_UPDATE')) {
+    handleConfigUpdate(e.data.config);
+  }
+});
+
+// ─── Dynamic script loading + init ───
+function loadScript(url) {
+  return new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// Init after both SDKs load
+Promise.all([
+  loadScript('https://cdn.maptiler.com/maptiler-sdk-js/v2/maptiler-sdk.umd.min.js'),
+  loadScript('https://cdn.jsdelivr.net/npm/satellite.js@5/dist/satellite.min.js')
+]).then(function() {
+  parseTLEData();
+  initMap();
+  resizeHud();
+  window.addEventListener('resize', resizeHud);
+  requestAnimationFrame(animate);
+}).catch(function() {
+  document.getElementById('loading').innerHTML =
+    '<h2 style="color:#ff6b6b;font-size:13px;letter-spacing:4px">FAILED TO LOAD DEPENDENCIES</h2>';
+});
+</script>
+</body>
+</html>

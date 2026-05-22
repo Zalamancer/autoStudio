@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Q4 Performance',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  style: 'circular',
+  showDelta: true,
+  metrics: [
+    { label: 'Revenue', current: 842000, target: 1000000, color: '#3B82F6', prefix: '$' },
+    { label: 'Users', current: 15400, target: 20000, color: '#10B981', suffix: '' },
+    { label: 'Retention', current: 87, target: 95, color: '#F59E0B', suffix: '%' },
+    { label: 'NPS', current: 72, target: 80, color: '#8B5CF6', suffix: '' }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function formatNumber(v, prefix, suffix) {
+  prefix = prefix || '';
+  suffix = suffix || '';
+  if (v >= 1e6) return prefix + (v / 1e6).toFixed(1) + 'M' + suffix;
+  if (v >= 1e3) return prefix + (v / 1e3).toFixed(1) + 'K' + suffix;
+  return prefix + Math.round(v).toString() + suffix;
+}
+
+function drawCircularGauge(cx, cy, r, pct, color, T) {
+  const startAngle = -Math.PI * 0.75;
+  const totalArc = Math.PI * 1.5;
+
+  // Background arc
+  ctx.strokeStyle = T.subtle;
+  ctx.lineWidth = r * 0.18;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, startAngle + totalArc);
+  ctx.stroke();
+
+  // Value arc
+  ctx.strokeStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = r * 0.15;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, startAngle + totalArc * pct);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawHorizontalBar(x, y, w, h, pct, color, T) {
+  const r = h / 2;
+
+  // Background
+  ctx.fillStyle = T.subtle;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.fill();
+
+  // Value bar
+  const fillW = w * pct;
+  if (fillW > 0) {
+    const fr = Math.min(r, fillW / 2);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color; ctx.shadowBlur = h * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x + fr, y); ctx.lineTo(x + fillW - fr, y);
+    ctx.quadraticCurveTo(x + fillW, y, x + fillW, y + r);
+    ctx.quadraticCurveTo(x + fillW, y + h, x + fillW - fr, y + h);
+    ctx.lineTo(x + fr, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + r);
+    ctx.quadraticCurveTo(x, y, x + fr, y);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.5 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+  const metrics = CONFIG.metrics;
+  const n = metrics.length;
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  if (CONFIG.style === 'circular') {
+    const cols = n <= 2 ? n : Math.ceil(n / 2);
+    const rows = Math.ceil(n / cols);
+    const cellW = W * 0.8 / cols;
+    const cellH = H * 0.7 / rows;
+    const gaugeR = Math.min(cellW, cellH) * 0.28;
+    const startX = W * 0.1;
+    const startY = H * 0.18;
+
+    for (let i = 0; i < n; i++) {
+      const m = metrics[i];
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = startX + col * cellW + cellW / 2;
+      const cy = startY + row * cellH + cellH / 2;
+      const pct = Math.min(m.current / m.target, 1);
+      const itemEase = easeOutCubic(Math.min(Math.max((progress - i * 0.1) / 0.7, 0), 1));
+      const animPct = pct * itemEase;
+
+      drawCircularGauge(cx, cy, gaugeR, animPct, m.color, T);
+
+      // Value
+      const animVal = m.current * itemEase;
+      ctx.fillStyle = T.title;
+      ctx.font = `bold ${gaugeR * 0.45}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(formatNumber(animVal, m.prefix, m.suffix), cx, cy - gaugeR * 0.05);
+
+      // Label
+      ctx.fillStyle = T.text;
+      ctx.font = `${gaugeR * 0.28}px system-ui`;
+      ctx.fillText(m.label, cx, cy + gaugeR * 0.35);
+
+      // Delta
+      if (CONFIG.showDelta && itemEase > 0.5) {
+        const pctVal = Math.round(pct * 100);
+        ctx.fillStyle = pct >= 0.8 ? '#10B981' : pct >= 0.5 ? '#F59E0B' : '#EF4444';
+        ctx.font = `bold ${gaugeR * 0.22}px system-ui`;
+        ctx.fillText(pctVal + '% of target', cx, cy + gaugeR * 0.65);
+      }
+    }
+  } else {
+    // Horizontal bar layout
+    const barH = H * 0.04;
+    const barW = W * 0.55;
+    const startX = W * 0.3;
+    const startY = H * 0.2;
+    const rowH = (H * 0.7) / n;
+
+    for (let i = 0; i < n; i++) {
+      const m = metrics[i];
+      const cy = startY + i * rowH + rowH / 2;
+      const pct = Math.min(m.current / m.target, 1);
+      const itemEase = easeOutCubic(Math.min(Math.max((progress - i * 0.1) / 0.7, 0), 1));
+      const animPct = pct * itemEase;
+
+      // Label
+      ctx.fillStyle = T.text;
+      ctx.font = `${W * 0.018}px system-ui`;
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(m.label, startX - W * 0.03, cy);
+
+      // Bar
+      drawHorizontalBar(startX, cy - barH / 2, barW, barH, animPct, m.color, T);
+
+      // Value
+      const animVal = m.current * itemEase;
+      ctx.fillStyle = T.title;
+      ctx.font = `bold ${W * 0.02}px system-ui`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(formatNumber(animVal, m.prefix, m.suffix), startX + barW + W * 0.02, cy);
+
+      // Target
+      if (CONFIG.showDelta && itemEase > 0.5) {
+        ctx.fillStyle = T.text;
+        ctx.font = `${W * 0.013}px system-ui`;
+        ctx.fillText('/ ' + formatNumber(m.target, m.prefix, m.suffix), startX + barW + W * 0.1, cy);
+      }
+    }
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

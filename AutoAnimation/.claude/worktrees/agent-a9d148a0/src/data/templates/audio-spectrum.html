@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Spectrum</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg-color: #070710;
+    --bar-color-1: #00e676;
+    --bar-color-2: #ffea00;
+    --bar-color-3: #ff1744;
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  canvas#spectrum {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  /* Track info overlay */
+  .track-info {
+    position: absolute;
+    bottom: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    text-align: center;
+    opacity: 0;
+    animation: fade-in-up 1s ease forwards 0.5s;
+  }
+
+  .track-name {
+    font-size: 2.4vh;
+    font-weight: 700;
+    color: #e8e8f0;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5vh;
+  }
+
+  .artist-name {
+    font-size: 1.6vh;
+    font-weight: 400;
+    color: #888898;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Stereo labels */
+  .stereo-label {
+    position: absolute;
+    z-index: 2;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.2vh;
+    font-weight: 500;
+    color: rgba(255,255,255,0.15);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .stereo-l { top: 3vh; left: 3vw; }
+  .stereo-r { top: 3vh; right: 3vw; }
+
+  /* dB scale */
+  .db-scale {
+    position: absolute;
+    right: 2vw;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 3vh;
+    align-items: flex-end;
+  }
+
+  .db-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1vh;
+    color: rgba(255,255,255,0.12);
+    position: relative;
+  }
+
+  .db-mark::before {
+    content: '';
+    position: absolute;
+    right: 110%;
+    top: 50%;
+    width: 1vw;
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  /* VU meter */
+  .vu-container {
+    position: absolute;
+    left: 2vw;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5vh;
+    align-items: center;
+  }
+
+  .vu-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1vh;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5vh;
+  }
+
+  .vu-bar-track {
+    width: 1vw;
+    height: 30vh;
+    background: rgba(255,255,255,0.03);
+    border-radius: 0.5vw;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .vu-bar-fill {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    border-radius: 0.5vw;
+    transition: height 0.08s ease;
+    background: linear-gradient(0deg, var(--bar-color-1) 0%, var(--bar-color-2) 60%, var(--bar-color-3) 100%);
+  }
+
+  .vu-peak {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: var(--bar-color-3);
+    box-shadow: 0 0 4px var(--bar-color-3);
+    transition: bottom 0.05s ease;
+  }
+
+  /* Top border glow */
+  .top-glow {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 5%, var(--bar-color-1) 30%, var(--bar-color-2) 50%, var(--bar-color-3) 70%, transparent 95%);
+    opacity: 0.3;
+    z-index: 2;
+  }
+
+  @keyframes fade-in-up {
+    to { opacity: 1; }
+  }
+
+  /* Subtle grid overlay */
+  .grid-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px);
+    background-size: 5vw 5vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-overlay"></div>
+<canvas id="spectrum"></canvas>
+<div class="top-glow"></div>
+
+<div class="stereo-label stereo-l">L</div>
+<div class="stereo-label stereo-r">R</div>
+
+<div class="db-scale">
+  <div class="db-mark">0 dB</div>
+  <div class="db-mark">-6</div>
+  <div class="db-mark">-12</div>
+  <div class="db-mark">-18</div>
+  <div class="db-mark">-24</div>
+  <div class="db-mark">-36</div>
+  <div class="db-mark">-48</div>
+</div>
+
+<div class="vu-container">
+  <div class="vu-label">VU</div>
+  <div class="vu-bar-track" id="vu-left">
+    <div class="vu-bar-fill" id="vu-left-fill"></div>
+    <div class="vu-peak" id="vu-left-peak"></div>
+  </div>
+  <div style="height:1vh"></div>
+  <div class="vu-bar-track" id="vu-right">
+    <div class="vu-bar-fill" id="vu-right-fill"></div>
+    <div class="vu-peak" id="vu-right-peak"></div>
+  </div>
+</div>
+
+<div class="track-info">
+  <div class="track-name" id="track-name"></div>
+  <div class="artist-name" id="artist-name"></div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: "#070710",
+  barColor1: "#00e676",
+  barColor2: "#ffea00",
+  barColor3: "#ff1744",
+  barCount: 64,
+  artistName: "Synthwave Dreams",
+  trackName: "Neon Horizons",
+  showReflection: true,
+  cycleDuration: 8000
+};
+
+// Apply config
+document.documentElement.style.setProperty('--bg-color', CONFIG.bgColor);
+document.documentElement.style.setProperty('--bar-color-1', CONFIG.barColor1);
+document.documentElement.style.setProperty('--bar-color-2', CONFIG.barColor2);
+document.documentElement.style.setProperty('--bar-color-3', CONFIG.barColor3);
+document.getElementById('track-name').textContent = CONFIG.trackName;
+document.getElementById('artist-name').textContent = CONFIG.artistName;
+
+// === Canvas Setup ===
+const canvas = document.getElementById('spectrum');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth * window.devicePixelRatio;
+  canvas.height = window.innerHeight * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+resize();
+window.addEventListener('resize', resize);
+
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+
+// === Simulated Audio Data ===
+const barCount = CONFIG.barCount;
+let barHeights = new Float32Array(barCount);
+let barTargets = new Float32Array(barCount);
+let peakHeights = new Float32Array(barCount);
+let peakVelocity = new Float32Array(barCount);
+
+// Smooth noise
+let time = 0;
+const phaseOffsets = Array.from({ length: barCount }, () => Math.random() * Math.PI * 2);
+const freqMultipliers = Array.from({ length: barCount }, (_, i) => {
+  const normalized = i / barCount;
+  // Bass frequencies are slower, treble faster
+  return 0.5 + normalized * 2;
+});
+const amplitudes = Array.from({ length: barCount }, (_, i) => {
+  const normalized = i / barCount;
+  // Frequency curve: bass heavy, mid bump, treble rolloff
+  const bass = Math.exp(-normalized * 3) * 0.6;
+  const mid = Math.exp(-Math.pow((normalized - 0.35) * 4, 2)) * 0.4;
+  const treble = Math.exp(-Math.pow((normalized - 0.7) * 3, 2)) * 0.2;
+  return bass + mid + treble + 0.08;
+});
+
+// Beat simulation
+let beatPhase = 0;
+let beatIntensity = 0;
+const beatFreq = 2.2; // BPM ~132
+
+function generateBarTargets(t) {
+  beatPhase += 0.016 * beatFreq;
+  beatIntensity = Math.pow(Math.max(0, Math.sin(beatPhase * Math.PI)), 4);
+
+  for (let i = 0; i < barCount; i++) {
+    const wave1 = Math.sin(t * 0.003 * freqMultipliers[i] + phaseOffsets[i]);
+    const wave2 = Math.sin(t * 0.007 * freqMultipliers[i] + phaseOffsets[i] * 1.5) * 0.5;
+    const wave3 = Math.sin(t * 0.0013 + i * 0.3) * 0.3;
+    const noise = (Math.random() - 0.5) * 0.15;
+
+    const base = (wave1 + wave2 + wave3 + noise + 1) / 2;
+    const beatBoost = beatIntensity * (i < barCount * 0.3 ? 0.5 : 0.15);
+    barTargets[i] = Math.min(1, base * amplitudes[i] + beatBoost);
+  }
+}
+
+function updateBars() {
+  for (let i = 0; i < barCount; i++) {
+    // Smooth attack/release
+    const diff = barTargets[i] - barHeights[i];
+    barHeights[i] += diff * (diff > 0 ? 0.25 : 0.08);
+
+    // Peak hold
+    if (barHeights[i] > peakHeights[i]) {
+      peakHeights[i] = barHeights[i];
+      peakVelocity[i] = 0;
+    } else {
+      peakVelocity[i] += 0.0008;
+      peakHeights[i] -= peakVelocity[i];
+      if (peakHeights[i] < 0) peakHeights[i] = 0;
+    }
+  }
+}
+
+// === VU Meter State ===
+let vuLeft = 0, vuRight = 0;
+let vuLeftPeak = 0, vuRightPeak = 0;
+let vuLeftPeakV = 0, vuRightPeakV = 0;
+
+function updateVU() {
+  // Average left and right halves
+  let sumL = 0, sumR = 0;
+  for (let i = 0; i < barCount; i++) {
+    if (i < barCount / 2) sumL += barHeights[i];
+    else sumR += barHeights[i];
+  }
+  const targetL = sumL / (barCount / 2);
+  const targetR = sumR / (barCount / 2);
+  vuLeft += (targetL - vuLeft) * 0.15;
+  vuRight += (targetR - vuRight) * 0.15;
+
+  // Peaks
+  if (vuLeft > vuLeftPeak) { vuLeftPeak = vuLeft; vuLeftPeakV = 0; }
+  else { vuLeftPeakV += 0.001; vuLeftPeak = Math.max(0, vuLeftPeak - vuLeftPeakV); }
+  if (vuRight > vuRightPeak) { vuRightPeak = vuRight; vuRightPeakV = 0; }
+  else { vuRightPeakV += 0.001; vuRightPeak = Math.max(0, vuRightPeak - vuRightPeakV); }
+
+  // Update DOM
+  document.getElementById('vu-left-fill').style.height = (vuLeft * 100) + '%';
+  document.getElementById('vu-right-fill').style.height = (vuRight * 100) + '%';
+  document.getElementById('vu-left-peak').style.bottom = (vuLeftPeak * 100) + '%';
+  document.getElementById('vu-right-peak').style.bottom = (vuRightPeak * 100) + '%';
+}
+
+// === Draw ===
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function getBarColor(normalizedHeight) {
+  const c1 = hexToRgb(CONFIG.barColor1);
+  const c2 = hexToRgb(CONFIG.barColor2);
+  const c3 = hexToRgb(CONFIG.barColor3);
+
+  let r, g, b;
+  if (normalizedHeight < 0.5) {
+    const t = normalizedHeight / 0.5;
+    r = c1.r + (c2.r - c1.r) * t;
+    g = c1.g + (c2.g - c1.g) * t;
+    b = c1.b + (c2.b - c1.b) * t;
+  } else {
+    const t = (normalizedHeight - 0.5) / 0.5;
+    r = c2.r + (c3.r - c2.r) * t;
+    g = c2.g + (c3.g - c2.g) * t;
+    b = c2.b + (c3.b - c2.b) * t;
+  }
+  return { r: Math.round(r), g: Math.round(g), b: Math.round(b) };
+}
+
+function draw() {
+  const w = W();
+  const h = H();
+
+  ctx.clearRect(0, 0, w, h);
+
+  const marginX = w * 0.1;
+  const availW = w * 0.8;
+  const gap = 2;
+  const barW = (availW - gap * (barCount - 1)) / barCount;
+  const maxBarH = h * 0.35;
+  const baseY = h * 0.48;
+
+  for (let i = 0; i < barCount; i++) {
+    const x = marginX + i * (barW + gap);
+    const barH = barHeights[i] * maxBarH;
+    const normalizedH = barHeights[i];
+
+    // Create gradient for each bar
+    const grad = ctx.createLinearGradient(x, baseY, x, baseY - barH);
+    const bottomC = getBarColor(0);
+    const topC = getBarColor(normalizedH);
+    grad.addColorStop(0, `rgba(${bottomC.r}, ${bottomC.g}, ${bottomC.b}, 0.9)`);
+    grad.addColorStop(1, `rgba(${topC.r}, ${topC.g}, ${topC.b}, 1)`);
+
+    // Main bar
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, baseY - barH, barW, barH);
+
+    // Glow on top
+    const glowC = getBarColor(normalizedH);
+    ctx.shadowColor = `rgba(${glowC.r}, ${glowC.g}, ${glowC.b}, 0.4)`;
+    ctx.shadowBlur = 6;
+    ctx.fillRect(x, baseY - barH, barW, 2);
+    ctx.shadowBlur = 0;
+
+    // Peak indicator
+    const peakY = baseY - peakHeights[i] * maxBarH;
+    const peakC = getBarColor(peakHeights[i]);
+    ctx.fillStyle = `rgba(${peakC.r}, ${peakC.g}, ${peakC.b}, 0.8)`;
+    ctx.fillRect(x, peakY - 2, barW, 2);
+
+    // Reflection (below baseline)
+    if (CONFIG.showReflection) {
+      const reflH = barH * 0.4;
+      const reflGrad = ctx.createLinearGradient(x, baseY + 4, x, baseY + 4 + reflH);
+      reflGrad.addColorStop(0, `rgba(${bottomC.r}, ${bottomC.g}, ${bottomC.b}, 0.15)`);
+      reflGrad.addColorStop(1, `rgba(${bottomC.r}, ${bottomC.g}, ${bottomC.b}, 0)`);
+      ctx.fillStyle = reflGrad;
+      ctx.fillRect(x, baseY + 4, barW, reflH);
+    }
+  }
+
+  // Baseline
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(marginX, baseY + 1);
+  ctx.lineTo(marginX + availW, baseY + 1);
+  ctx.stroke();
+
+  // Frequency labels
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.font = `${h * 0.012}px "JetBrains Mono", monospace`;
+  ctx.textAlign = 'center';
+  const freqLabels = ['32', '64', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+  freqLabels.forEach((label, i) => {
+    const x = marginX + (i / (freqLabels.length - 1)) * availW;
+    ctx.fillText(label, x, baseY + h * 0.04);
+  });
+
+  // Hz label
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  ctx.font = `${h * 0.01}px "JetBrains Mono", monospace`;
+  ctx.fillText('Hz', marginX + availW + w * 0.02, baseY + h * 0.04);
+}
+
+// === Animation Loop ===
+function animate() {
+  time++;
+  generateBarTargets(time);
+  updateBars();
+  updateVU();
+  draw();
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+// === PostMessage CONFIG updates ===
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    document.documentElement.style.setProperty('--bg-color', CONFIG.bgColor);
+    document.documentElement.style.setProperty('--bar-color-1', CONFIG.barColor1);
+    document.documentElement.style.setProperty('--bar-color-2', CONFIG.barColor2);
+    document.documentElement.style.setProperty('--bar-color-3', CONFIG.barColor3);
+    document.getElementById('track-name').textContent = CONFIG.trackName;
+    document.getElementById('artist-name').textContent = CONFIG.artistName;
+  }
+});
+</script>
+</body>
+</html>

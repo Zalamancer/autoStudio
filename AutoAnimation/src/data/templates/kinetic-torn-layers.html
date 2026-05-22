@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Torn Layers Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #e8e0d4;
+  }
+
+  /* Layered paper texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(135deg, rgba(0,0,0,0.03) 25%, transparent 25%),
+      linear-gradient(225deg, rgba(0,0,0,0.03) 25%, transparent 25%),
+      linear-gradient(45deg, rgba(0,0,0,0.03) 25%, transparent 25%),
+      linear-gradient(315deg, rgba(0,0,0,0.03) 25%, transparent 25%);
+    background-size: 40px 40px;
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.2;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 8px 14px;
+    position: relative;
+  }
+
+  /* Torn paper strip background */
+  .word-block.torn-strip .word-inner {
+    background: #fff;
+    box-shadow: 2px 3px 6px rgba(0,0,0,0.15);
+    clip-path: polygon(
+      0% 5%, 3% 0%, 8% 4%, 12% 1%, 18% 3%, 22% 0%, 28% 2%, 33% 0%, 38% 4%, 43% 1%, 50% 3%, 55% 0%, 60% 2%, 65% 0%, 72% 4%, 78% 1%, 83% 3%, 88% 0%, 93% 2%, 97% 0%, 100% 5%,
+      100% 95%, 97% 100%, 93% 96%, 88% 100%, 83% 97%, 78% 100%, 72% 96%, 65% 100%, 60% 98%, 55% 100%, 50% 97%, 43% 100%, 38% 96%, 33% 100%, 28% 98%, 22% 100%, 18% 97%, 12% 100%, 8% 96%, 3% 100%, 0% 95%
+    );
+    padding: 14px 20px;
+  }
+
+  /* Colored paper strip */
+  .word-block.color-strip .word-inner {
+    box-shadow: 2px 3px 6px rgba(0,0,0,0.15);
+    padding: 12px 18px;
+  }
+
+  /* Kraft paper strip */
+  .word-block.kraft-strip .word-inner {
+    background: #c4a77d;
+    color: #2a1f14;
+    box-shadow: 2px 3px 6px rgba(0,0,0,0.12);
+    padding: 12px 18px;
+  }
+
+  @keyframes peelOn {
+    0% { opacity: 0; transform: var(--peel-on-start); }
+    40% { opacity: 0.8; transform: var(--peel-on-mid); }
+    70% { transform: var(--peel-on-settle); }
+    100% { opacity: var(--final-opacity); transform: var(--peel-on-end); }
+  }
+
+  @keyframes tearOff {
+    0% { opacity: var(--final-opacity); transform: var(--peel-on-end); }
+    40% { opacity: 0.7; transform: var(--tear-mid); }
+    100% { opacity: 0; transform: var(--tear-end); }
+  }
+
+  /* Paper corner curls */
+  .corner-curl {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    width: 40px;
+    height: 40px;
+    opacity: 0.1;
+  }
+
+  .corner-curl::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #d4c8b0 0%, transparent 50%);
+  }
+
+  /* Masking tape piece */
+  .tape-piece {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0.35;
+    background: rgba(200, 190, 160, 0.6);
+    border: 1px solid rgba(180, 170, 140, 0.3);
+  }
+
+  /* Paper shadow layers in background */
+  .paper-layer {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    background: #fff;
+    opacity: 0.4;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['PEEL', 'BACK', 'THE', 'LAYERS', 'FIND', 'TRUTH'],
+  colors: ['#1a1a1a', '#cc2200', '#1a1a1a', '#005588', '#1a1a1a', '#cc2200'],
+  stripColors: ['#fff', '#FFE082', '#fff', '#BBDEFB', '#fff', '#FFCDD2'],
+  bgColor: '#e8e0d4',
+  maxRotation: 8,
+  overlapAmount: 0.25,
+  cycleDuration: 9000,
+  peelEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Georgia', weight: '700', style: 'italic', transform: 'lowercase', letterSpacing: '2px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '0px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+];
+
+const fontSizes = [130, 80, 100, 160, 70, 140];
+const wordStyleList = ['torn-strip', 'color-strip', 'kraft-strip', 'torn-strip', 'color-strip', 'kraft-strip'];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  // Background paper layers
+  const papers = [
+    { top: '5%', left: '8%', width: 200, height: 280, rot: -5 },
+    { top: '20%', right: '6%', width: 180, height: 250, rot: 8 },
+    { bottom: '10%', left: '15%', width: 220, height: 200, rot: -3 },
+    { bottom: '5%', right: '12%', width: 190, height: 240, rot: 6 },
+  ];
+  papers.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'paper-layer';
+    el.style.width = p.width + 'px';
+    el.style.height = p.height + 'px';
+    el.style.transform = `rotate(${p.rot}deg)`;
+    if (p.top) el.style.top = p.top;
+    if (p.bottom) el.style.bottom = p.bottom;
+    if (p.left) el.style.left = p.left;
+    if (p.right) el.style.right = p.right;
+    stage.appendChild(el);
+  });
+
+  // Tape pieces
+  const tapes = [
+    { top: '12%', left: '10%', width: 80, height: 22, rot: 5 },
+    { top: '30%', right: '8%', width: 70, height: 20, rot: -8 },
+    { bottom: '18%', left: '20%', width: 90, height: 24, rot: 3 },
+    { bottom: '25%', right: '15%', width: 60, height: 18, rot: -4 },
+  ];
+  tapes.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tape-piece';
+    el.style.width = t.width + 'px';
+    el.style.height = t.height + 'px';
+    el.style.transform = `rotate(${t.rot}deg)`;
+    if (t.top) el.style.top = t.top;
+    if (t.bottom) el.style.bottom = t.bottom;
+    if (t.left) el.style.left = t.left;
+    if (t.right) el.style.right = t.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.70;
+  const baseTop = vh * 0.15;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyleList[i % wordStyleList.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+
+    if (wordStyleList[i % wordStyleList.length] === 'color-strip') {
+      inner.style.background = CONFIG.stripColors[i % CONFIG.stripColors.length];
+    }
+
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * Math.min(vw * 0.15, 100);
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.9 + rng() * 0.1;
+
+    const peelDir = rng() > 0.5 ? 1 : -1;
+    el.style.setProperty('--peel-on-start', `translate(${peelDir * 60}px, -30px) rotate(${rotation + peelDir * 15}deg) scale(1.1)`);
+    el.style.setProperty('--peel-on-mid', `translate(${peelDir * -10}px, 5px) rotate(${rotation - peelDir * 2}deg) scale(0.98)`);
+    el.style.setProperty('--peel-on-settle', `translate(${peelDir * 3}px, -2px) rotate(${rotation + peelDir}deg) scale(1.01)`);
+    el.style.setProperty('--peel-on-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    const tearX = peelDir * (200 + rng() * 300);
+    const tearY = (rng() - 0.5) * 200;
+    el.style.setProperty('--tear-mid', `translate(${tearX * 0.3}px, ${tearY * 0.3}px) rotate(${rotation + peelDir * 10}deg) scale(1.05)`);
+    el.style.setProperty('--tear-end', `translate(${tearX}px, ${tearY}px) rotate(${rotation + peelDir * 25}deg) scale(0.7)`);
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const peelStagger = 380;
+  const peelDuration = 550;
+  const holdDuration = 2000;
+  const tearStagger = 220;
+  const tearDuration = 600;
+  const pauseBeforeLoop = 800;
+
+  const totalPeelTime = (count - 1) * peelStagger + peelDuration;
+  const totalTearTime = (count - 1) * tearStagger + tearDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalPeelTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * peelStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `peelOn ${peelDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalPeelTime + holdDuration) {
+    } else if (elapsed < totalPeelTime + holdDuration + totalTearTime) {
+      const tearElapsed = elapsed - totalPeelTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const reverseI = count - 1 - i;
+        const wordStart = reverseI * tearStagger;
+        if (tearElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `tearOff ${tearDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalPeelTime + holdDuration + totalTearTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

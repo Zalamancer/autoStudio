@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Warhol Pop Art Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+  }
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+
+  .pop-cell {
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    will-change: opacity, filter;
+  }
+
+  .pop-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* Abstract face icon */
+  .pop-icon {
+    width: 55%;
+    height: 55%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pop-shape {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    position: relative;
+    border: 4px solid rgba(0,0,0,0.3);
+  }
+
+  /* Eyes */
+  .pop-shape::before,
+  .pop-shape::after {
+    content: '';
+    position: absolute;
+    top: 35%;
+    width: 18%;
+    height: 18%;
+    border-radius: 50%;
+    background: #000;
+  }
+  .pop-shape::before { left: 25%; }
+  .pop-shape::after { right: 25%; }
+
+  /* Mouth */
+  .pop-mouth {
+    position: absolute;
+    bottom: 25%;
+    left: 30%;
+    width: 40%;
+    height: 12%;
+    border-radius: 0 0 50% 50%;
+    border-bottom: 3px solid #000;
+    border-left: 2px solid #000;
+    border-right: 2px solid #000;
+  }
+
+  .pop-label {
+    font-family: 'Impact', sans-serif;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: rgba(0,0,0,0.6);
+    text-align: center;
+  }
+
+  /* Halftone dots overlay */
+  .halftone-overlay {
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+    pointer-events: none;
+    background-image: radial-gradient(circle, #000 1px, transparent 1px);
+    background-size: 6px 6px;
+  }
+
+  @keyframes colorFlash {
+    0% { opacity: 0; filter: saturate(3) brightness(1.5); }
+    30% { opacity: 1; filter: saturate(2) brightness(1.2); }
+    60% { filter: saturate(1.5) brightness(1.1); }
+    100% { opacity: 1; filter: saturate(1) brightness(1); }
+  }
+
+  @keyframes popFade {
+    0% { opacity: 1; filter: saturate(1) brightness(1); }
+    50% { filter: saturate(3) brightness(1.5) contrast(1.3); }
+    100% { opacity: 0; filter: saturate(0) brightness(0.5); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  bgColors: ['#ff2277', '#00ccff', '#ffdd00', '#ff6600', '#cc22ff', '#00ff88', '#ff4444', '#2266ff', '#ffaa00'],
+  faceColors: ['#ffcc00', '#ff8800', '#ff44aa', '#44ddff', '#bbff33', '#ff6644', '#dd88ff', '#66eeff', '#ffbb44'],
+  labels: ['POP', 'ART', 'ICON', 'FAME', 'BOLD', 'NEON', 'VIBE', 'GLAM', 'STAR'],
+  bgColor: '#000000',
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function buildGrid() {
+  stage.innerHTML = '';
+  const cells = [];
+
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'pop-cell';
+    cell.style.background = CONFIG.bgColors[i % CONFIG.bgColors.length];
+
+    const inner = document.createElement('div');
+    inner.className = 'pop-inner';
+
+    const icon = document.createElement('div');
+    icon.className = 'pop-icon';
+
+    const shape = document.createElement('div');
+    shape.className = 'pop-shape';
+    shape.style.background = CONFIG.faceColors[i % CONFIG.faceColors.length];
+
+    const mouth = document.createElement('div');
+    mouth.className = 'pop-mouth';
+    shape.appendChild(mouth);
+
+    icon.appendChild(shape);
+    inner.appendChild(icon);
+
+    const label = document.createElement('div');
+    label.className = 'pop-label';
+    label.textContent = CONFIG.labels[i % CONFIG.labels.length];
+    inner.appendChild(label);
+
+    const halftone = document.createElement('div');
+    halftone.className = 'halftone-overlay';
+    cell.appendChild(halftone);
+
+    cell.appendChild(inner);
+    stage.appendChild(cell);
+    cells.push(cell);
+  }
+
+  return cells;
+}
+
+function runAnimation(cells) {
+  const count = cells.length;
+  const flashStagger = 250;
+  const flashDuration = 500;
+  const holdDuration = 3500;
+  const fadeStagger = 200;
+  const fadeDuration = 450;
+  const pause = 800;
+
+  const totalFlashTime = (count - 1) * flashStagger + flashDuration;
+  const totalFadeTime = (count - 1) * fadeStagger + fadeDuration;
+
+  let af, st;
+
+  function resetAll() {
+    cells.forEach(c => { c.style.animation = 'none'; c.style.opacity = '0'; });
+  }
+
+  function tick(ts) {
+    if (!st) st = ts;
+    const e = ts - st;
+
+    if (e < totalFlashTime) {
+      cells.forEach((cell, i) => {
+        if (e >= i * flashStagger && !cell.dataset.in) {
+          cell.dataset.in = '1';
+          cell.style.animation = `colorFlash ${flashDuration}ms ease-out forwards`;
+        }
+      });
+    } else if (e < totalFlashTime + holdDuration) {
+    } else if (e < totalFlashTime + holdDuration + totalFadeTime) {
+      const fe = e - totalFlashTime - holdDuration;
+      cells.forEach((cell, i) => {
+        if (fe >= i * fadeStagger && !cell.dataset.out) {
+          cell.dataset.out = '1';
+          cell.style.animation = `popFade ${fadeDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (e < totalFlashTime + holdDuration + totalFadeTime + pause) {
+    } else {
+      resetAll();
+      cells.forEach(c => { delete c.dataset.in; delete c.dataset.out; });
+      st = ts;
+    }
+    af = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  af = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(af);
+}
+
+let cells = buildGrid();
+runAnimation(cells);
+
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    cells = buildGrid();
+    runAnimation(cells);
+  }, 300);
+});
+</script>
+</body>
+</html>

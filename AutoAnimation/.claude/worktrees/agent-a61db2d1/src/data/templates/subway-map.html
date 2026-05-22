@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subway Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #fff;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#1a1a2e',
+  lines: [
+    {
+      name: 'Red Line',
+      color: '#e74c3c',
+      stations: ['Downtown', 'Central Park', 'Midtown', 'Grand Ave', 'Eastside']
+    },
+    {
+      name: 'Blue Line',
+      color: '#3498db',
+      stations: ['Harbor', 'University', 'Central Park', 'Tech Hub', 'Airport']
+    },
+    {
+      name: 'Green Line',
+      color: '#2ecc71',
+      stations: ['Westfield', 'Market St', 'Midtown', 'Riverside', 'North End']
+    },
+    {
+      name: 'Yellow Line',
+      color: '#f1c40f',
+      stations: ['South Bay', 'Arts District', 'Grand Ave', 'Tech Hub', 'Stadium']
+    }
+  ],
+  highlightStation: 'Central Park',
+  stationDotRadius: 6,
+  lineWidth: 5,
+  labelFont: 'bold 11px Arial',
+  titleFont: 'bold 28px Arial',
+  legendFont: '13px Arial',
+  title: 'METRO TRANSIT MAP',
+  cycleDuration: 14000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+let animState = { phase: 'idle', startTime: 0 };
+let lineGeometries = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  ctx.scale(1, 1);
+  buildGeometry();
+}
+
+function buildGeometry() {
+  lineGeometries = [];
+  const marginX = W * 0.1;
+  const marginY = H * 0.15;
+  const usableW = W - marginX * 2;
+  const usableH = H - marginY * 2;
+
+  // Pre-compute station positions for transfer detection
+  const allStationPositions = {};
+
+  CONFIG.lines.forEach((line, li) => {
+    const stationCount = line.stations.length;
+    const baseY = marginY + (usableH / (CONFIG.lines.length + 1)) * (li + 1);
+    const stations = [];
+
+    line.stations.forEach((name, si) => {
+      const baseX = marginX + (usableW / (stationCount - 1)) * si;
+      // Add slight vertical variation for visual interest
+      const offsetY = Math.sin(si * 1.8 + li * 0.7) * H * 0.04;
+      const x = baseX;
+      const y = baseY + offsetY;
+
+      stations.push({ name, x, y });
+
+      if (!allStationPositions[name]) {
+        allStationPositions[name] = [];
+      }
+      allStationPositions[name].push({ lineIndex: li, color: line.color, x, y });
+    });
+
+    lineGeometries.push({
+      ...line,
+      stationGeo: stations
+    });
+  });
+
+  // Mark transfer stations (stations appearing on multiple lines)
+  lineGeometries.forEach(lg => {
+    lg.stationGeo.forEach(s => {
+      s.isTransfer = allStationPositions[s.name] && allStationPositions[s.name].length > 1;
+      s.transferColors = s.isTransfer
+        ? allStationPositions[s.name].map(p => p.color)
+        : [lg.color];
+      s.isHighlight = s.name === CONFIG.highlightStation;
+    });
+  });
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInCubic(t) { return t * t * t; }
+function easeOutBack(t) { const c = 1.7; return 1 + (--t) * t * ((c + 1) * t + c); }
+function easeInOutQuart(t) { return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2; }
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function drawBackground(fadeIn) {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  const gridAlpha = 0.04 * fadeIn;
+  ctx.strokeStyle = `rgba(255,255,255,${gridAlpha})`;
+  ctx.lineWidth = 0.5;
+  const gridSize = W * 0.03;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+}
+
+function drawTitle(progress) {
+  if (progress <= 0) return;
+  const alpha = easeOutCubic(Math.min(progress * 2, 1));
+  const offsetY = (1 - easeOutCubic(Math.min(progress * 2, 1))) * -30;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = CONFIG.titleFont;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W / 2, H * 0.04 + offsetY);
+
+  // Underline
+  const titleWidth = ctx.measureText(CONFIG.title).width;
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - titleWidth / 2, H * 0.04 + 34 + offsetY);
+  ctx.lineTo(W / 2 + titleWidth / 2, H * 0.04 + 34 + offsetY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawLineSegment(line, drawProgress, stationProgress) {
+  if (drawProgress <= 0) return;
+  const stations = line.stationGeo;
+  if (stations.length < 2) return;
+
+  // Draw the line path with draw-on animation
+  const totalSegments = stations.length - 1;
+  const segmentsToShow = drawProgress * totalSegments;
+
+  ctx.save();
+  ctx.strokeStyle = line.color;
+  ctx.lineWidth = CONFIG.lineWidth;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Line glow
+  ctx.shadowColor = line.color;
+  ctx.shadowBlur = 8;
+
+  ctx.beginPath();
+  ctx.moveTo(stations[0].x, stations[0].y);
+
+  for (let i = 0; i < totalSegments; i++) {
+    if (i >= segmentsToShow) break;
+    const segProgress = Math.min(segmentsToShow - i, 1);
+    const fromX = stations[i].x;
+    const fromY = stations[i].y;
+    const toX = stations[i + 1].x;
+    const toY = stations[i + 1].y;
+
+    // Create smooth curved path through a midpoint
+    const midX = (fromX + toX) / 2;
+    const currentX = lerp(fromX, toX, segProgress);
+    const currentY = lerp(fromY, toY, segProgress);
+
+    if (segProgress >= 1) {
+      // Draw horizontal then vertical segments (subway style)
+      ctx.lineTo(midX, fromY);
+      ctx.lineTo(midX, toY);
+      ctx.lineTo(toX, toY);
+    } else if (segProgress < 0.33) {
+      const t = segProgress / 0.33;
+      ctx.lineTo(lerp(fromX, midX, t), fromY);
+    } else if (segProgress < 0.66) {
+      const t = (segProgress - 0.33) / 0.33;
+      ctx.lineTo(midX, fromY);
+      ctx.lineTo(midX, lerp(fromY, toY, t));
+    } else {
+      const t = (segProgress - 0.66) / 0.34;
+      ctx.lineTo(midX, fromY);
+      ctx.lineTo(midX, toY);
+      ctx.lineTo(lerp(midX, toX, t), toY);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw station dots
+  stations.forEach((station, si) => {
+    const stDelay = si / stations.length;
+    const stProg = Math.max(0, Math.min(1, (stationProgress - stDelay) * stations.length));
+    if (stProg <= 0) return;
+
+    const bounceScale = easeOutBack(Math.min(stProg, 1));
+    const radius = CONFIG.stationDotRadius * bounceScale;
+
+    // Transfer station: multi-ring
+    if (station.isTransfer) {
+      const ringCount = station.transferColors.length;
+      station.transferColors.forEach((col, ri) => {
+        ctx.beginPath();
+        const ringR = radius + (ringCount - ri) * 3;
+        ctx.arc(station.x, station.y, ringR, 0, Math.PI * 2);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      });
+      // White center
+      ctx.beginPath();
+      ctx.arc(station.x, station.y, radius * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    } else {
+      // Regular station
+      ctx.beginPath();
+      ctx.arc(station.x, station.y, radius + 2, 0, Math.PI * 2);
+      ctx.fillStyle = line.color;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(station.x, station.y, radius * 0.65, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    // Station label
+    const labelAlpha = easeOutCubic(Math.min(stProg * 1.5, 1));
+    ctx.save();
+    ctx.globalAlpha = labelAlpha;
+    ctx.fillStyle = '#ddd';
+    ctx.font = CONFIG.labelFont;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(station.name, station.x, station.y + radius + 8);
+    ctx.restore();
+  });
+}
+
+function drawHighlightPulse(time) {
+  // Find highlight station
+  lineGeometries.forEach(lg => {
+    lg.stationGeo.forEach(s => {
+      if (!s.isHighlight) return;
+      const pulse = (Math.sin(time * 3) + 1) / 2;
+      const outerR = CONFIG.stationDotRadius + 12 + pulse * 10;
+
+      // Pulsing ring
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, outerR, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${0.3 + pulse * 0.3})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Second pulse ring
+      const outerR2 = CONFIG.stationDotRadius + 6 + pulse * 6;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, outerR2, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,100,100,${0.4 + pulse * 0.4})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // "You Are Here" label
+      ctx.save();
+      ctx.globalAlpha = 0.6 + pulse * 0.4;
+      ctx.fillStyle = '#ff6b6b';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('YOU ARE HERE', s.x, s.y - outerR - 4);
+      ctx.restore();
+    });
+  });
+}
+
+function drawLegend(progress) {
+  if (progress <= 0) return;
+  const alpha = easeOutCubic(Math.min(progress * 2, 1));
+  const slideX = (1 - easeOutCubic(Math.min(progress * 2, 1))) * 40;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  const legendX = W * 0.05 + slideX;
+  const legendY = H * 0.88;
+  const lineH = 22;
+
+  // Legend background
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  const legendW = W * 0.2;
+  const legendH = CONFIG.lines.length * lineH + 20;
+  ctx.beginPath();
+  ctx.roundRect(legendX - 10, legendY - 10, legendW, legendH, 6);
+  ctx.fill();
+
+  CONFIG.lines.forEach((line, i) => {
+    const y = legendY + i * lineH;
+
+    // Color line
+    ctx.strokeStyle = line.color;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(legendX, y + 8);
+    ctx.lineTo(legendX + 24, y + 8);
+    ctx.stroke();
+
+    // Name
+    ctx.fillStyle = '#ccc';
+    ctx.font = CONFIG.legendFont;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(line.name, legendX + 32, y + 8);
+  });
+
+  ctx.restore();
+}
+
+function drawFrame(time, cycleTime) {
+  const cd = CONFIG.cycleDuration / 1000;
+  const t = cycleTime / 1000;
+
+  // Phase timing
+  const fadeInEnd = 0.5;
+  const titleEnd = 1.5;
+  const linesStart = 1.0;
+  const linesEnd = cd * 0.55;
+  const stationsStart = cd * 0.25;
+  const stationsEnd = cd * 0.65;
+  const legendStart = cd * 0.6;
+  const highlightStart = cd * 0.5;
+  const fadeOutStart = cd - 1.5;
+
+  // Fade in/out
+  const fadeIn = Math.min(t / fadeInEnd, 1);
+  const fadeOut = t > fadeOutStart ? 1 - easeInCubic((t - fadeOutStart) / 1.5) : 1;
+  const globalAlpha = fadeIn * fadeOut;
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, globalAlpha);
+
+  drawBackground(fadeIn);
+  drawTitle(Math.max(0, (t - 0.3) / (titleEnd - 0.3)));
+
+  // Draw each line
+  lineGeometries.forEach((lg, li) => {
+    const lineDelay = li * 0.6;
+    const lineDrawProg = easeInOutQuart(Math.max(0, Math.min(1, (t - linesStart - lineDelay) / (linesEnd - linesStart))));
+    const stProg = Math.max(0, Math.min(1, (t - stationsStart - lineDelay * 0.5) / (stationsEnd - stationsStart)));
+    drawLineSegment(lg, lineDrawProg, stProg);
+  });
+
+  // Highlight pulse
+  if (t > highlightStart) {
+    drawHighlightPulse(time / 1000);
+  }
+
+  // Legend
+  drawLegend(Math.max(0, (t - legendStart) / 1.5));
+
+  ctx.restore();
+}
+
+let cycleStartTime = 0;
+let running = false;
+
+function runCycle() {
+  running = true;
+  cycleStartTime = performance.now();
+
+  function frame(now) {
+    if (!running) return;
+    const elapsed = now - cycleStartTime;
+
+    if (elapsed >= CONFIG.cycleDuration) {
+      // Reset and restart
+      running = false;
+      setTimeout(runCycle, 200);
+      return;
+    }
+
+    ctx.clearRect(0, 0, W, H);
+    drawFrame(now, elapsed);
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE' && e.data.config) {
+    Object.assign(CONFIG, e.data.config);
+    buildGeometry();
+  }
+});
+
+resize();
+runCycle();
+</script>
+</body>
+</html>

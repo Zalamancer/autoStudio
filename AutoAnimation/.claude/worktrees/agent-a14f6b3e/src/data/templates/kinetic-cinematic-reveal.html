@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cinematic Reveal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Film grain overlay */
+  .grain {
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    pointer-events: none;
+    z-index: 1000;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    animation: grainShift 0.5s steps(6) infinite;
+  }
+
+  @keyframes grainShift {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-5%, -10%); }
+    20% { transform: translate(-15%, 5%); }
+    30% { transform: translate(7%, -25%); }
+    40% { transform: translate(-5%, 25%); }
+    50% { transform: translate(-15%, 10%); }
+    60% { transform: translate(15%, 0%); }
+    70% { transform: translate(0%, 15%); }
+    80% { transform: translate(3%, 35%); }
+    90% { transform: translate(-10%, 10%); }
+  }
+
+  /* Letterbox bars */
+  .letterbox {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 500;
+    background: #000000;
+  }
+
+  .letterbox-top {
+    top: 0;
+  }
+
+  .letterbox-bottom {
+    bottom: 0;
+  }
+
+  /* Stage */
+  .stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    gap: 0;
+  }
+
+  /* Word container */
+  .word-wrapper {
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
+    margin: 4px 0;
+  }
+
+  .word-text {
+    display: inline-block;
+    text-transform: uppercase;
+    white-space: nowrap;
+    will-change: transform, opacity, letter-spacing, filter;
+    transition-property: transform, opacity, letter-spacing, filter;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Golden sweep line */
+  .gold-line {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 2px;
+    width: 0;
+    transform: translateY(-50%);
+    z-index: 5;
+    opacity: 0;
+    will-change: width, opacity;
+  }
+
+  /* Reveal styles */
+
+  /* Slide up */
+  .reveal-slide-up .word-text {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  .reveal-slide-up.active .word-text {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Wipe left with gold line */
+  .reveal-wipe-left {
+    clip-path: inset(0 100% 0 0);
+  }
+  .reveal-wipe-left.active {
+    clip-path: inset(0 0% 0 0);
+  }
+
+  /* Zoom out */
+  .reveal-zoom-out .word-text {
+    transform: scale(2.5);
+    opacity: 0;
+    filter: blur(8px);
+  }
+  .reveal-zoom-out.active .word-text {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0px);
+  }
+
+  /* Clip reveal bottom-to-top */
+  .reveal-clip-bottom {
+    clip-path: inset(100% 0 0 0);
+  }
+  .reveal-clip-bottom.active {
+    clip-path: inset(0% 0 0 0);
+  }
+
+  /* Depth of field blur for inactive words */
+  .word-wrapper.inactive .word-text {
+    filter: blur(2px);
+    opacity: 0.3;
+    transition: filter 0.8s ease, opacity 0.8s ease;
+  }
+
+  /* Fade out all */
+  .stage.fade-out .word-wrapper {
+    opacity: 0 !important;
+    transform: translateY(-10px);
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Subtle vignette */
+  .vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+  }
+
+  /* Ambient glow behind active word */
+  .word-wrapper.active-glow::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%;
+    height: 200%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0;
+    animation: glowPulse 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes glowPulse {
+    0% { opacity: 0; }
+    50% { opacity: 0.15; }
+    100% { opacity: 0.05; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grain" id="grain"></div>
+<div class="vignette"></div>
+<div class="letterbox letterbox-top" id="letterbox-top"></div>
+<div class="letterbox letterbox-bottom" id="letterbox-bottom"></div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['EVERY', 'CHAMPION', 'WAS ONCE', 'A CONTENDER', 'WHO REFUSED', 'TO GIVE UP'],
+  fontWeights: [100, 900, 300, 900, 100, 900],
+  textColor: '#FFFFFF',
+  accentColor: '#D4AF37',
+  bgColor: '#000000',
+  letterboxHeight: 12,
+  grainOpacity: 0.04,
+  cycleDuration: 12000,
+  revealSpeed: 600,
+};
+// =========================================
+
+// Apply config to page
+document.body.style.backgroundColor = CONFIG.bgColor;
+document.getElementById('grain').style.opacity = CONFIG.grainOpacity;
+
+const letterboxTop = document.getElementById('letterbox-top');
+const letterboxBottom = document.getElementById('letterbox-bottom');
+letterboxTop.style.height = CONFIG.letterboxHeight + 'vh';
+letterboxBottom.style.height = CONFIG.letterboxHeight + 'vh';
+
+// Reveal type assignments based on word index pattern
+const revealTypes = ['reveal-slide-up', 'reveal-zoom-out', 'reveal-wipe-left', 'reveal-clip-bottom', 'reveal-slide-up', 'reveal-wipe-left'];
+
+// Font size mapping: thin weights get smaller, bold weights get larger
+// Capped to viewport dimensions for portrait compatibility
+function getFontSize(weight, index, total) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const cap = Math.min(vw * 0.22, vh * 0.1);
+  if (weight >= 700) return Math.min(80 + (index % 3) * 20, cap, 140);
+  if (weight <= 200) return Math.max(30, Math.min(50 - (index % 2) * 10, cap));
+  return Math.min(48, cap);
+}
+
+// Build word elements
+const stage = document.getElementById('stage');
+const wordElements = [];
+
+CONFIG.words.forEach((word, i) => {
+  const weight = CONFIG.fontWeights[i] || 400;
+  const fontSize = getFontSize(weight, i, CONFIG.words.length);
+  const revealType = revealTypes[i % revealTypes.length];
+  const isAccentWord = weight >= 700;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'word-wrapper ' + revealType;
+  wrapper.style.transitionDuration = CONFIG.revealSpeed + 'ms';
+
+  // Clip-path transitions
+  if (revealType === 'reveal-wipe-left' || revealType === 'reveal-clip-bottom') {
+    wrapper.style.transitionProperty = 'clip-path, opacity';
+    wrapper.style.transitionTimingFunction = 'cubic-bezier(0.16, 1, 0.3, 1)';
+    wrapper.style.transitionDuration = CONFIG.revealSpeed + 'ms';
+  }
+
+  const textEl = document.createElement('span');
+  textEl.className = 'word-text';
+  textEl.textContent = word;
+  textEl.style.fontSize = fontSize + 'px';
+  textEl.style.fontWeight = weight;
+  textEl.style.color = isAccentWord ? CONFIG.accentColor : CONFIG.textColor;
+  textEl.style.letterSpacing = '0.3em';
+  textEl.style.transitionDuration = CONFIG.revealSpeed + 'ms';
+
+  // Gold line for wipe reveals
+  let goldLine = null;
+  if (revealType === 'reveal-wipe-left') {
+    goldLine = document.createElement('div');
+    goldLine.className = 'gold-line';
+    goldLine.style.background = 'linear-gradient(90deg, transparent, ' + CONFIG.accentColor + ', transparent)';
+    wrapper.appendChild(goldLine);
+  }
+
+  wrapper.appendChild(textEl);
+  stage.appendChild(wrapper);
+
+  wordElements.push({
+    wrapper,
+    textEl,
+    goldLine,
+    revealType,
+    weight,
+    fontSize,
+    isAccentWord,
+  });
+});
+
+// Animation timing
+const totalWords = CONFIG.words.length;
+const staggerBase = CONFIG.cycleDuration * 0.6 / totalWords;
+const holdTime = CONFIG.cycleDuration * 0.25;
+const fadeOutDuration = CONFIG.cycleDuration * 0.15;
+
+function revealWord(index) {
+  const el = wordElements[index];
+  const wrapper = el.wrapper;
+  const textEl = el.textEl;
+
+  // Make visible
+  wrapper.style.opacity = '1';
+  wrapper.classList.add('active-glow');
+
+  // Set glow color
+  wrapper.style.setProperty('--glow-color', el.isAccentWord ? CONFIG.accentColor : CONFIG.textColor);
+  const afterRule = el.isAccentWord
+    ? 'background: radial-gradient(ellipse, ' + CONFIG.accentColor + '22, transparent)'
+    : 'background: radial-gradient(ellipse, ' + CONFIG.textColor + '11, transparent)';
+
+  // Gold line animation for wipe reveals
+  if (el.goldLine) {
+    el.goldLine.style.opacity = '1';
+    el.goldLine.style.transition = 'width ' + (CONFIG.revealSpeed * 0.6) + 'ms cubic-bezier(0.16, 1, 0.3, 1)';
+    el.goldLine.style.width = '100%';
+
+    setTimeout(() => {
+      wrapper.classList.add('active');
+      el.goldLine.style.transition = 'opacity 0.4s ease';
+      el.goldLine.style.opacity = '0';
+    }, CONFIG.revealSpeed * 0.35);
+  } else {
+    // Activate reveal
+    requestAnimationFrame(() => {
+      wrapper.classList.add('active');
+    });
+  }
+
+  // Animate letter spacing: start wide, settle tight
+  textEl.style.letterSpacing = '0.3em';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      textEl.style.letterSpacing = el.weight >= 700 ? '0.05em' : '0.12em';
+    });
+  });
+
+  // Mark other revealed words as inactive (depth of field)
+  wordElements.forEach((other, otherIndex) => {
+    if (otherIndex < index && other.wrapper.classList.contains('active')) {
+      other.wrapper.classList.add('inactive');
+    }
+  });
+
+  // Remove inactive from current
+  wrapper.classList.remove('inactive');
+}
+
+function runCycle() {
+  // Reset all words
+  wordElements.forEach((el) => {
+    el.wrapper.style.opacity = '0';
+    el.wrapper.classList.remove('active', 'active-glow', 'inactive');
+    el.textEl.style.letterSpacing = '0.3em';
+    if (el.goldLine) {
+      el.goldLine.style.width = '0';
+      el.goldLine.style.opacity = '0';
+    }
+
+    // Reset clip-path for wipe/clip reveals
+    if (el.revealType === 'reveal-wipe-left') {
+      el.wrapper.style.clipPath = 'inset(0 100% 0 0)';
+    } else if (el.revealType === 'reveal-clip-bottom') {
+      el.wrapper.style.clipPath = 'inset(100% 0 0 0)';
+    }
+
+    // Reset transform-based reveals
+    if (el.revealType === 'reveal-slide-up') {
+      el.textEl.style.transform = 'translateY(100%)';
+      el.textEl.style.opacity = '0';
+    } else if (el.revealType === 'reveal-zoom-out') {
+      el.textEl.style.transform = 'scale(2.5)';
+      el.textEl.style.opacity = '0';
+      el.textEl.style.filter = 'blur(8px)';
+    }
+  });
+
+  stage.classList.remove('fade-out');
+
+  // Stagger reveal each word
+  wordElements.forEach((el, i) => {
+    const delay = 400 + i * staggerBase;
+
+    setTimeout(() => {
+      revealWord(i);
+    }, delay);
+
+    // Remove inactive blur for the last word (all settle together)
+    if (i === totalWords - 1) {
+      setTimeout(() => {
+        wordElements.forEach((other) => {
+          other.wrapper.classList.remove('inactive');
+          other.textEl.style.filter = '';
+          other.textEl.style.opacity = '1';
+          other.textEl.style.transition = 'filter 0.6s ease, opacity 0.6s ease';
+        });
+      }, delay + CONFIG.revealSpeed + 200);
+    }
+  });
+
+  // Hold, then fade out
+  const fadeOutStart = 400 + totalWords * staggerBase + holdTime;
+
+  setTimeout(() => {
+    stage.classList.add('fade-out');
+  }, fadeOutStart);
+
+  // Restart cycle
+  setTimeout(() => {
+    runCycle();
+  }, fadeOutStart + fadeOutDuration + 500);
+}
+
+// Apply glow styles dynamically
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  .word-wrapper.active-glow::after {
+    background: radial-gradient(ellipse, ${CONFIG.accentColor}18, transparent);
+  }
+`;
+document.head.appendChild(styleSheet);
+
+// Start
+runCycle();
+</script>
+</body>
+</html>

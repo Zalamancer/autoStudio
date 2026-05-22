@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProAnimate — Feature Extension Mockups</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-deepest: #111113;
+    --bg-panel: #1a1a1e;
+    --bg-input: #2a2a2e;
+    --bg-hover: #333338;
+    --bg-selected: #3a3a3e;
+    --accent: #4a7eff;
+    --accent-dim: rgba(74, 126, 255, 0.1);
+    --accent-border: rgba(74, 126, 255, 0.3);
+    --accent-hover: #3a6aee;
+    --text-primary: #ffffff;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
+    --text-dim: #52525b;
+    --border: rgba(255, 255, 255, 0.05);
+    --border-accent: rgba(255, 255, 255, 0.08);
+    --red: #ef4444;
+    --red-dim: rgba(239, 68, 68, 0.1);
+    --green: #22c55e;
+    --green-dim: rgba(34, 197, 94, 0.1);
+    --orange: #f97316;
+    --orange-dim: rgba(249, 115, 22, 0.1);
+    --purple: #a855f7;
+    --purple-dim: rgba(168, 85, 247, 0.1);
+    --radius: 8px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-deepest);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Top Bar ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+  .topbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-accent);
+  }
+  .topbar-title {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* ── Workflow Mode Selector ── */
+  .mode-section {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mode-section h2 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+  }
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-width: 900px;
+  }
+  .mode-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .mode-card:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-accent);
+  }
+  .mode-card.active {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .mode-card.active::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .mode-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .mode-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .mode-desc {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+  }
+  .mode-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .mode-tab-pill {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .mode-card.active .mode-tab-pill {
+    background: rgba(74, 126, 255, 0.15);
+    color: var(--accent);
+  }
+
+  /* ── Feature Tab Nav ── */
+  .feature-nav {
+    display: flex;
+    gap: 2px;
+    padding: 16px 24px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .feature-tab {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .feature-tab:hover {
+    color: var(--text-secondary);
+  }
+  .feature-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .feature-tab .tab-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    margin-left: 6px;
+    font-weight: 600;
+  }
+
+  /* ── Panel Container ── */
+  .panel-container {
+    display: flex;
+    gap: 24px;
+    padding: 24px;
+    max-width: 1400px;
+  }
+
+  /* ── Panel (Left Side) ── */
+  .panel {
+    width: 320px;
+    min-width: 320px;
+    background: var(--bg-panel);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    max-height: 700px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-header-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--accent);
+  }
+  .panel-header-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .panel-header-badge {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--green-dim);
+    color: var(--green);
+    font-weight: 600;
+  }
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .panel-body > * + * {
+    margin-top: 16px;
+  }
+  .panel-footer {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(24, 24, 27, 0.5);
+    backdrop-filter: blur(8px);
+  }
+
+  /* ── Panel Section ── */
+  .section {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Controls ── */
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .ctrl-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .ctrl-input {
+    flex: 1;
+    background: var(--bg-input);
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text-primary);
+    outline: none;
+  }
+  .ctrl-input:focus {
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .ctrl-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  /* Slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .slider-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .slider-pill {
+    flex: 1;
+    background: var(--bg-input);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    cursor: ew-resize;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--accent-dim);
+    border-radius: var(--radius);
+    pointer-events: none;
+  }
+  .slider-value {
+    font-size: 12px;
+    color: var(--text-primary);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 6px 0;
+  }
+  .toggle-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .toggle {
+    width: 36px;
+    height: 20px;
+    background: var(--bg-input);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .toggle.on {
+    background: var(--accent);
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.15s;
+  }
+  .toggle.on::after {
+    transform: translateX(16px);
+  }
+
+  /* Select / Button Group */
+  .btn-group {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .btn-group-item {
+    flex: 1;
+    padding: 7px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    border: 1px solid transparent;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .btn-group-item:hover {
+    color: var(--text-secondary);
+    background: var(--bg-hover);
+  }
+  .btn-group-item.active {
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+
+  /* Drop Zone */
+  .drop-zone {
+    border: 2px dashed rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 12px;
+  }
+  .drop-zone:hover {
+    border-color: var(--accent-border);
+    background: var(--accent-dim);
+  }
+  .drop-zone-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+    opacity: 0.4;
+  }
+  .drop-zone-text {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .drop-zone-text strong {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* Action Buttons */
+  .btn-primary {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+  }
+  .btn-secondary {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover {
+    background: var(--bg-hover);
+  }
+  .btn-accent-outline {
+    width: 100%;
+    padding: 10px;
+    border-radius: var(--radius);
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--accent-border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-accent-outline:hover {
+    background: rgba(74, 126, 255, 0.2);
+  }
+
+  /* ── Radar Chart ── */
+  .radar-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+  }
+
+  /* ── Language Grid ── */
+  .lang-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .lang-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .lang-item:hover {
+    background: var(--bg-hover);
+  }
+  .lang-item.selected {
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent);
+  }
+  .lang-check {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--text-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .lang-item.selected .lang-check {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  /* ── Score Badge ── */
+  .score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .score-high { background: var(--green-dim); color: var(--green); }
+  .score-mid { background: var(--orange-dim); color: var(--orange); }
+  .score-low { background: var(--red-dim); color: var(--red); }
+
+  /* ── Checklist ── */
+  .checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .checklist-pass {
+    background: var(--green-dim);
+    color: var(--green);
+  }
+  .checklist-warn {
+    background: var(--orange-dim);
+    color: var(--orange);
+  }
+  .checklist-fail {
+    background: var(--red-dim);
+    color: var(--red);
+  }
+
+  /* ── Preview area ── */
+  .preview-area {
+    flex: 1;
+    min-width: 400px;
+  }
+  .preview-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .preview-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .preview-body {
+    padding: 20px;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .context-note {
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--accent);
+    line-height: 1.6;
+    margin-top: 12px;
+  }
+  .context-note strong {
+    font-weight: 600;
+  }
+
+  /* ── Progress Bar ── */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .progress-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    width: 50px;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .progress-pct {
+    font-size: 10px;
+    color: var(--text-dim);
+    width: 30px;
+    text-align: right;
+  }
+
+  /* ── Light direction circle ── */
+  .light-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 65% 35%, rgba(255,255,255,0.08), transparent);
+    border: 1px solid var(--border-accent);
+    position: relative;
+    margin: 0 auto 12px;
+  }
+  .light-dot {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 15%;
+    left: 60%;
+    box-shadow: 0 0 12px var(--accent);
+    cursor: grab;
+  }
+
+  /* ── Frequency Bands ── */
+  .freq-bands {
+    display: flex;
+    gap: 3px;
+    height: 50px;
+    align-items: flex-end;
+    margin: 12px 0;
+  }
+  .freq-bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.1s;
+  }
+
+  /* ── Hidden state ── */
+  .feature-panel { display: none; }
+  .feature-panel.active { display: flex; }
+
+  /* ── Info callout ── */
+  .info-callout {
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 11px;
+    color: #c084fc;
+    line-height: 1.6;
+  }
+
+  /* ── Scrollbar ── */
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .mode-grid { grid-template-columns: repeat(2, 1fr); }
+    .panel-container { flex-direction: column; }
+    .panel { width: 100%; min-width: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-logo">ProAnimate</div>
+  <div class="topbar-divider"></div>
+  <div class="topbar-title">Feature Extension Mockups — 8 Market-Validated Features + Workflow Modes</div>
+</div>
+
+<!-- Workflow Mode Selector -->
+<div class="mode-section">
+  <h2>Workflow Mode — Prevents Feature Overwhelm</h2>
+  <div class="mode-grid">
+    <div class="mode-card active" onclick="selectMode(this)">
+      <div class="mode-icon">&#9889;</div>
+      <div class="mode-name">Storyteller</div>
+      <div class="mode-desc">Talking heads, explainers, podcasts-to-shorts</div>
+      <div class="mode-tabs">
+        <span class="mode-tab-pill">Characters</span>
+        <span class="mode-tab-pill">Script</span>
+        <span class="mode-tab-pill">Audio</span>
+        <span class="mode-tab-pill">Edit</span>
+        <span class="mode-tab-pill">Publish</span>
+      </div>
+    </div>
+    <div class="mode-card" onclick="selectMode(this)">
+      <div class="mode-icon">&#128640;</div>
+      <div class="mode-name">Ad Creator</div>
+      <div class="mode-desc">Brand ads, UGC content, product videos</div>
+      <div class="mode-tabs">
+        <span class="mode-tab-pill">Characters</span>
+        <span class="mode-tab-pill">Ad Script</span>
+        <span class="mode-tab-pill">Brand Kit</span>
+        <span class="mode-tab-pill">Publish</span>
+      </div>
+    </div>
+    <div class="mode-card" onclick="selectMode(this)">
+      <div class="mode-icon">&#127912;</div>
+      <div class="mode-name">Motion Designer</div>
+      <div class="mode-desc">Kinetic type, animation, data viz</div>
+      <div class="mode-tabs">
+        <span class="mode-tab-pill">Rigging</span>
+        <span class="mode-tab-pill">Edit</span>
+        <span class="mode-tab-pill">Design</span>
+        <span class="mode-tab-pill">Assets</span>
+      </div>
+    </div>
+    <div class="mode-card" onclick="selectMode(this)">
+      <div class="mode-icon">&#9881;</div>
+      <div class="mode-name">Full Studio</div>
+      <div class="mode-desc">Everything. All 36 sub-tabs visible.</div>
+      <div class="mode-tabs">
+        <span class="mode-tab-pill">All Tabs</span>
+        <span class="mode-tab-pill">All Features</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature Tab Navigation -->
+<div class="feature-nav" id="featureNav">
+  <button class="feature-tab active" onclick="showFeature('avatar', this)">Photo Avatar <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('translate', this)">Translate All <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('sfx', this)">Auto SFX <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('clips', this)">Clip Extraction <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('ad', this)">Ad Creative <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('relight', this)">AI Relight <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('brand', this)">Brand Guard <span class="tab-badge">NEW</span></button>
+  <button class="feature-tab" onclick="showFeature('autorig', this)">Auto-Rig 3D <span class="tab-badge">NEW</span></button>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 1: Photo Avatar                        -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel active" id="panel-avatar">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="panel-header-title">Photo Avatar</span>
+        <span class="panel-header-badge" style="background: var(--purple-dim); color: var(--purple);">Characters</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">Upload Reference</div>
+          <div class="drop-zone">
+            <div class="drop-zone-icon">&#128247;</div>
+            <div class="drop-zone-text">Drop a <strong>photo</strong> or <strong>2-min video</strong><br>to create a talking avatar</div>
+          </div>
+          <div class="btn-group">
+            <div class="btn-group-item active">Photo</div>
+            <div class="btn-group-item">Video Clip</div>
+            <div class="btn-group-item">AI Generate</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Avatar Style</div>
+          <div class="btn-group">
+            <div class="btn-group-item active">Realistic</div>
+            <div class="btn-group-item">Cartoon</div>
+            <div class="btn-group-item">Anime</div>
+            <div class="btn-group-item">Pixel</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Settings</div>
+          <div class="slider-row">
+            <span class="slider-label">Quality</span>
+            <div class="slider-pill">
+              <div class="slider-fill" style="width: 75%"></div>
+              <span class="slider-value">Studio</span>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Idle animations (blink, breathe)</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Full-body (not just head)</span>
+            <div class="toggle"></div>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Characters tab. Appears as a creation method alongside 2D/3D/Pixel Art modes. Avatar joins the character list after creation.
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#10024; Create Avatar</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">Preview — Avatar will animate here after creation</div>
+        <div class="preview-body" style="flex-direction: column; gap: 12px;">
+          <div style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #2a2a2e, #333); display: flex; align-items: center; justify-content: center; font-size: 40px; opacity: 0.3;">&#128100;</div>
+          <div>Upload a photo to see your avatar preview</div>
+          <div style="font-size: 11px; color: var(--text-dim);">Powered by Hedra / LemonSlice / HeyGen APIs via fal.ai</div>
+        </div>
+      </div>
+      <div class="info-callout" style="margin-top: 12px;">
+        <strong>Market validation:</strong> Captions ($500M val) + HeyGen ($100M ARR) + Tavus ($64M) + Hedra ($44M) = $600M+ in funding proves this is the #1 most demanded feature in short-form video.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 2: Translate All                       -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-translate">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+        <span class="panel-header-title">Translate & Dub</span>
+        <span class="panel-header-badge" style="background: var(--green-dim); color: var(--green);">Script</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">Target Languages</div>
+          <div class="lang-grid">
+            <div class="lang-item selected"><span class="lang-check">&#10003;</span> Spanish</div>
+            <div class="lang-item selected"><span class="lang-check">&#10003;</span> French</div>
+            <div class="lang-item selected"><span class="lang-check">&#10003;</span> German</div>
+            <div class="lang-item"><span class="lang-check"></span> Japanese</div>
+            <div class="lang-item"><span class="lang-check"></span> Korean</div>
+            <div class="lang-item"><span class="lang-check"></span> Portuguese</div>
+            <div class="lang-item"><span class="lang-check"></span> Hindi</div>
+            <div class="lang-item"><span class="lang-check"></span> Arabic</div>
+            <div class="lang-item"><span class="lang-check"></span> Chinese</div>
+          </div>
+          <div style="font-size: 10px; color: var(--text-dim); text-align: right;">+ 21 more languages</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Voice & Lip Sync</div>
+          <div class="btn-group">
+            <div class="btn-group-item active">Clone Voice</div>
+            <div class="btn-group-item">Match Style</div>
+            <div class="btn-group-item">Native Voice</div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Emotion transfer (preserve tone)</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="section-title" style="margin-top: 12px;">Lip Sync Method</div>
+          <div class="btn-group">
+            <div class="btn-group-item">Mouth Only</div>
+            <div class="btn-group-item active">Full Body</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Progress</div>
+          <div class="progress-row">
+            <span class="progress-label">ES</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+            <span class="progress-pct">100%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">FR</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 67%"></div></div>
+            <span class="progress-pct">67%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-label">DE</span>
+            <div class="progress-bar"><div class="progress-fill" style="width: 23%"></div></div>
+            <span class="progress-pct">23%</span>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Script > Dialogue sub-tab. Appears after dialogue lines have generated audio. Also accessible from Export modal as "Multi-language export".
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#127760; Translate & Dub All</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">Side-by-Side Preview — Original vs Dubbed</div>
+        <div class="preview-body" style="gap: 20px;">
+          <div style="text-align: center;">
+            <div style="width: 160px; height: 90px; background: var(--bg-input); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-dim);">Original (EN)</div>
+          </div>
+          <div style="font-size: 18px; color: var(--text-dim);">&#8596;</div>
+          <div style="text-align: center;">
+            <div style="width: 160px; height: 90px; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--accent);">Dubbed (ES)</div>
+          </div>
+        </div>
+      </div>
+      <div class="info-callout" style="margin-top: 12px;">
+        <strong>Market validation:</strong> ElevenLabs ($11B val) + HeyGen ($100M ARR) + Rask AI ($6M ARR) + EzDubs (acquired by Cisco). Dubbing multiplies every video's reach by 10-30x.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 3: Auto SFX                            -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-sfx">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
+        <span class="panel-header-title">Auto Sound Design</span>
+        <span class="panel-header-badge" style="background: var(--orange-dim); color: var(--orange);">Audio</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">SFX Categories</div>
+          <div class="toggle-row">
+            <span class="toggle-label">Transitions (whooshes)</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Impacts (hits, taps)</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Ambience (room tone)</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Human (reactions, gasps)</span>
+            <div class="toggle"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">UI sounds (clicks, pops)</span>
+            <div class="toggle"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Style</div>
+          <div class="btn-group">
+            <div class="btn-group-item">Clean</div>
+            <div class="btn-group-item active">Cinematic</div>
+            <div class="btn-group-item">Gaming</div>
+            <div class="btn-group-item">Social</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Mix</div>
+          <div class="slider-row">
+            <span class="slider-label">SFX Vol</span>
+            <div class="slider-pill">
+              <div class="slider-fill" style="width: 60%"></div>
+              <span class="slider-value">60%</span>
+            </div>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Intensity</span>
+            <div class="slider-pill">
+              <div class="slider-fill" style="width: 45%"></div>
+              <span class="slider-value">Subtle</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Audio tab. Visible once video/animation exists on timeline. Also auto-triggered as final Orchestrator step before export.
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#127925; Generate Sound Effects</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">Timeline — SFX placed on dedicated audio track</div>
+        <div class="preview-body" style="flex-direction: column; gap: 8px; align-items: stretch; padding: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 10px; color: var(--text-dim); width: 60px;">Voice</span>
+            <div style="flex: 1; height: 24px; background: var(--accent-dim); border-radius: 4px; border: 1px solid var(--accent-border);"></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 10px; color: var(--text-dim); width: 60px;">Music</span>
+            <div style="flex: 1; height: 24px; background: var(--purple-dim); border-radius: 4px; border: 1px solid rgba(168,85,247,0.2);"></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 10px; color: var(--orange); width: 60px; font-weight: 600;">SFX</span>
+            <div style="flex: 1; height: 24px; position: relative;">
+              <div style="position: absolute; left: 5%; width: 8%; height: 100%; background: var(--orange-dim); border: 1px solid rgba(249,115,22,0.3); border-radius: 3px;"></div>
+              <div style="position: absolute; left: 25%; width: 5%; height: 100%; background: var(--orange-dim); border: 1px solid rgba(249,115,22,0.3); border-radius: 3px;"></div>
+              <div style="position: absolute; left: 45%; width: 12%; height: 100%; background: var(--orange-dim); border: 1px solid rgba(249,115,22,0.3); border-radius: 3px;"></div>
+              <div style="position: absolute; left: 70%; width: 6%; height: 100%; background: var(--orange-dim); border: 1px solid rgba(249,115,22,0.3); border-radius: 3px;"></div>
+              <div style="position: absolute; left: 88%; width: 8%; height: 100%; background: var(--orange-dim); border: 1px solid rgba(249,115,22,0.3); border-radius: 3px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="info-callout" style="margin-top: 12px;">
+        <strong>Market validation:</strong> Mirelo ($44M seed) solves the "silent video" problem. ProAnimate's biggest UX gap — users export video without sound effects. This is the #3 priority feature.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 4: Clip Extraction                     -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-clips">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        <span class="panel-header-title">Clip Extraction</span>
+        <span class="panel-header-badge">Publish</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">Import Long Video</div>
+          <div class="drop-zone">
+            <div class="drop-zone-icon">&#127909;</div>
+            <div class="drop-zone-text">Drop video or paste <strong>YouTube URL</strong></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Extracted Clips (5)</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-input); border-radius: var(--radius-sm); cursor: pointer;">
+              <div style="width: 48px; height: 28px; background: var(--bg-hover); border-radius: 4px; flex-shrink: 0;"></div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 11px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">"The secret nobody talks about..."</div>
+                <div style="font-size: 10px; color: var(--text-dim);">0:42 — Hook detected</div>
+              </div>
+              <div class="score-badge score-high" style="font-size: 12px; padding: 2px 6px;">94</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-input); border-radius: var(--radius-sm); cursor: pointer;">
+              <div style="width: 48px; height: 28px; background: var(--bg-hover); border-radius: 4px; flex-shrink: 0;"></div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 11px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">"This changed everything for me"</div>
+                <div style="font-size: 10px; color: var(--text-dim);">1:15 — Emotional peak</div>
+              </div>
+              <div class="score-badge score-high" style="font-size: 12px; padding: 2px 6px;">87</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-input); border-radius: var(--radius-sm); cursor: pointer;">
+              <div style="width: 48px; height: 28px; background: var(--bg-hover); border-radius: 4px; flex-shrink: 0;"></div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 11px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">"3 things I wish I knew earlier"</div>
+                <div style="font-size: 10px; color: var(--text-dim);">0:58 — Listicle format</div>
+              </div>
+              <div class="score-badge score-mid" style="font-size: 12px; padding: 2px 6px;">72</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Publish > Score sub-tab. Appears when video > 2 min is uploaded. Extracted clips become new projects.
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#9986; Prepare All for Publishing</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">Clip Preview — "The secret nobody talks about..."</div>
+        <div class="preview-body" style="flex-direction: column; gap: 12px;">
+          <div style="width: 180px; height: 320px; background: var(--bg-input); border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-accent); font-size: 12px; color: var(--text-dim);">9:16 Preview</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 11px;">Edit in Timeline</button>
+            <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 11px;">Add Captions</button>
+            <button class="btn-accent-outline" style="width: auto; padding: 6px 12px; font-size: 11px;">Publish</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 5: Ad Creative                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-ad">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 8 6 4-6 4Z"/></svg>
+        <span class="panel-header-title">Ad Creative</span>
+        <span class="panel-header-badge" style="background: rgba(34,197,94,0.1); color: #22c55e;">Script</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">Product</div>
+          <input class="ctrl-input" placeholder="Paste product URL or describe your product..." style="width: 100%; margin-bottom: 8px;">
+          <input class="ctrl-input" placeholder="Target audience (e.g. 'fitness enthusiasts 25-35')" style="width: 100%;">
+        </div>
+
+        <div class="section">
+          <div class="section-title">Ad Format</div>
+          <div class="btn-group">
+            <div class="btn-group-item active">UGC</div>
+            <div class="btn-group-item">Demo</div>
+            <div class="btn-group-item">Before/After</div>
+          </div>
+          <div class="btn-group">
+            <div class="btn-group-item">Listicle</div>
+            <div class="btn-group-item">Testimonial</div>
+            <div class="btn-group-item">Problem/Solution</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Script Variants (3)</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="padding: 10px; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); font-size: 11px; color: var(--accent); cursor: pointer;">
+              <strong>Hook A:</strong> "I tried every app and this is the only one that..."
+            </div>
+            <div style="padding: 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+              <strong>Hook B:</strong> "POV: You just discovered the secret to..."
+            </div>
+            <div style="padding: 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+              <strong>Hook C:</strong> "Stop scrolling — this changed my life in 7 days"
+            </div>
+          </div>
+          <button class="btn-secondary" style="margin-top: 8px; font-size: 11px; padding: 6px;">+ Generate 3 more hooks</button>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Script tab as a toggle: "Script" / "Ad Creative" mode. Orchestrator auto-routes ad prompts here. Hidden in Motion Designer workflow mode.
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#128640; Generate Ad Video</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">A/B Variants — Generate multiple versions for split testing</div>
+        <div class="preview-body" style="gap: 16px;">
+          <div style="text-align: center;">
+            <div style="width: 120px; height: 213px; background: var(--bg-input); border-radius: 8px; border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--accent);">Variant A</div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Hook A + Avatar</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 120px; height: 213px; background: var(--bg-input); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim);">Variant B</div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Hook B + Faceless</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 120px; height: 213px; background: var(--bg-input); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim);">Variant C</div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Hook C + Product</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 6: AI Relight                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-relight">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        <span class="panel-header-title">AI Relight</span>
+        <span class="panel-header-badge" style="background: var(--orange-dim); color: var(--orange);">Edit</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">Light Direction</div>
+          <div class="light-circle">
+            <div class="light-dot"></div>
+          </div>
+          <div style="text-align: center; font-size: 10px; color: var(--text-dim);">Drag to set light direction</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Settings</div>
+          <div class="slider-row">
+            <span class="slider-label">Temp</span>
+            <div class="slider-pill">
+              <div class="slider-fill" style="width: 55%"></div>
+              <span class="slider-value">Neutral</span>
+            </div>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Intensity</span>
+            <div class="slider-pill">
+              <div class="slider-fill" style="width: 70%"></div>
+              <span class="slider-value">70%</span>
+            </div>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Shadow</span>
+            <div class="slider-pill">
+              <div class="slider-fill" style="width: 40%"></div>
+              <span class="slider-value">Soft</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <button class="btn-accent-outline" style="margin-bottom: 8px;">&#10024; Match to Scene Background</button>
+          <div class="toggle-row">
+            <span class="toggle-label">Before / After comparison</span>
+            <div class="toggle"></div>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Edit > Mixed Media sub-tab. Appears when a character layer + background layer both exist. Matches character lighting to scene automatically.
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#9728; Apply Relight</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">Before / After — Character lighting matched to background</div>
+        <div class="preview-body" style="gap: 20px;">
+          <div style="text-align: center;">
+            <div style="width: 160px; height: 200px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+              <div style="width: 60px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 8px;"></div>
+            </div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Before</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 160px; height: 200px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--accent-border);">
+              <div style="width: 60px; height: 80px; background: linear-gradient(135deg, rgba(74,126,255,0.2), rgba(255,255,255,0.1)); border-radius: 8px;"></div>
+            </div>
+            <div style="font-size: 10px; color: var(--accent); margin-top: 4px;">After (matched)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 7: Brand Guard                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-brand">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="panel-header-title">Brand Guard</span>
+        <span class="panel-header-badge" style="background: var(--green-dim); color: var(--green);">Design</span>
+      </div>
+      <div class="panel-body">
+        <div class="section" style="text-align: center;">
+          <div class="score-badge score-mid" style="font-size: 28px; padding: 8px 20px;">78</div>
+          <div style="font-size: 11px; color: var(--text-dim); margin-top: 6px;">Brand Compliance Score</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Compliance Checklist</div>
+          <div class="checklist-item checklist-pass">&#10003; Colors — Using brand palette</div>
+          <div class="checklist-item checklist-pass">&#10003; Fonts — Inter, matching brand</div>
+          <div class="checklist-item checklist-warn">&#9888; Logo — Missing from intro</div>
+          <div class="checklist-item checklist-pass">&#10003; Aspect Ratio — 9:16 correct</div>
+          <div class="checklist-item checklist-fail">&#10007; Tone — Too casual for brand voice</div>
+        </div>
+
+        <div class="section">
+          <div class="toggle-row">
+            <span class="toggle-label">Enforce on export</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Auto-fix minor violations</span>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Design > Brand Kit sub-tab. Score updates live as you edit. "Enforce on export" blocks export if score &lt; 70.
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#9889; Fix All Violations</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">Brand Kit — Active Brand</div>
+        <div class="preview-body" style="flex-direction: column; gap: 16px; align-items: stretch; padding: 20px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-size: 11px; color: var(--text-tertiary); width: 60px;">Colors</span>
+            <div style="display: flex; gap: 4px;">
+              <div style="width: 24px; height: 24px; border-radius: 6px; background: #4a7eff;"></div>
+              <div style="width: 24px; height: 24px; border-radius: 6px; background: #1a1a2e;"></div>
+              <div style="width: 24px; height: 24px; border-radius: 6px; background: #ffffff;"></div>
+              <div style="width: 24px; height: 24px; border-radius: 6px; background: #22c55e;"></div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-size: 11px; color: var(--text-tertiary); width: 60px;">Font</span>
+            <span style="font-size: 13px; font-weight: 600;">Inter</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-size: 11px; color: var(--text-tertiary); width: 60px;">Logo</span>
+            <div style="width: 40px; height: 40px; background: var(--bg-input); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-dim);">Logo</div>
+          </div>
+        </div>
+      </div>
+      <div class="info-callout" style="margin-top: 12px;">
+        <strong>Market validation:</strong> Typeface ($1B valuation) proves enterprise demand for brand-consistent AI content. Brand Guard auto-enforces rules across all generated assets.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- FEATURE 8: Auto-Rig 3D                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="feature-panel" id="panel-autorig">
+  <div class="panel-container">
+    <div class="panel">
+      <div class="panel-header">
+        <svg class="panel-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 18a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2"/><rect x="3" y="4" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="2"/><line x1="8" y1="2" x2="8" y2="4"/><line x1="16" y1="2" x2="16" y2="4"/></svg>
+        <span class="panel-header-title">Auto-Rig 3D</span>
+        <span class="panel-header-badge" style="background: var(--purple-dim); color: var(--purple);">Characters</span>
+      </div>
+      <div class="panel-body">
+        <div class="section">
+          <div class="section-title">Rig Type</div>
+          <div class="btn-group">
+            <div class="btn-group-item active">Humanoid</div>
+            <div class="btn-group-item">Quadruped</div>
+            <div class="btn-group-item">Custom</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Bone Count</div>
+          <div class="btn-group">
+            <div class="btn-group-item">Simple (20)</div>
+            <div class="btn-group-item active">Standard (45)</div>
+            <div class="btn-group-item">Detailed (80+)</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Test Poses</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <div style="padding: 6px 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 10px; color: var(--text-secondary); cursor: pointer;">T-Pose</div>
+            <div style="padding: 6px 10px; background: var(--accent-dim); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); font-size: 10px; color: var(--accent); cursor: pointer;">Walk</div>
+            <div style="padding: 6px 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 10px; color: var(--text-secondary); cursor: pointer;">Wave</div>
+            <div style="padding: 6px 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 10px; color: var(--text-secondary); cursor: pointer;">Idle</div>
+            <div style="padding: 6px 10px; background: var(--bg-input); border-radius: var(--radius-sm); font-size: 10px; color: var(--text-secondary); cursor: pointer;">Jump</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="toggle-row">
+            <span class="toggle-label">Show weight heatmap</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Allow manual adjustments after</span>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+
+        <div class="context-note">
+          <strong>Extends:</strong> Characters tab (3D mode). "Auto-Rig" button appears only when a 3D model has no existing skeleton. Powered by Tripo UniRig (SIGGRAPH 2025).
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn-primary">&#9881; Auto-Rig Model</button>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <div class="preview-card">
+        <div class="preview-header">3D Viewport — Weight paint heatmap overlay</div>
+        <div class="preview-body" style="flex-direction: column; gap: 8px;">
+          <div style="width: 200px; height: 280px; background: linear-gradient(180deg, var(--bg-input) 0%, #1a1a2e 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative;">
+            <div style="font-size: 11px; color: var(--text-dim);">3D Model with skeleton overlay</div>
+          </div>
+          <div style="display: flex; gap: 4px; justify-content: center;">
+            <div style="width: 20px; height: 8px; background: #22c55e; border-radius: 2px;"></div>
+            <div style="width: 20px; height: 8px; background: #eab308; border-radius: 2px;"></div>
+            <div style="width: 20px; height: 8px; background: #ef4444; border-radius: 2px;"></div>
+            <span style="font-size: 9px; color: var(--text-dim); margin-left: 4px;">Weight influence: Low → High</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showFeature(id, btn) {
+  document.querySelectorAll('.feature-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.feature-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function selectMode(card) {
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+}
+
+// Toggle interactivity
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+
+// Button group interactivity
+document.querySelectorAll('.btn-group').forEach(group => {
+  group.querySelectorAll('.btn-group-item').forEach(item => {
+    item.addEventListener('click', () => {
+      group.querySelectorAll('.btn-group-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+});
+
+// Language grid interactivity
+document.querySelectorAll('.lang-item').forEach(item => {
+  item.addEventListener('click', () => item.classList.toggle('selected'));
+});
+</script>
+
+</body>
+</html>

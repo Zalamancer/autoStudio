@@ -1,0 +1,131 @@
+import type { OneClickApp } from '@/types/oneClickApp'
+
+export const editingApps: OneClickApp[] = [
+  {
+    id: 'clip-cut',
+    name: 'ClipCut',
+    description: 'Auto-cut long video into short clips',
+    category: 'editing',
+    icon: 'Scissors',
+    color: 'text-cyan-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Auto-cut and edit the content into engaging short-form clips',
+      aspectRatio: '9:16',
+      enableCaptions: true,
+      enableMusic: true,
+    },
+    inputFields: [
+      { id: 'content', label: 'Content Description', type: 'textarea', placeholder: 'Describe the source content...', required: true },
+      {
+        id: 'targetLength',
+        label: 'Target Length',
+        type: 'select',
+        options: [
+          { label: '15 seconds', value: '15' },
+          { label: '30 seconds', value: '30' },
+          { label: '60 seconds', value: '60' },
+        ],
+        default: '30',
+      },
+    ],
+    tags: ['cut', 'clip', 'auto-edit'],
+  },
+  {
+    id: 'urban-cuts',
+    name: 'Urban Cuts',
+    description: 'Urban/hip-hop style quick cuts',
+    category: 'editing',
+    icon: 'Zap',
+    color: 'text-cyan-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create urban hip-hop style content with quick cuts and beat-synced editing:',
+      aspectRatio: '9:16',
+      enableMusic: true,
+      enableCaptions: true,
+      effectsPreset: ['glitch', 'neon'],
+    },
+    inputFields: [
+      { id: 'content', label: 'Content', type: 'textarea', placeholder: 'What is the content about...', required: true },
+      {
+        id: 'musicMood',
+        label: 'Music Mood',
+        type: 'select',
+        options: [
+          { label: 'Trap', value: 'trap' },
+          { label: 'Lo-fi', value: 'lofi' },
+          { label: 'Boom Bap', value: 'boom-bap' },
+          { label: 'Drill', value: 'drill' },
+        ],
+        default: 'trap',
+      },
+    ],
+    tags: ['urban', 'hip-hop', 'quick-cuts'],
+  },
+  {
+    id: 'breakdown',
+    name: 'Breakdown',
+    description: 'Scene-by-scene breakdown video',
+    category: 'editing',
+    icon: 'ListOrdered',
+    color: 'text-cyan-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create a detailed scene-by-scene breakdown video analyzing:',
+      aspectRatio: '9:16',
+      enableCaptions: true,
+      enableMotionGraphics: true,
+    },
+    inputFields: [
+      { id: 'topic', label: 'Topic', type: 'textarea', placeholder: 'What to break down...', required: true },
+    ],
+    tags: ['breakdown', 'analysis', 'scene'],
+  },
+  {
+    id: 'japanese-show',
+    name: 'Japanese Show',
+    description: 'Japanese TV show style effects',
+    category: 'editing',
+    icon: 'Tv',
+    color: 'text-cyan-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create Japanese variety show style content with text effects and reactions:',
+      aspectRatio: '9:16',
+      enableCaptions: true,
+      enableMotionGraphics: true,
+      effectsPreset: ['zoom', 'shake'],
+    },
+    inputFields: [
+      { id: 'content', label: 'Content', type: 'textarea', placeholder: 'Describe the content...', required: true },
+      {
+        id: 'reactionLevel',
+        label: 'Reaction Level',
+        type: 'select',
+        options: [
+          { label: 'Mild', value: 'mild' },
+          { label: 'Medium', value: 'medium' },
+          { label: 'Over the Top', value: 'over-the-top' },
+        ],
+        default: 'medium',
+      },
+    ],
+    tags: ['japanese', 'variety-show', 'reactions'],
+  },
+  {
+    id: 'quick-recap',
+    name: 'Quick Recap',
+    description: 'Generate recap/summary video',
+    category: 'editing',
+    icon: 'FastForward',
+    color: 'text-cyan-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create a quick recap and summary video covering:',
+      aspectRatio: '9:16',
+      enableCaptions: true,
+      enableMusic: true,
+      enableMotionGraphics: true,
+    },
+    inputFields: [
+      { id: 'points', label: 'Key Points', type: 'textarea', placeholder: 'List the key points to recap...', required: true },
+    ],
+    tags: ['recap', 'summary', 'highlights'],
+  },
+]

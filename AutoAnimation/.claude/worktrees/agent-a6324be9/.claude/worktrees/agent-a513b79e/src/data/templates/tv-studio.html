@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Studio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0a0e1a;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #fff;
+  }
+  .studio {
+    width: 100%; height: 100%;
+    position: relative;
+    background: linear-gradient(160deg, #0d1526 0%, #0a0e1a 40%, #0f1832 100%);
+  }
+
+  /* Geometric background patterns */
+  .geo-pattern {
+    position: absolute; inset: 0;
+    overflow: hidden;
+  }
+  .geo-line {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(41, 98, 255, 0.08), transparent);
+    height: 1px;
+  }
+  .geo-circle {
+    position: absolute;
+    border: 1px solid rgba(41, 98, 255, 0.06);
+    border-radius: 50%;
+  }
+
+  /* ON AIR light */
+  .on-air {
+    position: absolute;
+    top: 3vh; left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 0.5vh;
+    padding: 0.6vh 2.5vw;
+    font-size: 1.8vh;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    color: #cc0000;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  @keyframes onAirGlow {
+    0%, 100% { box-shadow: 0 0 10px rgba(204,0,0,0.3), inset 0 0 5px rgba(204,0,0,0.1); }
+    50% { box-shadow: 0 0 25px rgba(204,0,0,0.6), inset 0 0 10px rgba(204,0,0,0.2); }
+  }
+  .on-air.active {
+    animation: onAirGlow 2s ease-in-out infinite;
+  }
+
+  /* Channel watermark */
+  .watermark {
+    position: absolute;
+    top: 3vh; right: 3vw;
+    font-size: 1.4vh;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.12);
+    opacity: 0;
+    transition: opacity 1s;
+  }
+
+  /* Lower thirds */
+  .lower-third {
+    position: absolute;
+    bottom: 14vh;
+    left: 0;
+    display: flex;
+    transform: translateX(-110%);
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .lt-accent {
+    width: 0.8vw;
+    background: #2962ff;
+  }
+  .lt-content {
+    display: flex;
+    flex-direction: column;
+  }
+  .lt-name {
+    background: rgba(41, 98, 255, 0.9);
+    padding: 0.8vh 3vw 0.8vh 2vw;
+    font-size: 2.2vh;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+  }
+  .lt-title {
+    background: rgba(20, 25, 40, 0.92);
+    padding: 0.5vh 3vw 0.5vh 2vw;
+    font-size: 1.5vh;
+    color: #aab;
+    clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%);
+  }
+
+  /* Score/data overlay */
+  .data-box {
+    position: absolute;
+    top: 12vh; right: 3vw;
+    background: rgba(10, 15, 30, 0.9);
+    border: 1px solid rgba(41, 98, 255, 0.3);
+    border-radius: 0.5vh;
+    padding: 1.5vh 2vw;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.6s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .data-box.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .data-label {
+    font-size: 1.1vh;
+    color: #667;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.5vh;
+  }
+  .data-value {
+    font-size: 3vh;
+    font-weight: 800;
+    color: #2962ff;
+    font-variant-numeric: tabular-nums;
+  }
+  .data-sub {
+    font-size: 1.2vh;
+    color: #558;
+    margin-top: 0.3vh;
+  }
+
+  /* Split screen wipe */
+  .split-wipe {
+    position: absolute;
+    top: 0; left: 50%;
+    width: 3px;
+    height: 0;
+    background: linear-gradient(to bottom, transparent, #2962ff, transparent);
+    transform: translateX(-50%);
+    transition: height 1s ease;
+  }
+
+  /* Lens flare */
+  .lens-flare {
+    position: absolute;
+    width: 30vw; height: 30vw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(41,98,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 2s;
+  }
+
+  /* Topic bar */
+  .topic-bar {
+    position: absolute;
+    bottom: 7vh;
+    left: 0; right: 0;
+    height: 4vh;
+    background: rgba(10, 14, 26, 0.95);
+    border-top: 1px solid rgba(41,98,255,0.2);
+    border-bottom: 1px solid rgba(41,98,255,0.2);
+    display: flex;
+    align-items: center;
+    padding: 0 3vw;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .topic-label {
+    background: #2962ff;
+    padding: 0.3vh 1.5vw;
+    font-size: 1.2vh;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-right: 2vw;
+    border-radius: 0.3vh;
+  }
+  .topic-text {
+    font-size: 1.4vh;
+    color: #ccd;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* Center graphic */
+  .center-graphic {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  .cg-title {
+    font-size: 4vh;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    margin-bottom: 1vh;
+  }
+  .cg-subtitle {
+    font-size: 1.8vh;
+    color: #889;
+    letter-spacing: 0.1em;
+  }
+  .cg-line {
+    width: 0;
+    height: 2px;
+    background: #2962ff;
+    margin: 1.5vh auto;
+    transition: width 0.8s ease;
+  }
+</style>
+</head>
+<body>
+<div class="studio">
+  <div class="geo-pattern" id="geoPattern"></div>
+  <div class="lens-flare" id="flare1" style="top:10%;left:60%;"></div>
+  <div class="lens-flare" id="flare2" style="top:50%;left:20%;"></div>
+
+  <div class="on-air" id="onAir">ON AIR</div>
+  <div class="watermark" id="watermark">STUDIO ONE</div>
+
+  <div class="split-wipe" id="splitWipe"></div>
+
+  <div class="center-graphic" id="centerGraphic">
+    <div class="cg-title" id="cgTitle">TONIGHT AT NINE</div>
+    <div class="cg-line" id="cgLine"></div>
+    <div class="cg-subtitle" id="cgSubtitle">EXCLUSIVE INTERVIEW</div>
+  </div>
+
+  <div class="data-box" id="dataBox">
+    <div class="data-label">VIEWERS NOW</div>
+    <div class="data-value" id="viewerCount">0</div>
+    <div class="data-sub">Live broadcast</div>
+  </div>
+
+  <div class="lower-third" id="lowerThird">
+    <div class="lt-accent"></div>
+    <div class="lt-content">
+      <div class="lt-name" id="ltName">MICHAEL CHEN</div>
+      <div class="lt-title" id="ltTitle">Chief Political Analyst</div>
+    </div>
+  </div>
+
+  <div class="topic-bar" id="topicBar">
+    <div class="topic-label">TOPIC</div>
+    <div class="topic-text" id="topicText">Global Economic Outlook: What Experts Are Saying About The Year Ahead</div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    channelName: 'STUDIO ONE',
+    onAirText: 'ON AIR',
+    centerTitle: 'TONIGHT AT NINE',
+    centerSubtitle: 'EXCLUSIVE INTERVIEW',
+    guestName: 'MICHAEL CHEN',
+    guestTitle: 'Chief Political Analyst',
+    topic: 'Global Economic Outlook: What Experts Are Saying About The Year Ahead',
+    viewerCount: 2847000,
+    accentColor: '#2962ff',
+    cycleDuration: 16000,
+    geoLineCount: 8,
+    geoCircleCount: 4
+  };
+
+  document.getElementById('watermark').textContent = CONFIG.channelName;
+  document.getElementById('cgTitle').textContent = CONFIG.centerTitle;
+  document.getElementById('cgSubtitle').textContent = CONFIG.centerSubtitle;
+  document.getElementById('ltName').textContent = CONFIG.guestName;
+  document.getElementById('ltTitle').textContent = CONFIG.guestTitle;
+  document.getElementById('topicText').textContent = CONFIG.topic;
+
+  // Generate geometric background
+  const geoPattern = document.getElementById('geoPattern');
+  for (let i = 0; i < CONFIG.geoLineCount; i++) {
+    const line = document.createElement('div');
+    line.className = 'geo-line';
+    line.style.top = (10 + Math.random() * 80) + '%';
+    line.style.left = '0';
+    line.style.right = '0';
+    line.style.animation = `geoMove${i % 2 === 0 ? 'A' : 'B'} ${15 + Math.random() * 10}s linear infinite`;
+    geoPattern.appendChild(line);
+  }
+  for (let i = 0; i < CONFIG.geoCircleCount; i++) {
+    const circle = document.createElement('div');
+    circle.className = 'geo-circle';
+    const size = 20 + Math.random() * 40;
+    circle.style.width = size + 'vh';
+    circle.style.height = size + 'vh';
+    circle.style.top = (Math.random() * 80) + '%';
+    circle.style.left = (Math.random() * 80) + '%';
+    geoPattern.appendChild(circle);
+  }
+
+  // Add geo keyframes dynamically
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = `
+    @keyframes geoMoveA { 0% { transform: translateX(-10%); } 50% { transform: translateX(10%); } 100% { transform: translateX(-10%); } }
+    @keyframes geoMoveB { 0% { transform: translateX(5%); } 50% { transform: translateX(-5%); } 100% { transform: translateX(5%); } }
+  `;
+  document.head.appendChild(styleSheet);
+
+  // Viewer count animation
+  function animateCount(target, duration) {
+    const el = document.getElementById('viewerCount');
+    const start = performance.now();
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const val = Math.round(ease * target);
+      el.textContent = val.toLocaleString();
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function runCycle() {
+    const onAir = document.getElementById('onAir');
+    const watermark = document.getElementById('watermark');
+    const centerGraphic = document.getElementById('centerGraphic');
+    const cgLine = document.getElementById('cgLine');
+    const lowerThird = document.getElementById('lowerThird');
+    const dataBox = document.getElementById('dataBox');
+    const topicBar = document.getElementById('topicBar');
+    const splitWipe = document.getElementById('splitWipe');
+    const flare1 = document.getElementById('flare1');
+    const flare2 = document.getElementById('flare2');
+
+    // Reset
+    onAir.style.transition = 'none'; onAir.style.opacity = '0'; onAir.classList.remove('active');
+    watermark.style.transition = 'none'; watermark.style.opacity = '0';
+    centerGraphic.style.transition = 'none'; centerGraphic.style.opacity = '0';
+    cgLine.style.transition = 'none'; cgLine.style.width = '0';
+    lowerThird.style.transition = 'none'; lowerThird.style.transform = 'translateX(-110%)';
+    dataBox.classList.remove('visible');
+    dataBox.style.transition = 'none'; dataBox.style.opacity = '0'; dataBox.style.transform = 'scale(0.9)';
+    topicBar.style.transition = 'none'; topicBar.style.opacity = '0';
+    splitWipe.style.transition = 'none'; splitWipe.style.height = '0';
+    flare1.style.transition = 'none'; flare1.style.opacity = '0';
+    flare2.style.transition = 'none'; flare2.style.opacity = '0';
+    document.getElementById('viewerCount').textContent = '0';
+
+    void onAir.offsetWidth;
+
+    // Sequence
+    setTimeout(() => {
+      onAir.style.transition = 'opacity 0.5s';
+      onAir.style.opacity = '1';
+      onAir.classList.add('active');
+    }, 300);
+
+    setTimeout(() => {
+      watermark.style.transition = 'opacity 1s';
+      watermark.style.opacity = '1';
+    }, 500);
+
+    setTimeout(() => {
+      flare1.style.transition = 'opacity 3s';
+      flare1.style.opacity = '1';
+    }, 800);
+
+    setTimeout(() => {
+      centerGraphic.style.transition = 'opacity 0.8s';
+      centerGraphic.style.opacity = '1';
+    }, 1200);
+
+    setTimeout(() => {
+      cgLine.style.transition = 'width 0.8s ease';
+      cgLine.style.width = '20vw';
+    }, 1800);
+
+    setTimeout(() => {
+      splitWipe.style.transition = 'height 1.2s ease';
+      splitWipe.style.height = '100%';
+    }, 3000);
+
+    setTimeout(() => {
+      centerGraphic.style.transition = 'opacity 0.6s';
+      centerGraphic.style.opacity = '0';
+    }, 4500);
+
+    setTimeout(() => {
+      splitWipe.style.transition = 'height 0.8s ease';
+      splitWipe.style.height = '0';
+    }, 5000);
+
+    setTimeout(() => {
+      lowerThird.style.transition = 'transform 0.7s cubic-bezier(0.22, 1, 0.36, 1)';
+      lowerThird.style.transform = 'translateX(0)';
+    }, 5500);
+
+    setTimeout(() => {
+      dataBox.style.transition = 'opacity 0.6s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+      dataBox.classList.add('visible');
+      dataBox.style.opacity = '1';
+      dataBox.style.transform = 'scale(1)';
+      animateCount(CONFIG.viewerCount, 2000);
+    }, 6500);
+
+    setTimeout(() => {
+      topicBar.style.transition = 'opacity 0.5s';
+      topicBar.style.opacity = '1';
+    }, 7500);
+
+    setTimeout(() => {
+      flare2.style.transition = 'opacity 3s';
+      flare2.style.opacity = '1';
+    }, 8000);
+
+    // Fade out
+    setTimeout(() => {
+      [onAir, watermark, topicBar].forEach(el => {
+        el.style.transition = 'opacity 1s'; el.style.opacity = '0';
+      });
+      onAir.classList.remove('active');
+      lowerThird.style.transition = 'transform 0.6s ease-in';
+      lowerThird.style.transform = 'translateX(-110%)';
+      dataBox.style.transition = 'opacity 0.6s, transform 0.6s';
+      dataBox.style.opacity = '0';
+      dataBox.style.transform = 'scale(0.9)';
+      flare1.style.transition = 'opacity 1.5s'; flare1.style.opacity = '0';
+      flare2.style.transition = 'opacity 1.5s'; flare2.style.opacity = '0';
+    }, CONFIG.cycleDuration - 2000);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

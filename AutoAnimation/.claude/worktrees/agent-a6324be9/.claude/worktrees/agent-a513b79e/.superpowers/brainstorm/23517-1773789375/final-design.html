@@ -1,0 +1,453 @@
+<style>
+  .split-panels { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .panel-mock {
+    width: 280px;
+    background: #141414;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    flex-shrink: 0;
+  }
+  .panel-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .panel-header-icon { color: #4a7eff; font-size: 14px; }
+  .panel-header-title { color: #e0e0e0; font-size: 13px; font-weight: 600; }
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: #181818;
+  }
+  .tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 9px 0;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .tab-active { color: #4a7eff; border-bottom: 2px solid #4a7eff; }
+  .tab-inactive { color: #555; }
+  .panel-body { padding: 12px 14px; }
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 10px;
+  }
+  .toggle-label { color: #bbb; font-size: 12px; }
+  .toggle-switch {
+    width: 34px; height: 18px;
+    background: #4a7eff;
+    border-radius: 9px;
+    position: relative;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; right: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle-off { background: #3a3a3a; }
+  .toggle-off::after { right: auto; left: 2px; }
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 7px 10px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .search-icon { color: #555; font-size: 11px; }
+  .search-text { color: #555; font-size: 11px; }
+  .section-label {
+    font-size: 10px;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px; }
+  .chip {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    font-weight: 500;
+  }
+  .chip-active {
+    background: rgba(74,126,255,0.12);
+    border-color: rgba(74,126,255,0.3);
+    color: #4a7eff;
+  }
+  .chip-inactive { background: #222; color: #777; }
+  .genre-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .genre-scroll::-webkit-scrollbar { height: 3px; }
+  .genre-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  .genre-card {
+    min-width: 82px;
+    padding: 10px 10px 8px;
+    background: #222;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.04);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .genre-card:hover { border-color: rgba(74,126,255,0.2); }
+  .genre-card-active { border-color: rgba(74,126,255,0.4); background: rgba(74,126,255,0.06); }
+  .genre-name { font-size: 10px; color: #ddd; font-weight: 600; }
+  .genre-desc { font-size: 8px; color: #666; margin-top: 3px; line-height: 1.3; }
+  .filter-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .filter-pill { padding: 3px 8px; border-radius: 4px; font-size: 9px; font-weight: 500; }
+  .preset-item {
+    padding: 8px 10px;
+    background: #1e1e1e;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .preset-item:hover { border-color: rgba(255,255,255,0.1); background: #252525; }
+  .preset-item-active {
+    background: rgba(74,126,255,0.06);
+    border-color: rgba(74,126,255,0.25);
+  }
+  .preset-name { font-size: 11px; color: #ddd; font-weight: 500; }
+  .preset-desc { font-size: 9px; color: #555; margin-top: 2px; }
+  .preset-row { display: flex; justify-content: space-between; align-items: center; }
+  .preset-cat { font-size: 8px; color: #444; text-transform: uppercase; letter-spacing: 0.3px; }
+  .footer-bar {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: #181818;
+  }
+  .footer-btn {
+    width: 100%;
+    padding: 8px;
+    background: #222;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    text-align: center;
+    color: #bbb;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  .footer-btn:hover { background: #2a2a2a; }
+  .slider-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+  }
+  .slider-label { font-size: 11px; color: #999; }
+  .slider-value { font-size: 11px; color: #ddd; font-weight: 500; }
+  .slider-track {
+    width: 100%;
+    height: 4px;
+    background: #2a2a2a;
+    border-radius: 2px;
+    margin: 4px 0 8px;
+    position: relative;
+  }
+  .slider-fill {
+    height: 100%;
+    background: #4a7eff;
+    border-radius: 2px;
+  }
+  .select-box {
+    width: 100%;
+    padding: 7px 10px;
+    background: #2a2a2a;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    color: #ddd;
+    font-size: 11px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .select-chevron { color: #555; font-size: 10px; }
+  .select-label { font-size: 11px; color: #999; margin-bottom: 5px; }
+  .select-hint { font-size: 9px; color: #444; margin-top: 3px; margin-bottom: 12px; }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .checkbox-box {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    border: 1px solid #444;
+    background: #2a2a2a;
+    flex-shrink: 0;
+  }
+  .checkbox-checked {
+    background: #4a7eff;
+    border-color: #4a7eff;
+  }
+  .checkbox-label { font-size: 11px; color: #999; }
+  .section-divider {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    margin: 10px 0;
+  }
+  .tab-label { font-size: 10px; color: #666; text-align: center; margin-top: 8px; }
+</style>
+
+<h2>Final Design: Cinema Studio Panel</h2>
+<p class="subtitle">Two tabs — Presets (default) and Camera. Click either to approve or suggest changes.</p>
+
+<div class="split-panels">
+
+  <!-- PRESETS TAB -->
+  <div data-choice="presets-approve" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="panel-mock">
+      <div class="panel-header">
+        <span class="panel-header-icon">🎬</span>
+        <span class="panel-header-title">Cinema Studio</span>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item tab-active">Presets</div>
+        <div class="tab-item tab-inactive">Camera</div>
+      </div>
+      <div class="panel-body">
+        <!-- Toggle -->
+        <div class="toggle-row">
+          <span class="toggle-label">Virtual Camera</span>
+          <div class="toggle-switch"></div>
+        </div>
+
+        <!-- Search -->
+        <div class="search-bar">
+          <span class="search-icon">⌕</span>
+          <span class="search-text">Search all presets...</span>
+        </div>
+
+        <!-- Quick Moves -->
+        <div class="section-label">Quick Moves</div>
+        <div class="chip-row">
+          <div class="chip chip-active">Zoom In</div>
+          <div class="chip chip-inactive">Zoom Out</div>
+          <div class="chip chip-inactive">Pan Left</div>
+          <div class="chip chip-inactive">Pan Right</div>
+          <div class="chip chip-inactive">Ken Burns</div>
+          <div class="chip chip-inactive">Tilt Up</div>
+        </div>
+
+        <!-- Genre Feel -->
+        <div class="section-label">Genre Feel</div>
+        <div class="genre-scroll">
+          <div class="genre-card genre-card-active">
+            <div class="genre-name">Action</div>
+            <div class="genre-desc">Shaky cam, fast zooms</div>
+          </div>
+          <div class="genre-card">
+            <div class="genre-name">Horror</div>
+            <div class="genre-desc">Slow creep, snap</div>
+          </div>
+          <div class="genre-card">
+            <div class="genre-name">Romance</div>
+            <div class="genre-desc">Soft track, bokeh</div>
+          </div>
+          <div class="genre-card">
+            <div class="genre-name">Suspense</div>
+            <div class="genre-desc">Dolly in, tight</div>
+          </div>
+          <div class="genre-card">
+            <div class="genre-name">Comedy</div>
+            <div class="genre-desc">Steady, whip pan</div>
+          </div>
+        </div>
+
+        <!-- Cinema Shots -->
+        <div class="section-label">Cinema Shots</div>
+        <div class="filter-row">
+          <div class="filter-pill chip-active">All</div>
+          <div class="filter-pill chip-inactive">Establishing</div>
+          <div class="filter-pill chip-inactive">Dialogue</div>
+          <div class="filter-pill chip-inactive">Action</div>
+          <div class="filter-pill chip-inactive">Emotion</div>
+          <div class="filter-pill chip-inactive">Transition</div>
+        </div>
+
+        <div class="preset-item preset-item-active">
+          <div class="preset-row">
+            <span class="preset-name">Wide Establishing</span>
+            <span class="preset-cat">Establishing</span>
+          </div>
+          <div class="preset-desc">Classic wide shot with slow zoom in</div>
+        </div>
+        <div class="preset-item">
+          <div class="preset-row">
+            <span class="preset-name">Aerial Descend</span>
+            <span class="preset-cat">Establishing</span>
+          </div>
+          <div class="preset-desc">High angle descending reveal</div>
+        </div>
+        <div class="preset-item">
+          <div class="preset-row">
+            <span class="preset-name">Medium Close-Up</span>
+            <span class="preset-cat">Dialogue</span>
+          </div>
+          <div class="preset-desc">Standard dialogue framing</div>
+        </div>
+        <div class="preset-item">
+          <div class="preset-row">
+            <span class="preset-name">Over Shoulder</span>
+            <span class="preset-cat">Dialogue</span>
+          </div>
+          <div class="preset-desc">Classic OTS with shallow DOF</div>
+        </div>
+        <div class="preset-item">
+          <div class="preset-row">
+            <span class="preset-name">Nolan IMAX Wide</span>
+            <span class="preset-cat">Establishing</span>
+          </div>
+          <div class="preset-desc">Ultra-wide IMAX with deep focus</div>
+        </div>
+      </div>
+      <div class="footer-bar">
+        <div class="footer-btn">☰ Properties</div>
+      </div>
+    </div>
+    <div class="tab-label">← Presets Tab (default view)</div>
+  </div>
+
+  <!-- CAMERA TAB -->
+  <div data-choice="camera-approve" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="panel-mock">
+      <div class="panel-header">
+        <span class="panel-header-icon">🎬</span>
+        <span class="panel-header-title">Cinema Studio</span>
+      </div>
+      <div class="tab-bar">
+        <div class="tab-item tab-inactive">Presets</div>
+        <div class="tab-item tab-active">Camera</div>
+      </div>
+      <div class="panel-body">
+        <!-- Toggle -->
+        <div class="toggle-row">
+          <span class="toggle-label">Virtual Camera</span>
+          <div class="toggle-switch"></div>
+        </div>
+
+        <!-- Camera Body -->
+        <div class="select-label">Camera Body</div>
+        <div class="select-box">
+          <span>ARRI Alexa Mini LF</span>
+          <span class="select-chevron">▾</span>
+        </div>
+        <div class="select-hint">36.7×25.5mm · 14 stops · ISO 800</div>
+
+        <!-- Lens -->
+        <div class="select-label">Lens</div>
+        <div class="select-box">
+          <span>Cooke S4/i (50mm f/2.0)</span>
+          <span class="select-chevron">▾</span>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Aperture -->
+        <div class="slider-row">
+          <span class="slider-label">Aperture</span>
+          <span class="slider-value">f/2.8</span>
+        </div>
+        <div class="slider-track"><div class="slider-fill" style="width: 15%;"></div></div>
+
+        <!-- Focus Distance -->
+        <div class="slider-row">
+          <span class="slider-label">Focus Distance</span>
+          <span class="slider-value">3.0m</span>
+        </div>
+        <div class="slider-track"><div class="slider-fill" style="width: 25%;"></div></div>
+
+        <!-- ISO -->
+        <div class="slider-row">
+          <span class="slider-label">ISO</span>
+          <span class="slider-value">800</span>
+        </div>
+        <div class="slider-track"><div class="slider-fill" style="width: 10%;"></div></div>
+
+        <div class="section-divider"></div>
+
+        <!-- Optical toggles -->
+        <div class="checkbox-row">
+          <div class="checkbox-box checkbox-checked"></div>
+          <span class="checkbox-label">Depth of Field</span>
+        </div>
+        <div class="checkbox-row">
+          <div class="checkbox-box checkbox-checked"></div>
+          <span class="checkbox-label">Bokeh</span>
+        </div>
+        <div class="checkbox-row">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-label">Vignetting</span>
+        </div>
+        <div class="checkbox-row">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-label">Chromatic Aberration</span>
+        </div>
+        <div class="checkbox-row">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-label">Lens Flare</span>
+        </div>
+        <div class="checkbox-row">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-label">Film Grain</span>
+        </div>
+        <div class="checkbox-row">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-label">Anamorphic</span>
+        </div>
+      </div>
+      <div class="footer-bar">
+        <div class="footer-btn">☰ Properties</div>
+      </div>
+    </div>
+    <div class="tab-label">← Camera Tab (settings view)</div>
+  </div>
+
+</div>
+
+<div style="max-width: 600px; margin: 24px auto 0; padding: 16px; background: rgba(74,126,255,0.05); border: 1px solid rgba(74,126,255,0.15); border-radius: 10px;">
+  <h3 style="margin: 0 0 8px; font-size: 13px; color: #ccc;">Design Summary</h3>
+  <ul style="margin: 0; padding-left: 18px; font-size: 11px; color: #999; line-height: 1.8;">
+    <li><strong>Presets tab</strong> (default) — Search bar → Quick Moves chips → Genre horizontal scroll → Cinema list with category filter</li>
+    <li><strong>Camera tab</strong> — Body select → Lens select → Aperture/Focus/ISO sliders → 7 optical toggles</li>
+    <li><strong>Virtual Camera toggle</strong> shared on both tabs</li>
+    <li><strong>Footer:</strong> Properties button on both tabs</li>
+    <li><strong>Colors:</strong> All #4a7eff accent, #2a2a2a surfaces, #3a3a3a hover</li>
+  </ul>
+</div>

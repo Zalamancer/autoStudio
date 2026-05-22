@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gorpcore Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a1a1a;
+    font-family: 'Courier New', monospace;
+    color: #FF6B00;
+  }
+  canvas#topo {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .grid-label {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.5;
+    color: #FF6B00;
+  }
+  .coord-strip {
+    position: absolute;
+    font-size: 12px;
+    font-weight: bold;
+    color: #FF6B00;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .coord-strip.left {
+    left: 20px;
+    top: 50%;
+    transform: rotate(-90deg) translateX(-50%);
+    transform-origin: left center;
+  }
+  .coord-strip.right {
+    right: 20px;
+    top: 50%;
+    transform: rotate(90deg) translateX(50%);
+    transform-origin: right center;
+  }
+  .coord-strip.bottom {
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .weather-box {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    border: 1px solid rgba(255, 107, 0, 0.4);
+    padding: 12px 16px;
+    font-size: 11px;
+    line-height: 1.8;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  .weather-box .val {
+    color: #fff;
+    font-weight: bold;
+  }
+  .carabiner {
+    position: absolute;
+    border: 3px solid rgba(255, 107, 0, 0.3);
+    border-radius: 50% 50% 10px 10px;
+    width: 40px;
+    height: 60px;
+  }
+  .carabiner::after {
+    content: '';
+    position: absolute;
+    top: 8px; right: -3px;
+    width: 3px; height: 30px;
+    background: rgba(255, 107, 0, 0.3);
+    border-radius: 2px;
+    transform: rotate(5deg);
+  }
+  .util-label {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255, 107, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 107, 0, 0.15);
+    padding-bottom: 4px;
+  }
+  .hi-vis-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 6px;
+    background: repeating-linear-gradient(
+      90deg,
+      #FF6B00 0px, #FF6B00 20px,
+      #000 20px, #000 40px
+    );
+    animation: scrollBar 2s linear infinite;
+  }
+  @keyframes scrollBar {
+    from { background-position: 0 0; }
+    to { background-position: 40px 0; }
+  }
+  .hi-vis-bar.top {
+    bottom: auto; top: 0;
+    animation-direction: reverse;
+  }
+  .crosshair {
+    position: absolute;
+    width: 30px; height: 30px;
+    border: 1px solid rgba(255, 107, 0, 0.5);
+    border-radius: 50%;
+  }
+  .crosshair::before, .crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 107, 0, 0.5);
+  }
+  .crosshair::before {
+    width: 1px; height: 40px;
+    left: 50%; top: -5px;
+    transform: translateX(-50%);
+  }
+  .crosshair::after {
+    width: 40px; height: 1px;
+    top: 50%; left: -5px;
+    transform: translateY(-50%);
+  }
+</style>
+</head>
+<body>
+<canvas id="topo"></canvas>
+<div class="overlay">
+  <div class="hi-vis-bar top"></div>
+  <div class="hi-vis-bar"></div>
+
+  <div class="weather-box" id="weather">
+    <div>ELEV <span class="val" id="elev">2,847</span> M</div>
+    <div>TEMP <span class="val" id="temp">-4.2</span> C</div>
+    <div>WIND <span class="val" id="wind">23</span> KM/H NW</div>
+    <div>HUM <span class="val" id="hum">67</span>%</div>
+    <div>PRES <span class="val" id="pres">742</span> HPA</div>
+  </div>
+
+  <div class="grid-label" style="top:60px;left:30px;">SECTOR A-7</div>
+  <div class="grid-label" style="bottom:60px;left:30px;">GRID REF: 4820N</div>
+  <div class="grid-label" style="top:60px;right:140px;">UTM ZONE 33T</div>
+
+  <div class="util-label" style="top:45%;left:30px;">TERRAIN ANALYSIS</div>
+  <div class="util-label" style="top:65%;right:30px;">CONTOUR INTERVAL 20M</div>
+
+  <div class="coord-strip left" id="coordLeft"></div>
+  <div class="coord-strip right" id="coordRight"></div>
+  <div class="coord-strip bottom" id="coordBottom"></div>
+
+  <div class="carabiner" style="bottom:100px;left:40px;"></div>
+  <div class="carabiner" style="top:35%;right:50px;transform:rotate(20deg);"></div>
+
+  <div class="crosshair" id="crosshair" style="top:40%;left:45%;"></div>
+</div>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    primaryColor: '#FF6B00',
+    bgColor: '#1a1a1a',
+    lineColor: 'rgba(255, 107, 0, 0.15)',
+    lineHighlight: 'rgba(255, 107, 0, 0.4)',
+    topoSpeed: 0.3,
+    topoScale: 0.004,
+    title: 'GORPCORE',
+    subtitle: 'TECHNICAL OUTDOOR',
+  };
+
+  const canvas = document.getElementById('topo');
+  const ctx = canvas.getContext('2d');
+  let W, H, time = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Simple noise function for topographic lines
+  function noise(x, y, t) {
+    const sx = Math.sin(x * 0.8 + t) * 0.5;
+    const sy = Math.cos(y * 0.6 - t * 0.7) * 0.5;
+    const s2 = Math.sin((x + y) * 0.5 + t * 0.4) * 0.3;
+    const s3 = Math.cos(x * 1.2 - y * 0.8 + t * 0.5) * 0.2;
+    return (sx + sy + s2 + s3) / 1.5;
+  }
+
+  function drawTopo(t) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = CONFIG.bgColor;
+    ctx.fillRect(0, 0, W, H);
+
+    const step = 8;
+    const levels = 12;
+
+    for (let level = 0; level < levels; level++) {
+      const threshold = (level / levels) * 2 - 1;
+      const isHighlight = level % 4 === 0;
+      ctx.strokeStyle = isHighlight ? CONFIG.lineHighlight : CONFIG.lineColor;
+      ctx.lineWidth = isHighlight ? 1.5 : 0.7;
+      ctx.beginPath();
+
+      for (let x = 0; x < W; x += step) {
+        for (let y = 0; y < H; y += step) {
+          const v = noise(x * CONFIG.topoScale, y * CONFIG.topoScale, t * CONFIG.topoSpeed);
+          const vr = noise((x + step) * CONFIG.topoScale, y * CONFIG.topoScale, t * CONFIG.topoSpeed);
+          const vb = noise(x * CONFIG.topoScale, (y + step) * CONFIG.topoScale, t * CONFIG.topoSpeed);
+
+          // Marching squares simplified - draw line segments at contour
+          if ((v >= threshold) !== (vr >= threshold)) {
+            const frac = (threshold - v) / (vr - v);
+            const px = x + frac * step;
+            ctx.moveTo(px, y);
+            ctx.lineTo(px, y + step * 0.5);
+          }
+          if ((v >= threshold) !== (vb >= threshold)) {
+            const frac = (threshold - v) / (vb - v);
+            const py = y + frac * step;
+            ctx.moveTo(x, py);
+            ctx.lineTo(x + step * 0.5, py);
+          }
+        }
+      }
+      ctx.stroke();
+    }
+
+    // Draw subtle grid
+    ctx.strokeStyle = 'rgba(255, 107, 0, 0.06)';
+    ctx.lineWidth = 0.5;
+    const gridSize = 80;
+    for (let x = 0; x < W; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = 0; y < H; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+  }
+
+  // Scrolling coordinates
+  function updateCoords(t) {
+    const lat = (48.2082 + Math.sin(t * 0.1) * 0.01).toFixed(4);
+    const lng = (16.3738 + Math.cos(t * 0.08) * 0.01).toFixed(4);
+    const nums = [];
+    for (let i = 0; i < 30; i++) {
+      nums.push(((lat * 1000 + i * 7.3 + t * 2) % 999).toFixed(1));
+    }
+    const str = nums.join('  ');
+    document.getElementById('coordLeft').textContent = str;
+    document.getElementById('coordRight').textContent = str.split('').reverse().join('');
+    document.getElementById('coordBottom').textContent = `N${lat}  E${lng}  ALT:${(2847 + Math.sin(t * 0.2) * 50).toFixed(0)}M  BRG:${((t * 10) % 360).toFixed(0)}`;
+  }
+
+  // Weather data updates
+  function updateWeather(t) {
+    document.getElementById('elev').textContent = (2847 + Math.sin(t * 0.15) * 30).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    document.getElementById('temp').textContent = (-4.2 + Math.sin(t * 0.1) * 1.5).toFixed(1);
+    document.getElementById('wind').textContent = (23 + Math.sin(t * 0.2) * 8).toFixed(0);
+    document.getElementById('hum').textContent = (67 + Math.sin(t * 0.08) * 5).toFixed(0);
+    document.getElementById('pres').textContent = (742 + Math.sin(t * 0.05) * 3).toFixed(0);
+  }
+
+  // Crosshair drift
+  function updateCrosshair(t) {
+    const ch = document.getElementById('crosshair');
+    const cx = 45 + Math.sin(t * 0.3) * 5;
+    const cy = 40 + Math.cos(t * 0.25) * 5;
+    ch.style.left = cx + '%';
+    ch.style.top = cy + '%';
+  }
+
+  function animate() {
+    time += 0.016;
+    drawTopo(time);
+    updateCoords(time);
+    updateWeather(time);
+    updateCrosshair(time);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>

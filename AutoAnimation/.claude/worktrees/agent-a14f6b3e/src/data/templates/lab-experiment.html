@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Experiment</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #0a1a1a; }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Background */
+  .bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 40% 30%, #0d2626 0%, #0a1a1a 50%, #060f0f 100%); }
+
+  /* Grid overlay */
+  .grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(0,255,200,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,200,0.02) 1px, transparent 1px); background-size: 4vw 4vh; pointer-events: none; z-index: 1; }
+
+  /* Experiment title */
+  .title-bar { position: absolute; top: 3%; left: 50%; transform: translateX(-50%); text-align: center; z-index: 10; opacity: 0; }
+  .title-bar h1 { font-size: 3vh; font-weight: 300; letter-spacing: 0.6vw; text-transform: uppercase; color: #00ffc8; text-shadow: 0 0 20px rgba(0,255,200,0.3); }
+  .title-bar .subtitle { font-size: 1.4vh; letter-spacing: 0.4vw; color: rgba(0,255,200,0.35); margin-top: 0.5vh; }
+
+  /* Test tube rack */
+  .tube-rack { position: absolute; bottom: 10%; left: 8%; width: 28vw; height: 35vh; z-index: 3; }
+  .rack-base { position: absolute; bottom: 0; left: 5%; right: 5%; height: 3vh; background: rgba(40,70,70,0.4); border-radius: 2px; border: 1px solid rgba(0,255,200,0.08); }
+  .rack-top { position: absolute; bottom: 20vh; left: 5%; right: 5%; height: 2vh; background: rgba(40,70,70,0.3); border-radius: 2px; border: 1px solid rgba(0,255,200,0.06); }
+  .test-tube { position: absolute; bottom: 3vh; width: 3vw; border-radius: 0 0 1.5vw 1.5vw; border: 1px solid rgba(100,200,200,0.15); border-top: none; overflow: hidden; }
+  .tube-liquid { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 1.5vw 1.5vw; transition: height 1s ease; }
+  .tube-shine { position: absolute; top: 0; left: 20%; width: 30%; height: 100%; background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent); pointer-events: none; }
+
+  /* Bubbles in tubes */
+  .tube-bubble { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.15); animation: bubbleRise 1.5s ease-in infinite; }
+  @keyframes bubbleRise { 0% { transform: translateY(0) scale(1); opacity: 0.6; } 100% { transform: translateY(-8vh) scale(0.5); opacity: 0; } }
+
+  /* Beaker */
+  .beaker { position: absolute; bottom: 10%; right: 10%; width: 14vw; height: 22vh; z-index: 3; opacity: 0; }
+  .beaker-body { position: absolute; bottom: 0; left: 10%; right: 10%; height: 80%; background: rgba(0,60,60,0.2); border: 1px solid rgba(0,255,200,0.1); border-top: none; border-radius: 0 0 5% 5%; overflow: hidden; }
+  .beaker-rim { position: absolute; bottom: 80%; left: 5%; right: 5%; height: 4%; background: rgba(100,200,200,0.1); border: 1px solid rgba(0,255,200,0.1); border-radius: 2px; }
+  .beaker-liquid { position: absolute; bottom: 0; left: 0; right: 0; height: 60%; background: linear-gradient(180deg, rgba(0,255,200,0.15), rgba(0,200,180,0.25)); animation: beakerGlow 3s ease-in-out infinite; }
+  @keyframes beakerGlow { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
+  .beaker-bubble { position: absolute; border-radius: 50%; background: rgba(0,255,200,0.2); }
+
+  /* DNA Helix */
+  .dna-container { position: absolute; top: 15%; right: 32%; width: 10vw; height: 50vh; z-index: 3; opacity: 0; }
+  .dna-dot { position: absolute; width: 1vw; height: 1vw; border-radius: 50%; }
+  .dna-dot.strand-a { background: rgba(0,255,200,0.7); box-shadow: 0 0 6px rgba(0,255,200,0.4); }
+  .dna-dot.strand-b { background: rgba(0,180,255,0.7); box-shadow: 0 0 6px rgba(0,180,255,0.4); }
+  .dna-connector { position: absolute; height: 1px; background: rgba(0,255,200,0.15); transform-origin: left center; }
+
+  /* Chemical formulas */
+  .formulas { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .formula { position: absolute; font-family: 'Courier New', monospace; font-size: 1.8vh; color: rgba(0,255,200,0.5); text-shadow: 0 0 8px rgba(0,255,200,0.2); opacity: 0; white-space: nowrap; }
+
+  /* Microscope viewfinder */
+  .viewfinder { position: absolute; top: 20%; left: 12%; width: 18vw; height: 18vw; border-radius: 50%; border: 2px solid rgba(0,255,200,0.1); z-index: 4; overflow: hidden; opacity: 0; }
+  .viewfinder::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.6) 100%); pointer-events: none; }
+  .viewfinder-content { width: 100%; height: 100%; background: radial-gradient(circle, rgba(0,40,40,0.8) 0%, rgba(0,20,20,0.9) 100%); position: relative; }
+  .viewfinder .crosshair-h { position: absolute; top: 50%; left: 10%; right: 10%; height: 1px; background: rgba(0,255,200,0.1); }
+  .viewfinder .crosshair-v { position: absolute; left: 50%; top: 10%; bottom: 10%; width: 1px; background: rgba(0,255,200,0.1); }
+  .micro-cell { position: absolute; border-radius: 50%; border: 1px solid rgba(0,255,200,0.2); background: rgba(0,255,200,0.03); }
+
+  /* Data readout */
+  .data-panel { position: absolute; top: 12%; right: 5%; width: 14vw; z-index: 5; opacity: 0; }
+  .data-row { display: flex; justify-content: space-between; padding: 0.6vh 0; border-bottom: 1px solid rgba(0,255,200,0.05); }
+  .data-label { font-size: 1.1vh; color: rgba(0,255,200,0.35); text-transform: uppercase; letter-spacing: 1px; }
+  .data-value { font-size: 1.3vh; font-family: 'Courier New', monospace; color: rgba(0,255,200,0.7); }
+
+  /* Periodic element highlight */
+  .element-box { position: absolute; bottom: 12%; left: 45%; width: 8vw; height: 10vh; border: 1px solid rgba(0,255,200,0.2); background: rgba(0,255,200,0.03); text-align: center; z-index: 5; padding: 1vh 0; opacity: 0; }
+  .element-number { font-size: 1.2vh; color: rgba(0,255,200,0.4); }
+  .element-symbol { font-size: 4vh; font-weight: 700; color: #00ffc8; text-shadow: 0 0 15px rgba(0,255,200,0.3); margin: 0.3vh 0; }
+  .element-name { font-size: 1.2vh; color: rgba(0,255,200,0.4); letter-spacing: 1px; }
+
+  /* Ambient glow */
+  .glow { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+  .glow-1 { width: 30vw; height: 30vw; top: 10%; left: -5%; background: rgba(0,255,200,0.03); }
+  .glow-2 { width: 25vw; height: 25vw; bottom: 5%; right: -5%; background: rgba(0,180,255,0.03); }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="bg"></div>
+  <div class="grid"></div>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <div class="title-bar" id="titleBar">
+    <h1 id="expTitle">MOLECULAR SYNTHESIS</h1>
+    <div class="subtitle">LABORATORY EXPERIMENT #47</div>
+  </div>
+
+  <div class="tube-rack" id="tubeRack">
+    <div class="rack-top"></div>
+    <div class="rack-base"></div>
+  </div>
+
+  <div class="beaker" id="beaker">
+    <div class="beaker-rim"></div>
+    <div class="beaker-body">
+      <div class="beaker-liquid" id="beakerLiquid"></div>
+    </div>
+  </div>
+
+  <div class="dna-container" id="dnaContainer"></div>
+
+  <div class="formulas" id="formulas"></div>
+
+  <div class="viewfinder" id="viewfinder">
+    <div class="viewfinder-content" id="viewfinderContent">
+      <div class="crosshair-h"></div>
+      <div class="crosshair-v"></div>
+    </div>
+  </div>
+
+  <div class="data-panel" id="dataPanel"></div>
+
+  <div class="element-box" id="elementBox">
+    <div class="element-number" id="elemNumber">6</div>
+    <div class="element-symbol" id="elemSymbol">C</div>
+    <div class="element-name" id="elemName">Carbon</div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  experimentTitle: 'MOLECULAR SYNTHESIS',
+  chemicalFormulas: ['H\u2082O', 'CO\u2082', 'NaCl', 'C\u2086H\u2081\u2082O\u2086', 'NH\u2083', 'CH\u2084', 'O\u2082', 'H\u2082SO\u2084'],
+  elementSymbol: 'C',
+  elementName: 'Carbon',
+  elementNumber: '6',
+  dataValues: ['37.4\u00B0C', '1.013 bar', 'pH 7.2', '98.6%', '142 mol/L'],
+  tubeLiquids: ['#00ffc8', '#00aaff', '#ff6090', '#ffcc00', '#aa44ff'],
+  cycleDuration: 14000,
+};
+
+document.getElementById('expTitle').textContent = CONFIG.experimentTitle;
+document.getElementById('elemSymbol').textContent = CONFIG.elementSymbol;
+document.getElementById('elemName').textContent = CONFIG.elementName;
+document.getElementById('elemNumber').textContent = CONFIG.elementNumber;
+
+// Test tubes
+const tubeRack = document.getElementById('tubeRack');
+CONFIG.tubeLiquids.forEach((color, i) => {
+  const tube = document.createElement('div');
+  tube.className = 'test-tube';
+  tube.style.left = (10 + i * 18) + '%';
+  tube.style.height = '18vh';
+
+  const liquid = document.createElement('div');
+  liquid.className = 'tube-liquid';
+  liquid.style.height = '0%';
+  liquid.style.background = `linear-gradient(180deg, ${color}40, ${color}80)`;
+  liquid.dataset.targetHeight = (40 + Math.random() * 40) + '%';
+
+  const shine = document.createElement('div');
+  shine.className = 'tube-shine';
+
+  tube.appendChild(liquid);
+  tube.appendChild(shine);
+  tubeRack.appendChild(tube);
+
+  // Bubbles
+  setInterval(() => {
+    if (parseFloat(liquid.style.height) < 10) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'tube-bubble';
+    bubble.style.width = bubble.style.height = (Math.random() * 4 + 2) + 'px';
+    bubble.style.left = (20 + Math.random() * 60) + '%';
+    bubble.style.bottom = '10%';
+    bubble.style.animationDuration = (1 + Math.random()) + 's';
+    tube.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 2000);
+  }, 600 + i * 200);
+});
+
+// Beaker bubbles
+const beakerLiquid = document.getElementById('beakerLiquid');
+setInterval(() => {
+  const bubble = document.createElement('div');
+  bubble.className = 'beaker-bubble';
+  const size = Math.random() * 6 + 3;
+  bubble.style.width = bubble.style.height = size + 'px';
+  bubble.style.left = (10 + Math.random() * 80) + '%';
+  bubble.style.bottom = '5%';
+  bubble.style.animation = `bubbleRise ${1.5 + Math.random()}s ease-in forwards`;
+  beakerLiquid.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 2500);
+}, 400);
+
+// DNA helix
+const dnaContainer = document.getElementById('dnaContainer');
+const dnaDotsCount = 20;
+const dnaDots = [];
+for (let i = 0; i < dnaDotsCount; i++) {
+  const dotA = document.createElement('div');
+  dotA.className = 'dna-dot strand-a';
+  const dotB = document.createElement('div');
+  dotB.className = 'dna-dot strand-b';
+  const connector = document.createElement('div');
+  connector.className = 'dna-connector';
+  dnaContainer.appendChild(connector);
+  dnaContainer.appendChild(dotA);
+  dnaContainer.appendChild(dotB);
+  dnaDots.push({ a: dotA, b: dotB, connector: connector, index: i });
+}
+
+let dnaTime = 0;
+function animateDNA() {
+  dnaTime += 0.02;
+  dnaDots.forEach(({ a, b, connector, index }) => {
+    const y = (index / dnaDotsCount) * 100;
+    const phase = dnaTime + index * 0.4;
+    const xA = 50 + Math.sin(phase) * 35;
+    const xB = 50 - Math.sin(phase) * 35;
+    const zA = Math.cos(phase);
+    const zB = -zA;
+
+    a.style.top = y + '%';
+    a.style.left = xA + '%';
+    a.style.opacity = (0.3 + zA * 0.35);
+    a.style.transform = `scale(${0.6 + zA * 0.4})`;
+
+    b.style.top = y + '%';
+    b.style.left = xB + '%';
+    b.style.opacity = (0.3 + zB * 0.35);
+    b.style.transform = `scale(${0.6 + zB * 0.4})`;
+
+    connector.style.top = (y + 0.5) + '%';
+    connector.style.left = Math.min(xA, xB) + '%';
+    connector.style.width = Math.abs(xA - xB) + '%';
+    connector.style.opacity = 0.15 * (0.5 + Math.abs(zA) * 0.5);
+  });
+  requestAnimationFrame(animateDNA);
+}
+animateDNA();
+
+// Microscope cells
+const viewfinderContent = document.getElementById('viewfinderContent');
+for (let i = 0; i < 8; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'micro-cell';
+  const size = 10 + Math.random() * 25;
+  cell.style.width = size + '%';
+  cell.style.height = size + '%';
+  cell.style.left = (10 + Math.random() * 60) + '%';
+  cell.style.top = (10 + Math.random() * 60) + '%';
+  cell.style.animation = `beakerGlow ${3 + Math.random() * 2}s ease-in-out infinite ${Math.random() * 2}s`;
+  viewfinderContent.appendChild(cell);
+}
+
+// Chemical formulas floating
+const formulasEl = document.getElementById('formulas');
+function spawnFormula() {
+  const formula = document.createElement('div');
+  formula.className = 'formula';
+  formula.textContent = CONFIG.chemicalFormulas[Math.floor(Math.random() * CONFIG.chemicalFormulas.length)];
+  formula.style.left = (5 + Math.random() * 85) + '%';
+  formula.style.top = (15 + Math.random() * 65) + '%';
+  formula.style.fontSize = (1.4 + Math.random() * 1.2) + 'vh';
+  formulasEl.appendChild(formula);
+
+  setTimeout(() => {
+    formula.style.transition = 'opacity 1s ease, transform 2s ease';
+    formula.style.opacity = '0.6';
+    formula.style.transform = 'translateY(-3vh)';
+  }, 50);
+
+  setTimeout(() => {
+    formula.style.opacity = '0';
+    formula.style.transform = 'translateY(-6vh)';
+  }, 3000);
+
+  setTimeout(() => formula.remove(), 4500);
+}
+
+setInterval(spawnFormula, 1200);
+
+// Data panel
+const dataPanel = document.getElementById('dataPanel');
+const dataLabels = ['TEMP', 'PRESSURE', 'pH LEVEL', 'PURITY', 'CONCENTRATION'];
+CONFIG.dataValues.forEach((val, i) => {
+  const row = document.createElement('div');
+  row.className = 'data-row';
+  row.innerHTML = '<span class="data-label">' + dataLabels[i] + '</span><span class="data-value" id="dv' + i + '">' + val + '</span>';
+  dataPanel.appendChild(row);
+});
+
+// Animate data values with slight jitter
+setInterval(() => {
+  CONFIG.dataValues.forEach((val, i) => {
+    const el = document.getElementById('dv' + i);
+    if (!el) return;
+    // Parse number from value, add small random delta
+    const num = parseFloat(val);
+    if (!isNaN(num)) {
+      const jitter = num + (Math.random() - 0.5) * num * 0.02;
+      const suffix = val.replace(/[\d.]+/, '');
+      el.textContent = jitter.toFixed(1) + suffix;
+    }
+  });
+}, 800);
+
+// Cycle
+function runCycle() {
+  const titleBar = document.getElementById('titleBar');
+  const beaker = document.getElementById('beaker');
+  const dna = document.getElementById('dnaContainer');
+  const viewfinder = document.getElementById('viewfinder');
+  const dataPanel2 = document.getElementById('dataPanel');
+  const elementBox = document.getElementById('elementBox');
+  const tubeLiquids = document.querySelectorAll('.tube-liquid');
+
+  // Reset
+  [titleBar, beaker, dna, viewfinder, dataPanel2, elementBox].forEach(el => {
+    el.style.transition = 'none'; el.style.opacity = '0';
+  });
+  tubeLiquids.forEach(l => { l.style.transition = 'none'; l.style.height = '0%'; });
+  void titleBar.offsetWidth;
+
+  // Animate in staggered
+  setTimeout(() => { titleBar.style.transition = 'opacity 0.8s ease'; titleBar.style.opacity = '1'; }, 300);
+  setTimeout(() => { viewfinder.style.transition = 'opacity 0.8s ease'; viewfinder.style.opacity = '1'; }, 600);
+  setTimeout(() => { dna.style.transition = 'opacity 1s ease'; dna.style.opacity = '1'; }, 900);
+  setTimeout(() => { beaker.style.transition = 'opacity 0.8s ease'; beaker.style.opacity = '1'; }, 1200);
+  setTimeout(() => { dataPanel2.style.transition = 'opacity 0.8s ease'; dataPanel2.style.opacity = '1'; }, 1500);
+  setTimeout(() => { elementBox.style.transition = 'opacity 0.8s ease'; elementBox.style.opacity = '1'; }, 1800);
+
+  // Fill test tubes
+  tubeLiquids.forEach((l, i) => {
+    setTimeout(() => {
+      l.style.transition = 'height 1.5s cubic-bezier(0.22,1,0.36,1)';
+      l.style.height = l.dataset.targetHeight;
+    }, 800 + i * 300);
+  });
+
+  // Animate out
+  setTimeout(() => {
+    [titleBar, beaker, dna, viewfinder, dataPanel2, elementBox].forEach((el, i) => {
+      setTimeout(() => {
+        el.style.transition = 'opacity 0.8s ease';
+        el.style.opacity = '0';
+      }, i * 100);
+    });
+    tubeLiquids.forEach((l, i) => {
+      setTimeout(() => {
+        l.style.transition = 'height 0.8s ease-in';
+        l.style.height = '0%';
+      }, i * 80);
+    });
+  }, CONFIG.cycleDuration - 2000);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; }
+.scene { width: 100%; height: 100%; background: linear-gradient(180deg, #74b9ff 0%, #74b9ff 55%, #636e72 55%, #636e72 100%); position: relative; overflow: hidden; }
+.road { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 300px; height: 55%; background: #2d3436; }
+.road::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 6px; height: 100%; background: repeating-linear-gradient(180deg, #ffeaa7 0px, #ffeaa7 30px, transparent 30px, transparent 60px); }
+.exit-ramp { position: absolute; bottom: 25%; right: 20%; width: 200px; height: 180px; background: #2d3436; transform: skewX(-20deg); border-radius: 0 100px 0 0; opacity: 0; }
+.exit-ramp.show { opacity: 1; transition: opacity 0.5s ease; }
+.sign { position: absolute; background: #27ae60; border: 6px solid white; border-radius: 12px; padding: 16px 24px; color: white; text-align: center; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transform: translateY(-10px); }
+.sign.show { opacity: 1; transform: translateY(0); transition: all 0.4s ease; }
+.sign-straight { top: 12%; left: 50%; transform: translateX(-50%); font-size: 28px; min-width: 300px; }
+.sign-straight.show { transform: translateX(-50%) translateY(0); }
+.sign-exit { top: 30%; right: 8%; font-size: 26px; min-width: 260px; background: #e74c3c; }
+.car { position: absolute; bottom: 30%; font-size: 60px; z-index: 10; opacity: 0; }
+.car.show { opacity: 1; transition: opacity 0.3s ease; }
+.car.swerve { animation: swerve 1s ease-in-out forwards; }
+@keyframes swerve { 0% { left: 48%; bottom: 30%; transform: rotate(0deg); } 50% { left: 55%; bottom: 35%; transform: rotate(15deg); } 100% { left: 68%; bottom: 42%; transform: rotate(30deg); } }
+.tire-marks { position: absolute; bottom: 28%; left: 48%; width: 150px; height: 4px; background: #2d3436; opacity: 0; transform: rotate(15deg); }
+.tire-marks.show { opacity: 0.5; transition: opacity 0.5s ease; }
+.driver-label { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 12px 24px; border-radius: 10px; font-size: 22px; opacity: 0; z-index: 15; }
+.driver-label.show { opacity: 1; transition: opacity 0.4s ease; }
+.cloud { position: absolute; font-size: 50px; opacity: 0.4; }
+.c1 { top: 5%; left: 15%; animation: drift 20s linear infinite; }
+.c2 { top: 10%; right: 20%; animation: drift 25s linear infinite reverse; }
+@keyframes drift { 0% { transform: translateX(0); } 50% { transform: translateX(20px); } 100% { transform: translateX(0); } }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  straightText: 'Being productive',
+  exitText: 'Scrolling memes for 3 hours',
+  driverLabel: 'Me at 2 AM',
+  skyColor: '#74b9ff',
+  roadColor: '#2d3436',
+  straightSignColor: '#27ae60',
+  exitSignColor: '#e74c3c',
+  textColor: '#ffffff',
+  fontSize: 26,
+  animationSpeed: 500
+};
+</script>
+<div class="scene" id="scene">
+  <span class="cloud c1">\u2601\uFE0F</span>
+  <span class="cloud c2">\u2601\uFE0F</span>
+  <div class="road"></div>
+  <div class="exit-ramp" id="ramp"></div>
+  <div class="sign sign-straight" id="signStraight"></div>
+  <div class="sign sign-exit" id="signExit"></div>
+  <span class="car" id="car" style="left:48%">\u{1F697}</span>
+  <div class="tire-marks" id="marks"></div>
+  <div class="driver-label" id="driverLabel"></div>
+</div>
+<script>
+document.getElementById('signStraight').textContent = CONFIG.straightText;
+document.getElementById('signExit').textContent = CONFIG.exitText;
+document.getElementById('driverLabel').textContent = CONFIG.driverLabel;
+document.getElementById('signStraight').style.background = CONFIG.straightSignColor;
+document.getElementById('signExit').style.background = CONFIG.exitSignColor;
+document.querySelectorAll('.sign').forEach(function(el) {
+  el.style.color = CONFIG.textColor;
+  el.style.fontSize = CONFIG.fontSize + 'px';
+});
+
+var speed = CONFIG.animationSpeed;
+setTimeout(function() { document.getElementById('signStraight').classList.add('show'); }, speed);
+setTimeout(function() {
+  document.getElementById('ramp').classList.add('show');
+  document.getElementById('signExit').classList.add('show');
+}, speed * 2);
+setTimeout(function() { document.getElementById('car').classList.add('show'); }, speed * 3);
+setTimeout(function() {
+  document.getElementById('car').classList.add('swerve');
+  document.getElementById('marks').classList.add('show');
+}, speed * 4);
+setTimeout(function() { document.getElementById('driverLabel').classList.add('show'); }, speed * 5);
+</script>
+</body>
+</html>

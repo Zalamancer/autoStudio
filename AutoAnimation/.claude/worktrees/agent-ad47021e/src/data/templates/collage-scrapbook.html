@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scrapbook Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #e8ddd0;
+    font-family: 'Georgia', serif;
+  }
+
+  /* Craft paper texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.2;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.0' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #stage { position: absolute; inset: 0; z-index: 1; }
+
+  .scrap-item {
+    position: absolute;
+    opacity: 0;
+    will-change: transform, opacity;
+    user-select: none;
+  }
+
+  .scrap-item .inner {
+    position: relative;
+  }
+
+  /* Photo with white border */
+  .scrap-item.photo .inner {
+    background: #fff;
+    padding: 8px;
+    box-shadow: 1px 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .scrap-item.photo .photo-area {
+    overflow: hidden;
+  }
+
+  .scrap-item.photo .photo-color {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Sticker */
+  .scrap-item.sticker .inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.15));
+  }
+
+  /* Washi tape strip */
+  .scrap-item.washi .inner {
+    height: 24px;
+    opacity: 0.7;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  /* Handwritten text */
+  .scrap-item.handwritten .inner {
+    font-family: 'Georgia', serif;
+    font-style: italic;
+    color: #5a4a3a;
+    line-height: 1.4;
+  }
+
+  /* Ticket stub */
+  .scrap-item.ticket .inner {
+    background: #fff;
+    border: 2px dashed #ccc;
+    padding: 8px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .ticket-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  /* Stamp */
+  .scrap-item.stamp .inner {
+    border: 3px solid #cc3333;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-family: 'Impact', sans-serif;
+    color: #cc3333;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    transform: rotate(-8deg);
+    opacity: 0.7;
+  }
+
+  @keyframes placeDown {
+    0% { opacity: 0; transform: var(--place-start); }
+    50% { opacity: 0.9; transform: var(--place-mid); }
+    100% { opacity: var(--final-opacity); transform: var(--place-end); }
+  }
+
+  @keyframes liftOff {
+    0% { opacity: var(--final-opacity); transform: var(--place-end); }
+    100% { opacity: 0; transform: var(--lift-end); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  items: [
+    { type: 'photo', w: 180, h: 220, color: '#8fbc8f' },
+    { type: 'sticker', emoji: '\u2764\uFE0F' },
+    { type: 'washi', w: 160, color: '#f4c2c2' },
+    { type: 'photo', w: 160, h: 160, color: '#b8860b' },
+    { type: 'handwritten', text: 'best day ever!', size: 20 },
+    { type: 'ticket', title: 'ADMIT ONE', detail: 'Row A Seat 12' },
+    { type: 'sticker', emoji: '\u2B50' },
+    { type: 'photo', w: 200, h: 150, color: '#c9a882' },
+    { type: 'stamp', text: 'APPROVED' },
+    { type: 'washi', w: 140, color: '#c2d4f4' },
+    { type: 'handwritten', text: 'remember this', size: 18 },
+    { type: 'sticker', emoji: '\u{1F338}' },
+  ],
+  bgColor: '#e8ddd0',
+  maxRotation: 10,
+  cycleDuration: 11000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createItems() {
+  const elements = [];
+  const count = CONFIG.items.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  for (let i = 0; i < count; i++) {
+    const item = CONFIG.items[i];
+    const rng = seededRandom(i * 181 + 47);
+
+    const el = document.createElement('div');
+    el.className = `scrap-item ${item.type}`;
+
+    const inner = document.createElement('div');
+    inner.className = 'inner';
+
+    if (item.type === 'photo') {
+      const area = document.createElement('div');
+      area.className = 'photo-area';
+      area.style.width = item.w + 'px';
+      area.style.height = item.h + 'px';
+      const c = document.createElement('div');
+      c.className = 'photo-color';
+      c.style.background = item.color;
+      area.appendChild(c);
+      inner.appendChild(area);
+    } else if (item.type === 'sticker') {
+      inner.textContent = item.emoji;
+    } else if (item.type === 'washi') {
+      inner.style.width = item.w + 'px';
+      inner.style.background = item.color;
+    } else if (item.type === 'handwritten') {
+      inner.textContent = item.text;
+      inner.style.fontSize = item.size + 'px';
+    } else if (item.type === 'ticket') {
+      const t = document.createElement('div');
+      t.className = 'ticket-title';
+      t.textContent = item.title;
+      const d = document.createElement('div');
+      d.textContent = item.detail;
+      inner.appendChild(t);
+      inner.appendChild(d);
+    } else if (item.type === 'stamp') {
+      inner.textContent = item.text;
+    }
+
+    el.appendChild(inner);
+
+    // Scattered position
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const bx = vw * 0.06 + col * (vw * 0.22);
+    const by = vh * 0.06 + row * (vh * 0.28);
+    const ox = (rng() - 0.5) * vw * 0.08;
+    const oy = (rng() - 0.5) * vh * 0.06;
+
+    el.style.left = Math.max(5, bx + ox) + 'px';
+    el.style.top = Math.max(5, by + oy) + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.9 + rng() * 0.1;
+
+    el.style.setProperty('--place-start', `translate(0, -40px) rotate(${rotation + 10}deg) scale(0.8)`);
+    el.style.setProperty('--place-mid', `translate(0, 3px) rotate(${rotation - 1}deg) scale(1.01)`);
+    el.style.setProperty('--place-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+    el.style.setProperty('--lift-end', `translate(0, -60px) rotate(${rotation + 15}deg) scale(0.8)`);
+
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(elements) {
+  const count = elements.length;
+  const inStagger = 280;
+  const inDuration = 500;
+  const holdDuration = 3500;
+  const outStagger = 180;
+  const outDuration = 400;
+  const pause = 800;
+
+  const totalIn = (count - 1) * inStagger + inDuration;
+  const totalOut = (count - 1) * outStagger + outDuration;
+
+  let af, st;
+
+  function resetAll() {
+    elements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(ts) {
+    if (!st) st = ts;
+    const e = ts - st;
+
+    if (e < totalIn) {
+      elements.forEach((el, i) => {
+        if (e >= i * inStagger && !el.dataset.in) {
+          el.dataset.in = '1';
+          el.style.animation = `placeDown ${inDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (e < totalIn + holdDuration) {
+    } else if (e < totalIn + holdDuration + totalOut) {
+      const oe = e - totalIn - holdDuration;
+      elements.forEach((el, i) => {
+        const ri = count - 1 - i;
+        if (oe >= ri * outStagger && !el.dataset.out) {
+          el.dataset.out = '1';
+          el.style.animation = `liftOff ${outDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (e < totalIn + holdDuration + totalOut + pause) {
+    } else {
+      resetAll();
+      elements.forEach(el => { delete el.dataset.in; delete el.dataset.out; });
+      st = ts;
+    }
+    af = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  af = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(af);
+}
+
+let items = createItems();
+runAnimation(items);
+
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    stage.innerHTML = '';
+    items = createItems();
+    runAnimation(items);
+  }, 300);
+});
+</script>
+</body>
+</html>

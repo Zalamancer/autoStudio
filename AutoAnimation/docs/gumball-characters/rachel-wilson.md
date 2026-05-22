@@ -1,0 +1,9 @@
+# Rachel Wilson
+
+## Appearance
+Rachel's general appearance is similar to her younger brother (Tobias) and mother, but she more closely resembles her mother because of her humanoid stature, compared to Tobias' cloud physique. Her skin is turquoise in color, and her hair is a linear gradient with the colors yellow and magenta. Like her brother and mother, Rachel has a white and gold striped headband on her hair. Rachel's usual outfit consists of a white t-shirt, a yellow skirt with two stripes on the right side, and a pair of white sneakers with magenta stripes. In her prototype design, she had orange hair, her headband was solid pink, and her skirt was magenta with white stripes.
+
+## Personality
+Rachel views herself to be of a higher class than Tobias and his friends, calling them his "dweeb loser baby friends" in "The Party," possibly indicating that she is somewhat discriminating towards her younger peers. At first, Rachel did not want to let Tobias' friends attend the party, but her brother warned her that if she did not allow them to be invited, he would tell their parents, leaving her no choice. She seems to submit fast with blackmail and makes a solution by simply allowing Tobias and his invited friends to come, only requiring them to bring a date in order to come to the party. At the party, none of Rachel's friends showed up and as a result, she was crushed. Darwin, however, saw her crying outside (displaying a more sensitive side of her), and tried to comfort her by cleaning up the ruined house. Rachel seemed calmed by his offer and admitted that he was not so bad for a kid. Rachel was extremely happy and gave Darwin a kiss on the cheek as a form of gratitude. On The Party DVD, her character bio describes her as "more rainbow colored bark than rainbow colored bite," reflecting this softer side.
+
+---

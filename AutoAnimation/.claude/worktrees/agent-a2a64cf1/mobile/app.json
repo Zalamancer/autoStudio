@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "ProAnimate",
+    "slug": "proanimate-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "proanimate",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.proanimate.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "newArchEnabled": false,
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "16690d14-f33e-4e66-ad01-7c92ec512f0b"
+      }
+    },
+    "owner": "ihsanduru"
+  }
+}

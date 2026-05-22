@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smoke Reveal</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0A0A0A;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+  }
+
+  #text-measure {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    visibility: hidden;
+    white-space: nowrap;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    z-index: -1;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="smoke-canvas"></canvas>
+<div id="text-measure"></div>
+
+<script>
+const CONFIG = {
+  words: ['SILENCE', 'SPEAKS', 'LOUDER', 'THAN', 'WORDS', 'EVER'],
+  colors: ['#E8E8E8', '#B0B0B0', '#E8E8E8', '#888888', '#E8E8E8', '#CCCCCC'],
+  bgColor: '#0A0A0A',
+  smokeParticles: 80,
+  formSpeed: 2000,
+  holdDuration: 1500,
+  dissolveSpeed: 1500,
+  smokeOpacity: 0.6,
+  cycleDuration: 12000,
+};
+
+/* ── Utility helpers ────────────────────────────────────────────── */
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function easeOutQuad(t) {
+  return 1 - (1 - t) * (1 - t);
+}
+
+function easeInQuad(t) {
+  return t * t;
+}
+
+/* Simple 2D noise (value noise with interpolation) */
+const noiseGrid = [];
+const NOISE_SIZE = 256;
+for (let i = 0; i < NOISE_SIZE * NOISE_SIZE; i++) {
+  noiseGrid.push(Math.random());
+}
+
+function noiseAt(x, y) {
+  const xi = Math.floor(x) & (NOISE_SIZE - 1);
+  const yi = Math.floor(y) & (NOISE_SIZE - 1);
+  const xf = x - Math.floor(x);
+  const yf = y - Math.floor(y);
+  const xi1 = (xi + 1) & (NOISE_SIZE - 1);
+  const yi1 = (yi + 1) & (NOISE_SIZE - 1);
+  const tl = noiseGrid[yi * NOISE_SIZE + xi];
+  const tr = noiseGrid[yi * NOISE_SIZE + xi1];
+  const bl = noiseGrid[yi1 * NOISE_SIZE + xi];
+  const br = noiseGrid[yi1 * NOISE_SIZE + xi1];
+  const sx = xf * xf * (3 - 2 * xf);
+  const sy = yf * yf * (3 - 2 * yf);
+  const top = lerp(tl, tr, sx);
+  const bot = lerp(bl, br, sx);
+  return lerp(top, bot, sy);
+}
+
+/* ── Canvas setup ───────────────────────────────────────────────── */
+
+const canvas = document.getElementById('smoke-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, fontSize;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fontSize = Math.min(W * 0.15, H * 0.2, 180);
+}
+
+window.addEventListener('resize', () => {
+  resize();
+  sampleCurrentWord();
+});
+resize();
+
+/* ── Text sampling ──────────────────────────────────────────────── */
+
+const textEl = document.getElementById('text-measure');
+let targetPositions = [];
+
+function sampleTextPositions(word) {
+  /* Use an offscreen canvas to rasterize text and find pixel positions */
+  const offCanvas = document.createElement('canvas');
+  const offCtx = offCanvas.getContext('2d');
+  const sampleSize = Math.ceil(fontSize * 1.2);
+  const font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+
+  offCtx.font = font;
+  const metrics = offCtx.measureText(word);
+  const textWidth = metrics.width;
+  const textHeight = fontSize * 1.2;
+
+  offCanvas.width = Math.ceil(textWidth) + 20;
+  offCanvas.height = Math.ceil(textHeight) + 20;
+
+  offCtx.fillStyle = '#000';
+  offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+  offCtx.font = font;
+  offCtx.fillStyle = '#FFF';
+  offCtx.textBaseline = 'top';
+  offCtx.fillText(word, 10, 10);
+
+  const imageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+  const data = imageData.data;
+  const positions = [];
+  const step = Math.max(2, Math.floor(fontSize / 28));
+
+  for (let y = 0; y < offCanvas.height; y += step) {
+    for (let x = 0; x < offCanvas.width; x += step) {
+      const idx = (y * offCanvas.width + x) * 4;
+      if (data[idx] > 128) {
+        /* Map offscreen coords to viewport center */
+        const vx = (x - 10) - textWidth / 2 + W / 2;
+        const vy = (y - 10) - textHeight / 2 + H / 2;
+        positions.push({ x: vx, y: vy });
+      }
+    }
+  }
+
+  return positions;
+}
+
+/* ── Particle system ────────────────────────────────────────────── */
+
+const particles = [];
+const PARTICLE_COUNT = 600;
+const SMOKE_EXTRA = CONFIG.smokeParticles;
+
+class Particle {
+  constructor(index) {
+    this.index = index;
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.targetX = this.x;
+    this.targetY = this.y;
+    this.originX = this.x;
+    this.originY = this.y;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = (Math.random() - 0.5) * 2;
+    this.size = Math.random() * 3 + 1.5;
+    this.baseSize = this.size;
+    this.alpha = 0;
+    this.targetAlpha = 0;
+    this.noiseOffsetX = Math.random() * 100;
+    this.noiseOffsetY = Math.random() * 100;
+    this.noiseSpeed = 0.003 + Math.random() * 0.004;
+    this.isText = false;
+    this.trail = [];
+    this.maxTrail = Math.floor(Math.random() * 5) + 3;
+    this.life = 1;
+  }
+
+  scatter() {
+    this.targetX = Math.random() * W;
+    this.targetY = Math.random() * H;
+    this.originX = this.x;
+    this.originY = this.y;
+    this.isText = false;
+    this.targetAlpha = 0;
+  }
+
+  setTarget(tx, ty) {
+    this.targetX = tx;
+    this.targetY = ty;
+    this.originX = this.x;
+    this.originY = this.y;
+    this.isText = true;
+    this.targetAlpha = 1;
+  }
+
+  update(progress, phase, time) {
+    const noiseX = noiseAt(
+      this.noiseOffsetX + time * this.noiseSpeed,
+      this.noiseOffsetY
+    ) * 2 - 1;
+    const noiseY = noiseAt(
+      this.noiseOffsetX,
+      this.noiseOffsetY + time * this.noiseSpeed
+    ) * 2 - 1;
+
+    if (phase === 'forming') {
+      const ease = easeInOutCubic(progress);
+      this.x = lerp(this.originX, this.targetX, ease) + noiseX * (1 - ease) * 40 + noiseX * 1.5;
+      this.y = lerp(this.originY, this.targetY, ease) + noiseY * (1 - ease) * 40 + noiseY * 1.5;
+      this.alpha = lerp(0.1, this.isText ? 1 : 0.15, ease);
+      this.size = lerp(this.baseSize * 2.5, this.baseSize, ease);
+    } else if (phase === 'holding') {
+      /* Subtle breathing turbulence while formed */
+      this.x = this.targetX + noiseX * 2.0;
+      this.y = this.targetY + noiseY * 2.0;
+      this.alpha = this.isText ? 1 : 0.15;
+      this.size = this.baseSize + Math.sin(time * 0.002 + this.index) * 0.3;
+    } else if (phase === 'dissolving') {
+      const ease = easeInQuad(progress);
+      this.x = lerp(this.targetX, this.originX, ease) + noiseX * ease * 60;
+      this.y = lerp(this.targetY, this.originY, ease) + noiseY * ease * 60 - ease * 30;
+      this.alpha = lerp(this.isText ? 1 : 0.15, 0, ease);
+      this.size = lerp(this.baseSize, this.baseSize * 3, ease);
+    } else {
+      /* Idle / scattered */
+      this.x += this.vx + noiseX * 0.5;
+      this.y += this.vy + noiseY * 0.5;
+      this.alpha = lerp(this.alpha, 0.04, 0.02);
+      this.size = lerp(this.size, this.baseSize * 1.5, 0.02);
+
+      /* Wrap around edges */
+      if (this.x < -20) this.x = W + 20;
+      if (this.x > W + 20) this.x = -20;
+      if (this.y < -20) this.y = H + 20;
+      if (this.y > H + 20) this.y = -20;
+    }
+
+    /* Trail history */
+    this.trail.push({ x: this.x, y: this.y, alpha: this.alpha, size: this.size });
+    if (this.trail.length > this.maxTrail) {
+      this.trail.shift();
+    }
+  }
+
+  draw(ctx, color) {
+    const rgb = hexToRgb(color);
+
+    /* Draw wispy smoke trails */
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      const trailFade = (i / this.trail.length) * 0.3;
+      const a = t.alpha * trailFade * CONFIG.smokeOpacity;
+      if (a < 0.005) continue;
+
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.size * 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a * 0.25})`;
+      ctx.fill();
+    }
+
+    /* Main particle glow (outer) */
+    if (this.alpha > 0.01) {
+      const glowSize = this.size * 2.5;
+      const gradient = ctx.createRadialGradient(
+        this.x, this.y, 0,
+        this.x, this.y, glowSize
+      );
+      const a = this.alpha * CONFIG.smokeOpacity;
+      gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a * 0.4})`);
+      gradient.addColorStop(0.4, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a * 0.15})`);
+      gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      /* Core particle (bright center) */
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 0.6, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a * 0.8})`;
+      ctx.fill();
+    }
+  }
+}
+
+/* Ambient smoke particles (background fog) */
+class SmokeWisp {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.size = Math.random() * 80 + 30;
+    this.alpha = Math.random() * 0.04 + 0.01;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = -Math.random() * 0.2 - 0.05;
+    this.life = Math.random();
+    this.decay = 0.0001 + Math.random() * 0.0002;
+    this.noiseOffset = Math.random() * 1000;
+  }
+
+  update(time) {
+    const n = noiseAt(this.noiseOffset + time * 0.0005, this.noiseOffset) * 2 - 1;
+    this.x += this.vx + n * 0.3;
+    this.y += this.vy;
+    this.life -= this.decay;
+
+    if (this.life <= 0 || this.y < -this.size || this.x < -this.size || this.x > W + this.size) {
+      this.reset();
+      this.y = H + this.size;
+    }
+  }
+
+  draw(ctx) {
+    const a = this.alpha * this.life;
+    if (a < 0.002) return;
+
+    const gradient = ctx.createRadialGradient(
+      this.x, this.y, 0,
+      this.x, this.y, this.size
+    );
+    gradient.addColorStop(0, `rgba(180, 180, 190, ${a})`);
+    gradient.addColorStop(0.5, `rgba(140, 140, 155, ${a * 0.4})`);
+    gradient.addColorStop(1, 'rgba(100, 100, 120, 0)');
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  }
+}
+
+/* Initialize particles */
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  particles.push(new Particle(i));
+}
+
+const smokeWisps = [];
+for (let i = 0; i < SMOKE_EXTRA; i++) {
+  smokeWisps.push(new SmokeWisp());
+}
+
+/* ── Word cycling & animation state ─────────────────────────────── */
+
+let currentWordIndex = 0;
+let phaseStartTime = 0;
+let currentPhase = 'idle'; /* idle | forming | holding | dissolving */
+let animationStarted = false;
+
+function sampleCurrentWord() {
+  const word = CONFIG.words[currentWordIndex];
+  targetPositions = sampleTextPositions(word);
+}
+
+function assignParticlesToText() {
+  sampleCurrentWord();
+
+  /* Assign text particles from pool */
+  const posCount = targetPositions.length;
+  const usable = Math.min(PARTICLE_COUNT, posCount);
+
+  /* Shuffle indices for organic assignment */
+  const indices = Array.from({ length: PARTICLE_COUNT }, (_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const p = particles[indices[i]];
+    if (i < usable) {
+      const pos = targetPositions[i % posCount];
+      p.setTarget(pos.x, pos.y);
+    } else {
+      /* Extra particles become ambient smoke */
+      p.scatter();
+      p.targetAlpha = 0.08;
+    }
+  }
+}
+
+function scatterAll() {
+  for (const p of particles) {
+    p.scatter();
+  }
+}
+
+function startWordCycle() {
+  assignParticlesToText();
+  currentPhase = 'forming';
+  phaseStartTime = performance.now();
+  animationStarted = true;
+}
+
+/* ── Background gradient ────────────────────────────────────────── */
+
+function drawBackground(time) {
+  const bg = hexToRgb(CONFIG.bgColor);
+
+  /* Subtle animated dark gradient */
+  const gx = W / 2 + Math.sin(time * 0.0003) * W * 0.1;
+  const gy = H / 2 + Math.cos(time * 0.0004) * H * 0.1;
+  const gradient = ctx.createRadialGradient(gx, gy, 0, gx, gy, Math.max(W, H) * 0.8);
+  gradient.addColorStop(0, `rgba(${bg.r + 15}, ${bg.g + 15}, ${bg.b + 18}, 1)`);
+  gradient.addColorStop(0.5, `rgba(${bg.r + 5}, ${bg.g + 5}, ${bg.b + 8}, 1)`);
+  gradient.addColorStop(1, `rgba(${bg.r}, ${bg.g}, ${bg.b}, 1)`);
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+
+  /* Very subtle vignette */
+  const vigGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.75);
+  vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+/* ── Main render loop ───────────────────────────────────────────── */
+
+function render(time) {
+  drawBackground(time);
+
+  /* Draw ambient smoke wisps behind text particles */
+  for (const wisp of smokeWisps) {
+    wisp.update(time);
+    wisp.draw(ctx);
+  }
+
+  /* Phase management */
+  const elapsed = time - phaseStartTime;
+  let progress = 0;
+
+  if (currentPhase === 'forming') {
+    progress = Math.min(elapsed / CONFIG.formSpeed, 1);
+    if (progress >= 1) {
+      currentPhase = 'holding';
+      phaseStartTime = time;
+    }
+  } else if (currentPhase === 'holding') {
+    progress = Math.min(elapsed / CONFIG.holdDuration, 1);
+    if (progress >= 1) {
+      /* Prepare dissolve origins as scattered destinations */
+      for (const p of particles) {
+        p.originX = p.x + (Math.random() - 0.5) * W * 0.6;
+        p.originY = p.y + (Math.random() - 0.5) * H * 0.4 - 80;
+      }
+      currentPhase = 'dissolving';
+      phaseStartTime = time;
+    }
+  } else if (currentPhase === 'dissolving') {
+    progress = Math.min(elapsed / CONFIG.dissolveSpeed, 1);
+    if (progress >= 1) {
+      /* Move to next word */
+      currentWordIndex = (currentWordIndex + 1) % CONFIG.words.length;
+      currentPhase = 'gap';
+      phaseStartTime = time;
+    }
+  } else if (currentPhase === 'gap') {
+    /* Brief gap between words for darkness */
+    if (elapsed > 300) {
+      assignParticlesToText();
+      currentPhase = 'forming';
+      phaseStartTime = time;
+    }
+    progress = 0;
+  }
+
+  /* Determine per-word color */
+  const color = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+
+  /* Use compositing for glow effect */
+  ctx.globalCompositeOperation = 'lighter';
+
+  /* Update and draw particles */
+  for (const p of particles) {
+    p.update(progress, currentPhase, time);
+    p.draw(ctx, color);
+  }
+
+  /* Reset compositing */
+  ctx.globalCompositeOperation = 'source-over';
+
+  /* Subtle center glow when text is formed */
+  if (currentPhase === 'holding' || currentPhase === 'forming') {
+    const glowAlpha = currentPhase === 'holding' ? 0.03 : progress * 0.03;
+    const rgb = hexToRgb(color);
+    const centerGlow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, fontSize * 2);
+    centerGlow.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${glowAlpha})`);
+    centerGlow.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+    ctx.fillStyle = centerGlow;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  requestAnimationFrame(render);
+}
+
+/* ── Kick off ───────────────────────────────────────────────────── */
+
+/* Small delay for initial scatter to feel natural */
+setTimeout(() => {
+  startWordCycle();
+}, 400);
+
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

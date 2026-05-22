@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Versus Comparison</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; position: relative; overflow: hidden; }
+.side { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4vh 4vw; position: relative; z-index: 1; }
+.left-side { transform: translateX(-100%); transition: transform 0.8s cubic-bezier(0.22,1,0.36,1); }
+.left-side.visible { transform: translateX(0); }
+.right-side { transform: translateX(100%); transition: transform 0.8s cubic-bezier(0.22,1,0.36,1); }
+.right-side.visible { transform: translateX(0); }
+.side-bg { position: absolute; inset: 0; opacity: 0.06; }
+.vs-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 10; }
+.vs-circle { width: 10vh; height: 10vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3.5vh; font-weight: 900; color: #fff; background: linear-gradient(135deg, #ef4444, #f97316); box-shadow: 0 0 40px rgba(239,68,68,0.3); opacity: 0; transform: scale(0.5) rotate(-180deg); transition: all 0.6s cubic-bezier(0.22,1,0.36,1); }
+.vs-circle.visible { opacity: 1; transform: scale(1) rotate(0); }
+.vs-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent); transform: translateX(-50%); z-index: 5; }
+.item-icon { width: 8vh; height: 8vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3vh; margin-bottom: 2vh; }
+.item-name { font-size: 3vh; font-weight: 800; color: #fff; margin-bottom: 0.5vh; }
+.item-price { font-size: 2vh; color: rgba(255,255,255,0.5); margin-bottom: 3vh; }
+.feature-list { width: 100%; display: flex; flex-direction: column; gap: 1.2vh; }
+.feature { display: flex; align-items: center; gap: 1vw; font-size: 1.5vh; color: rgba(255,255,255,0.7); opacity: 0; transform: translateY(8px); transition: all 0.4s; }
+.feature.visible { opacity: 1; transform: translateY(0); }
+.feature-check { width: 2.2vh; height: 2.2vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vh; flex-shrink: 0; }
+.feature-check.yes { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+.feature-check.no { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+.rating { display: flex; align-items: center; gap: 0.5vw; margin-top: 2vh; opacity: 0; transition: opacity 0.5s; }
+.rating.visible { opacity: 1; }
+.star { font-size: 2vh; color: rgba(255,255,255,0.15); }
+.star.filled { color: #fbbf24; }
+.rating-num { font-size: 1.8vh; font-weight: 700; color: #fff; margin-left: 0.5vw; }
+.title-badge { position: absolute; top: 3vh; left: 50%; transform: translateX(-50%); font-size: 1.3vh; font-weight: 700; letter-spacing: 0.2em; color: rgba(255,255,255,0.3); text-transform: uppercase; opacity: 0; transition: opacity 0.5s; z-index: 10; }
+.title-badge.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="vs-line"></div>
+  <div class="title-badge" id="titleBadge">COMPARISON</div>
+  <div class="side left-side" id="leftSide">
+    <div class="side-bg" id="leftBg"></div>
+    <div class="item-icon" id="leftIcon">A</div>
+    <div class="item-name" id="leftName">iPhone 16 Pro</div>
+    <div class="item-price" id="leftPrice">$1,199</div>
+    <div class="feature-list" id="leftFeatures"></div>
+    <div class="rating" id="leftRating"></div>
+  </div>
+  <div class="vs-center"><div class="vs-circle" id="vsCircle">VS</div></div>
+  <div class="side right-side" id="rightSide">
+    <div class="side-bg" id="rightBg"></div>
+    <div class="item-icon" id="rightIcon">S</div>
+    <div class="item-name" id="rightName">Galaxy S25 Ultra</div>
+    <div class="item-price" id="rightPrice">$1,299</div>
+    <div class="feature-list" id="rightFeatures"></div>
+    <div class="rating" id="rightRating"></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  title: 'COMPARISON',
+  leftItem: {
+    name: 'iPhone 16 Pro', price: '$1,199', icon: '🍎', color: '#3b82f6',
+    features: [
+      { text: '6.3" OLED Display', has: true },
+      { text: 'A18 Pro Chip', has: true },
+      { text: '48MP Camera', has: true },
+      { text: 'USB-C Fast Charge', has: true },
+      { text: 'S Pen Support', has: false },
+      { text: 'AI Photo Edit', has: true },
+    ],
+    rating: 4.7,
+  },
+  rightItem: {
+    name: 'Galaxy S25 Ultra', price: '$1,299', icon: '📱', color: '#8b5cf6',
+    features: [
+      { text: '6.8" AMOLED Display', has: true },
+      { text: 'Snapdragon 8 Gen 4', has: true },
+      { text: '200MP Camera', has: true },
+      { text: '45W Fast Charge', has: true },
+      { text: 'S Pen Support', has: true },
+      { text: 'AI Photo Edit', has: true },
+    ],
+    rating: 4.5,
+  },
+  cycleDuration: 12000,
+  bgColor: '#0a0a14',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('titleBadge').textContent = CONFIG.title;
+document.getElementById('leftName').textContent = CONFIG.leftItem.name;
+document.getElementById('leftPrice').textContent = CONFIG.leftItem.price;
+document.getElementById('leftIcon').textContent = CONFIG.leftItem.icon;
+document.getElementById('leftIcon').style.background = CONFIG.leftItem.color;
+document.getElementById('leftBg').style.background = CONFIG.leftItem.color;
+document.getElementById('rightName').textContent = CONFIG.rightItem.name;
+document.getElementById('rightPrice').textContent = CONFIG.rightItem.price;
+document.getElementById('rightIcon').textContent = CONFIG.rightItem.icon;
+document.getElementById('rightIcon').style.background = CONFIG.rightItem.color;
+document.getElementById('rightBg').style.background = CONFIG.rightItem.color;
+
+function buildFeatures(containerId, features) {
+  var el = document.getElementById(containerId);
+  el.innerHTML = '';
+  features.forEach(function(f) {
+    var item = document.createElement('div');
+    item.className = 'feature';
+    item.innerHTML = '<div class="feature-check ' + (f.has ? 'yes' : 'no') + '">' + (f.has ? '✓' : '✕') + '</div>' + f.text;
+    el.appendChild(item);
+  });
+}
+
+function buildRating(containerId, rating) {
+  var el = document.getElementById(containerId);
+  el.innerHTML = '';
+  for (var i = 1; i <= 5; i++) {
+    var star = document.createElement('span');
+    star.className = 'star' + (i <= Math.round(rating) ? ' filled' : '');
+    star.textContent = '★';
+    el.appendChild(star);
+  }
+  var num = document.createElement('span');
+  num.className = 'rating-num';
+  num.textContent = rating.toFixed(1);
+  el.appendChild(num);
+}
+
+buildFeatures('leftFeatures', CONFIG.leftItem.features);
+buildFeatures('rightFeatures', CONFIG.rightItem.features);
+buildRating('leftRating', CONFIG.leftItem.rating);
+buildRating('rightRating', CONFIG.rightItem.rating);
+
+function runCycle() {
+  var leftSide = document.getElementById('leftSide');
+  var rightSide = document.getElementById('rightSide');
+  var vsCircle = document.getElementById('vsCircle');
+  var titleBadge = document.getElementById('titleBadge');
+  var leftFeatures = document.querySelectorAll('#leftFeatures .feature');
+  var rightFeatures = document.querySelectorAll('#rightFeatures .feature');
+  var leftRating = document.getElementById('leftRating');
+  var rightRating = document.getElementById('rightRating');
+
+  leftSide.classList.remove('visible');
+  rightSide.classList.remove('visible');
+  vsCircle.classList.remove('visible');
+  titleBadge.classList.remove('visible');
+  leftRating.classList.remove('visible');
+  rightRating.classList.remove('visible');
+  leftFeatures.forEach(function(f) { f.classList.remove('visible'); });
+  rightFeatures.forEach(function(f) { f.classList.remove('visible'); });
+
+  setTimeout(function() { titleBadge.classList.add('visible'); }, 200);
+  setTimeout(function() { leftSide.classList.add('visible'); }, 400);
+  setTimeout(function() { rightSide.classList.add('visible'); }, 600);
+  setTimeout(function() { vsCircle.classList.add('visible'); }, 900);
+
+  leftFeatures.forEach(function(f, i) { setTimeout(function() { f.classList.add('visible'); }, 1400 + i * 200); });
+  rightFeatures.forEach(function(f, i) { setTimeout(function() { f.classList.add('visible'); }, 1500 + i * 200); });
+  setTimeout(function() { leftRating.classList.add('visible'); rightRating.classList.add('visible'); }, 3000);
+
+  setTimeout(function() {
+    leftSide.classList.remove('visible');
+    rightSide.classList.remove('visible');
+    vsCircle.classList.remove('visible');
+    titleBadge.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

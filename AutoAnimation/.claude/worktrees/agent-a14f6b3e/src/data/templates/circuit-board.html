@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuit Board - PCB Design</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0a2e0a; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#0a2e0a',
+  bgGrid: 'rgba(20,80,20,0.3)',
+  traceColor: '#c4943a',
+  traceHighlight: '#daa520',
+  dataColor: '#00ff88',
+  dataGlow: 'rgba(0,255,136,0.6)',
+  chipColor: '#1a1a2e',
+  chipBorder: '#555555',
+  chipText: '#aaaaaa',
+  pinColor: '#c4943a',
+  ledGreen: '#00ff00',
+  ledRed: '#ff0000',
+  ledAmber: '#ffaa00',
+  solderColor: '#c4943a',
+  solderGlow: 'rgba(196,148,58,0.5)',
+  labelColor: 'rgba(150,200,150,0.4)',
+  traceWidth: 3,
+  dataSpeed: 2,
+  numTraces: 35,
+  numChips: 6,
+  numLeds: 12
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let traces = [];
+let chips = [];
+let leds = [];
+let solderPoints = [];
+let dataDots = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  initScene();
+}
+
+function initScene() {
+  traces = [];
+  chips = [];
+  leds = [];
+  solderPoints = [];
+  dataDots = [];
+
+  // Generate chips (IC packages)
+  const chipPositions = [
+    { x: 0.2, y: 0.25 }, { x: 0.5, y: 0.2 }, { x: 0.8, y: 0.3 },
+    { x: 0.3, y: 0.6 }, { x: 0.6, y: 0.55 }, { x: 0.75, y: 0.75 }
+  ];
+
+  const chipLabels = ['U1 MCU', 'U2 RAM', 'U3 GPU', 'U4 PWR', 'U5 COM', 'U6 ADC'];
+
+  chipPositions.forEach((pos, i) => {
+    const cw = W * (0.08 + Math.random() * 0.04);
+    const ch = H * (0.06 + Math.random() * 0.04);
+    const cx = pos.x * W;
+    const cy = pos.y * H;
+    const pinCount = 4 + Math.floor(Math.random() * 6);
+
+    chips.push({
+      x: cx - cw / 2, y: cy - ch / 2, w: cw, h: ch,
+      label: chipLabels[i] || 'IC' + i,
+      pinCount
+    });
+
+    // Pins on top and bottom
+    for (let p = 0; p < pinCount; p++) {
+      const px = cx - cw / 2 + (cw / (pinCount + 1)) * (p + 1);
+      solderPoints.push({ x: px, y: cy - ch / 2 - 4 });
+      solderPoints.push({ x: px, y: cy + ch / 2 + 4 });
+    }
+  });
+
+  // Generate traces between chips
+  for (let i = 0; i < CONFIG.numTraces; i++) {
+    const startChip = chips[Math.floor(Math.random() * chips.length)];
+    const endChip = chips[Math.floor(Math.random() * chips.length)];
+    if (startChip === endChip) continue;
+
+    const sx = startChip.x + Math.random() * startChip.w;
+    const sy = startChip.y + (Math.random() > 0.5 ? startChip.h + 5 : -5);
+    const ex = endChip.x + Math.random() * endChip.w;
+    const ey = endChip.y + (Math.random() > 0.5 ? endChip.h + 5 : -5);
+
+    // Create right-angle path
+    const midX = (sx + ex) / 2 + (Math.random() - 0.5) * W * 0.1;
+    const midY = (sy + ey) / 2 + (Math.random() - 0.5) * H * 0.1;
+
+    const points = [
+      { x: sx, y: sy },
+      { x: sx, y: midY },
+      { x: midX, y: midY },
+      { x: ex, y: midY },
+      { x: ex, y: ey }
+    ];
+
+    // Add solder at endpoints and junctions
+    points.forEach(p => {
+      if (Math.random() > 0.5) {
+        solderPoints.push({ x: p.x, y: p.y });
+      }
+    });
+
+    traces.push({
+      points,
+      dataOffset: Math.random() * 100,
+      dataSpeed: 0.5 + Math.random() * CONFIG.dataSpeed,
+      hasData: Math.random() > 0.3
+    });
+
+    // Data dot for this trace
+    if (Math.random() > 0.3) {
+      dataDots.push({
+        trace: traces.length - 1,
+        progress: Math.random(),
+        speed: 0.003 + Math.random() * 0.005
+      });
+    }
+  }
+
+  // LEDs
+  for (let i = 0; i < CONFIG.numLeds; i++) {
+    leds.push({
+      x: W * (0.1 + Math.random() * 0.8),
+      y: H * (0.1 + Math.random() * 0.8),
+      color: [CONFIG.ledGreen, CONFIG.ledAmber, CONFIG.ledRed][Math.floor(Math.random() * 3)],
+      blinkSpeed: 1 + Math.random() * 4,
+      blinkOffset: Math.random() * Math.PI * 2,
+      size: W * 0.004
+    });
+  }
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid pattern
+  ctx.strokeStyle = CONFIG.bgGrid;
+  ctx.lineWidth = 0.5;
+  const gridSize = W * 0.015;
+
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  // Board edge
+  ctx.strokeStyle = 'rgba(196,148,58,0.2)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(W * 0.02, H * 0.02, W * 0.96, H * 0.96);
+
+  // Corner mounting holes
+  const corners = [
+    [W * 0.04, H * 0.04], [W * 0.96, H * 0.04],
+    [W * 0.04, H * 0.96], [W * 0.96, H * 0.96]
+  ];
+  corners.forEach(([cx, cy]) => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, W * 0.008, 0, Math.PI * 2);
+    ctx.strokeStyle = CONFIG.solderColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, W * 0.004, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.bgColor;
+    ctx.fill();
+  });
+
+  // Reference labels
+  ctx.fillStyle = CONFIG.labelColor;
+  ctx.font = `${W * 0.008}px Courier New`;
+  ctx.textAlign = 'left';
+  ctx.fillText('REV 2.1', W * 0.04, H * 0.97);
+  ctx.fillText('PCB-2025-001', W * 0.8, H * 0.97);
+}
+
+function drawTraces() {
+  traces.forEach(trace => {
+    ctx.strokeStyle = CONFIG.traceColor;
+    ctx.lineWidth = CONFIG.traceWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    trace.points.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+  });
+}
+
+function drawDataFlow() {
+  dataDots.forEach(dot => {
+    dot.progress += dot.speed;
+    if (dot.progress > 1) dot.progress -= 1;
+
+    const trace = traces[dot.trace];
+    if (!trace || !trace.hasData) return;
+
+    // Calculate position along the trace path
+    const totalSegments = trace.points.length - 1;
+    let totalLen = 0;
+    const segLens = [];
+
+    for (let i = 0; i < totalSegments; i++) {
+      const dx = trace.points[i + 1].x - trace.points[i].x;
+      const dy = trace.points[i + 1].y - trace.points[i].y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      segLens.push(len);
+      totalLen += len;
+    }
+
+    let targetDist = dot.progress * totalLen;
+    let px, py;
+
+    for (let i = 0; i < totalSegments; i++) {
+      if (targetDist <= segLens[i]) {
+        const t = targetDist / segLens[i];
+        px = trace.points[i].x + (trace.points[i + 1].x - trace.points[i].x) * t;
+        py = trace.points[i].y + (trace.points[i + 1].y - trace.points[i].y) * t;
+        break;
+      }
+      targetDist -= segLens[i];
+    }
+
+    if (px !== undefined) {
+      // Glow
+      ctx.beginPath();
+      ctx.arc(px, py, W * 0.006, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.dataGlow;
+      ctx.fill();
+
+      // Dot
+      ctx.beginPath();
+      ctx.arc(px, py, W * 0.003, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.dataColor;
+      ctx.fill();
+    }
+  });
+}
+
+function drawChips() {
+  chips.forEach(chip => {
+    // Chip body
+    ctx.fillStyle = CONFIG.chipColor;
+    ctx.fillRect(chip.x, chip.y, chip.w, chip.h);
+    ctx.strokeStyle = CONFIG.chipBorder;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(chip.x, chip.y, chip.w, chip.h);
+
+    // Orientation notch
+    ctx.beginPath();
+    ctx.arc(chip.x + chip.w * 0.15, chip.y + chip.h * 0.3, chip.w * 0.04, 0, Math.PI * 2);
+    ctx.strokeStyle = CONFIG.chipBorder;
+    ctx.stroke();
+
+    // Pins
+    for (let p = 0; p < chip.pinCount; p++) {
+      const px = chip.x + (chip.w / (chip.pinCount + 1)) * (p + 1);
+      // Top pins
+      ctx.fillStyle = CONFIG.pinColor;
+      ctx.fillRect(px - 2, chip.y - 6, 4, 8);
+      // Bottom pins
+      ctx.fillRect(px - 2, chip.y + chip.h - 2, 4, 8);
+    }
+
+    // Label
+    ctx.fillStyle = CONFIG.chipText;
+    ctx.font = `bold ${W * 0.009}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText(chip.label, chip.x + chip.w / 2, chip.y + chip.h / 2 + W * 0.003);
+  });
+}
+
+function drawSolderPoints() {
+  const glowPhase = (time * 0.3) % (solderPoints.length);
+
+  solderPoints.forEach((sp, i) => {
+    const isGlowing = Math.abs(i - glowPhase) < 2 || Math.abs(i - glowPhase + solderPoints.length) < 2;
+
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, W * 0.003, 0, Math.PI * 2);
+    ctx.fillStyle = isGlowing ? CONFIG.traceHighlight : CONFIG.solderColor;
+    ctx.fill();
+
+    if (isGlowing) {
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, W * 0.006, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.solderGlow;
+      ctx.fill();
+    }
+  });
+}
+
+function drawLEDs() {
+  leds.forEach(led => {
+    const isOn = Math.sin(time * led.blinkSpeed + led.blinkOffset) > 0;
+
+    if (isOn) {
+      // Glow
+      ctx.beginPath();
+      ctx.arc(led.x, led.y, led.size * 4, 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(led.x, led.y, 0, led.x, led.y, led.size * 4);
+      grad.addColorStop(0, led.color + '44');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(led.x, led.y, led.size, 0, Math.PI * 2);
+      ctx.fillStyle = led.color;
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(led.x, led.y, led.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(50,50,50,0.5)';
+      ctx.fill();
+    }
+
+    // LED outline
+    ctx.strokeStyle = CONFIG.chipBorder;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  });
+}
+
+function drawComponentLabels() {
+  ctx.fillStyle = CONFIG.labelColor;
+  ctx.font = `${W * 0.007}px Courier New`;
+  ctx.textAlign = 'left';
+
+  const labels = [
+    { x: 0.12, y: 0.15, text: 'R1 10k\u2126' },
+    { x: 0.42, y: 0.42, text: 'C1 100nF' },
+    { x: 0.68, y: 0.18, text: 'R2 4.7k\u2126' },
+    { x: 0.88, y: 0.55, text: 'C2 10\u00B5F' },
+    { x: 0.15, y: 0.82, text: 'L1 100\u00B5H' },
+    { x: 0.55, y: 0.85, text: 'D1 1N4148' },
+    { x: 0.35, y: 0.12, text: 'Q1 BC547' },
+    { x: 0.85, y: 0.88, text: 'J1 USB-C' }
+  ];
+
+  labels.forEach(l => {
+    ctx.fillText(l.text, l.x * W, l.y * H);
+  });
+}
+
+function draw() {
+  drawBackground();
+  drawTraces();
+  drawSolderPoints();
+  drawChips();
+  drawLEDs();
+  drawDataFlow();
+  drawComponentLabels();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

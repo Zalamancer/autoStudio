@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; }
+.scene { width: 100%; height: 100%; background: linear-gradient(135deg, #fd79a8, #e17055, #fdcb6e); position: relative; display: flex; align-items: center; justify-content: center; }
+.character { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.character .emoji { font-size: 100px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)); }
+.label { background: rgba(0,0,0,0.85); color: white; padding: 12px 24px; border-radius: 12px; font-size: 28px; text-align: center; max-width: 280px; line-height: 1.3; text-transform: uppercase; letter-spacing: 1px; opacity: 0; transform: scale(0.8); }
+.label.show { opacity: 1; transform: scale(1); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.boyfriend { left: 50%; top: 45%; transform: translate(-50%, -50%); }
+.girlfriend { right: 8%; top: 50%; transform: translateY(-50%); }
+.other { left: 8%; top: 50%; transform: translateY(-50%); }
+.arrow { position: absolute; font-size: 60px; opacity: 0; }
+.arrow.show { opacity: 1; transition: opacity 0.4s ease; }
+.arrow-look { top: 38%; left: 38%; transform: rotate(-30deg); }
+.heart { position: absolute; font-size: 40px; opacity: 0; }
+.heart.show { opacity: 1; animation: float 1.5s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  boyfriendLabel: 'Me',
+  girlfriendLabel: 'My responsibilities',
+  otherLabel: 'New shiny thing',
+  bgColor1: '#fd79a8',
+  bgColor2: '#e17055',
+  bgColor3: '#fdcb6e',
+  labelBgColor: 'rgba(0,0,0,0.85)',
+  labelTextColor: '#ffffff',
+  fontSize: 28,
+  animationSpeed: 500
+};
+</script>
+<div class="scene" id="scene">
+  <div class="character other">
+    <span class="emoji">\u{1F929}</span>
+    <div class="label" id="otherLabel"></div>
+  </div>
+  <div class="character boyfriend">
+    <span class="emoji">\u{1F633}</span>
+    <div class="label" id="boyfriendLabel"></div>
+  </div>
+  <div class="character girlfriend">
+    <span class="emoji">\u{1F620}</span>
+    <div class="label" id="girlfriendLabel"></div>
+  </div>
+  <span class="arrow arrow-look" id="arrow">\u{1F440}</span>
+  <span class="heart" id="heart" style="top:25%;left:22%">\u{2764}\uFE0F</span>
+</div>
+<script>
+document.getElementById('boyfriendLabel').textContent = CONFIG.boyfriendLabel;
+document.getElementById('girlfriendLabel').textContent = CONFIG.girlfriendLabel;
+document.getElementById('otherLabel').textContent = CONFIG.otherLabel;
+document.getElementById('scene').style.background = 'linear-gradient(135deg,' + CONFIG.bgColor1 + ',' + CONFIG.bgColor2 + ',' + CONFIG.bgColor3 + ')';
+document.querySelectorAll('.label').forEach(el => {
+  el.style.background = CONFIG.labelBgColor;
+  el.style.color = CONFIG.labelTextColor;
+  el.style.fontSize = CONFIG.fontSize + 'px';
+});
+
+setTimeout(() => document.getElementById('boyfriendLabel').classList.add('show'), 300);
+setTimeout(() => document.getElementById('girlfriendLabel').classList.add('show'), 700);
+setTimeout(() => {
+  document.getElementById('otherLabel').classList.add('show');
+  document.getElementById('arrow').classList.add('show');
+}, 1100);
+setTimeout(() => document.getElementById('heart').classList.add('show'), 1500);
+</script>
+</body>
+</html>

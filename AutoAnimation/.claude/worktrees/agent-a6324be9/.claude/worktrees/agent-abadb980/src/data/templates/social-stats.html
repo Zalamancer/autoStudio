@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Stats</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 100vw; height: 100vh; overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  display: flex; align-items: center; justify-content: center;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  followers: 124800,
+  likes: 892400,
+  comments: 45200,
+  shares: 23100,
+  platformName: 'Instagram',
+  accentColor: '#6C5CE7',
+  bgColor: '#0f0f1a',
+  growthData: [12, 28, 35, 42, 38, 55, 62, 78, 85, 95, 88, 110]
+};
+
+window.addEventListener('message', e => {
+  if (e.data && typeof e.data === 'object') Object.assign(CONFIG, e.data);
+});
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0, startTime = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Easing
+function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function hexToRGB(hex) {
+  hex = hex.replace('#', '');
+  return {
+    r: parseInt(hex.substring(0, 2), 16),
+    g: parseInt(hex.substring(2, 4), 16),
+    b: parseInt(hex.substring(4, 6), 16)
+  };
+}
+
+function drawRoundedRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// Icon drawing functions (pure canvas, no external resources)
+function drawHeartIcon(cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const s = size / 20;
+  ctx.beginPath();
+  ctx.moveTo(0, s * 6);
+  ctx.bezierCurveTo(-s * 10, -s * 4, -s * 16, s * 2, 0, s * 16);
+  ctx.moveTo(0, s * 6);
+  ctx.bezierCurveTo(s * 10, -s * 4, s * 16, s * 2, 0, s * 16);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawChatIcon(cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2);
+  const s = size;
+  drawRoundedRect(0, 0, s, s * 0.75, s * 0.15);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.2, s * 0.75);
+  ctx.lineTo(s * 0.35, s);
+  ctx.lineTo(s * 0.5, s * 0.75);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawShareIcon(cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const s = size * 0.35;
+  // Three circles connected by lines
+  const points = [
+    { x: s, y: -s * 1.2 },
+    { x: -s, y: 0 },
+    { x: s, y: s * 1.2 }
+  ];
+  ctx.strokeStyle = ctx.fillStyle;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(points[1].x, points[1].y);
+  ctx.lineTo(points[0].x, points[0].y);
+  ctx.moveTo(points[1].x, points[1].y);
+  ctx.lineTo(points[2].x, points[2].y);
+  ctx.stroke();
+  points.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, s * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function drawUserIcon(cx, cy, size) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const s = size * 0.4;
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -s * 0.4, s * 0.55, 0, Math.PI * 2);
+  ctx.fill();
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, s * 0.9, s * 0.9, s * 0.6, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Animation cycle: 6 seconds per loop
+const CYCLE = 8;
+
+function getProgress() {
+  return (time % CYCLE) / CYCLE;
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle gradient overlay
+  const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.6);
+  const c = hexToRGB(CONFIG.accentColor);
+  grad.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, 0.06)`);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawFollowerCount(progress) {
+  const countProgress = Math.min(1, progress * 4);
+  const ep = easeOutExpo(countProgress);
+  const currentCount = Math.floor(CONFIG.followers * ep);
+
+  // Platform name
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = `600 ${H * 0.028}px system-ui, sans-serif`;
+  ctx.fillStyle = CONFIG.accentColor;
+  ctx.globalAlpha = Math.min(1, progress * 6);
+  ctx.fillText(CONFIG.platformName.toUpperCase(), W / 2, H * 0.1);
+
+  // Follower count
+  ctx.font = `700 ${H * 0.1}px system-ui, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = Math.min(1, progress * 5);
+  ctx.fillText(formatNumber(currentCount), W / 2, H * 0.22);
+
+  // "Followers" label
+  ctx.font = `400 ${H * 0.028}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('FOLLOWERS', W / 2, H * 0.27);
+  ctx.restore();
+}
+
+function drawStatCards(progress) {
+  const cardData = [
+    { label: 'Likes', value: CONFIG.likes, icon: drawHeartIcon, color: '#ff6b6b' },
+    { label: 'Comments', value: CONFIG.comments, icon: drawChatIcon, color: '#4ecdc4' },
+    { label: 'Shares', value: CONFIG.shares, icon: drawShareIcon, color: '#ffa62b' }
+  ];
+
+  const cardW = W * 0.26;
+  const cardH = H * 0.14;
+  const gap = W * 0.03;
+  const totalW = cardData.length * cardW + (cardData.length - 1) * gap;
+  const startX = (W - totalW) / 2;
+  const yPos = H * 0.33;
+
+  cardData.forEach((card, i) => {
+    const delay = 0.1 + i * 0.06;
+    const cardProgress = Math.max(0, Math.min(1, (progress - delay) * 5));
+    const ep = easeOutExpo(cardProgress);
+
+    const x = startX + i * (cardW + gap);
+    const slideY = yPos + (1 - ep) * 30;
+
+    ctx.save();
+    ctx.globalAlpha = ep;
+
+    // Card background
+    drawRoundedRect(x, slideY, cardW, cardH, 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Icon
+    ctx.fillStyle = card.color;
+    card.icon(x + cardW * 0.15, slideY + cardH * 0.4, 20);
+
+    // Value
+    const valProgress = Math.min(1, (progress - delay - 0.05) * 4);
+    const valEp = easeOutExpo(Math.max(0, valProgress));
+    const currentVal = Math.floor(card.value * valEp);
+
+    ctx.font = `700 ${H * 0.035}px system-ui, sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.fillText(formatNumber(currentVal), x + cardW * 0.3, slideY + cardH * 0.42);
+
+    ctx.font = `400 ${H * 0.02}px system-ui, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(card.label, x + cardW * 0.3, slideY + cardH * 0.65);
+
+    ctx.restore();
+  });
+}
+
+function drawLineGraph(progress) {
+  const graphDelay = 0.3;
+  const graphProgress = Math.max(0, Math.min(1, (progress - graphDelay) * 3));
+  if (graphProgress <= 0) return;
+
+  const ep = easeInOutCubic(graphProgress);
+  const data = CONFIG.growthData;
+  const maxVal = Math.max(...data);
+
+  const gx = W * 0.1;
+  const gy = H * 0.55;
+  const gw = W * 0.8;
+  const gh = H * 0.25;
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, graphProgress * 3);
+
+  // Graph background
+  drawRoundedRect(gx - 20, gy - 15, gw + 40, gh + 45, 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fill();
+
+  // Title
+  ctx.font = `600 ${H * 0.022}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.textAlign = 'left';
+  ctx.fillText('Growth Over Time', gx, gy - 2);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const ly = gy + (gh / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(gx, ly);
+    ctx.lineTo(gx + gw, ly);
+    ctx.stroke();
+  }
+
+  // Line
+  const pointCount = Math.floor(data.length * ep);
+  const fracPart = (data.length * ep) - pointCount;
+
+  if (pointCount > 0) {
+    const c = hexToRGB(CONFIG.accentColor);
+
+    // Fill area
+    ctx.beginPath();
+    ctx.moveTo(gx, gy + gh);
+    for (let i = 0; i < pointCount; i++) {
+      const px = gx + (i / (data.length - 1)) * gw;
+      const py = gy + gh - (data[i] / maxVal) * gh;
+      if (i === 0) ctx.lineTo(px, py);
+      else {
+        const prevX = gx + ((i - 1) / (data.length - 1)) * gw;
+        const prevY = gy + gh - (data[i - 1] / maxVal) * gh;
+        const cpx = (prevX + px) / 2;
+        ctx.bezierCurveTo(cpx, prevY, cpx, py, px, py);
+      }
+    }
+    // Partial next point
+    if (pointCount < data.length && fracPart > 0) {
+      const i = pointCount;
+      const px = gx + (i / (data.length - 1)) * gw;
+      const py = gy + gh - (data[i] / maxVal) * gh;
+      const prevX = gx + ((i - 1) / (data.length - 1)) * gw;
+      const prevY = gy + gh - (data[i - 1] / maxVal) * gh;
+      const ix = prevX + (px - prevX) * fracPart;
+      const iy = prevY + (py - prevY) * fracPart;
+      const cpx = (prevX + ix) / 2;
+      ctx.bezierCurveTo(cpx, prevY, cpx, iy, ix, iy);
+    }
+    const lastX = pointCount < data.length && fracPart > 0
+      ? gx + ((pointCount - 1) / (data.length - 1)) * gw + ((gx + (pointCount / (data.length - 1)) * gw) - (gx + ((pointCount - 1) / (data.length - 1)) * gw)) * fracPart
+      : gx + ((pointCount - 1) / (data.length - 1)) * gw;
+
+    ctx.lineTo(lastX, gy + gh);
+    ctx.closePath();
+    const fillGrad = ctx.createLinearGradient(0, gy, 0, gy + gh);
+    fillGrad.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, 0.25)`);
+    fillGrad.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0.02)`);
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+
+    // Line stroke
+    ctx.beginPath();
+    for (let i = 0; i < pointCount; i++) {
+      const px = gx + (i / (data.length - 1)) * gw;
+      const py = gy + gh - (data[i] / maxVal) * gh;
+      if (i === 0) ctx.moveTo(px, py);
+      else {
+        const prevX = gx + ((i - 1) / (data.length - 1)) * gw;
+        const prevY = gy + gh - (data[i - 1] / maxVal) * gh;
+        const cpx = (prevX + px) / 2;
+        ctx.bezierCurveTo(cpx, prevY, cpx, py, px, py);
+      }
+    }
+    if (pointCount < data.length && fracPart > 0) {
+      const i = pointCount;
+      const px = gx + (i / (data.length - 1)) * gw;
+      const py = gy + gh - (data[i] / maxVal) * gh;
+      const prevX = gx + ((i - 1) / (data.length - 1)) * gw;
+      const prevY = gy + gh - (data[i - 1] / maxVal) * gh;
+      const ix = prevX + (px - prevX) * fracPart;
+      const iy = prevY + (py - prevY) * fracPart;
+      const cpx = (prevX + ix) / 2;
+      ctx.bezierCurveTo(cpx, prevY, cpx, iy, ix, iy);
+    }
+    ctx.strokeStyle = CONFIG.accentColor;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = CONFIG.accentColor;
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Data points
+    for (let i = 0; i < pointCount; i++) {
+      const px = gx + (i / (data.length - 1)) * gw;
+      const py = gy + gh - (data[i] / maxVal) * gh;
+      ctx.fillStyle = CONFIG.accentColor;
+      ctx.beginPath();
+      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = CONFIG.bgColor;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Month labels
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  ctx.font = `400 ${H * 0.016}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < data.length; i++) {
+    const px = gx + (i / (data.length - 1)) * gw;
+    ctx.fillText(months[i % 12], px, gy + gh + 18);
+  }
+
+  ctx.restore();
+}
+
+function drawEngagementRing(progress) {
+  const delay = 0.5;
+  const ringProgress = Math.max(0, Math.min(1, (progress - delay) * 3));
+  if (ringProgress <= 0) return;
+
+  const ep = easeOutExpo(ringProgress);
+  const engRate = ((CONFIG.likes + CONFIG.comments + CONFIG.shares) / CONFIG.followers * 100);
+  const displayRate = engRate * ep;
+
+  const cx = W / 2;
+  const cy = H * 0.91;
+  const r = H * 0.05;
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, ringProgress * 3);
+
+  // Background ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  // Progress ring
+  const angle = (Math.min(displayRate, 100) / 100) * Math.PI * 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + angle);
+  ctx.strokeStyle = CONFIG.accentColor;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = CONFIG.accentColor;
+  ctx.shadowBlur = 10;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Percentage text
+  ctx.font = `700 ${H * 0.025}px system-ui, sans-serif`;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(displayRate.toFixed(1) + '%', cx, cy);
+
+  // Label
+  ctx.font = `400 ${H * 0.016}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('Engagement Rate', cx, cy + r + 15);
+
+  ctx.restore();
+}
+
+let lastTime = performance.now();
+
+function animate(now) {
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+  time = now / 1000;
+
+  const progress = getProgress();
+
+  drawBackground();
+  drawFollowerCount(progress);
+  drawStatCards(progress);
+  drawLineGraph(progress);
+  drawEngagementRing(progress);
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

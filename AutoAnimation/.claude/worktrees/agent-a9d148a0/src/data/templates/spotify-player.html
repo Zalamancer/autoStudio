@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Player</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.player { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.bg-blur { position: absolute; inset: 0; filter: blur(80px) brightness(0.25) saturate(1.6); transform: scale(1.3); transition: background 1s; }
+.bg-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 100%); }
+.content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 65vw; opacity: 0; transform: translateY(20px); transition: all 0.8s cubic-bezier(0.22,1,0.36,1); }
+.content.visible { opacity: 1; transform: translateY(0); }
+.album-art { width: 32vh; height: 32vh; border-radius: 1.5vh; box-shadow: 0 3vh 8vh rgba(0,0,0,0.6); position: relative; overflow: hidden; }
+.album-art .vinyl { position: absolute; inset: 0; background: linear-gradient(135deg, var(--art-color, #667eea) 0%, color-mix(in srgb, var(--art-color, #667eea), black 30%) 100%); display: flex; align-items: center; justify-content: center; }
+.album-art .vinyl::after { content: ''; position: absolute; width: 12vh; height: 12vh; border-radius: 50%; border: 1px solid rgba(255,255,255,0.08); }
+.note-icon { font-size: 7vh; opacity: 0.2; color: #fff; }
+.shimmer { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%); animation: shimmer 4s ease-in-out infinite; }
+@keyframes shimmer { 0%,100% { transform: translateX(-100%); } 50% { transform: translateX(100%); } }
+.track-info { margin-top: 3.5vh; text-align: center; }
+.track-title { font-size: 2.8vh; font-weight: 700; color: #fff; }
+.track-artist { font-size: 1.8vh; color: rgba(255,255,255,0.55); margin-top: 0.4vh; }
+.progress-area { width: 100%; margin-top: 3vh; }
+.progress-track { width: 100%; height: 0.5vh; background: rgba(255,255,255,0.15); border-radius: 0.25vh; position: relative; cursor: default; }
+.progress-fill { height: 100%; border-radius: 0.25vh; width: 0%; transition: width 0.3s linear; }
+.progress-thumb { position: absolute; top: 50%; width: 1.4vh; height: 1.4vh; background: #fff; border-radius: 50%; transform: translate(-50%,-50%); left: 0%; transition: left 0.3s linear; box-shadow: 0 0 6px rgba(0,0,0,0.4); }
+.times { display: flex; justify-content: space-between; margin-top: 0.6vh; font-size: 1.2vh; color: rgba(255,255,255,0.4); font-variant-numeric: tabular-nums; }
+.controls { display: flex; align-items: center; gap: 5vw; margin-top: 3vh; }
+.ctrl-sm { color: rgba(255,255,255,0.5); font-size: 2vh; }
+.ctrl-play { width: 6.5vh; height: 6.5vh; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0.5vh 2vh rgba(0,0,0,0.3); }
+.play-tri { width: 0; height: 0; border-top: 1.2vh solid transparent; border-bottom: 1.2vh solid transparent; border-left: 2vh solid #000; margin-left: 0.3vh; }
+.visualizer { display: flex; align-items: flex-end; gap: 0.35vw; height: 4vh; margin-top: 3vh; }
+.viz-bar { width: 0.55vw; border-radius: 2px 2px 0 0; transition: height 0.12s ease; }
+</style>
+</head>
+<body>
+<div class="player">
+  <div class="bg-blur" id="bgBlur"></div>
+  <div class="bg-overlay"></div>
+  <div class="content" id="content">
+    <div class="album-art" id="albumArt"><div class="vinyl"><div class="note-icon">&#9835;</div></div><div class="shimmer"></div></div>
+    <div class="track-info">
+      <div class="track-title" id="trackTitle">Loading...</div>
+      <div class="track-artist" id="trackArtist">---</div>
+    </div>
+    <div class="progress-area">
+      <div class="progress-track"><div class="progress-fill" id="progFill"></div><div class="progress-thumb" id="progThumb"></div></div>
+      <div class="times"><span id="elapsed">0:00</span><span id="total">0:00</span></div>
+    </div>
+    <div class="controls">
+      <div class="ctrl-sm">&#9664;&#9664;</div>
+      <div class="ctrl-play"><div class="play-tri"></div></div>
+      <div class="ctrl-sm">&#9654;&#9654;</div>
+    </div>
+    <div class="visualizer" id="viz"></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  tracks: [
+    { title: 'Midnight Dreams', artist: 'Luna Nova', color: '#6366f1', duration: 222 },
+    { title: 'Electric Sunrise', artist: 'Neon Pulse', color: '#f97316', duration: 195 },
+    { title: 'Ocean Waves', artist: 'Azure Coast', color: '#06b6d4', duration: 248 },
+    { title: 'City Lights', artist: 'Metro Beats', color: '#ec4899', duration: 180 }
+  ],
+  accentColor: '#1db954',
+  cycleDuration: 10000
+};
+
+var vizEl = document.getElementById('viz');
+var barCount = 36, bars = [];
+for (var b = 0; b < barCount; b++) {
+  var bar = document.createElement('div');
+  bar.className = 'viz-bar';
+  bar.style.height = '0.3vh';
+  vizEl.appendChild(bar);
+  bars.push(bar);
+}
+
+var trackIdx = 0, progress = 0, time = 0;
+
+function setTrack(idx) {
+  var t = CONFIG.tracks[idx];
+  document.getElementById('trackTitle').textContent = t.title;
+  document.getElementById('trackArtist').textContent = t.artist;
+  document.getElementById('total').textContent = Math.floor(t.duration/60) + ':' + String(t.duration%60).padStart(2,'0');
+  document.getElementById('albumArt').style.setProperty('--art-color', t.color);
+  document.querySelector('.vinyl').style.background = 'linear-gradient(135deg, ' + t.color + ', ' + t.color + '66)';
+  document.getElementById('bgBlur').style.background = t.color;
+  document.getElementById('progFill').style.background = t.color;
+  progress = 0;
+}
+
+function fmt(s) { return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0'); }
+
+function animate() {
+  time += 0.016;
+  progress += 0.016 / (CONFIG.cycleDuration / 1000);
+  if (progress >= 1) { trackIdx = (trackIdx + 1) % CONFIG.tracks.length; setTrack(trackIdx); }
+  var t = CONFIG.tracks[trackIdx], elapsed = progress * t.duration;
+  document.getElementById('elapsed').textContent = fmt(elapsed);
+  document.getElementById('progFill').style.width = (progress*100) + '%';
+  document.getElementById('progThumb').style.left = (progress*100) + '%';
+  bars.forEach(function(bar, i) {
+    var h = Math.abs(Math.sin(i*0.4+time*4)*0.5 + Math.sin(i*0.9+time*6)*0.3 + Math.random()*0.15);
+    bar.style.height = Math.max(0.3, h*4) + 'vh';
+    bar.style.background = CONFIG.tracks[trackIdx].color;
+  });
+  requestAnimationFrame(animate);
+}
+
+function runCycle() {
+  var content = document.getElementById('content');
+  content.classList.remove('visible');
+  setTimeout(function() {
+    setTrack(trackIdx);
+    content.classList.add('visible');
+  }, 300);
+}
+
+runCycle();
+animate();
+</script>
+</body>
+</html>

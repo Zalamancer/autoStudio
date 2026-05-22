@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal Window - Command Line</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1a1a; font-family: 'Menlo', 'Courier New', monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#1a1a1a',
+  termBg: '#1e1e1e',
+  titleBarBg: '#323233',
+  titleBarText: '#9d9d9d',
+  closeBtn: '#ff5f57',
+  minimizeBtn: '#febc2e',
+  maximizeBtn: '#28c840',
+  promptColor: '#50fa7b',
+  commandColor: '#f8f8f2',
+  outputColor: '#8be9fd',
+  errorColor: '#ff5555',
+  successColor: '#50fa7b',
+  dimColor: '#6272a4',
+  cursorColor: '#f8f8f2',
+  selectionBg: 'rgba(68,71,90,0.5)',
+  title: 'zsh - Terminal',
+  prompt: '~/project $',
+  commands: [
+    { cmd: 'git status', output: [
+      { text: 'On branch main', color: 'output' },
+      { text: 'Changes not staged for commit:', color: 'dim' },
+      { text: '  modified:   src/App.tsx', color: 'error' },
+      { text: '  modified:   src/index.ts', color: 'error' },
+      { text: '', color: 'output' }
+    ]},
+    { cmd: 'npm install', output: [
+      { text: 'added 127 packages in 3.2s', color: 'output' },
+      { text: '', color: 'output' },
+      { text: '42 packages are looking for funding', color: 'dim' },
+      { text: '  run `npm fund` for details', color: 'dim' },
+      { text: '', color: 'output' }
+    ]},
+    { cmd: 'npm run build', output: [
+      { text: '> proanimate@1.0.0 build', color: 'dim' },
+      { text: '> vite build', color: 'dim' },
+      { text: '', color: 'output' },
+      { text: 'vite v5.4.0 building for production...', color: 'output' },
+      { text: '\u2713 1247 modules transformed.', color: 'success' },
+      { text: 'dist/index.html         0.46 kB \u2502 gzip:  0.30 kB', color: 'output' },
+      { text: 'dist/assets/index.css  24.18 kB \u2502 gzip:  5.12 kB', color: 'output' },
+      { text: 'dist/assets/index.js  412.33 kB \u2502 gzip: 128.72 kB', color: 'output' },
+      { text: '\u2713 built in 4.28s', color: 'success' },
+      { text: '', color: 'output' }
+    ]},
+    { cmd: 'npm test', output: [
+      { text: ' PASS  src/tests/App.test.tsx', color: 'success' },
+      { text: ' PASS  src/tests/utils.test.ts', color: 'success' },
+      { text: ' PASS  src/tests/store.test.ts', color: 'success' },
+      { text: '', color: 'output' },
+      { text: 'Test Suites: 3 passed, 3 total', color: 'success' },
+      { text: 'Tests:       18 passed, 18 total', color: 'success' },
+      { text: 'Time:        2.847s', color: 'dim' },
+      { text: '', color: 'output' }
+    ]},
+    { cmd: 'git add . && git commit -m "feat: add new feature"', output: [
+      { text: '[main a1b2c3d] feat: add new feature', color: 'output' },
+      { text: ' 2 files changed, 47 insertions(+), 12 deletions(-)', color: 'dim' },
+      { text: '', color: 'output' }
+    ]},
+    { cmd: 'git push origin main', output: [
+      { text: 'Enumerating objects: 8, done.', color: 'dim' },
+      { text: 'Counting objects: 100% (8/8), done.', color: 'dim' },
+      { text: 'Writing objects: 100% (5/5), 1.23 KiB, done.', color: 'dim' },
+      { text: 'remote: Resolving deltas: 100% (3/3)', color: 'dim' },
+      { text: 'To github.com:user/project.git', color: 'output' },
+      { text: '   f4e5d6c..a1b2c3d  main -> main', color: 'success' },
+      { text: '', color: 'output' }
+    ]}
+  ]
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let lines = [];
+let currentCmd = 0;
+let charIndex = 0;
+let outputLine = 0;
+let state = 'typing'; // 'typing', 'output', 'pause'
+let stateTimer = 0;
+let cursorBlink = true;
+let scrollOffset = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function getColor(type) {
+  switch (type) {
+    case 'prompt': return CONFIG.promptColor;
+    case 'command': return CONFIG.commandColor;
+    case 'output': return CONFIG.outputColor;
+    case 'error': return CONFIG.errorColor;
+    case 'success': return CONFIG.successColor;
+    case 'dim': return CONFIG.dimColor;
+    default: return CONFIG.commandColor;
+  }
+}
+
+function drawTitleBar() {
+  const barH = H * 0.045;
+  const margin = W * 0.04;
+  const termW = W * 0.92;
+  const termX = margin;
+
+  // Title bar
+  ctx.fillStyle = CONFIG.titleBarBg;
+  ctx.beginPath();
+  ctx.moveTo(termX + 10, 0);
+  ctx.lineTo(termX + termW - 10, 0);
+  ctx.quadraticCurveTo(termX + termW, 0, termX + termW, 10);
+  ctx.lineTo(termX + termW, barH);
+  ctx.lineTo(termX, barH);
+  ctx.lineTo(termX, 10);
+  ctx.quadraticCurveTo(termX, 0, termX + 10, 0);
+  ctx.fill();
+
+  // Traffic light buttons
+  const btnY = barH / 2;
+  const btnR = barH * 0.18;
+  const btnStartX = termX + barH * 0.5;
+  const btnGap = barH * 0.55;
+
+  [CONFIG.closeBtn, CONFIG.minimizeBtn, CONFIG.maximizeBtn].forEach((color, i) => {
+    ctx.beginPath();
+    ctx.arc(btnStartX + i * btnGap, btnY, btnR, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+
+  // Title text
+  ctx.fillStyle = CONFIG.titleBarText;
+  ctx.font = `${W * 0.012}px Menlo, Courier New, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(CONFIG.title, W / 2, btnY + W * 0.004);
+
+  return barH;
+}
+
+function drawTerminal(barH) {
+  const margin = W * 0.04;
+  const termW = W * 0.92;
+  const termX = margin;
+  const termH = H - barH;
+
+  // Terminal body
+  ctx.fillStyle = CONFIG.termBg;
+  ctx.fillRect(termX, barH, termW, termH);
+
+  // Content area
+  const lineH = H * 0.032;
+  const padX = termX + W * 0.02;
+  const padY = barH + lineH;
+  const fontSize = W * 0.013;
+
+  ctx.font = `${fontSize}px Menlo, Courier New, monospace`;
+  ctx.textAlign = 'left';
+
+  const maxVisibleLines = Math.floor(termH / lineH) - 2;
+  const startLine = Math.max(0, lines.length - maxVisibleLines);
+
+  lines.slice(startLine).forEach((line, i) => {
+    const y = padY + i * lineH;
+    if (y > H - lineH) return;
+
+    if (line.isPrompt) {
+      // Draw prompt
+      ctx.fillStyle = CONFIG.promptColor;
+      ctx.fillText(CONFIG.prompt + ' ', padX, y);
+      const promptW = ctx.measureText(CONFIG.prompt + ' ').width;
+
+      // Draw command text
+      ctx.fillStyle = CONFIG.commandColor;
+      ctx.fillText(line.text, padX + promptW, y);
+
+      // Cursor on current typing line
+      if (line.typing && cursorBlink) {
+        const cmdW = ctx.measureText(line.text).width;
+        ctx.fillStyle = CONFIG.cursorColor;
+        ctx.fillRect(padX + promptW + cmdW, y - fontSize * 0.8, fontSize * 0.6, fontSize * 1.1);
+      }
+    } else {
+      ctx.fillStyle = getColor(line.color);
+      ctx.fillText(line.text, padX, y);
+    }
+  });
+
+  // Cursor at bottom for new prompt
+  if (state === 'pause' && lines.length > 0) {
+    const y = padY + Math.min(lines.length - startLine, maxVisibleLines - 1) * lineH;
+    if (cursorBlink) {
+      const promptW = ctx.measureText(CONFIG.prompt + ' ').width;
+      ctx.fillStyle = CONFIG.cursorColor;
+      ctx.fillRect(padX + promptW, y + lineH - fontSize * 0.8, fontSize * 0.6, fontSize * 1.1);
+    }
+  }
+}
+
+function update() {
+  stateTimer += 0.016;
+
+  // Cursor blink
+  cursorBlink = Math.sin(time * 5) > 0;
+
+  if (state === 'typing') {
+    const cmd = CONFIG.commands[currentCmd];
+    if (charIndex === 0) {
+      lines.push({ isPrompt: true, text: '', typing: true });
+    }
+
+    if (stateTimer > 0.06) {
+      stateTimer = 0;
+      const currentLine = lines[lines.length - 1];
+      if (charIndex < cmd.cmd.length) {
+        currentLine.text = cmd.cmd.substring(0, charIndex + 1);
+        charIndex++;
+      } else {
+        currentLine.typing = false;
+        state = 'output';
+        outputLine = 0;
+        stateTimer = 0;
+      }
+    }
+  } else if (state === 'output') {
+    const cmd = CONFIG.commands[currentCmd];
+    if (stateTimer > 0.08) {
+      stateTimer = 0;
+      if (outputLine < cmd.output.length) {
+        const out = cmd.output[outputLine];
+        lines.push({ isPrompt: false, text: out.text, color: out.color });
+        outputLine++;
+      } else {
+        state = 'pause';
+        stateTimer = 0;
+      }
+    }
+  } else if (state === 'pause') {
+    if (stateTimer > 1.0) {
+      currentCmd++;
+      if (currentCmd >= CONFIG.commands.length) {
+        currentCmd = 0;
+        lines = [];
+      }
+      charIndex = 0;
+      state = 'typing';
+      stateTimer = 0;
+    }
+  }
+}
+
+function draw() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const barH = drawTitleBar();
+  update();
+  drawTerminal(barH);
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

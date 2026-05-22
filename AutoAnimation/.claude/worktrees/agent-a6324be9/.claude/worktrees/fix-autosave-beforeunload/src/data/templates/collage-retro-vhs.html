@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Retro VHS Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0a0a14;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* CRT scanlines */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0.06;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(0,0,0,0.4) 1px,
+      rgba(0,0,0,0.4) 2px
+    );
+  }
+
+  /* Static noise */
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    pointer-events: none;
+    opacity: 0.08;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #stage { position: absolute; inset: 0; z-index: 1; }
+
+  .vhs-item {
+    position: absolute;
+    opacity: 0;
+    will-change: transform, opacity;
+    user-select: none;
+  }
+
+  .vhs-item .inner {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Color frame with RGB fringe */
+  .vhs-item.frame .inner {
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+
+  .vhs-item.frame .frame-color {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* RGB split effect on hover */
+  .vhs-item.frame .inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    opacity: 0.3;
+    mix-blend-mode: screen;
+    transform: translate(3px, -2px);
+    filter: hue-rotate(120deg);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* VHS timestamp */
+  .vhs-item.timestamp .inner {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(0,0,0,0.7);
+    padding: 4px 10px;
+    letter-spacing: 2px;
+  }
+
+  .vhs-item.timestamp .inner::before {
+    content: 'REC \u25CF';
+    color: #ff0000;
+    margin-right: 8px;
+    font-size: 12px;
+  }
+
+  /* Tracking bar */
+  .vhs-item.tracking .inner {
+    height: 4px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+    width: 100%;
+  }
+
+  /* VHS label */
+  .vhs-item.label .inner {
+    font-family: 'Impact', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    padding: 8px 16px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* Static glitch block */
+  .vhs-item.glitch-block .inner {
+    overflow: hidden;
+  }
+
+  .glitch-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.15);
+    margin: 1px 0;
+  }
+
+  @keyframes staticIn {
+    0% { opacity: 0; filter: brightness(3) contrast(2); transform: var(--static-start); }
+    20% { opacity: 0.5; filter: brightness(2) contrast(1.5); }
+    40% { opacity: 0.2; filter: brightness(0.5); }
+    60% { opacity: 0.8; filter: brightness(1.5); }
+    80% { opacity: 1; filter: brightness(1.1); }
+    100% { opacity: var(--final-opacity); filter: brightness(1) contrast(1); transform: var(--static-end); }
+  }
+
+  @keyframes glitchOut {
+    0% { opacity: var(--final-opacity); filter: none; transform: var(--static-end); }
+    20% { opacity: 1; filter: brightness(2) hue-rotate(90deg); transform: var(--static-end) translateX(10px); }
+    40% { opacity: 0.3; filter: brightness(0.5); transform: var(--static-end) translateX(-5px); }
+    60% { opacity: 0.7; filter: brightness(2) hue-rotate(-90deg); transform: var(--static-end) translateX(15px); }
+    80% { opacity: 0.2; }
+    100% { opacity: 0; filter: brightness(0); }
+  }
+
+  /* Chromatic aberration corner glow */
+  .chroma-glow {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.08;
+    mix-blend-mode: screen;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  items: [
+    { type: 'frame', w: 220, h: 170, color: '#4a148c' },
+    { type: 'timestamp', text: '1987.08.15  03:22:41 AM' },
+    { type: 'frame', w: 180, h: 220, color: '#00695c' },
+    { type: 'label', text: 'REWIND', size: 32, color: '#00ffff' },
+    { type: 'frame', w: 200, h: 150, color: '#bf360c' },
+    { type: 'tracking' },
+    { type: 'glitch-block', w: 160, h: 40 },
+    { type: 'frame', w: 160, h: 200, color: '#1565c0' },
+    { type: 'label', text: 'PLAY', size: 28, color: '#ff00ff' },
+    { type: 'timestamp', text: 'CH.03  SP  HIFI' },
+    { type: 'frame', w: 190, h: 140, color: '#880e4f' },
+    { type: 'tracking' },
+  ],
+  bgColor: '#0a0a14',
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  const glows = [
+    { top: '-10%', left: '-5%', color: '#ff0066', size: 350 },
+    { bottom: '-10%', right: '-5%', color: '#0066ff', size: 300 },
+    { top: '40%', right: '-8%', color: '#00ffaa', size: 250 },
+  ];
+  glows.forEach(g => {
+    const el = document.createElement('div');
+    el.className = 'chroma-glow';
+    el.style.width = g.size + 'px';
+    el.style.height = g.size + 'px';
+    el.style.background = g.color;
+    if (g.top) el.style.top = g.top;
+    if (g.bottom) el.style.bottom = g.bottom;
+    if (g.left) el.style.left = g.left;
+    if (g.right) el.style.right = g.right;
+    stage.appendChild(el);
+  });
+}
+
+function createItems() {
+  const elements = [];
+  const count = CONFIG.items.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  for (let i = 0; i < count; i++) {
+    const item = CONFIG.items[i];
+    const rng = seededRandom(i * 191 + 67);
+
+    const el = document.createElement('div');
+    el.className = `vhs-item ${item.type}`;
+
+    const inner = document.createElement('div');
+    inner.className = 'inner';
+
+    if (item.type === 'frame') {
+      inner.style.width = item.w + 'px';
+      inner.style.height = item.h + 'px';
+      const c = document.createElement('div');
+      c.className = 'frame-color';
+      c.style.background = item.color;
+      inner.appendChild(c);
+    } else if (item.type === 'timestamp') {
+      inner.textContent = item.text;
+    } else if (item.type === 'label') {
+      inner.style.fontSize = item.size + 'px';
+      inner.style.color = item.color;
+      inner.textContent = item.text;
+    } else if (item.type === 'tracking') {
+      inner.style.width = (vw * 0.3 + rng() * vw * 0.3) + 'px';
+    } else if (item.type === 'glitch-block') {
+      inner.style.width = item.w + 'px';
+      for (let b = 0; b < 10; b++) {
+        const bar = document.createElement('div');
+        bar.className = 'glitch-bar';
+        bar.style.opacity = String(0.1 + rng() * 0.3);
+        bar.style.width = (50 + rng() * 50) + '%';
+        inner.appendChild(bar);
+      }
+    }
+
+    el.appendChild(inner);
+
+    // Scattered position
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const bx = vw * 0.04 + col * (vw * 0.23);
+    const by = vh * 0.04 + row * (vh * 0.30);
+    const ox = (rng() - 0.5) * vw * 0.06;
+    const oy = (rng() - 0.5) * vh * 0.04;
+
+    el.style.left = Math.max(5, bx + ox) + 'px';
+    el.style.top = Math.max(5, by + oy) + 'px';
+
+    const finalOpacity = 0.85 + rng() * 0.15;
+    const glitchX = (rng() - 0.5) * 20;
+
+    el.style.setProperty('--static-start', `translate(${glitchX}px, 0)`);
+    el.style.setProperty('--static-end', `translate(0, 0)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(elements) {
+  const count = elements.length;
+  const inStagger = 250;
+  const inDuration = 600;
+  const holdDuration = 3000;
+  const outStagger = 180;
+  const outDuration = 500;
+  const pause = 800;
+
+  const totalIn = (count - 1) * inStagger + inDuration;
+  const totalOut = (count - 1) * outStagger + outDuration;
+
+  let af, st;
+
+  function resetAll() {
+    elements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(ts) {
+    if (!st) st = ts;
+    const e = ts - st;
+
+    if (e < totalIn) {
+      elements.forEach((el, i) => {
+        if (e >= i * inStagger && !el.dataset.in) {
+          el.dataset.in = '1';
+          el.style.animation = `staticIn ${inDuration}ms ease-out forwards`;
+        }
+      });
+    } else if (e < totalIn + holdDuration) {
+    } else if (e < totalIn + holdDuration + totalOut) {
+      const oe = e - totalIn - holdDuration;
+      elements.forEach((el, i) => {
+        if (oe >= i * outStagger && !el.dataset.out) {
+          el.dataset.out = '1';
+          el.style.animation = `glitchOut ${outDuration}ms linear forwards`;
+        }
+      });
+    } else if (e < totalIn + holdDuration + totalOut + pause) {
+    } else {
+      resetAll();
+      elements.forEach(el => { delete el.dataset.in; delete el.dataset.out; });
+      st = ts;
+    }
+    af = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  af = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(af);
+}
+
+createDecorations();
+let items = createItems();
+runAnimation(items);
+
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    items = createItems();
+    runAnimation(items);
+  }, 300);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Org Chart - Team Hierarchy</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1a2e; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#1a1a2e',
+  bgAccent: '#16213e',
+  nodeColor: '#0f3460',
+  nodeBorder: '#3b82f6',
+  nodeGlow: 'rgba(59,130,246,0.3)',
+  connectionColor: '#3b82f6',
+  connectionGlow: 'rgba(59,130,246,0.15)',
+  titleColor: '#e2e8f0',
+  subtitleColor: '#94a3b8',
+  avatarBg: '#1e40af',
+  avatarBorder: '#60a5fa',
+  pulseColor: 'rgba(59,130,246,0.2)',
+  title: 'ORGANIZATION',
+  orgData: {
+    name: 'CEO', role: 'Chief Executive', children: [
+      { name: 'CTO', role: 'Technology', children: [
+        { name: 'Lead Dev', role: 'Engineering', children: [
+          { name: 'Dev 1', role: 'Frontend', children: [] },
+          { name: 'Dev 2', role: 'Backend', children: [] }
+        ]},
+        { name: 'DevOps', role: 'Infrastructure', children: [] }
+      ]},
+      { name: 'CFO', role: 'Finance', children: [
+        { name: 'Controller', role: 'Accounting', children: [] },
+        { name: 'Analyst', role: 'Strategy', children: [] }
+      ]},
+      { name: 'CMO', role: 'Marketing', children: [
+        { name: 'Brand Mgr', role: 'Branding', children: [] },
+        { name: 'Growth', role: 'Acquisition', children: [] }
+      ]}
+    ]
+  }
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let nodes = [];
+let connections = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  layoutTree();
+}
+
+function layoutTree() {
+  nodes = [];
+  connections = [];
+
+  function countLeaves(node) {
+    if (node.children.length === 0) return 1;
+    return node.children.reduce((sum, c) => sum + countLeaves(c), 0);
+  }
+
+  function layoutNode(node, depth, xMin, xMax, index) {
+    const x = (xMin + xMax) / 2;
+    const yStep = H * 0.17;
+    const y = H * 0.1 + depth * yStep;
+    const nodeW = W * 0.1;
+    const nodeH = H * 0.08;
+
+    const id = nodes.length;
+    nodes.push({
+      x, y, w: nodeW, h: nodeH,
+      name: node.name, role: node.role,
+      depth, index: id,
+      appearDelay: depth * 0.4 + index * 0.1,
+      breathPhase: Math.random() * Math.PI * 2
+    });
+
+    if (node.children.length > 0) {
+      const totalLeaves = countLeaves(node);
+      let offset = xMin;
+
+      node.children.forEach((child, i) => {
+        const childLeaves = countLeaves(child);
+        const childWidth = (childLeaves / totalLeaves) * (xMax - xMin);
+        const childId = nodes.length;
+
+        connections.push({
+          fromId: id, toId: childId,
+          depth: depth,
+          delay: depth * 0.4 + 0.2
+        });
+
+        layoutNode(child, depth + 1, offset, offset + childWidth, i);
+        offset += childWidth;
+      });
+    }
+  }
+
+  layoutNode(CONFIG.orgData, 0, W * 0.05, W * 0.95, 0);
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function drawBackground() {
+  const grad = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, W * 0.7);
+  grad.addColorStop(0, CONFIG.bgAccent);
+  grad.addColorStop(1, CONFIG.bgColor);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid dots
+  ctx.fillStyle = 'rgba(59,130,246,0.05)';
+  const spacing = W * 0.03;
+  for (let x = 0; x < W; x += spacing) {
+    for (let y = 0; y < H; y += spacing) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawConnections() {
+  const cycleT = (time * 0.25) % 5;
+
+  connections.forEach(conn => {
+    const from = nodes[conn.fromId];
+    const to = nodes[conn.toId];
+    const progress = Math.min(Math.max((cycleT - conn.delay) / 0.6, 0), 1);
+    const eased = easeOutCubic(progress);
+
+    if (eased <= 0) return;
+
+    const fromX = from.x;
+    const fromY = from.y + from.h / 2;
+    const toX = to.x;
+    const toY = to.y - to.h / 2;
+    const midY = (fromY + toY) / 2;
+
+    // Draw connection line
+    ctx.strokeStyle = CONFIG.connectionColor;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = eased * 0.7;
+
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    const drawToMidY = fromY + (midY - fromY) * eased;
+    const drawToX = fromX + (toX - fromX) * eased;
+    const drawToY = fromY + (toY - fromY) * eased;
+
+    if (eased < 0.5) {
+      const p = eased / 0.5;
+      ctx.lineTo(fromX, fromY + (midY - fromY) * p);
+    } else {
+      const p = (eased - 0.5) / 0.5;
+      ctx.lineTo(fromX, midY);
+      ctx.lineTo(fromX + (toX - fromX) * p, midY);
+      if (p > 0.5) {
+        const p2 = (p - 0.5) / 0.5;
+        ctx.lineTo(toX, midY + (toY - midY) * p2);
+      }
+    }
+    ctx.stroke();
+
+    // Pulse dot
+    const pulseT = (time * 1.5 + conn.delay) % 2;
+    if (pulseT < 1 && eased >= 1) {
+      const dotP = pulseT;
+      let dotX, dotY;
+
+      if (dotP < 0.33) {
+        const p = dotP / 0.33;
+        dotX = fromX;
+        dotY = fromY + (midY - fromY) * p;
+      } else if (dotP < 0.66) {
+        const p = (dotP - 0.33) / 0.33;
+        dotX = fromX + (toX - fromX) * p;
+        dotY = midY;
+      } else {
+        const p = (dotP - 0.66) / 0.34;
+        dotX = toX;
+        dotY = midY + (toY - midY) * p;
+      }
+
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.connectionColor;
+      ctx.globalAlpha = 1;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 8, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.connectionGlow;
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawNodes() {
+  const cycleT = (time * 0.25) % 5;
+
+  nodes.forEach(node => {
+    const progress = Math.min(Math.max((cycleT - node.appearDelay) / 0.5, 0), 1);
+    const eased = easeOutCubic(progress);
+
+    if (eased <= 0) return;
+
+    const breath = 1 + 0.015 * Math.sin(time * 1.5 + node.breathPhase);
+    const x = node.x;
+    const y = node.y;
+    const hw = (node.w / 2) * eased * breath;
+    const hh = (node.h / 2) * eased * breath;
+
+    ctx.globalAlpha = eased;
+
+    // Node glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = CONFIG.nodeGlow;
+
+    // Node body
+    ctx.beginPath();
+    const r = 8;
+    ctx.moveTo(x - hw + r, y - hh);
+    ctx.lineTo(x + hw - r, y - hh);
+    ctx.quadraticCurveTo(x + hw, y - hh, x + hw, y - hh + r);
+    ctx.lineTo(x + hw, y + hh - r);
+    ctx.quadraticCurveTo(x + hw, y + hh, x + hw - r, y + hh);
+    ctx.lineTo(x - hw + r, y + hh);
+    ctx.quadraticCurveTo(x - hw, y + hh, x - hw, y + hh - r);
+    ctx.lineTo(x - hw, y - hh + r);
+    ctx.quadraticCurveTo(x - hw, y - hh, x - hw + r, y - hh);
+    ctx.closePath();
+
+    ctx.fillStyle = CONFIG.nodeColor;
+    ctx.fill();
+    ctx.strokeStyle = CONFIG.nodeBorder;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+
+    // Avatar circle
+    const avatarR = Math.min(hw, hh) * 0.35;
+    const avatarY = y - hh * 0.15;
+    ctx.beginPath();
+    ctx.arc(x, avatarY, avatarR, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.avatarBg;
+    ctx.fill();
+    ctx.strokeStyle = CONFIG.avatarBorder;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Avatar icon (person silhouette)
+    ctx.fillStyle = CONFIG.avatarBorder;
+    ctx.beginPath();
+    ctx.arc(x, avatarY - avatarR * 0.2, avatarR * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x, avatarY + avatarR * 0.35, avatarR * 0.45, avatarR * 0.25, 0, Math.PI, 0);
+    ctx.fill();
+
+    // Name
+    ctx.fillStyle = CONFIG.titleColor;
+    ctx.font = `bold ${W * 0.01}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(node.name, x, y + hh * 0.5);
+
+    // Role
+    ctx.fillStyle = CONFIG.subtitleColor;
+    ctx.font = `${W * 0.008}px -apple-system, sans-serif`;
+    ctx.fillText(node.role, x, y + hh * 0.78);
+
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawTitle() {
+  ctx.fillStyle = CONFIG.titleColor;
+  ctx.font = `bold ${W * 0.018}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(CONFIG.title, W / 2, H * 0.04);
+
+  ctx.fillStyle = CONFIG.subtitleColor;
+  ctx.font = `${W * 0.01}px -apple-system, sans-serif`;
+  ctx.fillText('Team Structure', W / 2, H * 0.065);
+}
+
+function draw() {
+  drawBackground();
+  drawTitle();
+  drawConnections();
+  drawNodes();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

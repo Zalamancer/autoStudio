@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Magazine Cutout Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5f0e6;
+    font-family: 'Impact', sans-serif;
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.12;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .cutout {
+    position: absolute;
+    opacity: 0;
+    transform-origin: center center;
+    will-change: transform, opacity;
+    user-select: none;
+  }
+
+  .cutout-inner {
+    display: inline-block;
+    position: relative;
+    padding: 8px 16px;
+  }
+
+  /* Magazine clipping styles */
+  .cutout.style-headline .cutout-inner {
+    background: #fff;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.15);
+    font-family: 'Georgia', serif;
+    font-weight: 700;
+    font-style: italic;
+  }
+
+  .cutout.style-advert .cutout-inner {
+    background: #FFD700;
+    color: #1a1a1a;
+    font-family: 'Impact', sans-serif;
+    font-weight: 400;
+    padding: 12px 20px;
+    clip-path: polygon(2% 0%, 100% 1%, 98% 100%, 0% 99%);
+  }
+
+  .cutout.style-photo .cutout-inner {
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.25);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .cutout.style-torn .cutout-inner {
+    background: #fff;
+    box-shadow: 1px 2px 6px rgba(0,0,0,0.12);
+    clip-path: polygon(
+      0% 3%, 5% 0%, 12% 4%, 20% 1%, 30% 3%, 40% 0%, 50% 2%, 60% 0%, 70% 3%, 80% 1%, 90% 4%, 95% 0%, 100% 3%,
+      100% 97%, 95% 100%, 88% 96%, 80% 100%, 70% 97%, 60% 100%, 50% 98%, 40% 100%, 30% 97%, 20% 100%, 10% 96%, 5% 100%, 0% 97%
+    );
+    padding: 14px 22px;
+  }
+
+  .cutout.style-circle .cutout-inner {
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 10px;
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.2);
+  }
+
+  /* Color block - a pure colored rectangle */
+  .color-block {
+    width: 100%;
+    height: 100%;
+    min-width: 100px;
+    min-height: 80px;
+  }
+
+  /* Tape on clippings */
+  .tape-small {
+    position: absolute;
+    top: -8px;
+    left: 30%;
+    width: 50px;
+    height: 16px;
+    background: rgba(200,190,160,0.5);
+    border: 1px solid rgba(180,170,140,0.3);
+    transform: rotate(-3deg);
+    z-index: 3;
+  }
+
+  @keyframes slapOn {
+    0% { opacity: 0; transform: var(--slap-start); }
+    40% { opacity: 1; transform: var(--slap-mid); }
+    70% { transform: var(--slap-settle); }
+    100% { opacity: var(--final-opacity); transform: var(--slap-end); }
+  }
+
+  @keyframes peelOff {
+    0% { opacity: var(--final-opacity); transform: var(--slap-end); }
+    50% { opacity: 0.5; transform: var(--peel-mid); }
+    100% { opacity: 0; transform: var(--peel-end); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  items: [
+    { text: 'BREAKING', style: 'headline', size: 48, color: '#c62828' },
+    { text: 'NEWS', style: 'advert', size: 60, color: '#1a1a1a' },
+    { text: '', style: 'photo', size: 0, color: '#1565c0', w: 160, h: 120 },
+    { text: 'EXCLUSIVE', style: 'torn', size: 36, color: '#333' },
+    { text: 'WOW', style: 'circle', size: 32, color: '#fff', bg: '#e91e63' },
+    { text: '', style: 'photo', size: 0, color: '#2e7d32', w: 130, h: 130 },
+    { text: 'SALE', style: 'advert', size: 72, color: '#1a1a1a' },
+    { text: 'limited edition', style: 'headline', size: 28, color: '#555' },
+    { text: 'FREE', style: 'circle', size: 28, color: '#fff', bg: '#ff6f00' },
+    { text: '', style: 'photo', size: 0, color: '#6a1b9a', w: 140, h: 100 },
+  ],
+  bgColor: '#f5f0e6',
+  maxRotation: 12,
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createCutouts() {
+  const elements = [];
+  const count = CONFIG.items.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  for (let i = 0; i < count; i++) {
+    const item = CONFIG.items[i];
+    const rng = seededRandom(i * 157 + 31);
+
+    const cutout = document.createElement('div');
+    cutout.className = `cutout style-${item.style}`;
+
+    const inner = document.createElement('div');
+    inner.className = 'cutout-inner';
+
+    if (item.style === 'photo') {
+      const block = document.createElement('div');
+      block.className = 'color-block';
+      block.style.background = item.color;
+      block.style.width = (item.w || 120) + 'px';
+      block.style.height = (item.h || 100) + 'px';
+      inner.appendChild(block);
+    } else if (item.style === 'circle') {
+      inner.style.background = item.bg || '#e91e63';
+      inner.style.color = item.color;
+      inner.style.fontSize = item.size + 'px';
+      inner.textContent = item.text;
+    } else {
+      inner.style.fontSize = item.size + 'px';
+      inner.style.color = item.color;
+      inner.textContent = item.text;
+    }
+
+    // Add tape to some items
+    if (rng() > 0.5 && item.style !== 'circle') {
+      const tape = document.createElement('div');
+      tape.className = 'tape-small';
+      tape.style.transform = `rotate(${(rng() - 0.5) * 10}deg)`;
+      cutout.appendChild(tape);
+    }
+
+    cutout.appendChild(inner);
+
+    // Scatter position
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const baseX = vw * 0.05 + col * (vw * 0.23);
+    const baseY = vh * 0.06 + row * (vh * 0.30);
+    const ox = (rng() - 0.5) * vw * 0.1;
+    const oy = (rng() - 0.5) * vh * 0.08;
+
+    cutout.style.left = Math.max(5, baseX + ox) + 'px';
+    cutout.style.top = Math.max(5, baseY + oy) + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.9 + rng() * 0.1;
+
+    const startDir = rng() > 0.5 ? 1 : -1;
+    cutout.style.setProperty('--slap-start', `translate(${startDir * 80}px, -60px) rotate(${rotation + startDir * 20}deg) scale(1.15)`);
+    cutout.style.setProperty('--slap-mid', `translate(${startDir * -5}px, 4px) rotate(${rotation - startDir * 2}deg) scale(0.98)`);
+    cutout.style.setProperty('--slap-settle', `translate(${startDir * 2}px, -2px) rotate(${rotation + startDir}deg) scale(1.01)`);
+    cutout.style.setProperty('--slap-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    cutout.style.setProperty('--final-opacity', String(finalOpacity));
+
+    const peelX = startDir * (200 + rng() * 200);
+    const peelY = -100 - rng() * 200;
+    cutout.style.setProperty('--peel-mid', `translate(${peelX * 0.3}px, ${peelY * 0.3}px) rotate(${rotation + 15}deg)`);
+    cutout.style.setProperty('--peel-end', `translate(${peelX}px, ${peelY}px) rotate(${rotation + 35}deg) scale(0.6)`);
+
+    stage.appendChild(cutout);
+    elements.push(cutout);
+  }
+  return elements;
+}
+
+function runAnimation(elements) {
+  const count = elements.length;
+  const slapStagger = 300;
+  const slapDuration = 550;
+  const holdDuration = 3000;
+  const peelStagger = 200;
+  const peelDuration = 500;
+  const pauseBeforeLoop = 800;
+
+  const totalSlapTime = (count - 1) * slapStagger + slapDuration;
+  const totalPeelTime = (count - 1) * peelStagger + peelDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    elements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalSlapTime) {
+      elements.forEach((el, i) => {
+        const ws = i * slapStagger;
+        if (elapsed >= ws && !el.dataset.in) {
+          el.dataset.in = '1';
+          el.style.animation = `slapOn ${slapDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalSlapTime + holdDuration) {
+    } else if (elapsed < totalSlapTime + holdDuration + totalPeelTime) {
+      const pe = elapsed - totalSlapTime - holdDuration;
+      elements.forEach((el, i) => {
+        const ri = count - 1 - i;
+        const ws = ri * peelStagger;
+        if (pe >= ws && !el.dataset.out) {
+          el.dataset.out = '1';
+          el.style.animation = `peelOff ${peelDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalSlapTime + holdDuration + totalPeelTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      elements.forEach(el => { delete el.dataset.in; delete el.dataset.out; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(animationFrame);
+}
+
+let cutouts = createCutouts();
+runAnimation(cutouts);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    cutouts = createCutouts();
+    runAnimation(cutouts);
+  }, 300);
+});
+</script>
+</body>
+</html>

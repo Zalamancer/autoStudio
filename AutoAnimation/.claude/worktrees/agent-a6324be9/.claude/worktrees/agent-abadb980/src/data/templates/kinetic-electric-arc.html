@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Electric Arc - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Arial Black', 'Impact', sans-serif;
+    position: relative;
+  }
+  #noise-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 1; opacity: 0.06;
+  }
+  #arc-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 10;
+  }
+  #flash-overlay {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 20;
+    background: white; opacity: 0;
+    transition: opacity 0.05s ease-out;
+  }
+  #word-container {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5; display: flex;
+    justify-content: center; align-items: center;
+    white-space: nowrap;
+  }
+  .letter {
+    display: inline-block;
+    font-size: clamp(48px, 10vw, 140px);
+    font-weight: 900; letter-spacing: 0.05em;
+    opacity: 0; position: relative;
+    transition: transform 0.15s ease-out;
+    text-shadow: none;
+    will-change: opacity, transform, text-shadow;
+  }
+  .letter.visible { opacity: 1; }
+  .letter.exploding {
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                opacity 0.4s ease-out;
+    opacity: 0;
+  }
+  #vignette {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 15;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
+  }
+</style>
+</head>
+<body>
+<canvas id="noise-canvas"></canvas>
+<canvas id="arc-canvas"></canvas>
+<div id="flash-overlay"></div>
+<div id="vignette"></div>
+<div id="word-container"></div>
+
+<script>
+const CONFIG = {
+  words: ['UNLEASH', 'YOUR', 'INNER', 'FIRE', 'BURN', 'BRIGHT'],
+  colors: ['#00D4FF', '#FFFFFF', '#00D4FF', '#FFD700', '#FF4444', '#FFD700'],
+  bgColor: '#050510',
+  arcColor: '#00D4FF',
+  arcIntensity: 0.8,
+  flickerRate: 50,
+  chargeSpeed: 1500,
+  cycleDuration: 10000,
+  sparkCount: 15,
+};
+
+// ---- State ----
+let currentWordIndex = 0;
+let phase = 'idle'; // idle | spelling | charging | overload | exploding | pause
+let phaseStart = 0;
+let letterIndex = 0;
+let letterEls = [];
+let letterPositions = [];
+let chargeLevel = 0;
+let sparks = [];
+let explosionParticles = [];
+
+const container = document.getElementById('word-container');
+const flashOverlay = document.getElementById('flash-overlay');
+const arcCanvas = document.getElementById('arc-canvas');
+const arcCtx = arcCanvas.getContext('2d');
+const noiseCanvas = document.getElementById('noise-canvas');
+const noiseCtx = noiseCanvas.getContext('2d');
+
+// ---- Resize ----
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  arcCanvas.width = window.innerWidth * dpr;
+  arcCanvas.height = window.innerHeight * dpr;
+  arcCanvas.style.width = window.innerWidth + 'px';
+  arcCanvas.style.height = window.innerHeight + 'px';
+  arcCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  noiseCanvas.width = window.innerWidth;
+  noiseCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---- Background color ----
+document.body.style.background = CONFIG.bgColor;
+
+// ---- Noise generator ----
+function drawNoise() {
+  const w = noiseCanvas.width, h = noiseCanvas.height;
+  const imageData = noiseCtx.createImageData(w, h);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const v = Math.random() * 255;
+    data[i] = v; data[i + 1] = v; data[i + 2] = v; data[i + 3] = 255;
+  }
+  noiseCtx.putImageData(imageData, 0, 0);
+}
+
+let noiseTimer = 0;
+function updateNoise(dt) {
+  noiseTimer += dt;
+  if (noiseTimer > 80) { noiseTimer = 0; drawNoise(); }
+}
+
+// ---- Jagged arc path between two points ----
+function generateArcPath(x1, y1, x2, y2, segments, jitter) {
+  const points = [{ x: x1, y: y1 }];
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const mx = x1 + (x2 - x1) * t;
+    const my = y1 + (y2 - y1) * t;
+    const perpX = -(y2 - y1), perpY = (x2 - x1);
+    const len = Math.sqrt(perpX * perpX + perpY * perpY) || 1;
+    const offset = (Math.random() - 0.5) * 2 * jitter;
+    points.push({ x: mx + (perpX / len) * offset, y: my + (perpY / len) * offset });
+  }
+  points.push({ x: x2, y: y2 });
+  return points;
+}
+
+function drawArcPath(ctx, points, color, width, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = width * 4;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ---- Sparks ----
+function createSpark(x, y, color) {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 80 + Math.random() * 200;
+  const life = 0.3 + Math.random() * 0.5;
+  return {
+    x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+    life, maxLife: life, color, size: 1 + Math.random() * 2.5,
+  };
+}
+
+function updateSparks(dt) {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += s.vx * dt; s.y += s.vy * dt;
+    s.vy += 200 * dt; s.vx *= 0.97; s.life -= dt;
+    if (s.life <= 0) sparks.splice(i, 1);
+  }
+}
+
+function drawSparks(ctx) {
+  for (const s of sparks) {
+    const alpha = Math.max(0, s.life / s.maxLife);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = s.color;
+    ctx.shadowColor = s.color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ---- Explosion particles ----
+function createExplosionParticle(x, y, color) {
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 150 + Math.random() * 450;
+  const life = 0.5 + Math.random() * 0.8;
+  return {
+    x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+    life, maxLife: life, color, size: 1.5 + Math.random() * 3, trail: [],
+  };
+}
+
+function updateExplosionParticles(dt) {
+  for (let i = explosionParticles.length - 1; i >= 0; i--) {
+    const p = explosionParticles[i];
+    p.trail.push({ x: p.x, y: p.y });
+    if (p.trail.length > 6) p.trail.shift();
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 120 * dt; p.vx *= 0.98; p.life -= dt;
+    if (p.life <= 0) explosionParticles.splice(i, 1);
+  }
+}
+
+function drawExplosionParticles(ctx) {
+  for (const p of explosionParticles) {
+    const alpha = Math.max(0, p.life / p.maxLife);
+    for (let i = 0; i < p.trail.length; i++) {
+      const ta = alpha * (i / p.trail.length) * 0.4;
+      ctx.save(); ctx.globalAlpha = ta; ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.trail[i].x, p.trail[i].y, p.size * 0.6, 0, Math.PI * 2);
+      ctx.fill(); ctx.restore();
+    }
+    ctx.save();
+    ctx.globalAlpha = alpha; ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill(); ctx.restore();
+  }
+}
+
+// ---- Letter position tracking ----
+function updateLetterPositions() {
+  letterPositions = [];
+  for (const el of letterEls) {
+    const r = el.getBoundingClientRect();
+    letterPositions.push({
+      cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+      w: r.width, h: r.height,
+      top: r.top, bottom: r.bottom, left: r.left, right: r.right,
+    });
+  }
+}
+
+// ---- Glow management ----
+function setLetterGlow(el, color, intensity) {
+  if (intensity <= 0) { el.style.textShadow = 'none'; return; }
+  const r = intensity;
+  el.style.textShadow = [
+    `0 0 ${5 * r}px ${color}`, `0 0 ${15 * r}px ${color}`,
+    `0 0 ${30 * r}px ${color}`, `0 0 ${50 * r}px ${color}40`,
+  ].join(', ');
+}
+
+// ---- Word setup ----
+function setupWord(index) {
+  container.innerHTML = '';
+  letterEls = [];
+  letterPositions = [];
+  const word = CONFIG.words[index];
+  const color = CONFIG.colors[index % CONFIG.colors.length];
+  for (let i = 0; i < word.length; i++) {
+    const span = document.createElement('span');
+    span.className = 'letter';
+    span.textContent = word[i];
+    span.style.color = color;
+    container.appendChild(span);
+    letterEls.push(span);
+  }
+}
+
+// ---- Phase transitions ----
+function startSpelling() {
+  phase = 'spelling';
+  phaseStart = performance.now();
+  letterIndex = 0;
+  chargeLevel = 0;
+}
+
+function startCharging() {
+  phase = 'charging';
+  phaseStart = performance.now();
+  chargeLevel = 0;
+}
+
+function startOverload() {
+  phase = 'overload';
+  phaseStart = performance.now();
+  flashOverlay.style.transition = 'opacity 0.05s ease-out';
+  flashOverlay.style.opacity = '0.7';
+  setTimeout(() => {
+    flashOverlay.style.transition = 'opacity 0.3s ease-out';
+    flashOverlay.style.opacity = '0';
+  }, 60);
+}
+
+function startExploding() {
+  phase = 'exploding';
+  phaseStart = performance.now();
+  const color = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+  updateLetterPositions();
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+
+  for (let i = 0; i < letterEls.length; i++) {
+    const el = letterEls[i];
+    const pos = letterPositions[i];
+    if (!pos) continue;
+    const dx = pos.cx - cx, dy = pos.cy - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const pushX = (dx / dist) * (200 + Math.random() * 300);
+    const pushY = (dy / dist) * (200 + Math.random() * 300) - 100;
+    el.classList.add('exploding');
+    el.style.transform = `translate(${pushX}px, ${pushY}px) rotate(${(Math.random() - 0.5) * 60}deg)`;
+    for (let j = 0; j < 8; j++) {
+      explosionParticles.push(createExplosionParticle(pos.cx, pos.cy, color));
+    }
+  }
+  for (let j = 0; j < 20; j++) {
+    explosionParticles.push(createExplosionParticle(cx, cy, color));
+    explosionParticles.push(createExplosionParticle(cx, cy, '#FFFFFF'));
+  }
+}
+
+function startPause() {
+  phase = 'pause';
+  phaseStart = performance.now();
+}
+
+function nextWord() {
+  currentWordIndex = (currentWordIndex + 1) % CONFIG.words.length;
+  setupWord(currentWordIndex);
+  startSpelling();
+}
+
+// ---- Flicker helper ----
+let flickerTimer = 0, flickerState = true;
+function updateFlicker(dt) {
+  flickerTimer += dt * 1000;
+  if (flickerTimer >= CONFIG.flickerRate) {
+    flickerTimer -= CONFIG.flickerRate;
+    flickerState = Math.random() > 0.15;
+  }
+}
+
+// ---- Main draw arcs ----
+function drawArcs(ctx, elapsed) {
+  if (phase !== 'spelling' && phase !== 'charging' && phase !== 'overload') return;
+  updateLetterPositions();
+  const color = CONFIG.arcColor;
+  const wordColor = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+  const visibleCount = letterEls.filter(el => el.classList.contains('visible')).length;
+  if (visibleCount < 2) return;
+
+  // Draw arcs between adjacent visible letters
+  for (let i = 0; i < visibleCount - 1; i++) {
+    const a = letterPositions[i], b = letterPositions[i + 1];
+    if (!a || !b) continue;
+
+    let intensity = CONFIG.arcIntensity;
+    if (phase === 'charging') intensity *= (0.4 + chargeLevel * 0.6);
+    else if (phase === 'overload') intensity *= 1.5;
+    if (!flickerState && Math.random() > 0.5) continue;
+
+    const dist = Math.sqrt((b.cx - a.cx) ** 2 + (b.cy - a.cy) ** 2);
+    const segments = Math.max(4, Math.floor(dist / 15));
+    const jitter = 8 + chargeLevel * 20 + (phase === 'overload' ? 30 : 0);
+
+    // Main arc
+    const path = generateArcPath(a.cx, a.cy, b.cx, b.cy, segments, jitter);
+    drawArcPath(ctx, path, color, 2.5 * intensity, 0.8 * intensity);
+
+    // Secondary thinner arc
+    if (Math.random() > 0.4) {
+      const path2 = generateArcPath(a.cx, a.cy, b.cx, b.cy, segments, jitter * 1.3);
+      drawArcPath(ctx, path2, wordColor, 1.2 * intensity, 0.4 * intensity);
+    }
+
+    // Edge glow arcs during charge
+    if (phase === 'charging' && chargeLevel > 0.3 && Math.random() > 0.6) {
+      const edgeY = Math.random() > 0.5 ? a.top : a.bottom;
+      const edgePath = generateArcPath(a.cx, edgeY, b.cx, edgeY, 4, jitter * 0.6);
+      drawArcPath(ctx, edgePath, color, 1, 0.3 * intensity);
+    }
+  }
+
+  // Overload: arcs shoot outward from letters
+  if (phase === 'overload') {
+    const t = (performance.now() - phaseStart) / 300;
+    for (let i = 0; i < visibleCount; i++) {
+      const pos = letterPositions[i];
+      if (!pos || Math.random() > 0.6) continue;
+      const angle = Math.random() * Math.PI * 2;
+      const reach = 60 + t * 120;
+      const endX = pos.cx + Math.cos(angle) * reach;
+      const endY = pos.cy + Math.sin(angle) * reach;
+      const path = generateArcPath(pos.cx, pos.cy, endX, endY, 5, 25);
+      drawArcPath(ctx, path, '#FFFFFF', 2, 0.6);
+      drawArcPath(ctx, path, color, 1.5, 0.9);
+    }
+  }
+}
+
+// ---- Small ambient arcs in background ----
+function drawAmbientArcs(ctx) {
+  const w = window.innerWidth, h = window.innerHeight;
+  const count = 2 + Math.floor(chargeLevel * 3);
+  for (let i = 0; i < count; i++) {
+    if (Math.random() > 0.3) continue;
+    const x1 = Math.random() * w, y1 = Math.random() * h;
+    const angle = Math.random() * Math.PI * 2;
+    const len = 30 + Math.random() * 80;
+    const path = generateArcPath(x1, y1, x1 + Math.cos(angle) * len, y1 + Math.sin(angle) * len, 3, 10);
+    drawArcPath(ctx, path, CONFIG.arcColor, 0.8, 0.12);
+  }
+}
+
+// ---- Spawn sparks from visible letters ----
+function spawnLetterSparks() {
+  if (phase !== 'spelling' && phase !== 'charging') return;
+  updateLetterPositions();
+  const color = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+  const count = phase === 'charging' ? Math.floor(chargeLevel * 4) : 1;
+  for (let n = 0; n < count; n++) {
+    const visibleIndices = [];
+    for (let i = 0; i < letterEls.length; i++) {
+      if (letterEls[i].classList.contains('visible')) visibleIndices.push(i);
+    }
+    if (visibleIndices.length === 0) return;
+    const idx = visibleIndices[Math.floor(Math.random() * visibleIndices.length)];
+    const pos = letterPositions[idx];
+    if (!pos) return;
+    const edgeX = pos.left + Math.random() * (pos.right - pos.left);
+    const edgeY = Math.random() > 0.5 ? pos.top : pos.bottom;
+    sparks.push(createSpark(edgeX, edgeY, color));
+    if (Math.random() > 0.5) sparks.push(createSpark(edgeX, edgeY, CONFIG.arcColor));
+  }
+}
+
+// ---- Timing constants ----
+const SPELL_DELAY = 120;
+const OVERLOAD_DURATION = 350;
+const EXPLODE_DURATION = 700;
+const PAUSE_DURATION = 300;
+
+// ---- Main loop ----
+let lastTime = performance.now();
+let sparkTimer = 0;
+
+function loop(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+  const elapsed = now - phaseStart;
+
+  arcCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  updateNoise(dt * 1000);
+  updateFlicker(dt);
+
+  // Phase: spelling - reveal letters one by one
+  if (phase === 'spelling') {
+    const targetIndex = Math.min(Math.floor(elapsed / SPELL_DELAY), letterEls.length);
+    while (letterIndex < targetIndex && letterIndex < letterEls.length) {
+      const el = letterEls[letterIndex];
+      el.classList.add('visible');
+      const color = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+      setLetterGlow(el, color, 0.5);
+      updateLetterPositions();
+      const pos = letterPositions[letterIndex];
+      if (pos) {
+        for (let s = 0; s < CONFIG.sparkCount; s++) sparks.push(createSpark(pos.cx, pos.cy, color));
+        for (let s = 0; s < 5; s++) sparks.push(createSpark(pos.cx, pos.cy, '#FFFFFF'));
+      }
+      letterIndex++;
+    }
+    if (letterIndex >= letterEls.length && elapsed > letterEls.length * SPELL_DELAY + 100) {
+      startCharging();
+    }
+  }
+
+  // Phase: charging - arcs intensify, glow builds, vibration starts
+  if (phase === 'charging') {
+    chargeLevel = Math.min(1, elapsed / CONFIG.chargeSpeed);
+    const color = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+    for (let i = 0; i < letterEls.length; i++) {
+      setLetterGlow(letterEls[i], color, 0.5 + chargeLevel * 1.2);
+    }
+    if (chargeLevel > 0.6) {
+      const shake = (chargeLevel - 0.6) * 8;
+      const sx = (Math.random() - 0.5) * shake;
+      const sy = (Math.random() - 0.5) * shake;
+      container.style.transform = `translate(calc(-50% + ${sx}px), calc(-50% + ${sy}px))`;
+    }
+    if (chargeLevel >= 1) {
+      container.style.transform = 'translate(-50%, -50%)';
+      startOverload();
+    }
+  }
+
+  // Phase: overload - intense flicker, heavy sparks, outward arcs
+  if (phase === 'overload') {
+    const color = CONFIG.colors[currentWordIndex % CONFIG.colors.length];
+    for (let i = 0; i < letterEls.length; i++) {
+      setLetterGlow(letterEls[i], color, Math.random() > 0.2 ? 1.8 : 0.5);
+    }
+    updateLetterPositions();
+    for (let i = 0; i < letterEls.length; i++) {
+      const pos = letterPositions[i];
+      if (pos && Math.random() > 0.4) {
+        sparks.push(createSpark(pos.cx, pos.cy, color));
+        sparks.push(createSpark(pos.cx, pos.cy, '#FFFFFF'));
+      }
+    }
+    if (elapsed > OVERLOAD_DURATION) startExploding();
+  }
+
+  // Phase: exploding - letters fly apart
+  if (phase === 'exploding' && elapsed > EXPLODE_DURATION) startPause();
+
+  // Phase: pause - brief gap before next word
+  if (phase === 'pause' && elapsed > PAUSE_DURATION) nextWord();
+
+  // Periodic spark spawning
+  sparkTimer += dt * 1000;
+  if (sparkTimer > 60) { sparkTimer = 0; spawnLetterSparks(); }
+
+  // Update and draw all particles
+  updateSparks(dt);
+  updateExplosionParticles(dt);
+  drawAmbientArcs(arcCtx);
+  drawArcs(arcCtx, elapsed);
+  drawSparks(arcCtx);
+  drawExplosionParticles(arcCtx);
+
+  requestAnimationFrame(loop);
+}
+
+// ---- Init ----
+setupWord(0);
+startSpelling();
+drawNoise();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

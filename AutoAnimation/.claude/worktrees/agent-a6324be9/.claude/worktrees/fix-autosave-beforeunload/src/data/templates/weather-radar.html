@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Radar Display</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0a0e14;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .hud-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .location-block {
+    position: absolute;
+    top: 3vh;
+    left: 3vw;
+  }
+  .location-name {
+    font-size: 2.8vh;
+    font-weight: bold;
+    letter-spacing: 0.3vw;
+    text-transform: uppercase;
+    text-shadow: 0 0 1.5vh rgba(0, 255, 180, 0.6);
+  }
+  .location-sub {
+    font-size: 1.6vh;
+    margin-top: 0.5vh;
+    opacity: 0.6;
+    letter-spacing: 0.15vw;
+  }
+  .temp-block {
+    position: absolute;
+    top: 3vh;
+    right: 3vw;
+    text-align: right;
+  }
+  .temp-value {
+    font-size: 5vh;
+    font-weight: bold;
+    text-shadow: 0 0 2vh rgba(0, 255, 180, 0.5);
+  }
+  .temp-label {
+    font-size: 1.4vh;
+    opacity: 0.5;
+    letter-spacing: 0.2vw;
+    text-transform: uppercase;
+    margin-top: 0.3vh;
+  }
+  .timestamp-block {
+    position: absolute;
+    bottom: 3vh;
+    left: 3vw;
+  }
+  .timestamp {
+    font-size: 1.8vh;
+    opacity: 0.7;
+    letter-spacing: 0.1vw;
+  }
+  .status-block {
+    position: absolute;
+    bottom: 3vh;
+    right: 3vw;
+    text-align: right;
+  }
+  .status-line {
+    font-size: 1.4vh;
+    opacity: 0.5;
+    letter-spacing: 0.1vw;
+    margin-bottom: 0.4vh;
+  }
+  .status-active {
+    opacity: 0.9;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 0.8vh;
+    height: 0.8vh;
+    border-radius: 50%;
+    margin-right: 0.5vw;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .legend {
+    position: absolute;
+    right: 3vw;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3vh;
+  }
+  .legend-bar {
+    width: 1.5vw;
+    height: 1.2vh;
+    border-radius: 0.2vh;
+    opacity: 0.8;
+  }
+  .legend-label {
+    font-size: 1vh;
+    opacity: 0.5;
+    text-align: center;
+    margin-top: 0.2vh;
+    margin-bottom: 0.2vh;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="radarCanvas"></canvas>
+
+<div class="hud-overlay">
+  <div class="location-block">
+    <div class="location-name" id="locName"></div>
+    <div class="location-sub" id="locCoords"></div>
+  </div>
+
+  <div class="temp-block">
+    <div class="temp-value" id="tempDisplay"></div>
+    <div class="temp-label">Surface Temp</div>
+  </div>
+
+  <div class="timestamp-block">
+    <div class="timestamp" id="timestampDisplay"></div>
+  </div>
+
+  <div class="status-block">
+    <div class="status-line status-active">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">SCANNING</span>
+    </div>
+    <div class="status-line" id="modeDisplay">MODE: REFLECTIVITY</div>
+    <div class="status-line" id="rangeDisplay">RANGE: 120 NM</div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+</div>
+
+<script>
+const CONFIG = {
+  locationName: "NEXRAD STATION",
+  coordinates: "40.7128\u00b0N  74.0060\u00b0W",
+  temperature: 72,
+  temperatureUnit: "\u00b0F",
+  radarColor: "#00ffb4",
+  sweepGlow: "#00e6a0",
+  bgColor: "#0a0e14",
+  gridColor: "#1a3a2a",
+  sweepSpeed: 4,
+  cycleDuration: 12000,
+  ringCount: 5,
+  precipCellCount: 18,
+  textColor: "#00ffb4"
+};
+
+const canvas = document.getElementById('radarCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, cx, cy, radius;
+let sweepAngle = -Math.PI / 2;
+let precipCells = [];
+let startTime = Date.now();
+let frameCount = 0;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx = W / 2;
+  cy = H / 2;
+  radius = Math.min(W, H) * 0.38;
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function initPrecipCells() {
+  precipCells = [];
+  for (let i = 0; i < CONFIG.precipCellCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 0.15 + Math.random() * 0.75;
+    const intensity = Math.random();
+    precipCells.push({
+      angle: angle,
+      dist: dist,
+      size: 0.03 + Math.random() * 0.08,
+      intensity: intensity,
+      drift: (Math.random() - 0.5) * 0.0003,
+      driftDist: (Math.random() - 0.5) * 0.0001,
+      revealed: false,
+      revealAlpha: 0,
+      fadeSpeed: 0.01 + Math.random() * 0.02,
+      noisePhase: Math.random() * Math.PI * 2,
+      blobPoints: generateBlobPoints()
+    });
+  }
+}
+
+function generateBlobPoints() {
+  const points = [];
+  const count = 8 + Math.floor(Math.random() * 6);
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const r = 0.6 + Math.random() * 0.4;
+    points.push({ a, r });
+  }
+  return points;
+}
+
+function getIntensityColor(intensity) {
+  if (intensity < 0.25) return { r: 0, g: 180, b: 60 };
+  if (intensity < 0.5) return { r: 80, g: 220, b: 0 };
+  if (intensity < 0.7) return { r: 220, g: 220, b: 0 };
+  if (intensity < 0.85) return { r: 255, g: 140, b: 0 };
+  return { r: 255, g: 30, b: 30 };
+}
+
+function normalizeAngle(a) {
+  while (a < 0) a += Math.PI * 2;
+  while (a >= Math.PI * 2) a -= Math.PI * 2;
+  return a;
+}
+
+function angleDiff(a, b) {
+  let d = normalizeAngle(a) - normalizeAngle(b);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const bgGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.3);
+  bgGrad.addColorStop(0, 'rgba(0, 40, 30, 0.3)');
+  bgGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawRangeRings() {
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= CONFIG.ringCount; i++) {
+    const r = (radius / CONFIG.ringCount) * i;
+    const alpha = i === CONFIG.ringCount ? 0.35 : 0.15;
+    ctx.strokeStyle = CONFIG.gridColor;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const nm = Math.round((120 / CONFIG.ringCount) * i);
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = CONFIG.radarColor;
+    ctx.font = (H * 0.014) + 'px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(nm + ' nm', cx, cy - r + H * 0.02);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCrossHairs() {
+  ctx.strokeStyle = CONFIG.gridColor;
+  ctx.lineWidth = 0.8;
+  ctx.globalAlpha = 0.2;
+
+  ctx.beginPath();
+  ctx.moveTo(cx - radius, cy);
+  ctx.lineTo(cx + radius, cy);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - radius);
+  ctx.lineTo(cx, cy + radius);
+  ctx.stroke();
+
+  for (let i = 1; i < 4; i++) {
+    const a = (Math.PI / 4) * i;
+    const len = radius * 0.15;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (radius - len), cy + Math.sin(a) * (radius - len));
+    ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a + Math.PI) * (radius - len), cy + Math.sin(a + Math.PI) * (radius - len));
+    ctx.lineTo(cx + Math.cos(a + Math.PI) * radius, cy + Math.sin(a + Math.PI) * radius);
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+function drawCompassRose() {
+  const labels = [
+    { text: 'N', angle: -Math.PI / 2 },
+    { text: 'E', angle: 0 },
+    { text: 'S', angle: Math.PI / 2 },
+    { text: 'W', angle: Math.PI }
+  ];
+
+  const fontSize = H * 0.022;
+  ctx.font = 'bold ' + fontSize + 'px Courier New';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  labels.forEach(l => {
+    const dist = radius + fontSize * 1.4;
+    const x = cx + Math.cos(l.angle) * dist;
+    const y = cy + Math.sin(l.angle) * dist;
+    ctx.fillStyle = CONFIG.radarColor;
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(l.text, x, y);
+  });
+
+  for (let i = 0; i < 36; i++) {
+    const a = (i / 36) * Math.PI * 2 - Math.PI / 2;
+    const inner = i % 3 === 0 ? radius * 0.96 : radius * 0.98;
+    const outer = radius;
+    ctx.strokeStyle = CONFIG.radarColor;
+    ctx.globalAlpha = i % 3 === 0 ? 0.4 : 0.15;
+    ctx.lineWidth = i % 9 === 0 ? 1.5 : 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+    ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+function drawSweep(dt) {
+  const sweepWidth = 0.5;
+  const tailLength = Math.PI * 0.35;
+
+  for (let i = 0; i < 60; i++) {
+    const frac = i / 60;
+    const a = sweepAngle - frac * tailLength;
+    const alpha = (1 - frac) * 0.12;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, a - 0.015, a + 0.015);
+    ctx.closePath();
+
+    const rgb = hexToRgb(CONFIG.sweepGlow);
+    ctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+    ctx.fill();
+  }
+
+  const endX = cx + Math.cos(sweepAngle) * radius;
+  const endY = cy + Math.sin(sweepAngle) * radius;
+
+  const lineGrad = ctx.createLinearGradient(cx, cy, endX, endY);
+  const rgb = hexToRgb(CONFIG.radarColor);
+  lineGrad.addColorStop(0, 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ', 0.1)');
+  lineGrad.addColorStop(0.4, 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ', 0.6)');
+  lineGrad.addColorStop(1, 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ', 0.9)');
+
+  ctx.strokeStyle = lineGrad;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+
+  ctx.shadowColor = CONFIG.sweepGlow;
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = CONFIG.radarColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawPrecipCells(time) {
+  precipCells.forEach(cell => {
+    const diff = angleDiff(sweepAngle, cell.angle);
+    if (diff > -0.3 && diff < 0.1) {
+      cell.revealed = true;
+    }
+
+    if (cell.revealed) {
+      cell.revealAlpha = Math.min(1, cell.revealAlpha + cell.fadeSpeed);
+    }
+
+    cell.angle += cell.drift;
+    cell.dist += cell.driftDist;
+    if (cell.dist < 0.1) cell.driftDist = Math.abs(cell.driftDist);
+    if (cell.dist > 0.85) cell.driftDist = -Math.abs(cell.driftDist);
+
+    if (!cell.revealed || cell.revealAlpha < 0.01) return;
+
+    const px = cx + Math.cos(cell.angle) * (cell.dist * radius);
+    const py = cy + Math.sin(cell.angle) * (cell.dist * radius);
+    const sz = cell.size * radius;
+
+    const distFromCenter = Math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
+    if (distFromCenter > radius) return;
+
+    const color = getIntensityColor(cell.intensity);
+    const alpha = cell.revealAlpha * (0.4 + cell.intensity * 0.4);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
+    ctx.clip();
+
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, sz);
+    grad.addColorStop(0, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ',' + alpha + ')');
+    grad.addColorStop(0.5, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ',' + (alpha * 0.6) + ')');
+    grad.addColorStop(1, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ', 0)');
+
+    ctx.beginPath();
+    const noiseTime = time * 0.001 + cell.noisePhase;
+    cell.blobPoints.forEach((p, idx) => {
+      const noise = Math.sin(noiseTime + idx * 1.7) * 0.15;
+      const r = sz * (p.r + noise);
+      const x = px + Math.cos(p.a + noiseTime * 0.1) * r;
+      const y = py + Math.sin(p.a + noiseTime * 0.1) * r;
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    if (cell.intensity > 0.6) {
+      const innerGrad = ctx.createRadialGradient(px, py, 0, px, py, sz * 0.4);
+      const coreAlpha = alpha * 0.5;
+      innerGrad.addColorStop(0, 'rgba(255, 255, 200, ' + coreAlpha + ')');
+      innerGrad.addColorStop(1, 'rgba(' + color.r + ',' + color.g + ',' + color.b + ', 0)');
+      ctx.fillStyle = innerGrad;
+      ctx.beginPath();
+      ctx.arc(px, py, sz * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  });
+}
+
+function drawCenterDot() {
+  ctx.fillStyle = CONFIG.radarColor;
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.shadowColor = CONFIG.radarColor;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+}
+
+function drawScanlines() {
+  ctx.globalAlpha = 0.03;
+  for (let y = 0; y < H; y += 3) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, y, W, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawOuterRing() {
+  ctx.strokeStyle = CONFIG.radarColor;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.08;
+  ctx.lineWidth = 6;
+  ctx.shadowColor = CONFIG.radarColor;
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+}
+
+function updateHUD(time) {
+  const elapsed = time - startTime;
+  const cycleTime = elapsed % CONFIG.cycleDuration;
+  const seconds = Math.floor(elapsed / 1000);
+  const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const secs = String(seconds % 60).padStart(2, '0');
+
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+
+  document.getElementById('locName').textContent = CONFIG.locationName;
+  document.getElementById('locName').style.color = CONFIG.textColor;
+  document.getElementById('locCoords').textContent = CONFIG.coordinates;
+  document.getElementById('locCoords').style.color = CONFIG.textColor;
+  document.getElementById('tempDisplay').textContent = CONFIG.temperature + CONFIG.temperatureUnit;
+  document.getElementById('tempDisplay').style.color = CONFIG.textColor;
+  document.getElementById('timestampDisplay').textContent =
+    'UTC ' + h + ':' + m + ':' + s + '  |  SCAN ' + mins + ':' + secs;
+  document.getElementById('timestampDisplay').style.color = CONFIG.textColor;
+  document.getElementById('statusDot').style.backgroundColor = CONFIG.radarColor;
+  document.getElementById('statusText').style.color = CONFIG.textColor;
+  document.getElementById('modeDisplay').style.color = CONFIG.textColor;
+  document.getElementById('rangeDisplay').style.color = CONFIG.textColor;
+}
+
+function buildLegend() {
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  const colors = [
+    { color: '#00b43c', label: 'LIGHT' },
+    { color: '#50dc00', label: '' },
+    { color: '#dcdc00', label: 'MOD' },
+    { color: '#ff8c00', label: '' },
+    { color: '#ff1e1e', label: 'HEAVY' }
+  ];
+  colors.forEach(c => {
+    const bar = document.createElement('div');
+    bar.className = 'legend-bar';
+    bar.style.backgroundColor = c.color;
+    legend.appendChild(bar);
+    if (c.label) {
+      const lbl = document.createElement('div');
+      lbl.className = 'legend-label';
+      lbl.style.color = CONFIG.textColor;
+      lbl.textContent = c.label;
+      legend.appendChild(lbl);
+    }
+  });
+}
+
+let lastTime = 0;
+function animate(time) {
+  const dt = time - lastTime;
+  lastTime = time;
+
+  const speed = CONFIG.sweepSpeed * 0.8;
+  sweepAngle += (dt / 1000) * speed * (Math.PI / 3);
+  if (sweepAngle > Math.PI * 2) sweepAngle -= Math.PI * 2;
+
+  drawBackground();
+  drawRangeRings();
+  drawCrossHairs();
+  drawPrecipCells(time);
+  drawSweep(dt);
+  drawOuterRing();
+  drawCompassRose();
+  drawCenterDot();
+  drawScanlines();
+  updateHUD(time);
+
+  frameCount++;
+  requestAnimationFrame(animate);
+}
+
+function resetCycle() {
+  sweepAngle = -Math.PI / 2;
+  initPrecipCells();
+  startTime = Date.now();
+}
+
+function init() {
+  document.body.style.background = CONFIG.bgColor;
+  resize();
+  initPrecipCells();
+  buildLegend();
+  requestAnimationFrame(animate);
+
+  setTimeout(function cycle() {
+    resetCycle();
+    setTimeout(cycle, CONFIG.cycleDuration);
+  }, CONFIG.cycleDuration);
+}
+
+window.addEventListener('resize', resize);
+
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CONFIG_UPDATE' && e.data.payload) {
+    Object.assign(CONFIG, e.data.payload);
+    document.body.style.background = CONFIG.bgColor;
+    buildLegend();
+  }
+});
+
+init();
+</script>
+</body>
+</html>

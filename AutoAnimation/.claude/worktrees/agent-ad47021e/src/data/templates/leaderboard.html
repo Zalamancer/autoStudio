@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0a0e1a;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #fff;
+  }
+  .bg {
+    width: 100%; height: 100%;
+    position: relative;
+    background: linear-gradient(180deg, #0a0e1a 0%, #0f1528 50%, #0a0e1a 100%);
+  }
+  .hex-grid {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(60deg, rgba(41,98,255,0.02) 25%, transparent 25%, transparent 75%, rgba(41,98,255,0.02) 75%),
+      linear-gradient(-60deg, rgba(41,98,255,0.02) 25%, transparent 25%, transparent 75%, rgba(41,98,255,0.02) 75%);
+    background-size: 6vw 10vh;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 3vh 4vw;
+    position: relative;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2vh;
+  }
+  .title {
+    font-size: 3vh;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: #fff;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .title.visible { opacity: 1; transform: translateY(0); }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    font-size: 1.4vh;
+    font-weight: 700;
+    color: #ff4466;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .live-badge.visible { opacity: 1; }
+  @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .live-dot {
+    width: 0.8vh; height: 0.8vh;
+    border-radius: 50%;
+    background: #ff4466;
+    animation: livePulse 1.5s infinite;
+  }
+
+  .table-header {
+    display: flex;
+    padding: 1vh 2vw;
+    font-size: 1.1vh;
+    color: #556;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .table-header.visible { opacity: 1; }
+  .col-rank { width: 8%; }
+  .col-player { flex: 1; }
+  .col-score { width: 20%; text-align: right; }
+  .col-bar { width: 25%; padding-left: 2vw; }
+
+  .rows-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    padding: 1.2vh 2vw;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    position: absolute;
+    left: 0; right: 0;
+    opacity: 0;
+    transition: top 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s;
+  }
+  .row.visible { opacity: 1; }
+  .row.gold { background: linear-gradient(90deg, rgba(255,200,0,0.08), transparent); }
+  .row.silver { background: linear-gradient(90deg, rgba(200,200,220,0.05), transparent); }
+  .row.bronze { background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent); }
+
+  .rank {
+    width: 8%;
+    font-size: 2vh;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+  .rank.r1 { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.4); }
+  .rank.r2 { color: #c0c0d0; }
+  .rank.r3 { color: #cd7f32; }
+  .rank.r4 { color: #667; }
+
+  .player-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+  }
+  .player-avatar {
+    width: 3.5vh; height: 3.5vh;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  .player-name {
+    font-size: 1.6vh;
+    font-weight: 600;
+  }
+  .team-tag {
+    font-size: 1.1vh;
+    color: #4488ff;
+    font-weight: 700;
+  }
+
+  .score-val {
+    width: 20%;
+    text-align: right;
+    font-size: 1.8vh;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #dde;
+  }
+
+  .progress-bar {
+    width: 25%;
+    padding-left: 2vw;
+  }
+  .bar-bg {
+    width: 100%;
+    height: 0.6vh;
+    background: rgba(255,255,255,0.06);
+    border-radius: 0.3vh;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 0.3vh;
+    width: 0%;
+    transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Trophy */
+  .trophy {
+    font-size: 1.5vh;
+    margin-left: 0.5vw;
+  }
+
+  @keyframes goldGlow {
+    0%, 100% { box-shadow: inset 0 0 10px rgba(255,215,0,0.05), 0 0 5px rgba(255,215,0,0.1); }
+    50% { box-shadow: inset 0 0 20px rgba(255,215,0,0.1), 0 0 15px rgba(255,215,0,0.15); }
+  }
+  .row.gold.visible { animation: goldGlow 3s ease-in-out infinite; border-radius: 0.5vh; }
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="hex-grid"></div>
+  <div class="container">
+    <div class="header">
+      <div class="title" id="title">LIVE STANDINGS</div>
+      <div class="live-badge" id="liveBadge">
+        <div class="live-dot"></div>
+        LIVE STANDINGS
+      </div>
+    </div>
+
+    <div class="table-header" id="tableHeader">
+      <div class="col-rank">#</div>
+      <div class="col-player">PLAYER</div>
+      <div class="col-score">SCORE</div>
+      <div class="col-bar">PROGRESS</div>
+    </div>
+
+    <div class="rows-container" id="rowsContainer"></div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    title: 'LIVE STANDINGS',
+    cycleDuration: 12000,
+    shuffleInterval: 5000,
+    maxScore: 50000,
+    barColors: ['#ffd700', '#c0c0d0', '#cd7f32', '#4488ff', '#4488ff', '#4488ff', '#4488ff', '#4488ff', '#4488ff', '#4488ff'],
+    players: [
+      { name: 'N0MERCY', team: 'TSM', avatar: '#e74c3c', score: 48250 },
+      { name: 'ShadowFox', team: 'FNC', avatar: '#3498db', score: 45800 },
+      { name: 'BladeRunner', team: 'C9', avatar: '#2ecc71', score: 43100 },
+      { name: 'PhantomX', team: 'G2', avatar: '#9b59b6', score: 41500 },
+      { name: 'IceQueen', team: 'TL', avatar: '#1abc9c', score: 39200 },
+      { name: 'VortexKing', team: 'NRG', avatar: '#e67e22', score: 37800 },
+      { name: 'NightOwl', team: '100T', avatar: '#f39c12', score: 35400 },
+      { name: 'CyberWolf', team: 'EG', avatar: '#e84393', score: 33100 },
+      { name: 'StormRider', team: 'FLY', avatar: '#00cec9', score: 30900 },
+      { name: 'DarkMatter', team: 'DIG', avatar: '#6c5ce7', score: 28700 }
+    ]
+  };
+
+  const container = document.getElementById('rowsContainer');
+  const titleEl = document.getElementById('title');
+  const liveBadge = document.getElementById('liveBadge');
+  const tableHeader = document.getElementById('tableHeader');
+
+  titleEl.textContent = CONFIG.title;
+
+  // Create rows
+  let sortedPlayers = [...CONFIG.players].sort((a, b) => b.score - a.score);
+  const rowEls = [];
+
+  function createRow(player, rank) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    if (rank === 0) row.classList.add('gold');
+    else if (rank === 1) row.classList.add('silver');
+    else if (rank === 2) row.classList.add('bronze');
+
+    const rankClass = rank < 3 ? `r${rank + 1}` : 'r4';
+    const trophy = rank < 3 ? ['&#x1F3C6;', '&#x1F948;', '&#x1F949;'][rank] : '';
+
+    row.innerHTML = `
+      <div class="rank ${rankClass}">${rank + 1}</div>
+      <div class="player-info">
+        <div class="player-avatar" style="background: ${player.avatar};"></div>
+        <div>
+          <div class="player-name">${player.name} ${trophy ? `<span class="trophy">${trophy}</span>` : ''}</div>
+          <div class="team-tag">[${player.team}]</div>
+        </div>
+      </div>
+      <div class="score-val" data-target="${player.score}">0</div>
+      <div class="progress-bar">
+        <div class="bar-bg">
+          <div class="bar-fill" style="background: ${CONFIG.barColors[rank] || '#4488ff'};"></div>
+        </div>
+      </div>
+    `;
+    return row;
+  }
+
+  function buildRows() {
+    container.innerHTML = '';
+    rowEls.length = 0;
+
+    sortedPlayers.forEach((player, i) => {
+      const row = createRow(player, i);
+      container.appendChild(row);
+      rowEls.push({ el: row, player });
+    });
+  }
+
+  function positionRows() {
+    const rowHeight = container.offsetHeight / 10.5;
+    rowEls.forEach((r, i) => {
+      r.el.style.top = (i * rowHeight) + 'px';
+      r.el.style.height = rowHeight + 'px';
+    });
+  }
+
+  function animateScores() {
+    rowEls.forEach((r, i) => {
+      const scoreEl = r.el.querySelector('.score-val');
+      const target = parseInt(scoreEl.dataset.target);
+      const duration = 2000;
+      const start = performance.now();
+      const delay = i * 100;
+
+      setTimeout(() => {
+        function step(now) {
+          const progress = Math.min((now - start - delay) / duration, 1);
+          if (progress < 0) { requestAnimationFrame(step); return; }
+          const ease = 1 - Math.pow(1 - progress, 3);
+          scoreEl.textContent = Math.round(ease * target).toLocaleString();
+          if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }, delay);
+
+      // Animate bar
+      setTimeout(() => {
+        const bar = r.el.querySelector('.bar-fill');
+        bar.style.width = (r.player.score / CONFIG.maxScore * 100) + '%';
+      }, 500 + i * 100);
+    });
+  }
+
+  function showRows() {
+    rowEls.forEach((r, i) => {
+      setTimeout(() => {
+        r.el.classList.add('visible');
+      }, 200 + i * 80);
+    });
+  }
+
+  function shuffleScores() {
+    // Randomly adjust scores to create movement
+    sortedPlayers.forEach(p => {
+      p.score += Math.round((Math.random() - 0.4) * 2000);
+      p.score = Math.max(1000, Math.min(CONFIG.maxScore, p.score));
+    });
+    sortedPlayers.sort((a, b) => b.score - a.score);
+
+    // Re-rank and reposition
+    rowEls.forEach((r, oldIndex) => {
+      const newIndex = sortedPlayers.indexOf(r.player);
+      const rowHeight = container.offsetHeight / 10.5;
+      r.el.style.top = (newIndex * rowHeight) + 'px';
+
+      // Update rank display
+      const rankEl = r.el.querySelector('.rank');
+      rankEl.textContent = newIndex + 1;
+      rankEl.className = 'rank ' + (newIndex < 3 ? `r${newIndex + 1}` : 'r4');
+
+      // Update score
+      const scoreEl = r.el.querySelector('.score-val');
+      scoreEl.dataset.target = r.player.score;
+
+      // Animate score
+      const current = parseInt(scoreEl.textContent.replace(/,/g, ''));
+      const target = r.player.score;
+      const start = performance.now();
+      function step(now) {
+        const progress = Math.min((now - start) / 800, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        scoreEl.textContent = Math.round(current + (target - current) * ease).toLocaleString();
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+
+      // Update bar
+      const bar = r.el.querySelector('.bar-fill');
+      bar.style.width = (r.player.score / CONFIG.maxScore * 100) + '%';
+
+      // Update row classes
+      r.el.classList.remove('gold', 'silver', 'bronze');
+      if (newIndex === 0) r.el.classList.add('gold');
+      else if (newIndex === 1) r.el.classList.add('silver');
+      else if (newIndex === 2) r.el.classList.add('bronze');
+    });
+
+    // Sort rowEls array to match
+    rowEls.sort((a, b) => sortedPlayers.indexOf(a.player) - sortedPlayers.indexOf(b.player));
+  }
+
+  function runCycle() {
+    buildRows();
+    positionRows();
+
+    // Sequence
+    setTimeout(() => { titleEl.classList.add('visible'); }, 200);
+    setTimeout(() => { liveBadge.classList.add('visible'); }, 400);
+    setTimeout(() => { tableHeader.classList.add('visible'); }, 600);
+    setTimeout(() => { showRows(); }, 800);
+    setTimeout(() => { animateScores(); }, 1200);
+
+    // Periodic shuffles
+    const shuffleId = setInterval(shuffleScores, CONFIG.shuffleInterval);
+
+    // Reset cycle
+    setTimeout(() => {
+      clearInterval(shuffleId);
+      rowEls.forEach(r => r.el.classList.remove('visible'));
+      titleEl.classList.remove('visible');
+      liveBadge.classList.remove('visible');
+      tableHeader.classList.remove('visible');
+
+      setTimeout(runCycle, 1000);
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+  window.addEventListener('resize', positionRows);
+</script>
+</body>
+</html>

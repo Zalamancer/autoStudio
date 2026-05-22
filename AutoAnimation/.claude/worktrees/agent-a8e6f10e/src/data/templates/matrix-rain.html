@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Rain</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#000000',
+  rainColor: '#00ff41',
+  glowColor: '#00ff41',
+  charSet: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*(){}[]|;:,.<>?~\u30A2\u30AB\u30B5\u30BF\u30CA\u30CF\u30DE\u30E4\u30E9\u30EF',
+  fontSize: 14,
+  speed: 1,
+  density: 0.98,
+  title: 'SYSTEM ACCESS GRANTED',
+  cycleDuration: 15000
+};
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W, H, columns, drops;
+
+function resize() {
+  var dpr = window.devicePixelRatio || 1;
+  W = canvas.width = window.innerWidth * dpr;
+  H = canvas.height = window.innerHeight * dpr;
+  columns = Math.floor(W / CONFIG.fontSize);
+  drops = new Array(columns).fill(1);
+  for (var i = 0; i < columns; i++) drops[i] = Math.random() * -100;
+}
+
+function draw() {
+  // Fade effect
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.font = CONFIG.fontSize + 'px monospace';
+
+  for (var i = 0; i < columns; i++) {
+    var ch = CONFIG.charSet[Math.floor(Math.random() * CONFIG.charSet.length)];
+    var x = i * CONFIG.fontSize;
+    var y = drops[i] * CONFIG.fontSize;
+
+    // Leading character (bright)
+    ctx.fillStyle = '#fff';
+    ctx.fillText(ch, x, y);
+
+    // Trail character
+    ctx.fillStyle = CONFIG.rainColor;
+    ctx.globalAlpha = 0.8;
+    ctx.fillText(CONFIG.charSet[Math.floor(Math.random()*CONFIG.charSet.length)], x, y - CONFIG.fontSize);
+    ctx.globalAlpha = 0.5;
+    ctx.fillText(CONFIG.charSet[Math.floor(Math.random()*CONFIG.charSet.length)], x, y - CONFIG.fontSize*2);
+    ctx.globalAlpha = 1;
+
+    if (y > H && Math.random() > CONFIG.density) {
+      drops[i] = 0;
+    }
+    drops[i] += CONFIG.speed;
+  }
+
+  // Title overlay
+  var pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.003);
+  ctx.globalAlpha = pulse * 0.15;
+  ctx.fillStyle = CONFIG.glowColor;
+  ctx.font = 'bold ' + (W * 0.04) + 'px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(CONFIG.title, W/2, H/2);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

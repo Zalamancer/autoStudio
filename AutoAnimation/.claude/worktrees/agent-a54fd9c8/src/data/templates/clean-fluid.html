@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clean Fluid Editorial Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #fafaf8;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1a1a1a;
+  }
+
+  .fluid-bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  .content-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8% 10%;
+  }
+
+  .section {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    width: 80%;
+    left: 10%;
+  }
+
+  .section.active {
+    opacity: 1;
+    transform: translateY(0) !important;
+  }
+
+  .headline {
+    font-size: 64px;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    color: #1a1a1a;
+    margin-bottom: 20px;
+  }
+
+  .headline em {
+    font-style: italic;
+    color: #666;
+  }
+
+  .mono-detail {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 24px;
+  }
+
+  .body-text {
+    font-size: 18px;
+    line-height: 1.7;
+    color: #555;
+    max-width: 500px;
+  }
+
+  .hr-line {
+    height: 1px;
+    background: #1a1a1a;
+    margin: 24px 0;
+    transform-origin: left;
+    transform: scaleX(0);
+    transition: transform 1s ease;
+  }
+
+  .hr-line.active {
+    transform: scaleX(1);
+  }
+
+  .number-large {
+    font-size: 140px;
+    font-weight: 400;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.06);
+    position: absolute;
+    right: 10%;
+    top: 15%;
+    font-family: Georgia, serif;
+  }
+
+  .side-label {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #bbb;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+  }
+
+  .corner-mark {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #ccc;
+  }
+
+  .fluid-gradient {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.15;
+    will-change: transform;
+  }
+</style>
+</head>
+<body>
+
+<div class="fluid-bg" id="fluidBg">
+  <div class="fluid-gradient" id="grad1" style="width:500px;height:500px;background:radial-gradient(circle,#e8d5b5,transparent);top:-10%;left:-10%;"></div>
+  <div class="fluid-gradient" id="grad2" style="width:400px;height:400px;background:radial-gradient(circle,#d5dce8,transparent);bottom:-10%;right:-10%;"></div>
+  <div class="fluid-gradient" id="grad3" style="width:350px;height:350px;background:radial-gradient(circle,#d5e8d8,transparent);top:40%;left:50%;"></div>
+</div>
+
+<div class="side-label" id="sideLabel" style="left:3%;top:50%;">Editorial Design</div>
+<div class="corner-mark" style="top:20px;left:20px;">001</div>
+<div class="corner-mark" style="bottom:20px;right:20px;">2024</div>
+
+<div class="number-large" id="bigNumber">01</div>
+
+<div id="sections"></div>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#fafaf8',
+    textColor: '#1a1a1a',
+    accentColor: '#999',
+    sectionDuration: 4000,
+    transitionDuration: 800,
+    headlines: [
+      'The Art of <em>Visual</em> Design',
+      'Crafted with <em>Purpose</em>',
+      'Every Detail <em>Matters</em>',
+      'Beauty in <em>Simplicity</em>',
+    ],
+    details: [
+      'VOLUME ONE  /  EDITORIAL SERIES',
+      'CHAPTER TWO  /  DESIGN SYSTEMS',
+      'SECTION III  /  TYPOGRAPHY',
+      'PART FOUR  /  COMPOSITION',
+    ],
+    bodyTexts: [
+      'Minimalism is not about the absence of content, but the precision of intent.',
+      'Every element serves a purpose. Nothing more, nothing less.',
+      'The rhythm of text and space creates a visual harmony.',
+      'Clean design speaks louder than ornament.',
+    ],
+  };
+
+  const sectionsContainer = document.getElementById('sections');
+  let currentSection = 0;
+
+  // Create sections
+  CONFIG.headlines.forEach((headline, i) => {
+    const section = document.createElement('div');
+    section.className = 'section';
+    section.style.transform = 'translateY(30px)';
+    section.style.top = '50%';
+    section.style.transform = 'translateY(-50%) translateY(30px)';
+
+    section.innerHTML = `
+      <div class="mono-detail">${CONFIG.details[i]}</div>
+      <div class="headline">${headline}</div>
+      <div class="hr-line"></div>
+      <div class="body-text">${CONFIG.bodyTexts[i]}</div>
+    `;
+
+    sectionsContainer.appendChild(section);
+  });
+
+  const sections = document.querySelectorAll('.section');
+  const hrLines = document.querySelectorAll('.hr-line');
+  const bigNumber = document.getElementById('bigNumber');
+
+  function showSection(index) {
+    sections.forEach((s, i) => {
+      if (i === index) {
+        s.classList.add('active');
+        s.style.transform = 'translateY(-50%) translateY(0)';
+        setTimeout(() => {
+          const hr = s.querySelector('.hr-line');
+          if (hr) hr.classList.add('active');
+        }, 400);
+      } else {
+        s.classList.remove('active');
+        s.style.transform = 'translateY(-50%) translateY(30px)';
+        const hr = s.querySelector('.hr-line');
+        if (hr) hr.classList.remove('active');
+      }
+    });
+
+    bigNumber.textContent = String(index + 1).padStart(2, '0');
+  }
+
+  showSection(0);
+
+  setInterval(() => {
+    currentSection = (currentSection + 1) % CONFIG.headlines.length;
+    showSection(currentSection);
+  }, CONFIG.sectionDuration);
+
+  // Fluid gradient animation
+  const grads = [
+    document.getElementById('grad1'),
+    document.getElementById('grad2'),
+    document.getElementById('grad3'),
+  ];
+
+  let time = 0;
+
+  function animateGradients() {
+    time += 0.008;
+
+    grads[0].style.transform = `translate(${Math.sin(time * 0.5) * 60}px, ${Math.cos(time * 0.4) * 40}px) scale(${1 + Math.sin(time * 0.3) * 0.15})`;
+    grads[1].style.transform = `translate(${Math.cos(time * 0.45) * 50}px, ${Math.sin(time * 0.35) * 50}px) scale(${1 + Math.cos(time * 0.25) * 0.1})`;
+    grads[2].style.transform = `translate(${Math.sin(time * 0.55) * 40}px, ${Math.cos(time * 0.5) * 30}px) scale(${1 + Math.sin(time * 0.4) * 0.12})`;
+
+    // Subtle number opacity pulse
+    bigNumber.style.opacity = 0.04 + Math.sin(time) * 0.02;
+
+    requestAnimationFrame(animateGradients);
+  }
+
+  animateGradients();
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phone Notifications</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif; }
+.phone { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 36vh; height: 76vh; background: #1c1c1e; border-radius: 5vh; border: 3px solid #2c2c2e; overflow: hidden; box-shadow: 0 4vh 12vh rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05); }
+.screen { width: 100%; height: 100%; padding: 2vh 1.5vh; display: flex; flex-direction: column; position: relative; }
+.notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 13vh; height: 3.2vh; background: #000; border-radius: 0 0 2vh 2vh; z-index: 10; }
+.status-bar { display: flex; justify-content: space-between; align-items: center; padding: 0.5vh 1.5vh 0; font-size: 1.3vh; font-weight: 600; color: #fff; }
+.lock-time { text-align: center; margin-top: 4.5vh; }
+.lock-hour { font-size: 7.5vh; font-weight: 200; color: #fff; letter-spacing: -0.03em; }
+.lock-date { font-size: 1.7vh; color: rgba(255,255,255,0.55); margin-top: 0.3vh; }
+.notifications { flex: 1; display: flex; flex-direction: column; gap: 0.8vh; margin-top: 2.5vh; padding: 0 0.3vh; overflow: hidden; }
+.notif { background: rgba(44,44,46,0.8); backdrop-filter: blur(20px); border-radius: 1.8vh; padding: 1.3vh 1.5vh; display: flex; gap: 1.3vh; align-items: flex-start; opacity: 0; transform: translateY(-2.5vh) scale(0.96); transition: all 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+.notif.show { opacity: 1; transform: translateY(0) scale(1); }
+.notif.exit { opacity: 0; transform: translateX(25vh); transition: all 0.35s ease-in; }
+.notif-icon { width: 4vh; height: 4vh; border-radius: 1vh; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.8vh; }
+.notif-body { flex: 1; min-width: 0; }
+.notif-app { font-size: 1.1vh; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.notif-title { font-size: 1.4vh; font-weight: 600; color: #fff; margin-top: 0.2vh; }
+.notif-text { font-size: 1.2vh; color: rgba(255,255,255,0.55); margin-top: 0.15vh; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-time { font-size: 1vh; color: rgba(255,255,255,0.25); flex-shrink: 0; }
+.home-bar { width: 13vh; height: 0.4vh; background: rgba(255,255,255,0.3); border-radius: 0.2vh; margin: 0.8vh auto 0; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="status-bar"><span id="statusTime">9:41</span><span style="opacity:0.5">&#9679;&#9679;&#9679;&nbsp; 82%</span></div>
+    <div class="lock-time"><div class="lock-hour" id="lockHour">9:41</div><div class="lock-date" id="lockDate">Monday, January 15</div></div>
+    <div class="notifications" id="notifs"></div>
+    <div class="home-bar"></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  notifications: [
+    { app: 'Messages', icon: '#34c759', emoji: '\uD83D\uDCAC', title: 'Sarah Chen', text: 'Hey! Did you see the new video? It went viral!', time: 'now' },
+    { app: 'Instagram', icon: '#e1306c', emoji: '\uD83D\uDCF8', title: 'New follower', text: '@creativestudio started following you', time: '2m ago' },
+    { app: 'YouTube', icon: '#ff0000', emoji: '\u25B6\uFE0F', title: 'Upload complete', text: 'Your video "AI Animation Tutorial" is now live!', time: '5m ago' },
+    { app: 'TikTok', icon: '#010101', emoji: '\uD83C\uDFB5', title: 'Trending!', text: 'Your video has reached 100K views!', time: '8m ago' },
+    { app: 'Twitter', icon: '#1da1f2', emoji: '\uD83D\uDC26', title: 'Viral tweet', text: 'Your post about AI animation has 5.2K likes', time: '12m ago' },
+    { app: 'Mail', icon: '#007aff', emoji: '\u2709\uFE0F', title: 'Brand Deal Offer', text: 'We loved your content and would like to collaborate', time: '15m ago' },
+    { app: 'Slack', icon: '#4a154b', emoji: '\uD83D\uDCBC', title: '#general', text: 'Team meeting in 30 minutes', time: '20m ago' },
+    { app: 'Reminders', icon: '#ff9500', emoji: '\u23F0', title: 'Edit video', text: 'Finish editing the new animation project', time: '25m ago' }
+  ],
+  bgColor: '#000',
+  cycleDuration: 14000
+};
+
+var notifsEl = document.getElementById('notifs');
+var currentNotifs = [], notifIdx = 0;
+
+function updateTime() {
+  var now = new Date();
+  var t = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  document.getElementById('statusTime').textContent = t;
+  document.getElementById('lockHour').textContent = t;
+  document.getElementById('lockDate').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function addNotification() {
+  if (notifIdx >= CONFIG.notifications.length) return;
+  var n = CONFIG.notifications[notifIdx];
+  var div = document.createElement('div');
+  div.className = 'notif';
+  div.innerHTML = '<div class="notif-icon" style="background:' + n.icon + '">' + n.emoji + '</div><div class="notif-body"><div class="notif-app">' + n.app + '</div><div class="notif-title">' + n.title + '</div><div class="notif-text">' + n.text + '</div></div><div class="notif-time">' + n.time + '</div>';
+  if (notifsEl.firstChild) notifsEl.insertBefore(div, notifsEl.firstChild);
+  else notifsEl.appendChild(div);
+  currentNotifs.unshift(div);
+  if (currentNotifs.length > 5) { var old = currentNotifs.pop(); old.classList.add('exit'); setTimeout(function(){ old.remove(); }, 400); }
+  requestAnimationFrame(function(){ div.classList.add('show'); });
+  notifIdx++;
+}
+
+function runCycle() {
+  notifsEl.innerHTML = ''; currentNotifs = []; notifIdx = 0;
+  for (var i = 0; i < CONFIG.notifications.length; i++) { (function(idx){ setTimeout(addNotification, 800 + idx * 1100); })(i); }
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+updateTime(); setInterval(updateTime, 1000); runCycle();
+</script>
+</body>
+</html>

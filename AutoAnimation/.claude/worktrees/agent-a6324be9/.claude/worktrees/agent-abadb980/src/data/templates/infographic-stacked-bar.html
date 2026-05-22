@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stacked Bar Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Revenue by Product',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  showLegend: true,
+  categories: ['Q1', 'Q2', 'Q3', 'Q4'],
+  series: [
+    { name: 'Product A', color: '#3B82F6', values: [30, 40, 35, 50] },
+    { name: 'Product B', color: '#10B981', values: [20, 25, 30, 35] },
+    { name: 'Product C', color: '#F59E0B', values: [15, 10, 20, 15] }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function formatValue(v) {
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return v.toString();
+}
+
+function roundRect(x, y, w, h, r) {
+  r = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  if (r <= 0 || h <= 0) { ctx.fillRect(x, y, w, h); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+  const cats = CONFIG.categories;
+  const series = CONFIG.series;
+  const nCats = cats.length;
+
+  // Compute max stacked value
+  let maxVal = 0;
+  for (let c = 0; c < nCats; c++) {
+    let sum = 0;
+    for (const s of series) sum += s.values[c] || 0;
+    maxVal = Math.max(maxVal, sum);
+  }
+  maxVal *= 1.15;
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.14, y: H * 0.15, w: W * 0.78, h: H * 0.65 };
+
+  // Grid
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  ctx.fillStyle = T.text;
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) {
+    const y = area.y + (area.h / steps) * i;
+    ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+    const val = maxVal - (maxVal / steps) * i;
+    ctx.font = `${W * 0.016}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(formatValue(val), area.x - W * 0.012, y);
+  }
+
+  // Bars
+  const gap = area.w * 0.06;
+  const barW = (area.w - gap * (nCats + 1)) / nCats;
+  const radius = 4 * (W / 1000);
+
+  for (let c = 0; c < nCats; c++) {
+    const barEase = easeOutCubic(Math.min(Math.max((progress - c * 0.08) / (1 - nCats * 0.05), 0), 1));
+    const bx = area.x + gap + c * (barW + gap);
+    let stackY = area.y + area.h;
+
+    for (let s = 0; s < series.length; s++) {
+      const val = series[s].values[c] || 0;
+      const segH = (val / maxVal) * area.h * barEase;
+      stackY -= segH;
+      ctx.fillStyle = series[s].color;
+      // Only round top corners on the last (topmost) series segment
+      if (s === series.length - 1) {
+        roundRect(bx, stackY, barW, segH, radius);
+      } else {
+        ctx.fillRect(bx, stackY, barW, segH);
+      }
+    }
+
+    // Category label
+    ctx.fillStyle = T.text;
+    ctx.font = `${W * 0.018}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(cats[c], bx + barW / 2, area.y + area.h + W * 0.01);
+  }
+
+  // Legend
+  if (CONFIG.showLegend) {
+    const legendY = area.y + area.h + H * 0.1;
+    const boxSize = W * 0.014;
+    const spacing = W * 0.02;
+    let totalW = 0;
+    ctx.font = `${W * 0.016}px system-ui`;
+    for (const s of series) totalW += boxSize + spacing + ctx.measureText(s.name).width + W * 0.03;
+    let lx = (W - totalW) / 2;
+
+    for (const s of series) {
+      ctx.fillStyle = s.color;
+      ctx.fillRect(lx, legendY - boxSize / 2, boxSize, boxSize);
+      lx += boxSize + spacing;
+      ctx.fillStyle = T.text;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.name, lx, legendY);
+      lx += ctx.measureText(s.name).width + W * 0.03;
+    }
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

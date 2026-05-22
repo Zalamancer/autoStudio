@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipe Cooking</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #1a0f0a; }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 100%, #2a1a10 0%, #1a0f0a 50%, #120a06 100%); }
+  .texture { position: absolute; inset: 0; opacity: 0.03; background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,200,150,0.1) 2px, rgba(255,200,150,0.1) 4px); pointer-events: none; }
+  .warm-glow { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80vw; height: 50vh; background: radial-gradient(ellipse, rgba(255,140,50,0.06) 0%, transparent 70%); pointer-events: none; }
+
+  .recipe-title { position: absolute; top: 6%; left: 50%; transform: translateX(-50%); text-align: center; opacity: 0; }
+  .recipe-title h1 { font-size: 4.5vh; font-weight: 800; color: #fff; letter-spacing: 1px; }
+  .recipe-title .subtitle { font-size: 1.6vh; color: rgba(255,180,100,0.6); letter-spacing: 4px; text-transform: uppercase; margin-top: 0.8vh; }
+  .recipe-title .underline { width: 6vw; height: 2px; background: linear-gradient(90deg, transparent, #e8832a, transparent); margin: 1vh auto 0; }
+
+  .type-cursor { display: inline-block; width: 2px; height: 1em; background: #e8832a; animation: blink 0.8s step-end infinite; vertical-align: text-bottom; margin-left: 2px; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .badges { position: absolute; top: 17%; left: 50%; transform: translateX(-50%); display: flex; gap: 2vw; opacity: 0; }
+  .badge { background: rgba(232,131,42,0.1); border: 1px solid rgba(232,131,42,0.2); border-radius: 8px; padding: 1vh 1.5vw; text-align: center; white-space: nowrap; }
+  .badge-icon { font-size: 2.2vh; margin-bottom: 0.3vh; }
+  .badge-label { font-size: 1.1vh; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; }
+  .badge-value { font-size: 1.8vh; color: #e8832a; font-weight: 700; margin-top: 0.2vh; }
+
+  .ingredients { position: absolute; top: 28%; left: 6%; width: 38%; opacity: 0; }
+  .ingredients-header { font-size: 1.6vh; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 1.5vh; }
+  .ingredient-item { display: flex; align-items: center; gap: 1vw; padding: 0.8vh 0; border-bottom: 1px solid rgba(255,255,255,0.04); opacity: 0; transform: translateX(-20px); }
+  .ingredient-dot { width: 6px; height: 6px; border-radius: 50%; background: #e8832a; flex-shrink: 0; }
+  .ingredient-text { font-size: 1.6vh; color: rgba(255,255,255,0.7); }
+
+  .steps { position: absolute; top: 28%; right: 6%; width: 38%; opacity: 0; }
+  .steps-header { font-size: 1.6vh; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 1.5vh; }
+  .step-item { display: flex; gap: 1vw; padding: 1vh 0; opacity: 0; transform: translateY(15px); }
+  .step-number { width: 3vh; height: 3vh; border-radius: 50%; background: rgba(232,131,42,0.15); border: 1px solid rgba(232,131,42,0.3); display: flex; align-items: center; justify-content: center; font-size: 1.3vh; color: #e8832a; font-weight: 700; flex-shrink: 0; }
+  .step-text { font-size: 1.5vh; color: rgba(255,255,255,0.6); line-height: 1.5; padding-top: 0.4vh; }
+
+  .timer-container { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); text-align: center; opacity: 0; }
+  .timer-circle { width: 10vh; height: 10vh; border-radius: 50%; position: relative; margin: 0 auto; }
+  .timer-ring { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 3; }
+  .timer-progress { fill: none; stroke: #e8832a; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.5s linear; transform: rotate(-90deg); transform-origin: center; }
+  .timer-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2vh; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+  .timer-label { font-size: 1.2vh; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 2px; margin-top: 0.8vh; }
+
+  .temp-gauge { position: absolute; bottom: 8%; right: 8%; opacity: 0; text-align: center; }
+  .temp-bar-container { width: 8px; height: 12vh; background: rgba(255,255,255,0.06); border-radius: 4px; position: relative; overflow: hidden; margin: 0 auto; }
+  .temp-fill { position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, #e8832a, #ef4444); border-radius: 4px; transition: height 0.5s ease; height: 0%; }
+  .temp-value { font-size: 2vh; font-weight: 700; color: #ef4444; margin-top: 0.8vh; font-variant-numeric: tabular-nums; }
+  .temp-label { font-size: 1.1vh; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; margin-top: 0.3vh; }
+
+  .steam-container { position: absolute; bottom: 25%; left: 50%; transform: translateX(-50%); pointer-events: none; }
+  .steam { position: absolute; width: 4px; background: rgba(255,255,255,0.04); border-radius: 50%; filter: blur(3px); }
+  @keyframes steamRise { 0% { transform: translateY(0) scaleX(1); opacity: 0; } 20% { opacity: 0.4; } 60% { transform: translateY(-8vh) scaleX(2.5); opacity: 0.2; } 100% { transform: translateY(-16vh) scaleX(4); opacity: 0; } }
+
+  .pot { position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%); opacity: 0; }
+  .pot-body { width: 14vw; height: 5vh; background: linear-gradient(180deg, rgba(80,60,50,0.4), rgba(60,40,30,0.6)); border-radius: 0 0 2vw 2vw; border: 1px solid rgba(255,255,255,0.05); border-top: none; }
+  .pot-rim { width: 16vw; height: 0.8vh; background: rgba(120,90,70,0.5); border-radius: 4px; margin: 0 auto; transform: translateX(-1vw); border: 1px solid rgba(255,255,255,0.06); }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="bg"></div>
+  <div class="texture"></div>
+  <div class="warm-glow"></div>
+
+  <div class="recipe-title" id="recipeTitle">
+    <h1><span id="titleText"></span><span class="type-cursor" id="cursor"></span></h1>
+    <div class="subtitle" id="subtitleText">Chef's Special</div>
+    <div class="underline"></div>
+  </div>
+
+  <div class="badges" id="badges">
+    <div class="badge"><div class="badge-icon">&#127860;</div><div class="badge-label">Servings</div><div class="badge-value" id="servingsVal">4</div></div>
+    <div class="badge"><div class="badge-icon">&#9201;</div><div class="badge-label">Prep</div><div class="badge-value" id="prepVal">15 min</div></div>
+    <div class="badge"><div class="badge-icon">&#128293;</div><div class="badge-label">Cook</div><div class="badge-value" id="cookVal">45 min</div></div>
+  </div>
+
+  <div class="ingredients" id="ingredientsList">
+    <div class="ingredients-header">Ingredients</div>
+    <div id="ingredientsItems"></div>
+  </div>
+
+  <div class="steps" id="stepsList">
+    <div class="steps-header">Instructions</div>
+    <div id="stepsItems"></div>
+  </div>
+
+  <div class="pot" id="pot">
+    <div class="pot-rim"></div>
+    <div class="pot-body"></div>
+  </div>
+  <div class="steam-container" id="steamContainer"></div>
+
+  <div class="timer-container" id="timerContainer">
+    <div class="timer-circle">
+      <svg width="100%" height="100%" viewBox="0 0 100 100">
+        <circle class="timer-ring" cx="50" cy="50" r="45"/>
+        <circle class="timer-progress" id="timerProgress" cx="50" cy="50" r="45"/>
+      </svg>
+      <div class="timer-text" id="timerText">0:00</div>
+    </div>
+    <div class="timer-label">Cook Time</div>
+  </div>
+
+  <div class="temp-gauge" id="tempGauge">
+    <div class="temp-bar-container">
+      <div class="temp-fill" id="tempFill"></div>
+    </div>
+    <div class="temp-value" id="tempValue">0&deg;</div>
+    <div class="temp-label">Temp</div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  recipeName: 'Tuscan Herb Risotto',
+  servings: '4',
+  prepTime: '15 min',
+  cookTime: '45 min',
+  ingredients: [
+    '2 cups Arborio rice',
+    '1 cup white wine',
+    '4 cups vegetable broth',
+    '1 cup Parmesan cheese',
+    'Fresh rosemary & thyme',
+    '3 cloves garlic, minced',
+    '1 shallot, diced',
+    '2 tbsp olive oil'
+  ],
+  steps: [
+    'Toast rice in olive oil until translucent',
+    'Deglaze with white wine, stir until absorbed',
+    'Add broth one ladle at a time, stirring constantly',
+    'Fold in Parmesan and fresh herbs off heat',
+    'Season and serve immediately'
+  ],
+  temperature: 350,
+  cycleDuration: 16000,
+};
+
+document.getElementById('servingsVal').textContent = CONFIG.servings;
+document.getElementById('prepVal').textContent = CONFIG.prepTime;
+document.getElementById('cookVal').textContent = CONFIG.cookTime;
+
+// Build ingredients
+function buildIngredients() {
+  var container = document.getElementById('ingredientsItems');
+  container.innerHTML = '';
+  CONFIG.ingredients.forEach(function(item) {
+    var el = document.createElement('div');
+    el.className = 'ingredient-item';
+    el.innerHTML = '<div class="ingredient-dot"></div><div class="ingredient-text">' + item + '</div>';
+    container.appendChild(el);
+  });
+}
+buildIngredients();
+
+// Build steps
+function buildSteps() {
+  var container = document.getElementById('stepsItems');
+  container.innerHTML = '';
+  CONFIG.steps.forEach(function(step, i) {
+    var el = document.createElement('div');
+    el.className = 'step-item';
+    el.innerHTML = '<div class="step-number">' + (i + 1) + '</div><div class="step-text">' + step + '</div>';
+    container.appendChild(el);
+  });
+}
+buildSteps();
+
+// Steam particles
+var steamContainer = document.getElementById('steamContainer');
+var steamInterval;
+function startSteam() {
+  steamInterval = setInterval(function() {
+    var s = document.createElement('div');
+    s.className = 'steam';
+    s.style.left = (-20 + Math.random() * 40) + 'px';
+    s.style.bottom = '0';
+    s.style.width = (3 + Math.random() * 4) + 'px';
+    s.style.height = (3 + Math.random() * 4) + 'px';
+    s.style.animation = 'steamRise ' + (2.5 + Math.random() * 2) + 's ease-out forwards';
+    steamContainer.appendChild(s);
+    setTimeout(function() { s.remove(); }, 5000);
+  }, 200);
+}
+function stopSteam() { if (steamInterval) { clearInterval(steamInterval); steamInterval = null; } }
+
+// Typewriter effect
+function typeText(element, text, speed, callback) {
+  var i = 0;
+  element.textContent = '';
+  function type() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(type, speed);
+    } else if (callback) {
+      callback();
+    }
+  }
+  type();
+}
+
+// Timer animation
+var timerAnim;
+function animateTimer() {
+  var progress = document.getElementById('timerProgress');
+  var text = document.getElementById('timerText');
+  var cookParts = CONFIG.cookTime.match(/(\d+)/);
+  var cookMinutes = cookParts ? parseInt(cookParts[1]) : 45;
+  var holdTime = CONFIG.cycleDuration - 4000;
+  var startTime = Date.now();
+  function tick() {
+    var dt = Date.now() - startTime;
+    var pct = Math.min(dt / holdTime, 0.7);
+    var dashOffset = 283 - (283 * pct);
+    progress.style.strokeDashoffset = dashOffset;
+    var elapsed = Math.floor(pct * cookMinutes);
+    var m = Math.floor(elapsed);
+    var s = String(Math.floor((pct * cookMinutes * 60) % 60)).padStart(2, '0');
+    text.textContent = m + ':' + s;
+    if (dt < holdTime) timerAnim = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+// Temperature animation
+var tempAnim;
+function animateTemp() {
+  var fill = document.getElementById('tempFill');
+  var value = document.getElementById('tempValue');
+  var holdTime = CONFIG.cycleDuration - 4000;
+  var startTime = Date.now();
+  function tick() {
+    var dt = Date.now() - startTime;
+    var pct = Math.min(dt / holdTime, 0.85);
+    var eased = 1 - Math.pow(1 - pct, 3);
+    fill.style.height = (eased * 85) + '%';
+    var temp = Math.floor(eased * CONFIG.temperature);
+    value.innerHTML = temp + '&deg;';
+    if (dt < holdTime) tempAnim = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+// Main cycle
+function runCycle() {
+  var title = document.getElementById('recipeTitle');
+  var titleText = document.getElementById('titleText');
+  var cursor = document.getElementById('cursor');
+  var badges = document.getElementById('badges');
+  var ingList = document.getElementById('ingredientsList');
+  var stpList = document.getElementById('stepsList');
+  var pot = document.getElementById('pot');
+  var timerCont = document.getElementById('timerContainer');
+  var tempGauge = document.getElementById('tempGauge');
+
+  // Reset all
+  stopSteam();
+  if (timerAnim) cancelAnimationFrame(timerAnim);
+  if (tempAnim) cancelAnimationFrame(tempAnim);
+  title.style.transition = 'none'; title.style.opacity = '0';
+  titleText.textContent = '';
+  cursor.style.display = 'inline-block';
+  badges.style.transition = 'none'; badges.style.opacity = '0'; badges.style.transform = 'translateX(-50%) translateY(10px)';
+  ingList.style.transition = 'none'; ingList.style.opacity = '0';
+  stpList.style.transition = 'none'; stpList.style.opacity = '0';
+  pot.style.transition = 'none'; pot.style.opacity = '0';
+  timerCont.style.transition = 'none'; timerCont.style.opacity = '0'; timerCont.style.transform = 'translateX(-50%) scale(0.8)';
+  tempGauge.style.transition = 'none'; tempGauge.style.opacity = '0'; tempGauge.style.transform = 'translateY(10px)';
+  document.getElementById('timerProgress').style.strokeDashoffset = '283';
+  document.getElementById('timerText').textContent = '0:00';
+  document.getElementById('tempFill').style.height = '0%';
+  document.getElementById('tempValue').innerHTML = '0&deg;';
+
+  document.querySelectorAll('.ingredient-item').forEach(function(el) {
+    el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'translateX(-20px)';
+  });
+  document.querySelectorAll('.step-item').forEach(function(el) {
+    el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'translateY(15px)';
+  });
+  void title.offsetWidth;
+
+  // Animate in (staggered)
+  setTimeout(function() {
+    title.style.transition = 'opacity 0.6s'; title.style.opacity = '1';
+    typeText(titleText, CONFIG.recipeName, 60, function() {
+      setTimeout(function() { cursor.style.display = 'none'; }, 500);
+    });
+  }, 300);
+
+  setTimeout(function() {
+    badges.style.transition = 'opacity 0.6s, transform 0.6s cubic-bezier(0.22,1,0.36,1)';
+    badges.style.opacity = '1'; badges.style.transform = 'translateX(-50%) translateY(0)';
+  }, 1200);
+
+  setTimeout(function() {
+    ingList.style.transition = 'opacity 0.5s'; ingList.style.opacity = '1';
+    document.querySelectorAll('.ingredient-item').forEach(function(el, i) {
+      setTimeout(function() {
+        el.style.transition = 'opacity 0.4s, transform 0.4s cubic-bezier(0.22,1,0.36,1)';
+        el.style.opacity = '1'; el.style.transform = 'translateX(0)';
+      }, i * 120);
+    });
+  }, 1800);
+
+  setTimeout(function() {
+    stpList.style.transition = 'opacity 0.5s'; stpList.style.opacity = '1';
+    document.querySelectorAll('.step-item').forEach(function(el, i) {
+      setTimeout(function() {
+        el.style.transition = 'opacity 0.4s, transform 0.4s cubic-bezier(0.22,1,0.36,1)';
+        el.style.opacity = '1'; el.style.transform = 'translateY(0)';
+      }, i * 180);
+    });
+  }, 2400);
+
+  setTimeout(function() {
+    pot.style.transition = 'opacity 0.8s'; pot.style.opacity = '1';
+    startSteam();
+  }, 3000);
+
+  setTimeout(function() {
+    timerCont.style.transition = 'opacity 0.6s, transform 0.6s cubic-bezier(0.22,1,0.36,1)';
+    timerCont.style.opacity = '1'; timerCont.style.transform = 'translateX(-50%) scale(1)';
+    animateTimer();
+  }, 3500);
+
+  setTimeout(function() {
+    tempGauge.style.transition = 'opacity 0.6s, transform 0.6s cubic-bezier(0.22,1,0.36,1)';
+    tempGauge.style.opacity = '1'; tempGauge.style.transform = 'translateY(0)';
+    animateTemp();
+  }, 3800);
+
+  // Animate out
+  setTimeout(function() {
+    stopSteam();
+    title.style.transition = 'opacity 1s'; title.style.opacity = '0';
+    badges.style.transition = 'opacity 0.8s'; badges.style.opacity = '0';
+    ingList.style.transition = 'opacity 0.8s'; ingList.style.opacity = '0';
+    stpList.style.transition = 'opacity 0.8s'; stpList.style.opacity = '0';
+    pot.style.transition = 'opacity 0.8s'; pot.style.opacity = '0';
+    timerCont.style.transition = 'opacity 0.8s'; timerCont.style.opacity = '0';
+    tempGauge.style.transition = 'opacity 0.8s'; tempGauge.style.opacity = '0';
+  }, CONFIG.cycleDuration - 2000);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+
+// CONFIG bridge
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    document.getElementById('servingsVal').textContent = CONFIG.servings;
+    document.getElementById('prepVal').textContent = CONFIG.prepTime;
+    document.getElementById('cookVal').textContent = CONFIG.cookTime;
+    buildIngredients();
+    buildSteps();
+  }
+});
+</script>
+</body>
+</html>

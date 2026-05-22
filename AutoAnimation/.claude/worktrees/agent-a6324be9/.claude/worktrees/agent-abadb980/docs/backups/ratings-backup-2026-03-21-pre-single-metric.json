@@ -1,0 +1,3608 @@
+{
+  "tpl-kinetic-chromatic": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-foxing": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-paint-peel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-rust-corrosion": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sun-bleach": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tape-residue": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-verdigris": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-water-damage": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bit-crush": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-freq-modulate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-granular": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-noise-gate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-phase-distort": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ring-mod": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sample-hold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sine-wave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dynamics-mark": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fermata-hold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-glissando-sweep": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-metronome-tick": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sheet-music": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-staccato-dot": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-treble-clef": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-batik-crack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-block-print": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cross-stitch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-embroidery-hoop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-knitted": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-loom-weave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-quilt-patch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-tie-dye": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fiber-optic": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-frosted-glass": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-kaleidoscope": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-magnify-glass": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mirror-crack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-prism-refract": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-raindrop-lens": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-stained-glass": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ceramic-glaze": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-concrete-stamp": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fabric-dye": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-glass-etch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-leather-stamp": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-metal-engrave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-stone-carve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-wood-burn": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-elevator-display": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hotel-lobby": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-neon-building-sign": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-parking-garage": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-stadium-board": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-storefront": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-subway-station": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-theater-marquee": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-construction-fence": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-manhole-cover": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-parking-stripe": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-roller-tag": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sidewalk-chalk": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spray-stencil": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-utility-mark": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-wall-crack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-argon-glow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-blacklight-uv": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-broken-neon": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fluorescent-hum": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-gas-tube": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mercury-vapor": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-plasma-burn": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-sodium-vapor": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-acrylic-pour": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-charcoal-smudge": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-fresco-crack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-gouache-layer": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-impasto-brush": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-oil-palette": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spray-can-drip": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-watercolor-wash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-certified-mail": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-envelope-tear": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hand-cancel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mail-slot": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-philatelic": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-postmark-cancel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-wax-seal-press": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-zip-code-sort": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-e-ink-refresh": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-green-screen": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-led-matrix": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-microfilm": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-nixie-tube": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-oscilloscope": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-projection-map": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cipher-wheel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-dead-drop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-declassified": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dossier": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-invisible-ink": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-c64-boot": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-raster-bar": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-zx-spectrum": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-enigma": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-apple-ii": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-radar-sweep": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tracker-module": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-morse-code": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sonar-ping": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-punch-card": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-teletype": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-laser-text": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-garage-door": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-sliding-doors": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-revolving-door": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-book-open": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fan-unfold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-zipper-pull": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-elevator-doors": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-trapdoor": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-blur": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-weight": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-tracking": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-stroke": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-minimal-skew": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-flip": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-underline": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-case": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-diamond": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-hex": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-star": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-cross": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-curtain": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-polygon": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-circle-grow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-zigzag": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-git-diff": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-terminal-prompt": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-json-parse": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-regex-match": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-syntax-highlight": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-deploy-success": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-api-response": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-rack-focus": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dolly-zoom": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-barrel-distort": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-film-grain": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bokeh-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-overexpose": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-anamorphic-flare": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pan-blur": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cyber-slice": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-font-corrupt": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-encoding-error": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-memory-leak": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-stack-overflow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-kernel-panic": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-segfault": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-null-pointer": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-race-condition": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cover-line": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-pull-quote-callout": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-magazine-fold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-editorial-grid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-masthead-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-byline-slide": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drop-cap-animate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-column-flow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-magnetic-pull": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-gravity-slam": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spring-oscillate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-whip-crack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-slingshot": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-pendulum-drop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-suction-pop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-shockwave-push": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vhs-pause": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-buffer-freeze": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-screen-tear": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-dead-pixel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-signal-drop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-overheat": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-interlace-fail": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-dropped-frame": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-inflate-text": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-melt-down": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-crumple-paper": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-taffy-stretch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-shatter-reform": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-freeze-thaw": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-smoke-puff": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-rubber-stretch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-throw-catch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-slam-down": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ricochet": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-domino-cascade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-explosion-scatter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-implosion-gather": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-centrifuge-spin": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-catapult-launch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-checker-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-dot-matrix-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-radial-burst": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-wave-sweep": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-popup-storm": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-progress-crash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-clipboard-paste": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-thought-cloud": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cartoon-squash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-onomatopoeia": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-ballpoint-pen": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tumblr-fade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-web-1-point-0": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-domino": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-roll": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-smash-cut": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-freeze-frame": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-time-lapse": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-sticky-tape": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-index-card": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-correction-tape": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ai-gen-text": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-line-by-line": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-grid-unlock": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-blue-screen": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-captcha-resolve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-notification-flood": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-action-panel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-ben-day-zoom": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-spray-paint": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-brush-calligraphy": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pastel-smear": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-geo-cities": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dial-up-connect": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-minimal-wave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-scatter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-minimal-fan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-slow-motion": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-match-cut": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-paper-clip": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-binder-tab": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-memo-pad": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-diagonal-sweep": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pixel-build": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-password-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-autocorrect": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-speech-bubble-pop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-zap-burst": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-comic-caption": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-marker-stroke": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-charcoal-rub": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-myspace-glitter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-windows-xp": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-aol-instant": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-cascade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-type-in": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-minimal-blink": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-whip-pan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cross-fade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-rubber-stamp": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-whiteboard-write": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-ar-overlay": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-neural-glow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-laser-grid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-neon-wireframe": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-digital-twin": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-quantum-flicker": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-data-stream-v2": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-palette-knife": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-word-art": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-jump-cut": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-roll-up-blind": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-umbrella-open": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-zipper-open": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-switch-flip": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-pop-socket": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-coin-flip": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-deck-shuffle": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-window-shade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drive-in-project": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-rear-project": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-imax-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-countdown-film": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-film-burn-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-flicker-gate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tilt-shift": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-split-diopter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-zoom-crash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-lens-breathe": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-pull-focus": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-vignette-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-nd-gradient": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-lens-whack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-lcd-bleed": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-oled-burn-in": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-projector-misalign": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-degauss": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-scanline-roll": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ghost-image": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vertical-hold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-phosphor-decay": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-screentone": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-speed-line-text": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-halftone-zoom": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-comic-strike": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-panel-wipe": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-comic-ink": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-kaboom-scale": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-elastic": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-minimal-breath-scale": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-perspective": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-slide-apart": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-count-up": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-vertical-clip": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-corner-peek": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-overprint": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-turntable": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-roulette-wheel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dial-turn": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-compass-needle": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-clock-hand": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-turnstile": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-propeller-spin": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-lazy-susan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-unfold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-shimmer": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-grow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-dash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-invert": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-compact": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-erase": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-phase": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-gate-fold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bi-fold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tri-fold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-clamshell": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-flip-phone": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-laptop-lid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-trunk-open": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hinged-flap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-herringbone-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-diamond-tile-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-barcode-sweep": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-photocopy-scan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mri-scan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-alphabet-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-kerning-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-leading-compress": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-honeycomb-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-scale-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-circle-pack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-qr-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fingerprint": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-upc-scan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-monospace-grid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-font-cascade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-brick-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pinwheel-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-triangle-tile": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-thermal-scan": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-xray-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-letter-grid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-type-sample": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-baseline-shift": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-satellite-mosaic": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-radio-static": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cell-dropout": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-stream-buffer": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-walkie": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-fax-transmit": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-morse-flash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-telegraph": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-jpeg-artifact": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-png-interlace": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-corrupted-save": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-file-recovery": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-broken-pipe": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-checksum-fail": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-partial-download": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bit-rot": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-camera-iris": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-pupil-dilate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spotlight-iris": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-pinhole-widen": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-valve-open": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dam-release": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-lens-shutter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-porthole": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-auto-tune-glitch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-subtitle-desync": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spellcheck-wave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-predictive-text": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-auto-save-flash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-undo-redo": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mousetrap-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-jack-in-box": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spring-door": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-snap-bracelet": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pop-up-book": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-retract-pen": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-toaster-pop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pinball-launch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-packet-drop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-latency-spike": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dns-resolve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ssl-handshake": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-timeout-retry": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cdn-cache": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-rate-limited": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-websocket": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-crossword-fill": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pixel-art-build": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bingo-call": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-flip-disc": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drawer-slide": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-skew-in": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-tracks-in": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-baseline-rise": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-weight-shift": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-minimal-crossfade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-scale-trade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-position-swap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-underline-draw": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-dot-accent": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-bracket-frame": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-em-dash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-cascade-chars": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-minimal-alt-direction": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-ping-pong": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-metronome": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-minimal-opacity-wave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bungee-jump": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-accordion-stretch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vibrato-shake": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-coil-spring": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-syrup-pour": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-water-surface": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-slime-drool": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mercury-pool": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vortex-suck": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-shock-ripple": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pinch-zoom": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-twist-corkscrew": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-stroke-to-fill": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-weight-pump": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ghost-solid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-negative-space": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-quiet-luxury": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mob-wife": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-corporate-memphis": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-coquette": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hyperpop-glitch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-indie-folk-hand-lettered": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drill-condensed": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-kpop-lightstick": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-wes-anderson": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-elevated-horror": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-anime-opening-title": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hbo-prestige": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-stan-twitter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tech-bro-pitch-deck": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-wholesome-cozy": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-gym-bro-motivation": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-kick-drum-slam": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-snare-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hi-hat-stutter": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cymbal-crash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sine-wave-deform": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-heartbeat-pulse": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-breathing-rhythm": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tidal-push-pull": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-beat-chop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-audio-gate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-quantized-jump": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-rhythm-grid-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tension-build": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drop-explosion": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-breakdown-dissolve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-anthem-swell": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-molten-pour": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-forged-metal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-patina-form": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-magnetic-field": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fabric-billowing": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-unravel-thread": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-denim-fray": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-silk-ripple": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cell-division": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-barnacle-crust": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-mycelium-spread": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vine-wrap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-freeze-form": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-evaporate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-condense-form": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-crystallize": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vector-stroke": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-connect-dots": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-geo-construct": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-outline-assemble": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-shard-reform": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-torn-rejoin": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-magnetic-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-puzzle-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-crystal-grow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-ice-crystal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-coral-build": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fractal-expand": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-split": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-screen-print-build": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-depth-stack": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-print-register": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-figma-layer": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-notion-page": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-capcut-timeline": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-slack-huddle": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-spotify-queue": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-duolingo-streak": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-bereal-flash": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-apple-pay-ding": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-chatgpt-stream": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-midjourney-prompt": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-copilot-suggest": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-voice-waveform": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-wordle-grid": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sent-from-iphone": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-uber-arrival": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-weight-breathe": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-width-squeeze": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-optical-size": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-slant-wave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tracking-pulse": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-word-spacing-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-justified-snap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tight-loose-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-baseline-wave": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-superscript-cascade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drop-cap-grow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-hanging-indent": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-text-reflow": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-column-break": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-pull-quote-animate": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-text-wrap-shape": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-long-shadow-sweep": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-shadow-cast-3d": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-penumbra-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-shadow-clone-trail": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-eclipse-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-rim-light-edge": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-contre-jour": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-god-ray-burst": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-laser-trace": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-gobo-pattern": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-wall-crumble": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fog-defog-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-parallax-depth-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-light-painting": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-fiber-chase": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-rear-project-scroll": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-glass-crack-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-scratch-card-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-film-peel-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-fold-out-edge": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-sparkler-write": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-lightbox-panel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-drive-in-flicker": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-paint-chip-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-portal-zoom": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dolly-through": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-moire-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-noise-threshold": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-halftone-resolve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-static-resolve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-paper-burn-reveal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-designer-parade": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-tie-dye-bleed": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-carousel-spin": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 4
+    }
+  },
+  "tpl-kinetic-luminosity-shift": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-prism-facet": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-split-flap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-vapor-condense": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-weight-drop": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-window-blinds": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-synapse-web": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-holo-project": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-quantum-resolve": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-matrix-form": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-aggressive-impact": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-dreamy-ethereal": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-elegant-luxury": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-playful-bouncy": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 3
+    }
+  },
+  "tpl-kinetic-neon-glass-tube": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-marquee-bulb": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-separation": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-overprint": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-moire": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-ink-trap": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 2
+    }
+  },
+  "tpl-kinetic-cmyk-spectrum": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-register": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-press-roll": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-halftone": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-glitch": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  },
+  "tpl-kinetic-cmyk-peel": {
+    "verdict": "disliked",
+    "scores": {
+      "quality": 1
+    }
+  }
+}

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polaroid Camera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  .scene-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .ambient-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+  }
+
+  .viewfinder {
+    position: fixed;
+    inset: 8%;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .vf-corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: rgba(255,255,255,0.5);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .vf-tl { top: -1px; left: -1px; border-top-width: 2px; border-left-width: 2px; }
+  .vf-tr { top: -1px; right: -1px; border-top-width: 2px; border-right-width: 2px; }
+  .vf-bl { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
+  .vf-br { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
+
+  .crosshair-h {
+    position: absolute;
+    top: 50%;
+    left: 45%;
+    right: 45%;
+    height: 1px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .crosshair-v {
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    bottom: 45%;
+    width: 1px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .focus-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: 80px;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+    animation: focusPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes focusPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+    50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.6; }
+  }
+
+  .vf-info {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.1em;
+  }
+
+  .vf-info-tl { top: 8px; left: 8px; }
+  .vf-info-br { bottom: 8px; right: 8px; }
+  .vf-info-bl { bottom: 8px; left: 8px; }
+
+  .rec-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #ff3333;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+    animation: recBlink 1s ease-in-out infinite;
+  }
+
+  @keyframes recBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    background: #ffffff;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @keyframes flashBurst {
+    0% { opacity: 0; }
+    5% { opacity: 1; }
+    15% { opacity: 0.95; }
+    100% { opacity: 0; }
+  }
+
+  .polaroid {
+    position: fixed;
+    bottom: -60%;
+    left: 50%;
+    transform: translateX(-50%) rotate(2deg);
+    width: min(70vw, 350px);
+    background: #fafafa;
+    padding: 14px 14px 50px 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 40;
+    border-radius: 2px;
+  }
+
+  @keyframes polaroidSlideUp {
+    0% { bottom: -60%; transform: translateX(-50%) rotate(2deg); }
+    40% { bottom: 8%; transform: translateX(-50%) rotate(-1deg); }
+    55% { bottom: 12%; transform: translateX(-50%) rotate(1.5deg); }
+    70% { bottom: 9%; transform: translateX(-50%) rotate(-0.5deg); }
+    100% { bottom: 10%; transform: translateX(-50%) rotate(1deg); }
+  }
+
+  .polaroid-photo {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #ffffff;
+    position: relative;
+    overflow: hidden;
+    border-radius: 1px;
+  }
+
+  .photo-developing {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #e8ddd0, #d4c8b8, #c9bba8, #bfb09c);
+    z-index: 2;
+  }
+
+  @keyframes developPhoto {
+    0% { opacity: 1; }
+    30% { opacity: 0.85; }
+    60% { opacity: 0.5; }
+    80% { opacity: 0.2; }
+    100% { opacity: 0; }
+  }
+
+  .photo-placeholder {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(135deg, #87CEEB 0%, #87CEEB 40%, #90EE90 40%, #90EE90 65%, #228B22 65%, #228B22 100%);
+    z-index: 1;
+  }
+
+  .photo-placeholder::before {
+    content: '';
+    position: absolute;
+    top: 15%;
+    right: 20%;
+    width: 40px;
+    height: 40px;
+    background: #FFD700;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(255,215,0,0.4);
+  }
+
+  .photo-placeholder::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    width: 0;
+    height: 0;
+    border-left: 60px solid transparent;
+    border-right: 60px solid transparent;
+    border-bottom: 80px solid #556B2F;
+  }
+
+  .polaroid-caption {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Comic Sans MS', 'Segoe UI', cursive, sans-serif;
+    font-size: clamp(11px, 2vw, 16px);
+    color: #555;
+    letter-spacing: 0.02em;
+  }
+
+  .date-stamp {
+    position: absolute;
+    bottom: 30px;
+    right: 18px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: rgba(200,100,0,0.7);
+    letter-spacing: 0.05em;
+  }
+
+  .location-tag {
+    position: absolute;
+    bottom: 30px;
+    left: 18px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: rgba(150,150,150,0.7);
+    letter-spacing: 0.05em;
+  }
+
+  .shutter-frame {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+  }
+
+  .shutter-top, .shutter-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: #111;
+    z-index: 31;
+  }
+
+  .shutter-top { top: 0; height: 0; }
+  .shutter-bottom { bottom: 0; height: 0; }
+
+  @keyframes shutterClose {
+    0% { height: 0; }
+    100% { height: 50%; }
+  }
+
+  @keyframes shutterOpen {
+    0% { height: 50%; }
+    100% { height: 0; }
+  }
+
+  .lens-flare {
+    position: fixed;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0;
+    animation: lensDrift 6s ease-in-out infinite;
+  }
+
+  @keyframes lensDrift {
+    0%, 100% { transform: translate(0, 0); opacity: 0.05; }
+    50% { transform: translate(20px, -15px); opacity: 0.1; }
+  }
+
+  .countdown-display {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(60px, 20vw, 200px);
+    font-weight: 100;
+    color: rgba(255,255,255,0.8);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @keyframes countNum {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  }
+
+  .film-border {
+    position: fixed;
+    z-index: 2;
+    background: rgba(0,0,0,0.3);
+    pointer-events: none;
+  }
+
+  .fb-top { top: 0; left: 0; right: 0; height: 4%; }
+  .fb-bottom { bottom: 0; left: 0; right: 0; height: 4%; }
+  .fb-left { top: 0; bottom: 0; left: 0; width: 3%; }
+  .fb-right { top: 0; bottom: 0; right: 0; width: 3%; }
+</style>
+</head>
+<body>
+
+<div class="scene-bg" id="sceneBg"></div>
+<canvas id="grainCanvas" class="ambient-grain"></canvas>
+
+<div class="film-border fb-top"></div>
+<div class="film-border fb-bottom"></div>
+<div class="film-border fb-left"></div>
+<div class="film-border fb-right"></div>
+
+<div class="viewfinder" id="viewfinder">
+  <div class="vf-corner vf-tl"></div>
+  <div class="vf-corner vf-tr"></div>
+  <div class="vf-corner vf-bl"></div>
+  <div class="vf-corner vf-br"></div>
+  <div class="crosshair-h"></div>
+  <div class="crosshair-v"></div>
+  <div class="focus-ring"></div>
+  <div class="vf-info vf-info-tl"><span class="rec-dot"></span>REC</div>
+  <div class="vf-info vf-info-br" id="vfISO">ISO 400 f/2.8</div>
+  <div class="vf-info vf-info-bl" id="vfTimer">00:00:00</div>
+</div>
+
+<div class="lens-flare" id="lensFlare"></div>
+
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="shutter-frame">
+  <div class="shutter-top" id="shutterTop"></div>
+  <div class="shutter-bottom" id="shutterBottom"></div>
+</div>
+
+<div class="countdown-display" id="countdown"></div>
+
+<div class="polaroid" id="polaroid">
+  <div class="polaroid-photo">
+    <div class="photo-placeholder"></div>
+    <div class="photo-developing" id="photoDeveloping"></div>
+  </div>
+  <div class="polaroid-caption" id="caption"></div>
+  <div class="date-stamp" id="dateStamp"></div>
+  <div class="location-tag" id="locationTag"></div>
+</div>
+
+<script>
+// ===== EDITABLE CONFIG =====
+var CONFIG = {
+  photoCaption: 'Summer memories',
+  dateText: '08/15/2024',
+  locationText: 'California',
+  bgColor: '#1a1a2e',
+  frameColor: '#ffffff',
+  flashIntensity: 1.0
+};
+// ==============================
+
+// --- Apply CONFIG ---
+document.getElementById('sceneBg').style.background =
+  'radial-gradient(ellipse at center, ' + CONFIG.bgColor + ' 0%, #0a0a15 100%)';
+document.getElementById('caption').textContent = CONFIG.photoCaption;
+document.getElementById('dateStamp').textContent = CONFIG.dateText;
+document.getElementById('locationTag').textContent = CONFIG.locationText;
+
+var viewfinder = document.getElementById('viewfinder');
+viewfinder.style.borderColor = 'rgba(255,255,255,0.15)';
+
+var lensFlare = document.getElementById('lensFlare');
+lensFlare.style.background = 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)';
+lensFlare.style.top = '20%';
+lensFlare.style.left = '60%';
+
+// --- Film grain canvas ---
+var grainCanvas = document.getElementById('grainCanvas');
+var grainCtx = grainCanvas.getContext('2d');
+
+function resizeGrain() {
+  grainCanvas.width = window.innerWidth / 2;
+  grainCanvas.height = window.innerHeight / 2;
+}
+resizeGrain();
+window.addEventListener('resize', resizeGrain);
+
+function renderGrain() {
+  var w = grainCanvas.width;
+  var h = grainCanvas.height;
+  if (!w || !h) return;
+  var imageData = grainCtx.createImageData(w, h);
+  var data = imageData.data;
+  for (var i = 0; i < data.length; i += 4) {
+    var v = Math.random() * 255;
+    data[i] = v;
+    data[i + 1] = v;
+    data[i + 2] = v;
+    data[i + 3] = 20;
+  }
+  grainCtx.putImageData(imageData, 0, 0);
+}
+
+// --- Timer ---
+var timerEl = document.getElementById('vfTimer');
+var timerSeconds = 0;
+setInterval(function() {
+  timerSeconds++;
+  var h = Math.floor(timerSeconds / 3600);
+  var m = Math.floor((timerSeconds % 3600) / 60);
+  var s = timerSeconds % 60;
+  timerEl.textContent =
+    String(h).padStart(2, '0') + ':' +
+    String(m).padStart(2, '0') + ':' +
+    String(s).padStart(2, '0');
+}, 1000);
+
+// --- Photo cycle state ---
+var flashOverlay = document.getElementById('flashOverlay');
+var shutterTop = document.getElementById('shutterTop');
+var shutterBottom = document.getElementById('shutterBottom');
+var polaroid = document.getElementById('polaroid');
+var photoDeveloping = document.getElementById('photoDeveloping');
+var countdownEl = document.getElementById('countdown');
+var cyclePhase = 0;
+
+function resetPolaroid() {
+  polaroid.style.animation = 'none';
+  polaroid.style.bottom = '-60%';
+  photoDeveloping.style.animation = 'none';
+  photoDeveloping.style.opacity = '1';
+  flashOverlay.style.animation = 'none';
+  flashOverlay.style.opacity = '0';
+  shutterTop.style.animation = 'none';
+  shutterTop.style.height = '0';
+  shutterBottom.style.animation = 'none';
+  shutterBottom.style.height = '0';
+  viewfinder.style.opacity = '1';
+}
+
+function showCountdown(num, callback) {
+  countdownEl.textContent = num;
+  countdownEl.style.animation = 'none';
+  countdownEl.offsetHeight;
+  countdownEl.style.animation = 'countNum 0.9s ease forwards';
+  setTimeout(callback, 1000);
+}
+
+function triggerShutter() {
+  // Close shutter
+  shutterTop.style.animation = 'shutterClose 0.15s ease-out forwards';
+  shutterBottom.style.animation = 'shutterClose 0.15s ease-out forwards';
+
+  setTimeout(function() {
+    // Flash
+    flashOverlay.style.animation = 'flashBurst ' + (0.8 / CONFIG.flashIntensity) + 's ease-out forwards';
+
+    setTimeout(function() {
+      // Open shutter
+      shutterTop.style.animation = 'shutterOpen 0.2s ease-in forwards';
+      shutterBottom.style.animation = 'shutterOpen 0.2s ease-in forwards';
+
+      // Hide viewfinder, show polaroid sliding up
+      setTimeout(function() {
+        viewfinder.style.transition = 'opacity 0.5s';
+        viewfinder.style.opacity = '0.3';
+
+        polaroid.style.animation = 'polaroidSlideUp 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+
+        // Develop photo after a delay
+        setTimeout(function() {
+          photoDeveloping.style.animation = 'developPhoto 3s ease-out forwards';
+
+          // Hold, then reset
+          setTimeout(function() {
+            polaroid.style.transition = 'bottom 0.8s ease-in, opacity 0.8s ease-in';
+            polaroid.style.opacity = '0';
+
+            setTimeout(function() {
+              polaroid.style.transition = 'none';
+              resetPolaroid();
+              setTimeout(runCycle, 1000);
+            }, 900);
+          }, 4000);
+        }, 800);
+      }, 300);
+    }, 200);
+  }, 180);
+}
+
+function runCycle() {
+  resetPolaroid();
+  polaroid.style.opacity = '1';
+  viewfinder.style.transition = 'none';
+  viewfinder.style.opacity = '1';
+
+  showCountdown(3, function() {
+    showCountdown(2, function() {
+      showCountdown(1, function() {
+        countdownEl.style.animation = 'none';
+        countdownEl.style.opacity = '0';
+        triggerShutter();
+      });
+    });
+  });
+}
+
+// --- Main animation loop ---
+function animate() {
+  renderGrain();
+  requestAnimationFrame(animate);
+}
+animate();
+
+// Start first cycle
+setTimeout(runCycle, 1500);
+
+// --- postMessage bridge ---
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    var updates = e.data.payload;
+    for (var key in updates) {
+      if (updates.hasOwnProperty(key) && CONFIG.hasOwnProperty(key)) {
+        CONFIG[key] = updates[key];
+      }
+    }
+    document.getElementById('sceneBg').style.background =
+      'radial-gradient(ellipse at center, ' + CONFIG.bgColor + ' 0%, #0a0a15 100%)';
+    document.getElementById('caption').textContent = CONFIG.photoCaption;
+    document.getElementById('dateStamp').textContent = CONFIG.dateText;
+    document.getElementById('locationTag').textContent = CONFIG.locationText;
+  }
+});
+</script>
+</body>
+</html>

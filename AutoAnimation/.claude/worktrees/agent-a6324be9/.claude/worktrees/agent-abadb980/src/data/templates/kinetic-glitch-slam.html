@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Glitch Slam - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    position: relative;
+  }
+
+  /* CRT Vignette */
+  #vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 50%,
+      rgba(0, 0, 0, 0.35) 75%,
+      rgba(0, 0, 0, 0.7) 100%
+    );
+  }
+
+  /* Scan lines overlay */
+  #scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 999;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
+  }
+
+  /* Static noise canvas */
+  #noise-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 998;
+    opacity: 0.06;
+  }
+
+  /* Word container */
+  #stage {
+    position: relative;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  .glitch-word {
+    position: absolute;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    opacity: 0;
+    will-change: transform, opacity, clip-path;
+    transition: none;
+    user-select: none;
+  }
+
+  /* RGB split via text-shadow - applied dynamically */
+  .rgb-split {
+    text-shadow:
+      var(--rgb-r-x, -4px) var(--rgb-r-y, 0px) 0px rgba(255, 0, 0, 0.7),
+      var(--rgb-g-x, 4px) var(--rgb-g-y, 0px) 0px rgba(0, 255, 0, 0.7),
+      var(--rgb-b-x, 0px) var(--rgb-b-y, -4px) 0px rgba(0, 100, 255, 0.7);
+  }
+
+  /* Horizontal slice glitch clips */
+  .slice-glitch {
+    clip-path: polygon(
+      0% 0%, 100% 0%, 100% 25%,
+      calc(100% + var(--slice-offset-1, 0px)) 25%,
+      calc(100% + var(--slice-offset-1, 0px)) 50%,
+      calc(0% + var(--slice-offset-2, 0px)) 50%,
+      calc(0% + var(--slice-offset-2, 0px)) 75%,
+      100% 75%, 100% 100%, 0% 100%
+    );
+  }
+
+  /* Flicker keyframes */
+  @keyframes flicker-in {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    15%  { opacity: 0; }
+    20%  { opacity: 1; }
+    25%  { opacity: 0.3; }
+    35%  { opacity: 1; }
+    40%  { opacity: 0.7; }
+    50%  { opacity: 1; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes flicker-out {
+    0%   { opacity: 1; }
+    20%  { opacity: 0; }
+    25%  { opacity: 0.8; }
+    30%  { opacity: 0; }
+    50%  { opacity: 0.5; }
+    55%  { opacity: 0; }
+    70%  { opacity: 0.3; }
+    80%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  .flickering-in {
+    animation: flicker-in 200ms steps(1) forwards;
+  }
+
+  .flickering-out {
+    animation: flicker-out 400ms steps(1) forwards;
+  }
+
+  /* CRT screen slight curve distortion */
+  #stage::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      transparent 5%,
+      transparent 95%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+  }
+</style>
+</head>
+<body>
+
+<div id="vignette"></div>
+<div id="scanlines"></div>
+<canvas id="noise-canvas"></canvas>
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['BREAK', 'THE', 'SYSTEM', 'REWRITE', 'THE', 'CODE'],
+  colors: ['#00FF41', '#FF0040', '#00D4FF', '#FFD700', '#FF00FF', '#FFFFFF'],
+  bgColor: '#0a0a0a',
+  glitchIntensity: 20,
+  scanlineOpacity: 0.08,
+  rgbSplitDistance: 4,
+  cycleDuration: 8000,
+  flickerSpeed: 50,
+};
+// =========================================
+
+// Apply background
+document.body.style.backgroundColor = CONFIG.bgColor;
+
+// Update scanline opacity from config
+document.getElementById('scanlines').style.background =
+  `repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,${CONFIG.scanlineOpacity}) 2px, rgba(0,0,0,${CONFIG.scanlineOpacity}) 4px)`;
+
+// Font choices for variety
+const FONTS = [
+  "'Courier New', Courier, monospace",
+  "'Arial Black', 'Arial Bold', Gadget, sans-serif",
+  "monospace",
+  "'Impact', 'Arial Black', sans-serif",
+  "'Lucida Console', Monaco, monospace",
+];
+
+// Glitch character set
+const GLITCH_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`01ABCDEFabcdef';
+
+// Stage element
+const stage = document.getElementById('stage');
+
+// ---- Digital noise / static background ----
+const noiseCanvas = document.getElementById('noise-canvas');
+const noiseCtx = noiseCanvas.getContext('2d');
+
+function resizeNoiseCanvas() {
+  noiseCanvas.width = window.innerWidth;
+  noiseCanvas.height = window.innerHeight;
+}
+resizeNoiseCanvas();
+window.addEventListener('resize', resizeNoiseCanvas);
+
+function renderNoise() {
+  const w = noiseCanvas.width;
+  const h = noiseCanvas.height;
+  const imageData = noiseCtx.createImageData(w, h);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const v = Math.random() * 255;
+    data[i] = v;
+    data[i + 1] = v;
+    data[i + 2] = v;
+    data[i + 3] = 255;
+  }
+  noiseCtx.putImageData(imageData, 0, 0);
+  requestAnimationFrame(renderNoise);
+}
+renderNoise();
+
+// ---- Utility functions ----
+function randRange(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function randInt(min, max) {
+  return Math.floor(randRange(min, max + 1));
+}
+
+function randomGlitchChar() {
+  return GLITCH_CHARS[randInt(0, GLITCH_CHARS.length - 1)];
+}
+
+function scrambleText(original) {
+  return original.split('').map(() => randomGlitchChar()).join('');
+}
+
+// ---- Create word element ----
+function createWordElement(text, color, index, total) {
+  const el = document.createElement('div');
+  el.className = 'glitch-word rgb-split';
+  el.textContent = text;
+
+  // Random font
+  el.style.fontFamily = FONTS[randInt(0, FONTS.length - 1)];
+
+  // Font size: cap relative to viewport so words fit on portrait screens
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const maxFont = Math.min(160, vw * 0.28, vh * 0.12);
+  const minFont = Math.min(50, maxFont * 0.4);
+  const fontSize = randInt(Math.round(minFont), Math.round(maxFont));
+  el.style.fontSize = fontSize + 'px';
+
+  // Color
+  el.style.color = color;
+
+  // Position: keep within viewport with margins
+  const marginX = Math.min(80, vw * 0.08);
+  const marginY = Math.min(60, vh * 0.06);
+  const maxX = window.innerWidth - marginX * 2;
+  const maxY = window.innerHeight - marginY * 2;
+  const x = randRange(marginX, marginX + maxX * 0.7);
+  const y = randRange(marginY, marginY + maxY * 0.75);
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+
+  // Random rotation
+  const rotation = randRange(-15, 15);
+  el.style.transform = `rotate(${rotation}deg) scale(1)`;
+
+  // RGB split distances
+  const d = CONFIG.rgbSplitDistance;
+  el.style.setProperty('--rgb-r-x', `${-d}px`);
+  el.style.setProperty('--rgb-r-y', '0px');
+  el.style.setProperty('--rgb-g-x', `${d}px`);
+  el.style.setProperty('--rgb-g-y', '0px');
+  el.style.setProperty('--rgb-b-x', '0px');
+  el.style.setProperty('--rgb-b-y', `${-d}px`);
+
+  stage.appendChild(el);
+  return { el, text, rotation, fontSize };
+}
+
+// ---- Glitch scramble animation for a word ----
+function glitchEntry(wordObj, callback) {
+  const { el, text, rotation, fontSize } = wordObj;
+  const scrambleDuration = 200; // ms
+  const scrambleInterval = CONFIG.flickerSpeed;
+  const steps = Math.floor(scrambleDuration / scrambleInterval);
+  let step = 0;
+
+  // Intense RGB split during entry
+  const bigD = CONFIG.rgbSplitDistance * 3;
+  el.style.setProperty('--rgb-r-x', `${-bigD}px`);
+  el.style.setProperty('--rgb-g-x', `${bigD}px`);
+  el.style.setProperty('--rgb-b-y', `${-bigD}px`);
+
+  // Random slice glitch on ~60% of words
+  const doSlice = Math.random() < 0.6;
+  if (doSlice) {
+    el.classList.add('slice-glitch');
+    const s1 = randRange(-CONFIG.glitchIntensity, CONFIG.glitchIntensity);
+    const s2 = randRange(-CONFIG.glitchIntensity, CONFIG.glitchIntensity);
+    el.style.setProperty('--slice-offset-1', `${s1}px`);
+    el.style.setProperty('--slice-offset-2', `${s2}px`);
+  }
+
+  // Start with flicker
+  el.classList.add('flickering-in');
+  el.style.opacity = '1';
+
+  // Scale punch on entry
+  el.style.transform = `rotate(${rotation}deg) scale(1.15)`;
+
+  const scrambleTimer = setInterval(() => {
+    if (step >= steps) {
+      clearInterval(scrambleTimer);
+      // Resolve to actual text
+      el.textContent = text;
+      // Settle RGB split
+      const d = CONFIG.rgbSplitDistance;
+      el.style.setProperty('--rgb-r-x', `${-d}px`);
+      el.style.setProperty('--rgb-g-x', `${d}px`);
+      el.style.setProperty('--rgb-b-y', `${-d}px`);
+      // Settle scale
+      el.style.transform = `rotate(${rotation}deg) scale(1)`;
+      // Remove slice after short delay
+      setTimeout(() => {
+        if (doSlice) {
+          el.style.setProperty('--slice-offset-1', '0px');
+          el.style.setProperty('--slice-offset-2', '0px');
+        }
+      }, 100);
+      // Position jitter
+      const jitterX = randRange(-3, 3);
+      const jitterY = randRange(-3, 3);
+      const currentLeft = parseFloat(el.style.left);
+      const currentTop = parseFloat(el.style.top);
+      el.style.left = (currentLeft + jitterX) + 'px';
+      el.style.top = (currentTop + jitterY) + 'px';
+
+      if (callback) callback();
+      return;
+    }
+
+    // Scrambled text
+    el.textContent = scrambleText(text);
+
+    // Random jitter on RGB during scramble
+    const jitterD = CONFIG.rgbSplitDistance * randRange(1, 4);
+    el.style.setProperty('--rgb-r-x', `${randRange(-jitterD, jitterD)}px`);
+    el.style.setProperty('--rgb-r-y', `${randRange(-2, 2)}px`);
+    el.style.setProperty('--rgb-g-x', `${randRange(-jitterD, jitterD)}px`);
+    el.style.setProperty('--rgb-g-y', `${randRange(-2, 2)}px`);
+
+    step++;
+  }, scrambleInterval);
+}
+
+// ---- Glitch-out all words (exit animation) ----
+function glitchOutAll(wordObjs, callback) {
+  let completed = 0;
+  const total = wordObjs.length;
+
+  wordObjs.forEach((wo, i) => {
+    const { el, text, rotation } = wo;
+
+    // Stagger the exit slightly
+    setTimeout(() => {
+      el.classList.remove('flickering-in');
+      el.classList.add('flickering-out');
+
+      // Intensify RGB split
+      const bigD = CONFIG.rgbSplitDistance * 5;
+      el.style.setProperty('--rgb-r-x', `${randRange(-bigD, bigD)}px`);
+      el.style.setProperty('--rgb-g-x', `${randRange(-bigD, bigD)}px`);
+      el.style.setProperty('--rgb-b-y', `${randRange(-bigD, bigD)}px`);
+
+      // Slice displacement
+      el.classList.add('slice-glitch');
+      el.style.setProperty('--slice-offset-1', `${randRange(-40, 40)}px`);
+      el.style.setProperty('--slice-offset-2', `${randRange(-40, 40)}px`);
+
+      // Scramble text during exit
+      let exitSteps = 0;
+      const exitTimer = setInterval(() => {
+        el.textContent = scrambleText(text);
+        exitSteps++;
+        if (exitSteps > 6) {
+          clearInterval(exitTimer);
+          completed++;
+          if (completed === total && callback) callback();
+        }
+      }, CONFIG.flickerSpeed);
+    }, i * 40);
+  });
+}
+
+// ---- Main animation cycle ----
+function runCycle() {
+  // Clear stage
+  stage.innerHTML = '';
+
+  const wordCount = CONFIG.words.length;
+  // Time budget: entry phase + hold + exit phase
+  const entryTimePerWord = 350; // ms per word entry
+  const entryPhase = wordCount * entryTimePerWord;
+  const exitPhase = 600;
+  const holdTime = CONFIG.cycleDuration - entryPhase - exitPhase;
+  const actualHold = Math.max(holdTime, 500);
+
+  const wordObjs = [];
+
+  // Sequentially display each word
+  let wordIndex = 0;
+
+  function showNextWord() {
+    if (wordIndex >= wordCount) {
+      // All words shown, hold then glitch out
+      setTimeout(() => {
+        // Periodic re-glitch during hold: subtle jitter on random words
+        const holdJitterTimer = setInterval(() => {
+          const randomWo = wordObjs[randInt(0, wordObjs.length - 1)];
+          if (!randomWo) return;
+          const el = randomWo.el;
+          // Brief RGB jitter
+          const jd = CONFIG.rgbSplitDistance * 2;
+          el.style.setProperty('--rgb-r-x', `${randRange(-jd, jd)}px`);
+          el.style.setProperty('--rgb-g-x', `${randRange(-jd, jd)}px`);
+          setTimeout(() => {
+            const d = CONFIG.rgbSplitDistance;
+            el.style.setProperty('--rgb-r-x', `${-d}px`);
+            el.style.setProperty('--rgb-g-x', `${d}px`);
+          }, 80);
+        }, 200);
+
+        setTimeout(() => {
+          clearInterval(holdJitterTimer);
+          glitchOutAll(wordObjs, () => {
+            // Loop: start new cycle after brief blackout
+            setTimeout(runCycle, 300);
+          });
+        }, actualHold);
+      }, 100);
+      return;
+    }
+
+    const colorIndex = wordIndex % CONFIG.colors.length;
+    const wo = createWordElement(
+      CONFIG.words[wordIndex],
+      CONFIG.colors[colorIndex],
+      wordIndex,
+      wordCount
+    );
+    wordObjs.push(wo);
+
+    glitchEntry(wo, () => {
+      wordIndex++;
+      setTimeout(showNextWord, entryTimePerWord - 200);
+    });
+  }
+
+  showNextWord();
+}
+
+// Start the animation
+runCycle();
+
+// Handle window resize - restart cycle
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    resizeNoiseCanvas();
+    runCycle();
+  }, 300);
+});
+</script>
+</body>
+</html>

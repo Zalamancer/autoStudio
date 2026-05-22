@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vintage Punk Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    position: relative;
+    background: #1a1a1a;
+  }
+
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 1px,
+        rgba(255,255,255,0.02) 1px,
+        rgba(255,255,255,0.02) 2px
+      );
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 4px 12px;
+    position: relative;
+    border: 3px solid currentColor;
+  }
+
+  .word-block.no-border .word-inner {
+    border: none;
+  }
+
+  .word-block.dashed-border .word-inner {
+    border-style: dashed;
+    border-width: 2px;
+  }
+
+  @keyframes cutPaste {
+    0% { opacity: 0; transform: var(--cut-start); filter: contrast(2) brightness(1.5); }
+    30% { opacity: 1; transform: var(--cut-mid); filter: contrast(1.5) brightness(1.2); }
+    60% { transform: var(--cut-settle); filter: contrast(1.2) brightness(1); }
+    100% { opacity: var(--final-opacity); transform: var(--cut-end); filter: contrast(1) brightness(1); }
+  }
+
+  @keyframes ripAway {
+    0% { opacity: var(--final-opacity); transform: var(--cut-end); }
+    50% { opacity: 0.5; transform: var(--rip-mid); }
+    100% { opacity: 0; transform: var(--rip-end); }
+  }
+
+  /* Safety pin decorations */
+  .safety-pin {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    font-size: 32px;
+    opacity: 0.4;
+    color: #888;
+  }
+
+  /* X marks */
+  .x-mark {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    font-family: 'Impact', sans-serif;
+    font-size: 60px;
+    color: #ff0040;
+    opacity: 0.2;
+    line-height: 1;
+  }
+
+  /* Ransom-note style cutout bg */
+  .word-block.cutout .word-inner {
+    background: #f5f0e0;
+    color: #1a1a1a;
+    border: none;
+    padding: 6px 14px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  }
+
+  .word-block.inverted .word-inner {
+    background: #ff0040;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['NO', 'FUTURE', 'REBEL', 'NOISE', 'CHAOS', 'RIOT'],
+  colors: ['#ff0040', '#f5f0e0', '#ff0040', '#f5f0e0', '#ffff00', '#ff0040'],
+  bgColor: '#1a1a1a',
+  maxRotation: 12,
+  overlapAmount: 0.2,
+  cycleDuration: 8500,
+  cutPasteEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '3px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Georgia', weight: '900', style: 'italic', transform: 'uppercase', letterSpacing: '0px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '2px' },
+];
+
+const fontSizes = [120, 80, 160, 70, 190, 90];
+const styleTypes = ['cutout', 'no-border', 'inverted', 'dashed-border', 'cutout', ''];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function createDecorations() {
+  const pins = [
+    { top: '8%', left: '6%', rot: 45 },
+    { top: '20%', right: '8%', rot: -30 },
+    { bottom: '15%', left: '12%', rot: 60 },
+    { bottom: '25%', right: '5%', rot: -45 },
+  ];
+  pins.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'safety-pin';
+    el.textContent = '\u{1F4CC}';
+    el.style.transform = `rotate(${p.rot}deg)`;
+    if (p.top) el.style.top = p.top;
+    if (p.bottom) el.style.bottom = p.bottom;
+    if (p.left) el.style.left = p.left;
+    if (p.right) el.style.right = p.right;
+    stage.appendChild(el);
+  });
+
+  const xMarks = [
+    { top: '5%', right: '15%' },
+    { bottom: '10%', left: '18%' },
+    { top: '45%', left: '3%' },
+    { top: '65%', right: '4%' },
+  ];
+  xMarks.forEach(x => {
+    const el = document.createElement('div');
+    el.className = 'x-mark';
+    el.textContent = 'X';
+    if (x.top) el.style.top = x.top;
+    if (x.bottom) el.style.bottom = x.bottom;
+    if (x.left) el.style.left = x.left;
+    if (x.right) el.style.right = x.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.72;
+  const baseTop = vh * 0.14;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + styleTypes[i % styleTypes.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * vw * 0.3;
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.85 + rng() * 0.15;
+
+    const startRot = rotation + (rng() - 0.5) * 30;
+    const startX = (rng() - 0.5) * 200;
+    const ripX = (rng() - 0.5) * 500;
+    const ripY = -100 - rng() * 400;
+    const ripRot = rotation + (rng() > 0.5 ? 40 : -40);
+
+    el.style.setProperty('--cut-start', `translate(${startX}px, -30px) rotate(${startRot}deg) scale(1.1)`);
+    el.style.setProperty('--cut-mid', `translate(${startX * 0.3}px, 5px) rotate(${rotation + 2}deg) scale(0.98)`);
+    el.style.setProperty('--cut-settle', `translate(0, -2px) rotate(${rotation - 1}deg) scale(1.01)`);
+    el.style.setProperty('--cut-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+    el.style.setProperty('--rip-mid', `translate(${ripX * 0.3}px, ${ripY * 0.2}px) rotate(${(rotation + ripRot) / 2}deg) scale(1.05)`);
+    el.style.setProperty('--rip-end', `translate(${ripX}px, ${ripY}px) rotate(${ripRot}deg) scale(0.6)`);
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const cutStagger = 300;
+  const cutDuration = 600;
+  const holdDuration = 2000;
+  const ripStagger = 200;
+  const ripDuration = 500;
+  const pauseBeforeLoop = 700;
+
+  const totalCutTime = (count - 1) * cutStagger + cutDuration;
+  const totalRipTime = (count - 1) * ripStagger + ripDuration;
+
+  let animationFrame;
+  let startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => {
+      el.style.animation = 'none';
+      el.style.opacity = '0';
+    });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalCutTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * cutStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `cutPaste ${cutDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalCutTime + holdDuration) {
+      // hold
+    } else if (elapsed < totalCutTime + holdDuration + totalRipTime) {
+      const ripElapsed = elapsed - totalCutTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const reverseI = count - 1 - i;
+        const wordStart = reverseI * ripStagger;
+        if (ripElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `ripAway ${ripDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalCutTime + holdDuration + totalRipTime + pauseBeforeLoop) {
+      // pause
+    } else {
+      resetAll();
+      wordElements.forEach(el => {
+        delete el.dataset.stamped;
+        delete el.dataset.peeled;
+      });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const newWordEls = createWordElements();
+    runAnimation(newWordEls);
+  }, 300);
+});
+</script>
+</body>
+</html>

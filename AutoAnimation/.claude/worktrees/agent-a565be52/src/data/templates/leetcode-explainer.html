@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeetCode Explainer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #1e1e1e; font-family: 'Menlo', 'Courier New', monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  // ── Standalone Timing (used when frame values are -1) ──
+  cardShowDuration: 4.0,
+  cardFadeOutDuration: 0.5,
+  typingSpeed: 0.04,
+  pauseAfterTyping: 2.0,
+  complexityShowDuration: 3.0,
+  loopAnimation: true,
+
+  // ── Frame-Based Timing (set by orchestrator, -1 = use standalone timing) ──
+  cardStartFrame: -1,
+  cardEndFrame: -1,
+  typingStartFrame: -1,
+  typingEndFrame: -1,
+  complexityStartFrame: -1,
+
+  // ── LeetCode Problem Card ──
+  problemTitle: 'Two Sum',
+  problemNumber: 1,
+  problemDifficulty: 'Easy',
+  problemDescription: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice.',
+  problemExamples: [
+    { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]', explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].' }
+  ],
+  problemConstraints: [
+    '2 <= nums.length <= 10^4',
+    '-10^9 <= nums[i] <= 10^9',
+    'Only one valid answer exists.'
+  ],
+
+  // ── Solution Code ──
+  fileName: 'solution.py',
+  codeLines: [
+    { tokens: [{ text: 'class ', color: 'keyword' }, { text: 'Solution', color: 'type' }, { text: ':', color: 'plain' }] },
+    { tokens: [{ text: '    def ', color: 'keyword' }, { text: 'twoSum', color: 'function' }, { text: '(', color: 'punctuation' }, { text: 'self', color: 'variable' }, { text: ', ', color: 'plain' }, { text: 'nums', color: 'variable' }, { text: ': ', color: 'plain' }, { text: 'List[int]', color: 'type' }, { text: ', ', color: 'plain' }, { text: 'target', color: 'variable' }, { text: ': ', color: 'plain' }, { text: 'int', color: 'type' }, { text: '):', color: 'punctuation' }] },
+    { tokens: [{ text: '        # Use a hash map for O(1) lookups', color: 'comment' }] },
+    { tokens: [{ text: '        seen = {}', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: '        for ', color: 'keyword' }, { text: 'i, num ', color: 'variable' }, { text: 'in ', color: 'keyword' }, { text: 'enumerate', color: 'function' }, { text: '(', color: 'punctuation' }, { text: 'nums', color: 'variable' }, { text: '):', color: 'punctuation' }] },
+    { tokens: [{ text: '            diff = target - num', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: '            if ', color: 'keyword' }, { text: 'diff ', color: 'variable' }, { text: 'in ', color: 'keyword' }, { text: 'seen:', color: 'variable' }] },
+    { tokens: [{ text: '                return ', color: 'keyword' }, { text: '[seen[diff], i]', color: 'plain' }] },
+    { tokens: [] },
+    { tokens: [{ text: '            seen[num] = i', color: 'plain' }] },
+  ],
+
+  // ── Complexity Badge ──
+  timeComplexity: 'O(n)',
+  spaceComplexity: 'O(n)',
+  approachName: 'Hash Map',
+
+  // ── VS Code Theme Colors ──
+  bgColor: '#1e1e1e',
+  sidebarBg: '#252526',
+  tabBarBg: '#2d2d2d',
+  activeTabBg: '#1e1e1e',
+  tabBorder: '#1e1e1e',
+  tabText: '#969696',
+  activeTabText: '#ffffff',
+  lineNumColor: '#858585',
+  gutterBg: '#1e1e1e',
+  minimapBg: '#1e1e1e',
+  cursorColor: '#aeafad',
+  statusBarBg: '#007acc',
+  statusBarText: '#ffffff',
+
+  // ── Syntax Colors ──
+  keyword: '#569cd6',
+  type: '#4ec9b0',
+  string: '#ce9178',
+  number: '#b5cea8',
+  comment: '#6a9955',
+  function: '#dcdcaa',
+  variable: '#9cdcfe',
+  operator: '#d4d4d4',
+  plain: '#d4d4d4',
+  punctuation: '#d4d4d4',
+  decorator: '#dcdcaa',
+
+  // ── LeetCode Card Colors ──
+  cardBg: '#282828',
+  cardBorder: '#3e3e3e',
+  cardTitleColor: '#ffffff',
+  cardTextColor: '#cccccc',
+  easyColor: '#00b8a3',
+  mediumColor: '#ffc01e',
+  hardColor: '#ff375f',
+  cardAccentColor: '#ffa116',
+};
+
+// ── Canvas Setup ──
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W, H, time = 0;
+var dpr = 1;
+
+// ── Responsive sizing ──
+var FONT_SIZE, LINE_H, GUTTER_W, TAB_H, BREAD_H, STATUS_H;
+var CARD_FONT, CARD_SMALL, CARD_TITLE_FONT, CARD_PAD;
+var BADGE_FONT, BADGE_SMALL;
+var IS_PORTRAIT = false;
+
+function computeSizes() {
+  dpr = devicePixelRatio || 1;
+  IS_PORTRAIT = H > W * 1.2;
+  var minCodePx = IS_PORTRAIT ? 15 * dpr : 14 * dpr;
+  FONT_SIZE = Math.max(W * 0.013, minCodePx);
+  LINE_H = FONT_SIZE * 1.7;
+  GUTTER_W = FONT_SIZE * 4;
+  TAB_H = Math.max(H * 0.04, FONT_SIZE * 2.2);
+  BREAD_H = Math.max(H * 0.025, FONT_SIZE * 1.5);
+  STATUS_H = Math.max(H * 0.03, FONT_SIZE * 1.8);
+  var minCardPx = IS_PORTRAIT ? 16 * dpr : 15 * dpr;
+  CARD_FONT = Math.max(W * 0.015, minCardPx);
+  CARD_SMALL = CARD_FONT * 0.85;
+  CARD_TITLE_FONT = CARD_FONT * 1.35;
+  CARD_PAD = Math.max(W * 0.025, 20 * dpr);
+  BADGE_FONT = Math.max(W * 0.014, minCardPx * 0.9);
+  BADGE_SMALL = BADGE_FONT * 0.85;
+}
+
+// ── Animation State ──
+var cardY = 0, cardTargetY = 0, cardOpacity = 0;
+var complexityOpacity = 0;
+var visibleLines = 0, currentLineChars = 0;
+var cursorBlink = true;
+
+// ── Code Metrics (pre-computed) ──
+var totalCodeChars = 0;
+var lineCharCounts = [];
+
+function computeCodeMetrics() {
+  totalCodeChars = 0;
+  lineCharCounts = [];
+  for (var i = 0; i < CONFIG.codeLines.length; i++) {
+    var len = getLineText(CONFIG.codeLines[i]).length;
+    lineCharCounts.push(len);
+    totalCodeChars += len;
+  }
+}
+
+// ── Scroll State ──
+var scrollOffsetY = 0, scrollTargetY = 0;
+var scrollOffsetX = 0, scrollTargetX = 0;
+
+// ── Frame Sync State ──
+var parentFrame = -1;
+var parentPlaying = false;
+var parentFps = 30;
+var frameSyncActive = false;
+
+// Called by the injected bridge when parent sends FRAME_UPDATE
+window.__onFrameUpdate = function(frame, playing, fps, total) {
+  parentFrame = frame;
+  parentPlaying = playing;
+  parentFps = fps || 30;
+  frameSyncActive = true;
+};
+
+// ── Standalone Mode State ──
+var standaloneState = 'card-enter';
+var standaloneTimer = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * (devicePixelRatio || 1);
+  H = canvas.height = window.innerHeight * (devicePixelRatio || 1);
+  computeSizes();
+  computeCodeMetrics();
+  cardTargetY = H * 0.06;
+  if (!frameSyncActive) {
+    cardY = -H * 0.5;
+  }
+}
+
+// ── Helpers ──
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function getColor(colorName) { return CONFIG[colorName] || CONFIG.plain; }
+
+function getLineText(line) {
+  if (!line || !line.tokens) return '';
+  return line.tokens.map(function(t) { return t.text; }).join('');
+}
+
+function getDifficultyColor() {
+  var d = (CONFIG.problemDifficulty || '').toLowerCase();
+  if (d === 'easy') return CONFIG.easyColor;
+  if (d === 'medium') return CONFIG.mediumColor;
+  if (d === 'hard') return CONFIG.hardColor;
+  return CONFIG.easyColor;
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function wrapText(text, maxWidth, fontSize) {
+  ctx.font = fontSize + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+  var words = text.split(' ');
+  var lines = [];
+  var cur = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = cur ? cur + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > maxWidth && cur) {
+      lines.push(cur); cur = words[i];
+    } else { cur = test; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function getCursorXPosition() {
+  if (visibleLines >= CONFIG.codeLines.length) return 0;
+  var line = CONFIG.codeLines[visibleLines];
+  if (!line || !line.tokens) return 0;
+  var text = getLineText(line).substring(0, currentLineChars);
+  ctx.font = FONT_SIZE + 'px Menlo, Courier New, monospace';
+  return ctx.measureText(text).width;
+}
+
+// ── Maps a global char index to visibleLines + currentLineChars ──
+function setTypingProgressToChar(targetChar) {
+  var charsSoFar = 0;
+  for (var i = 0; i < CONFIG.codeLines.length; i++) {
+    var lineLen = lineCharCounts[i];
+    if (lineLen === 0) continue;
+    if (charsSoFar + lineLen > targetChar) {
+      visibleLines = i;
+      currentLineChars = targetChar - charsSoFar;
+      return;
+    }
+    charsSoFar += lineLen;
+  }
+  visibleLines = CONFIG.codeLines.length;
+  currentLineChars = 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// FRAME-DRIVEN MODE — state is a pure function of frame number
+// ══════════════════════════════════════════════════════════════
+
+function computeStateFromFrame(frame) {
+  var fps = parentFps || 30;
+  var cardStart = CONFIG.cardStartFrame >= 0 ? CONFIG.cardStartFrame : 0;
+  var cardEnd = CONFIG.cardEndFrame >= 0 ? CONFIG.cardEndFrame : cardStart + Math.round(CONFIG.cardShowDuration * fps);
+  var typeStart = CONFIG.typingStartFrame >= 0 ? CONFIG.typingStartFrame : cardEnd + Math.round(0.5 * fps);
+  var typeEnd = CONFIG.typingEndFrame >= 0 ? CONFIG.typingEndFrame : typeStart + Math.max(1, totalCodeChars) * Math.round(CONFIG.typingSpeed * fps);
+  var compStart = CONFIG.complexityStartFrame >= 0 ? CONFIG.complexityStartFrame : typeEnd + Math.round(CONFIG.pauseAfterTyping * fps);
+
+  var cardFadeFrames = Math.round(0.5 * fps);
+
+  // Card phase
+  if (frame < cardStart) {
+    cardOpacity = 0;
+    cardY = -H * 0.5;
+  } else if (frame < cardStart + cardFadeFrames) {
+    var t = (frame - cardStart) / cardFadeFrames;
+    cardOpacity = t;
+    cardY = lerp(-H * 0.5, cardTargetY, t);
+  } else if (frame < cardEnd) {
+    cardOpacity = 1;
+    cardY = cardTargetY;
+  } else if (frame < cardEnd + cardFadeFrames) {
+    var t2 = (frame - cardEnd) / cardFadeFrames;
+    cardOpacity = 1 - t2;
+    cardY = lerp(cardTargetY, cardTargetY - H * 0.15, t2);
+  } else {
+    cardOpacity = 0;
+  }
+
+  // Typing phase
+  if (frame < typeStart) {
+    visibleLines = 0;
+    currentLineChars = 0;
+  } else if (frame <= typeEnd && typeEnd > typeStart && totalCodeChars > 0) {
+    var progress = (frame - typeStart) / (typeEnd - typeStart);
+    var targetChar = Math.floor(Math.min(progress, 1) * totalCodeChars);
+    setTypingProgressToChar(targetChar);
+  } else {
+    visibleLines = CONFIG.codeLines.length;
+    currentLineChars = 0;
+  }
+
+  // Complexity phase
+  if (CONFIG.timeComplexity || CONFIG.spaceComplexity) {
+    if (frame >= compStart) {
+      var compFade = Math.round(0.3 * fps);
+      complexityOpacity = compFade > 0 ? Math.min(1, (frame - compStart) / compFade) : 1;
+    } else {
+      complexityOpacity = 0;
+    }
+  }
+
+  cursorBlink = Math.sin(frame * 0.3) > 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// STANDALONE MODE — self-timed animation (no orchestrator)
+// ══════════════════════════════════════════════════════════════
+
+function updateStandalone() {
+  var dt = 0.016;
+  standaloneTimer += dt;
+  cursorBlink = Math.sin(time * 5) > 0;
+
+  switch (standaloneState) {
+    case 'card-enter':
+      cardY = lerp(cardY, cardTargetY, 0.1);
+      cardOpacity = Math.min(1, cardOpacity + dt * 4);
+      if (standaloneTimer > 0.6) {
+        standaloneState = 'card-display'; standaloneTimer = 0;
+        cardY = cardTargetY; cardOpacity = 1;
+      }
+      break;
+    case 'card-display':
+      if (standaloneTimer > CONFIG.cardShowDuration) { standaloneState = 'card-exit'; standaloneTimer = 0; }
+      break;
+    case 'card-exit':
+      cardOpacity = Math.max(0, cardOpacity - dt / CONFIG.cardFadeOutDuration);
+      cardY -= dt * H * 0.3;
+      if (standaloneTimer > CONFIG.cardFadeOutDuration + 0.1) {
+        standaloneState = 'typing'; standaloneTimer = 0; cardOpacity = 0;
+      }
+      break;
+    case 'typing':
+      if (CONFIG.codeLines.length === 0) { standaloneState = 'typing-done'; standaloneTimer = 0; break; }
+      if (standaloneTimer > CONFIG.typingSpeed) {
+        standaloneTimer = 0;
+        if (visibleLines < CONFIG.codeLines.length) {
+          var line = CONFIG.codeLines[visibleLines];
+          var fullText = getLineText(line);
+          if (currentLineChars < fullText.length) {
+            currentLineChars++;
+          } else {
+            visibleLines++; currentLineChars = 0;
+            while (visibleLines < CONFIG.codeLines.length && getLineText(CONFIG.codeLines[visibleLines]).length === 0) visibleLines++;
+          }
+        } else {
+          standaloneState = 'typing-done'; standaloneTimer = 0;
+        }
+      }
+      break;
+    case 'typing-done':
+      if (standaloneTimer > CONFIG.pauseAfterTyping) {
+        if (CONFIG.timeComplexity || CONFIG.spaceComplexity) {
+          standaloneState = 'complexity'; standaloneTimer = 0;
+        } else { standaloneState = 'done'; standaloneTimer = 0; }
+      }
+      break;
+    case 'complexity':
+      complexityOpacity = Math.min(1, complexityOpacity + dt * 3);
+      if (complexityOpacity >= 1) { standaloneState = 'complexity-hold'; standaloneTimer = 0; complexityOpacity = 1; }
+      break;
+    case 'complexity-hold':
+      if (standaloneTimer > CONFIG.complexityShowDuration) { standaloneState = 'done'; standaloneTimer = 0; }
+      break;
+    case 'done':
+      if (CONFIG.loopAnimation) {
+        standaloneState = 'card-enter'; standaloneTimer = 0;
+        cardY = -H * 0.5; cardOpacity = 0; complexityOpacity = 0;
+        visibleLines = 0; currentLineChars = 0;
+        scrollOffsetY = 0; scrollTargetY = 0; scrollOffsetX = 0; scrollTargetX = 0;
+      }
+      break;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SCROLL MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+function updateScroll(contentStartY) {
+  var codeAreaH = H - contentStartY - STATUS_H;
+  var cursorLineY = (visibleLines + 1) * LINE_H;
+  var visibleBottom = scrollTargetY + codeAreaH;
+  var vPad = LINE_H * 2;
+  if (cursorLineY > visibleBottom - vPad) scrollTargetY = cursorLineY - codeAreaH + vPad;
+  if (cursorLineY < scrollTargetY + vPad) scrollTargetY = Math.max(0, cursorLineY - vPad);
+  scrollTargetY = Math.max(0, scrollTargetY);
+  var cursorX = getCursorXPosition() + FONT_SIZE;
+  var codeAreaW = IS_PORTRAIT ? W - GUTTER_W - FONT_SIZE : W - GUTTER_W - W * 0.06 - FONT_SIZE;
+  var hPad = FONT_SIZE * 3;
+  if (cursorX - scrollTargetX > codeAreaW - hPad) scrollTargetX = cursorX - codeAreaW + hPad;
+  if (cursorX - scrollTargetX < hPad) scrollTargetX = Math.max(0, cursorX - hPad);
+  scrollTargetX = Math.max(0, scrollTargetX);
+  scrollOffsetY = lerp(scrollOffsetY, scrollTargetY, 0.15);
+  scrollOffsetX = lerp(scrollOffsetX, scrollTargetX, 0.15);
+}
+
+// ══════════════════════════════════════════════════════════════
+// VS CODE DRAWING FUNCTIONS
+// ══════════════════════════════════════════════════════════════
+
+function drawTabBar() {
+  ctx.fillStyle = CONFIG.tabBarBg;
+  ctx.fillRect(0, 0, W, TAB_H);
+  var tabW = IS_PORTRAIT ? W * 0.45 : W * 0.18;
+  ctx.fillStyle = CONFIG.activeTabBg;
+  ctx.fillRect(0, 0, tabW, TAB_H);
+  ctx.fillStyle = CONFIG.statusBarBg;
+  ctx.fillRect(0, TAB_H - 2, tabW, 2);
+  var ext = CONFIG.fileName.split('.').pop();
+  var iconText = ext === 'py' ? 'PY' : ext === 'ts' || ext === 'tsx' ? 'TS' : ext === 'js' ? 'JS' : ext.toUpperCase();
+  var iconColor = ext === 'py' ? '#3572a5' : ext === 'ts' || ext === 'tsx' ? '#519aba' : '#f7df1e';
+  var tabFont = Math.max(FONT_SIZE * 0.9, 14 * dpr);
+  ctx.fillStyle = iconColor;
+  ctx.font = tabFont + 'px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(iconText, CARD_PAD * 0.4, TAB_H * 0.62);
+  ctx.fillStyle = CONFIG.activeTabText;
+  ctx.font = tabFont + 'px -apple-system, sans-serif';
+  ctx.fillText(CONFIG.fileName, CARD_PAD * 0.4 + tabFont * 2.5, TAB_H * 0.62);
+  ctx.fillStyle = CONFIG.tabText;
+  ctx.fillText('\u00d7', tabW - CARD_PAD * 0.6, TAB_H * 0.62);
+  if (!IS_PORTRAIT) {
+    var otherTabs = ['index.ts', 'styles.css'];
+    otherTabs.forEach(function(name, i) {
+      var tx = tabW + i * tabW;
+      ctx.fillStyle = CONFIG.tabBarBg; ctx.fillRect(tx, 0, tabW, TAB_H);
+      ctx.fillStyle = CONFIG.tabText;
+      ctx.font = tabFont + 'px -apple-system, sans-serif';
+      ctx.fillText(name, tx + CARD_PAD * 0.5, TAB_H * 0.62);
+    });
+  }
+  return TAB_H;
+}
+
+function drawBreadcrumb(tabH) {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, tabH, W, BREAD_H);
+  ctx.fillStyle = CONFIG.tabText;
+  var bcFont = Math.max(FONT_SIZE * 0.75, 12 * dpr);
+  ctx.font = bcFont + 'px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(IS_PORTRAIT ? CONFIG.fileName : 'src  >  solutions  >  ' + CONFIG.fileName, GUTTER_W + FONT_SIZE * 0.5, tabH + BREAD_H * 0.65);
+  return tabH + BREAD_H;
+}
+
+function drawLineNumbers(startY) {
+  var codeAreaH = H - startY - STATUS_H;
+  ctx.fillStyle = CONFIG.gutterBg;
+  ctx.fillRect(0, startY, GUTTER_W, codeAreaH);
+  var totalLines = Math.min(visibleLines + 1, CONFIG.codeLines.length);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, startY, GUTTER_W, codeAreaH); ctx.clip();
+  for (var i = 0; i < totalLines; i++) {
+    var y = startY + (i + 1) * LINE_H - scrollOffsetY;
+    if (y < startY - LINE_H) continue;
+    if (y > startY + codeAreaH + LINE_H) break;
+    var isCurrentLine = i === visibleLines && visibleLines < CONFIG.codeLines.length;
+    ctx.fillStyle = isCurrentLine ? CONFIG.activeTabText : CONFIG.lineNumColor;
+    ctx.font = FONT_SIZE + 'px Menlo, Courier New, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText((i + 1).toString(), GUTTER_W - FONT_SIZE * 0.5, y);
+    if (isCurrentLine) {
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(GUTTER_W, y - LINE_H * 0.75, W - GUTTER_W, LINE_H);
+    }
+  }
+  ctx.restore();
+  return GUTTER_W;
+}
+
+function drawCode(startY, gutterW) {
+  var codeX = gutterW + FONT_SIZE;
+  var codeAreaH = H - startY - STATUS_H;
+  var codeAreaW = IS_PORTRAIT ? W - gutterW : W - gutterW - W * 0.06;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(gutterW, startY, codeAreaW, codeAreaH); ctx.clip();
+  ctx.font = FONT_SIZE + 'px Menlo, Courier New, monospace';
+  ctx.textAlign = 'left';
+  var totalLines = Math.min(visibleLines + 1, CONFIG.codeLines.length);
+  for (var i = 0; i < totalLines; i++) {
+    var line = CONFIG.codeLines[i];
+    if (!line || !line.tokens) continue;
+    var y = startY + (i + 1) * LINE_H - scrollOffsetY;
+    if (y < startY - LINE_H) continue;
+    if (y > startY + codeAreaH + LINE_H) break;
+    var x = codeX - scrollOffsetX;
+    var fullText = getLineText(line);
+    var isCurrentLine = i === visibleLines && visibleLines < CONFIG.codeLines.length;
+    var charsToShow = isCurrentLine ? currentLineChars : fullText.length;
+    var charsRendered = 0;
+    for (var j = 0; j < line.tokens.length; j++) {
+      var token = line.tokens[j];
+      var vc = Math.min(token.text.length, Math.max(0, charsToShow - charsRendered));
+      if (vc > 0) {
+        var vt = token.text.substring(0, vc);
+        ctx.fillStyle = getColor(token.color);
+        ctx.fillText(vt, x, y);
+        x += ctx.measureText(vt).width;
+      }
+      charsRendered += token.text.length;
+    }
+    if (isCurrentLine && cursorBlink) {
+      ctx.fillStyle = CONFIG.cursorColor;
+      ctx.fillRect(x, y - FONT_SIZE * 0.85, Math.max(2, dpr), FONT_SIZE * 1.1);
+    }
+  }
+  ctx.restore();
+}
+
+function drawMinimap(startY) {
+  if (IS_PORTRAIT) return;
+  var mapW = W * 0.06; var mapX = W - mapW; var lineH = 3;
+  var codeAreaH = H - startY - STATUS_H;
+  ctx.fillStyle = CONFIG.minimapBg;
+  ctx.fillRect(mapX, startY, mapW, codeAreaH);
+  var totalLines = Math.min(visibleLines + 1, CONFIG.codeLines.length);
+  for (var i = 0; i < totalLines; i++) {
+    var line = CONFIG.codeLines[i];
+    if (!line || !line.tokens) continue;
+    var y = startY + i * lineH + 5;
+    var text = getLineText(line); var len = Math.min(text.length, 40);
+    if (len > 0) {
+      var mainToken = line.tokens.find(function(t) { return t.text.trim().length > 0; });
+      ctx.fillStyle = mainToken ? getColor(mainToken.color) : CONFIG.plain;
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(mapX + 5 + text.search(/\S/) * 0.8, y, len * 0.8, 2);
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(mapX, startY, mapW, Math.min(totalLines * lineH, codeAreaH * 0.5));
+}
+
+function drawStatusBar() {
+  var y = H - STATUS_H;
+  ctx.fillStyle = CONFIG.statusBarBg;
+  ctx.fillRect(0, y, W, STATUS_H);
+  var sfont = Math.max(FONT_SIZE * 0.75, 12 * dpr);
+  ctx.fillStyle = CONFIG.statusBarText;
+  ctx.font = sfont + 'px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  var ln = visibleLines + 1, col = currentLineChars + 1;
+  if (IS_PORTRAIT) {
+    ctx.fillText('Ln ' + ln + '  Col ' + col, sfont * 0.5, y + STATUS_H * 0.65);
+    var ext = CONFIG.fileName.split('.').pop();
+    var lang = ext === 'py' ? 'Python' : ext === 'ts' ? 'TypeScript' : ext === 'tsx' ? 'TSX' : ext === 'js' ? 'JavaScript' : ext;
+    ctx.textAlign = 'right';
+    ctx.fillText(lang, W - sfont * 0.5, y + STATUS_H * 0.65);
+  } else {
+    ctx.fillText('Ln ' + ln + ', Col ' + col, W * 0.02, y + STATUS_H * 0.65);
+    ctx.fillText('Spaces: 4', W * 0.12, y + STATUS_H * 0.65);
+    ctx.fillText('UTF-8', W * 0.22, y + STATUS_H * 0.65);
+    var ext2 = CONFIG.fileName.split('.').pop();
+    var lang2 = ext2 === 'py' ? 'Python' : ext2 === 'ts' ? 'TypeScript' : ext2 === 'tsx' ? 'TypeScript React' : ext2 === 'js' ? 'JavaScript' : ext2;
+    ctx.fillText(lang2, W * 0.3, y + STATUS_H * 0.65);
+    ctx.textAlign = 'right';
+    ctx.fillText('Prettier', W * 0.98, y + STATUS_H * 0.65);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// LEETCODE CARD
+// ══════════════════════════════════════════════════════════════
+
+function drawLeetCodeCard() {
+  var cardW = IS_PORTRAIT ? W * 0.92 : W * 0.65;
+  var cardX = (W - cardW) / 2;
+  var headerH = CARD_TITLE_FONT * 2.8;
+  var descLines = wrapText(CONFIG.problemDescription, cardW - CARD_PAD * 2, CARD_FONT);
+  var contentH = headerH + CARD_PAD + descLines.length * (CARD_FONT * 1.5) + CARD_PAD;
+  if (CONFIG.problemExamples && CONFIG.problemExamples.length > 0) {
+    contentH += CARD_FONT * 1.8;
+    for (var e = 0; e < CONFIG.problemExamples.length; e++) {
+      contentH += CARD_SMALL * 1.6 * 3 + CARD_PAD * 0.5;
+      var el = wrapText(CONFIG.problemExamples[e].explanation || '', cardW - CARD_PAD * 3, CARD_SMALL);
+      contentH += (el.length - 1) * (CARD_SMALL * 1.4);
+    }
+  }
+  if (CONFIG.problemConstraints && CONFIG.problemConstraints.length > 0) {
+    contentH += CARD_FONT * 1.8 + CARD_PAD * 0.3 + CONFIG.problemConstraints.length * (CARD_SMALL * 1.6);
+  }
+  contentH += CARD_PAD;
+  if (contentH > H * 0.75) contentH = H * 0.75;
+
+  ctx.save(); ctx.globalAlpha = cardOpacity;
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 8;
+  roundRect(cardX, cardY, cardW, contentH, 12); ctx.fillStyle = CONFIG.cardBg; ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  roundRect(cardX, cardY, cardW, contentH, 12); ctx.strokeStyle = CONFIG.cardBorder; ctx.lineWidth = 1; ctx.stroke();
+
+  // Header bar
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cardX + 12, cardY); ctx.lineTo(cardX + cardW - 12, cardY);
+  ctx.quadraticCurveTo(cardX + cardW, cardY, cardX + cardW, cardY + 12);
+  ctx.lineTo(cardX + cardW, cardY + headerH); ctx.lineTo(cardX, cardY + headerH);
+  ctx.lineTo(cardX, cardY + 12); ctx.quadraticCurveTo(cardX, cardY, cardX + 12, cardY);
+  ctx.closePath(); ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = CONFIG.cardBorder; ctx.fillRect(cardX, cardY + headerH, cardW, 1);
+
+  // LC icon
+  var iconSize = CARD_TITLE_FONT * 1.3;
+  var iconX = cardX + CARD_PAD, iconY2 = cardY + (headerH - iconSize) / 2;
+  roundRect(iconX, iconY2, iconSize, iconSize, 4); ctx.fillStyle = CONFIG.cardAccentColor; ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold ' + (iconSize * 0.4) + 'px -apple-system, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('LC', iconX + iconSize / 2, iconY2 + iconSize * 0.62);
+
+  // Title
+  ctx.textAlign = 'left'; ctx.fillStyle = CONFIG.cardTitleColor;
+  ctx.font = 'bold ' + CARD_TITLE_FONT + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+  var titleText = CONFIG.problemNumber + '. ' + CONFIG.problemTitle;
+  var titleMaxW = cardW - CARD_PAD * 2 - iconSize - CARD_PAD;
+  if (ctx.measureText(titleText).width > titleMaxW * 0.7) {
+    while (ctx.measureText(titleText + '...').width > titleMaxW * 0.7 && titleText.length > 5) titleText = titleText.slice(0, -1);
+    titleText += '...';
+  }
+  ctx.fillText(titleText, iconX + iconSize + CARD_PAD * 0.4, cardY + headerH * 0.58);
+
+  // Difficulty badge
+  var diffColor = getDifficultyColor(), diffText = CONFIG.problemDifficulty;
+  ctx.font = 'bold ' + CARD_SMALL + 'px -apple-system, sans-serif';
+  var diffW = ctx.measureText(diffText).width + CARD_PAD * 0.8;
+  var diffX = cardX + cardW - CARD_PAD - diffW, diffBadgeH = CARD_SMALL * 1.8;
+  var diffY2 = cardY + (headerH - diffBadgeH) / 2;
+  roundRect(diffX, diffY2, diffW, diffBadgeH, 4);
+  ctx.fillStyle = diffColor; ctx.globalAlpha = cardOpacity * 0.15; ctx.fill();
+  ctx.globalAlpha = cardOpacity; ctx.fillStyle = diffColor;
+  ctx.font = 'bold ' + CARD_SMALL + 'px -apple-system, sans-serif';
+  ctx.fillText(diffText, diffX + CARD_PAD * 0.4, diffY2 + diffBadgeH * 0.68);
+
+  // Body
+  var curY = cardY + headerH + CARD_PAD, bodyX = cardX + CARD_PAD, bodyMaxW = cardW - CARD_PAD * 2;
+  ctx.save(); ctx.beginPath(); ctx.rect(cardX, cardY + headerH, cardW, contentH - headerH); ctx.clip();
+
+  ctx.fillStyle = CONFIG.cardTextColor; ctx.font = CARD_FONT + 'px -apple-system, BlinkMacSystemFont, sans-serif'; ctx.textAlign = 'left';
+  for (var d = 0; d < descLines.length; d++) {
+    if (curY > cardY + contentH - CARD_PAD) break;
+    ctx.fillText(descLines[d], bodyX, curY + CARD_FONT); curY += CARD_FONT * 1.5;
+  }
+  curY += CARD_PAD * 0.5;
+
+  if (CONFIG.problemExamples && CONFIG.problemExamples.length > 0) {
+    for (var ei = 0; ei < CONFIG.problemExamples.length; ei++) {
+      if (curY > cardY + contentH - CARD_PAD * 2) break;
+      var ex = CONFIG.problemExamples[ei];
+      ctx.fillStyle = CONFIG.cardTitleColor; ctx.font = 'bold ' + CARD_FONT + 'px -apple-system, sans-serif';
+      ctx.fillText('Example ' + (ei + 1) + ':', bodyX, curY + CARD_FONT); curY += CARD_FONT * 1.8;
+      var exX = bodyX + CARD_PAD * 0.6;
+      ctx.font = CARD_SMALL + 'px Menlo, Courier New, monospace';
+      ctx.fillStyle = CONFIG.tabText; ctx.fillText('Input: ', exX, curY + CARD_SMALL);
+      ctx.fillStyle = CONFIG.cardTextColor;
+      var iw2 = wrapText(ex.input, bodyMaxW - CARD_PAD * 2, CARD_SMALL);
+      var ilw = ctx.measureText('Input: ').width;
+      for (var iw = 0; iw < iw2.length; iw++) {
+        ctx.fillText(iw2[iw], iw === 0 ? exX + ilw : exX + CARD_PAD * 0.5, curY + CARD_SMALL); curY += CARD_SMALL * 1.5;
+      }
+      ctx.fillStyle = CONFIG.tabText; ctx.font = CARD_SMALL + 'px Menlo, Courier New, monospace';
+      ctx.fillText('Output: ', exX, curY + CARD_SMALL); ctx.fillStyle = CONFIG.cardTextColor;
+      ctx.fillText(ex.output, exX + ctx.measureText('Output: ').width, curY + CARD_SMALL); curY += CARD_SMALL * 1.5;
+      if (ex.explanation) {
+        ctx.fillStyle = CONFIG.tabText; ctx.font = CARD_SMALL + 'px Menlo, Courier New, monospace';
+        ctx.fillText('Explanation: ', exX, curY + CARD_SMALL);
+        var eSX = exX + ctx.measureText('Explanation: ').width;
+        var eW = wrapText(ex.explanation, bodyMaxW - CARD_PAD * 2 - ctx.measureText('Explanation: ').width, CARD_SMALL);
+        ctx.fillStyle = CONFIG.cardTextColor;
+        for (var ew = 0; ew < eW.length; ew++) { ctx.fillText(eW[ew], ew === 0 ? eSX : exX + CARD_PAD * 0.5, curY + CARD_SMALL); curY += CARD_SMALL * 1.4; }
+      }
+      curY += CARD_PAD * 0.3;
+    }
+  }
+
+  if (CONFIG.problemConstraints && CONFIG.problemConstraints.length > 0) {
+    curY += CARD_PAD * 0.2;
+    ctx.fillStyle = CONFIG.cardTitleColor; ctx.font = 'bold ' + CARD_FONT + 'px -apple-system, sans-serif';
+    ctx.fillText('Constraints:', bodyX, curY + CARD_FONT); curY += CARD_FONT * 1.6;
+    ctx.font = CARD_SMALL + 'px Menlo, Courier New, monospace'; ctx.fillStyle = CONFIG.cardTextColor;
+    for (var ci = 0; ci < CONFIG.problemConstraints.length; ci++) {
+      if (curY > cardY + contentH - CARD_PAD) break;
+      ctx.fillText('\u2022  ' + CONFIG.problemConstraints[ci], bodyX + CARD_PAD * 0.3, curY + CARD_SMALL); curY += CARD_SMALL * 1.6;
+    }
+  }
+  ctx.restore(); ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════════
+// COMPLEXITY BADGE
+// ══════════════════════════════════════════════════════════════
+
+function drawComplexityBadge() {
+  ctx.save(); ctx.globalAlpha = complexityOpacity;
+  var badgeW = IS_PORTRAIT ? W * 0.85 : W * 0.24;
+  var badgeH = IS_PORTRAIT ? BADGE_FONT * 4.5 : BADGE_FONT * 4;
+  var badgeX = IS_PORTRAIT ? (W - badgeW) / 2 : W - badgeW - W * 0.08;
+  var badgeY = H - badgeH - STATUS_H - BADGE_FONT * 2;
+  var pad = BADGE_FONT * 0.8;
+
+  ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 4;
+  roundRect(badgeX, badgeY, badgeW, badgeH, 10); ctx.fillStyle = 'rgba(30, 30, 30, 0.95)'; ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  ctx.save(); roundRect(badgeX, badgeY, 4 * dpr, badgeH, 10); ctx.clip();
+  ctx.fillStyle = CONFIG.easyColor; ctx.fillRect(badgeX, badgeY, 4 * dpr, badgeH); ctx.restore();
+  roundRect(badgeX, badgeY, badgeW, badgeH, 10); ctx.strokeStyle = 'rgba(0, 184, 163, 0.3)'; ctx.lineWidth = 1; ctx.stroke();
+
+  var checkX = badgeX + pad, checkY2 = badgeY + badgeH * 0.22, checkSize = BADGE_FONT * 1.1;
+  ctx.strokeStyle = CONFIG.easyColor; ctx.lineWidth = Math.max(3, 2 * dpr); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(checkX, checkY2 + checkSize * 0.5);
+  ctx.lineTo(checkX + checkSize * 0.35, checkY2 + checkSize * 0.85);
+  ctx.lineTo(checkX + checkSize, checkY2 + checkSize * 0.1); ctx.stroke();
+
+  var textX = checkX + checkSize + pad * 0.6;
+  ctx.fillStyle = CONFIG.cardTitleColor; ctx.font = 'bold ' + BADGE_FONT + 'px -apple-system, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(CONFIG.approachName, textX, badgeY + badgeH * 0.36);
+
+  ctx.font = BADGE_SMALL + 'px -apple-system, sans-serif'; ctx.fillStyle = CONFIG.tabText;
+  ctx.fillText('Time: ', textX, badgeY + badgeH * 0.65);
+  var tw = ctx.measureText('Time: ').width;
+  ctx.fillStyle = CONFIG.easyColor; ctx.font = 'bold ' + BADGE_SMALL + 'px Menlo, monospace';
+  ctx.fillText(CONFIG.timeComplexity, textX + tw, badgeY + badgeH * 0.65);
+  var sepX = textX + tw + ctx.measureText(CONFIG.timeComplexity).width + pad * 0.5;
+  ctx.fillStyle = CONFIG.cardBorder; ctx.fillText('|', sepX, badgeY + badgeH * 0.65);
+  var spaceX = sepX + ctx.measureText('|').width + pad * 0.5;
+  ctx.font = BADGE_SMALL + 'px -apple-system, sans-serif'; ctx.fillStyle = CONFIG.tabText;
+  ctx.fillText('Space: ', spaceX, badgeY + badgeH * 0.65);
+  var sw2 = ctx.measureText('Space: ').width;
+  ctx.fillStyle = CONFIG.easyColor; ctx.font = 'bold ' + BADGE_SMALL + 'px Menlo, monospace';
+  ctx.fillText(CONFIG.spaceComplexity, spaceX + sw2, badgeY + badgeH * 0.65);
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════════
+// MAIN DRAW LOOP
+// ══════════════════════════════════════════════════════════════
+
+function draw() {
+  // VS Code background — always visible
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+  var tabH = drawTabBar();
+  var contentY = drawBreadcrumb(tabH);
+
+  // Update animation state
+  if (frameSyncActive) {
+    computeStateFromFrame(parentFrame);
+  } else {
+    updateStandalone();
+  }
+
+  // Scroll follows cursor
+  if (visibleLines > 0 || currentLineChars > 0) {
+    updateScroll(contentY);
+  }
+
+  var gutterW = drawLineNumbers(contentY);
+
+  // Code is drawn whenever there's typing progress
+  if (visibleLines > 0 || currentLineChars > 0) {
+    drawCode(contentY, gutterW);
+  }
+
+  drawMinimap(contentY);
+  drawStatusBar();
+
+  if (cardOpacity > 0.01) drawLeetCodeCard();
+  if (complexityOpacity > 0.01) drawComplexityBadge();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

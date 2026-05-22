@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Visualizer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a0f; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  songTitle: 'Midnight Drive',
+  artistName: 'Synthwave',
+  accentColors: ['#ff3366', '#33ccff', '#ffcc00', '#66ff99'],
+  beatSpeed: 0.008,
+  barCount: 64,
+  cycleDuration: 12000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, CX, CY, minDim;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+  minDim = Math.min(W, H);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Utility
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+function lerpColor(c1, c2, t) {
+  return {
+    r: Math.round(c1.r + (c2.r - c1.r) * t),
+    g: Math.round(c1.g + (c2.g - c1.g) * t),
+    b: Math.round(c1.b + (c2.b - c1.b) * t)
+  };
+}
+
+function getAccentColor(t, offset) {
+  const colors = CONFIG.accentColors.map(hexToRgb);
+  const idx = ((t * 0.0003 + offset) % 1 + 1) % 1 * colors.length;
+  const i = Math.floor(idx);
+  const frac = idx - i;
+  const c = lerpColor(colors[i % colors.length], colors[(i + 1) % colors.length], frac);
+  return c;
+}
+
+function rgbStr(c, a) {
+  return a !== undefined ? `rgba(${c.r},${c.g},${c.b},${a})` : `rgb(${c.r},${c.g},${c.b})`;
+}
+
+// Simulated audio data
+const freqData = new Float32Array(CONFIG.barCount);
+const freqTarget = new Float32Array(CONFIG.barCount);
+const freqVelocity = new Float32Array(CONFIG.barCount);
+let beatPulse = 0;
+let beatTimer = 0;
+let lastBeatTime = 0;
+
+function simulateAudio(t, dt) {
+  const timeSec = t / 1000;
+  const beatInterval = 1000 / (CONFIG.beatSpeed * 125);
+
+  // Simulate beats
+  beatTimer += dt;
+  if (beatTimer > beatInterval) {
+    beatTimer -= beatInterval;
+    beatPulse = 1.0;
+    lastBeatTime = t;
+
+    // On beat, set new frequency targets
+    for (let i = 0; i < CONFIG.barCount; i++) {
+      const bassBoost = Math.max(0, 1 - i / (CONFIG.barCount * 0.15));
+      const midBoost = Math.exp(-Math.pow((i - CONFIG.barCount * 0.3) / (CONFIG.barCount * 0.15), 2));
+      const highDecay = Math.max(0, 1 - i / CONFIG.barCount);
+
+      freqTarget[i] = (0.3 + Math.random() * 0.7) * (bassBoost * 0.6 + midBoost * 0.3 + highDecay * 0.4);
+    }
+  }
+
+  // Decay beat pulse
+  beatPulse *= 0.92;
+
+  // Smooth frequency bars toward targets
+  for (let i = 0; i < CONFIG.barCount; i++) {
+    const springK = 0.08;
+    const damping = 0.7;
+    const force = (freqTarget[i] - freqData[i]) * springK;
+    freqVelocity[i] = (freqVelocity[i] + force) * damping;
+    freqData[i] += freqVelocity[i];
+
+    // Natural decay
+    freqTarget[i] *= 0.96;
+    freqData[i] = Math.max(0, freqData[i]);
+  }
+}
+
+// Particles
+const particles = [];
+const MAX_PARTICLES = 120;
+
+function spawnParticle(t) {
+  if (particles.length >= MAX_PARTICLES) return;
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 0.5 + Math.random() * 2;
+  const c = getAccentColor(t, Math.random());
+  particles.push({
+    x: CX + Math.cos(angle) * minDim * 0.12,
+    y: CY + Math.sin(angle) * minDim * 0.12,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    life: 1,
+    decay: 0.005 + Math.random() * 0.01,
+    size: 1 + Math.random() * 3,
+    color: c
+  });
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt * 0.06;
+    p.y += p.vy * dt * 0.06;
+    p.life -= p.decay * dt * 0.06;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+    }
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = p.life * 0.8;
+    ctx.fillStyle = rgbStr(p.color, alpha);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glow
+    ctx.shadowColor = rgbStr(p.color, alpha * 0.5);
+    ctx.shadowBlur = p.size * 3;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// Draw background
+function drawBackground(t) {
+  // Base gradient
+  const color1 = getAccentColor(t, 0);
+  const color2 = getAccentColor(t, 0.5);
+
+  const bgGrad = ctx.createRadialGradient(CX, CY, 0, CX, CY, W * 0.7);
+  bgGrad.addColorStop(0, rgbStr(color1, 0.08 + beatPulse * 0.06));
+  bgGrad.addColorStop(0.5, rgbStr(color2, 0.04 + beatPulse * 0.03));
+  bgGrad.addColorStop(1, 'rgba(5, 5, 12, 1)');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Beat pulse flash
+  if (beatPulse > 0.3) {
+    const pulseColor = getAccentColor(t, 0.25);
+    ctx.fillStyle = rgbStr(pulseColor, beatPulse * 0.05);
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// Vinyl record
+function drawVinylRecord(t) {
+  const timeSec = t / 1000;
+  const vinylR = minDim * 0.1;
+  const rotation = timeSec * 0.5;
+
+  ctx.save();
+  ctx.translate(CX, CY);
+  ctx.rotate(rotation);
+
+  // Record body
+  const recordGrad = ctx.createRadialGradient(0, 0, vinylR * 0.15, 0, 0, vinylR);
+  recordGrad.addColorStop(0, '#333');
+  recordGrad.addColorStop(0.15, '#1a1a1a');
+  recordGrad.addColorStop(0.3, '#222');
+  recordGrad.addColorStop(0.5, '#111');
+  recordGrad.addColorStop(0.7, '#1a1a1a');
+  recordGrad.addColorStop(0.85, '#222');
+  recordGrad.addColorStop(1, '#111');
+
+  ctx.beginPath();
+  ctx.arc(0, 0, vinylR, 0, Math.PI * 2);
+  ctx.fillStyle = recordGrad;
+  ctx.fill();
+
+  // Grooves
+  ctx.strokeStyle = 'rgba(60, 60, 60, 0.3)';
+  ctx.lineWidth = 0.5;
+  for (let r = vinylR * 0.25; r < vinylR * 0.95; r += vinylR * 0.04) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Light reflection on vinyl
+  ctx.beginPath();
+  ctx.arc(0, 0, vinylR, -0.3, 0.3);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = vinylR * 0.3;
+  ctx.stroke();
+
+  // Center label
+  const labelR = vinylR * 0.22;
+  const accent = getAccentColor(t, 0);
+  const labelGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, labelR);
+  labelGrad.addColorStop(0, rgbStr(accent, 0.9));
+  labelGrad.addColorStop(1, rgbStr(accent, 0.5));
+  ctx.beginPath();
+  ctx.arc(0, 0, labelR, 0, Math.PI * 2);
+  ctx.fillStyle = labelGrad;
+  ctx.fill();
+
+  // Center hole
+  ctx.beginPath();
+  ctx.arc(0, 0, vinylR * 0.03, 0, Math.PI * 2);
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// Circular waveform around the vinyl
+function drawCircularWaveform(t) {
+  if (!freqData || !freqData.length) return;
+  const timeSec = t / 1000;
+  const baseR = minDim * 0.13;
+  const waveAmp = minDim * 0.04 * (0.6 + beatPulse * 0.4);
+  const points = 128;
+
+  ctx.save();
+  ctx.translate(CX, CY);
+
+  // Draw two overlapping waveforms
+  for (let layer = 0; layer < 2; layer++) {
+    const color = getAccentColor(t, layer * 0.25);
+    ctx.beginPath();
+
+    for (let i = 0; i <= points; i++) {
+      const angle = (i / points) * Math.PI * 2;
+      const freqIdx = Math.floor((i / points) * CONFIG.barCount);
+      const val = freqData[freqIdx] || 0;
+
+      // Combine frequency data with smooth wave
+      const wave = Math.sin(angle * 4 + timeSec * 2 * (layer + 1)) * 0.3 +
+                   Math.sin(angle * 7 - timeSec * 1.5) * 0.2;
+      const r = baseR + (val * waveAmp) + wave * waveAmp * 0.3;
+
+      const x = Math.cos(angle) * r;
+      const y = Math.sin(angle) * r;
+
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+
+    ctx.closePath();
+    ctx.strokeStyle = rgbStr(color, 0.6 - layer * 0.2);
+    ctx.lineWidth = 2 - layer;
+    ctx.shadowColor = rgbStr(color, 0.5);
+    ctx.shadowBlur = 15;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Fill with transparent gradient
+    const fillGrad = ctx.createRadialGradient(0, 0, baseR * 0.5, 0, 0, baseR + waveAmp);
+    fillGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    fillGrad.addColorStop(0.7, rgbStr(color, 0.02));
+    fillGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// Radial frequency bars
+function drawRadialBars(t) {
+  const barCount = CONFIG.barCount;
+  const innerR = minDim * 0.17;
+  const maxBarH = minDim * 0.15;
+
+  ctx.save();
+  ctx.translate(CX, CY);
+
+  for (let i = 0; i < barCount; i++) {
+    const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
+    const val = freqData[i] || 0;
+    const barH = val * maxBarH;
+
+    if (barH < 1) continue;
+
+    const color = getAccentColor(t, i / barCount);
+
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    const x1 = cos * innerR;
+    const y1 = sin * innerR;
+    const x2 = cos * (innerR + barH);
+    const y2 = sin * (innerR + barH);
+
+    // Bar width based on position
+    const barW = Math.max(1, (Math.PI * 2 * innerR / barCount) * 0.6);
+
+    ctx.save();
+    ctx.translate(x1, y1);
+    ctx.rotate(angle + Math.PI / 2);
+
+    // Bar gradient
+    const barGrad = ctx.createLinearGradient(0, 0, 0, -barH);
+    barGrad.addColorStop(0, rgbStr(color, 0.8));
+    barGrad.addColorStop(0.5, rgbStr(color, 0.5));
+    barGrad.addColorStop(1, rgbStr(color, 0.1));
+
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(-barW / 2, 0, barW, -barH);
+
+    // Bar glow
+    ctx.shadowColor = rgbStr(color, 0.6);
+    ctx.shadowBlur = 8;
+    ctx.fillRect(-barW / 2, 0, barW, -barH * 0.3);
+    ctx.shadowBlur = 0;
+
+    // Tip highlight
+    ctx.fillStyle = rgbStr(color, 0.9);
+    ctx.fillRect(-barW / 2, -barH, barW, 2);
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// Equalizer bars at bottom
+function drawEqualizer(t) {
+  const eqBarCount = 32;
+  const barW = W * 0.7 / eqBarCount;
+  const maxH = H * 0.08;
+  const startX = W * 0.15;
+  const baseY = H * 0.92;
+
+  for (let i = 0; i < eqBarCount; i++) {
+    const freqIdx = Math.floor(i / eqBarCount * CONFIG.barCount);
+    const val = freqData[freqIdx] || 0;
+    const barH = val * maxH;
+
+    if (barH < 1) continue;
+
+    const color = getAccentColor(t, i / eqBarCount);
+    const x = startX + i * (barW + 2);
+
+    // Bar
+    const barGrad = ctx.createLinearGradient(x, baseY, x, baseY - barH);
+    barGrad.addColorStop(0, rgbStr(color, 0.3));
+    barGrad.addColorStop(1, rgbStr(color, 0.8));
+    ctx.fillStyle = barGrad;
+    ctx.fillRect(x, baseY - barH, barW, barH);
+
+    // Reflection
+    const reflGrad = ctx.createLinearGradient(x, baseY, x, baseY + barH * 0.3);
+    reflGrad.addColorStop(0, rgbStr(color, 0.15));
+    reflGrad.addColorStop(1, rgbStr(color, 0));
+    ctx.fillStyle = reflGrad;
+    ctx.fillRect(x, baseY, barW, barH * 0.3);
+  }
+
+  // EQ line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(startX, baseY);
+  ctx.lineTo(startX + eqBarCount * (barW + 2), baseY);
+  ctx.stroke();
+}
+
+// Track info
+function drawTrackInfo(t) {
+  const timeSec = t / 1000;
+  const phase = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+  const accent = getAccentColor(t, 0.1);
+
+  // Song title
+  const titleSize = Math.round(minDim * 0.04);
+  ctx.font = `bold ${titleSize}px -apple-system, 'Segoe UI', Roboto, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Title position above vinyl
+  const titleY = CY - minDim * 0.22;
+
+  // Glow
+  ctx.shadowColor = rgbStr(accent, 0.6);
+  ctx.shadowBlur = 20;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(CONFIG.songTitle, CX, titleY);
+  ctx.shadowBlur = 0;
+
+  // Artist name
+  const artistSize = Math.round(minDim * 0.022);
+  ctx.font = `${artistSize}px -apple-system, 'Segoe UI', Roboto, sans-serif`;
+  ctx.fillStyle = rgbStr(accent, 0.8);
+  ctx.fillText(CONFIG.artistName, CX, titleY + titleSize * 1.0);
+
+  // Now playing indicator
+  const dotSpacing = minDim * 0.012;
+  const dotY = titleY - titleSize * 0.8;
+  const barCount = 4;
+  for (let i = 0; i < barCount; i++) {
+    const bx = CX - (barCount - 1) * dotSpacing / 2 + i * dotSpacing;
+    const h = minDim * 0.008 * (0.5 + 0.5 * Math.sin(timeSec * 4 + i * 0.8));
+    ctx.fillStyle = rgbStr(accent, 0.7);
+    ctx.fillRect(bx - 1.5, dotY - h, 3, h * 2);
+  }
+
+  // Progress bar
+  const progW = W * 0.3;
+  const progH = 3;
+  const progX = CX - progW / 2;
+  const progY = CY + minDim * 0.22;
+
+  // Track
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.fillRect(progX, progY, progW, progH);
+
+  // Progress
+  ctx.fillStyle = rgbStr(accent, 0.8);
+  ctx.fillRect(progX, progY, progW * phase, progH);
+
+  // Knob
+  ctx.beginPath();
+  ctx.arc(progX + progW * phase, progY + progH / 2, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Time labels
+  const timeSize = Math.round(minDim * 0.015);
+  ctx.font = `${timeSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'left';
+  const elapsed = Math.floor(phase * CONFIG.cycleDuration / 1000);
+  const total = Math.floor(CONFIG.cycleDuration / 1000);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillText(formatTime(elapsed), progX, progY + progH + timeSize * 1.5);
+  ctx.textAlign = 'right';
+  ctx.fillText(formatTime(total), progX + progW, progY + progH + timeSize * 1.5);
+  ctx.textAlign = 'center';
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + s.toString().padStart(2, '0');
+}
+
+// Outer ring decoration
+function drawOuterRing(t) {
+  const timeSec = t / 1000;
+  const ringR = minDim * 0.35;
+  const segments = 60;
+
+  ctx.save();
+  ctx.translate(CX, CY);
+
+  for (let i = 0; i < segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    const nextAngle = ((i + 1) / segments) * Math.PI * 2;
+
+    const freqIdx = Math.floor(i / segments * CONFIG.barCount);
+    const val = freqData[freqIdx] || 0;
+    const pulse = val * 0.3;
+
+    const color = getAccentColor(t, i / segments);
+    const alpha = 0.1 + val * 0.3;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, ringR - pulse * minDim * 0.05, angle, nextAngle);
+    ctx.arc(0, 0, ringR + minDim * 0.003 + pulse * minDim * 0.05, nextAngle, angle, true);
+    ctx.closePath();
+    ctx.fillStyle = rgbStr(color, alpha);
+    ctx.fill();
+  }
+
+  // Rotating dots
+  const dotCount = 12;
+  for (let i = 0; i < dotCount; i++) {
+    const angle = (i / dotCount) * Math.PI * 2 + timeSec * 0.3;
+    const dx = Math.cos(angle) * ringR;
+    const dy = Math.sin(angle) * ringR;
+    const color = getAccentColor(t, i / dotCount);
+
+    ctx.beginPath();
+    ctx.arc(dx, dy, 2, 0, Math.PI * 2);
+    ctx.fillStyle = rgbStr(color, 0.6);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// Background grid
+function drawGrid(t) {
+  const timeSec = t / 1000;
+  const gridSpacing = minDim * 0.05;
+  const scrollOffset = (timeSec * 10) % gridSpacing;
+  const color = getAccentColor(t, 0.3);
+
+  ctx.strokeStyle = rgbStr(color, 0.03 + beatPulse * 0.02);
+  ctx.lineWidth = 0.5;
+
+  // Horizontal lines
+  for (let y = scrollOffset; y < H; y += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  // Vertical lines
+  for (let x = scrollOffset; x < W; x += gridSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+}
+
+// Vignette
+function drawVignette() {
+  const vignette = ctx.createRadialGradient(CX, CY, minDim * 0.2, CX, CY, W * 0.8);
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+}
+
+let prevTime = 0;
+let startTime = null;
+
+function animate(timestamp) {
+  if (!startTime) { startTime = timestamp; prevTime = timestamp; }
+  if (!W || !H) { requestAnimationFrame(animate); return; }
+  const t = timestamp - startTime;
+  const dt = Math.min(timestamp - prevTime, 50);
+  prevTime = timestamp;
+
+  // Simulate audio
+  simulateAudio(t, dt);
+
+  // Spawn particles on beats
+  if (beatPulse > 0.5) {
+    for (let i = 0; i < 3; i++) spawnParticle(t);
+  }
+  updateParticles(dt);
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw layers
+  drawBackground(t);
+  drawGrid(t);
+  drawOuterRing(t);
+  drawRadialBars(t);
+  drawCircularWaveform(t);
+  drawVinylRecord(t);
+  drawParticles();
+  drawEqualizer(t);
+  drawTrackInfo(t);
+  drawVignette();
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE' && e.data.config) {
+    Object.assign(CONFIG, e.data.config);
+  }
+});
+</script>
+</body>
+</html>

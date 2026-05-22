@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Launch</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0a0a0f;
+    color: #fff;
+  }
+
+  .scene {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* === Gradient Background === */
+  .bg-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--bg-color) 0%, #0a0a0f 40%, #0d0d1a 60%, var(--bg-color) 100%);
+    z-index: 0;
+  }
+  .bg-gradient::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80vw 60vh at 50% 50%, var(--accent-alpha) 0%, transparent 70%);
+    animation: bgPulse 6s ease-in-out infinite;
+  }
+  @keyframes bgPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.1); }
+  }
+
+  /* === Floating Geometric Shapes === */
+  .geo-shape {
+    position: absolute;
+    border: 0.2vh solid var(--accent-color);
+    opacity: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .geo-shape.circle {
+    width: 8vw; height: 8vw;
+    border-radius: 50%;
+    top: 12vh; left: 8vw;
+    animation: geoFloat1 8s ease-in-out infinite, geoFadeIn 0.8s ease forwards;
+  }
+  .geo-shape.diamond {
+    width: 5vw; height: 5vw;
+    top: 20vh; right: 10vw;
+    transform: rotate(45deg);
+    animation: geoFloat2 7s ease-in-out infinite, geoFadeIn 0.8s ease 0.2s forwards;
+  }
+  .geo-shape.triangle {
+    width: 0; height: 0;
+    border: none;
+    border-left: 3vw solid transparent;
+    border-right: 3vw solid transparent;
+    border-bottom: 5.2vw solid var(--accent-color);
+    opacity: 0;
+    bottom: 18vh; left: 12vw;
+    animation: geoFloat3 9s ease-in-out infinite, geoFadeIn 0.8s ease 0.4s forwards;
+  }
+  .geo-shape.ring {
+    width: 12vw; height: 12vw;
+    border-radius: 50%;
+    border-width: 0.15vh;
+    bottom: 15vh; right: 6vw;
+    animation: geoFloat1 10s ease-in-out infinite reverse, geoFadeIn 0.8s ease 0.3s forwards;
+  }
+  .geo-shape.hex {
+    width: 4vw; height: 4vw;
+    border-radius: 0.3vw;
+    top: 60vh; left: 5vw;
+    transform: rotate(30deg);
+    animation: geoFloat2 6s ease-in-out infinite, geoFadeIn 0.8s ease 0.5s forwards;
+  }
+
+  @keyframes geoFloat1 {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-2vh) rotate(8deg); }
+  }
+  @keyframes geoFloat2 {
+    0%, 100% { transform: translateY(0) rotate(45deg); }
+    50% { transform: translateY(-1.5vh) rotate(53deg); }
+  }
+  @keyframes geoFloat3 {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2.5vh); }
+  }
+  @keyframes geoFadeIn {
+    to { opacity: 0.25; }
+  }
+
+  /* === Spotlight Glow === */
+  .spotlight {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50vw;
+    height: 50vw;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-alpha) 0%, transparent 60%);
+    opacity: 0;
+    z-index: 2;
+    filter: blur(3vw);
+    pointer-events: none;
+  }
+  .spotlight.active {
+    animation: spotlightReveal 1.5s ease forwards, spotlightShimmer 3s ease-in-out 1.5s infinite;
+  }
+  @keyframes spotlightReveal {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes spotlightShimmer {
+    0%, 100% { opacity: 0.5; filter: blur(3vw); }
+    50% { opacity: 0.8; filter: blur(2.5vw); }
+  }
+
+  /* === Particles === */
+  .particles-container {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .particle {
+    position: absolute;
+    width: 0.4vw;
+    height: 0.4vw;
+    border-radius: 50%;
+    background: var(--accent-color);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* === Product Name === */
+  .product-name {
+    position: absolute;
+    top: 14vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 7vh;
+    font-weight: 900;
+    letter-spacing: 0.8vw;
+    text-transform: uppercase;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    background: linear-gradient(90deg, #fff 0%, var(--accent-color) 50%, #fff 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .product-name.active {
+    animation: nameReveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+               nameShine 3s ease-in-out 1.2s infinite;
+  }
+  @keyframes nameReveal {
+    0% { opacity: 0; transform: translateX(-50%) translateY(3vh) scale(0.85); filter: blur(1vw); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
+  }
+  @keyframes nameShine {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* === Tagline === */
+  .tagline {
+    position: absolute;
+    top: 24vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.4vh;
+    font-weight: 300;
+    letter-spacing: 0.4vw;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+  }
+  .tagline.active {
+    animation: fadeSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  }
+  @keyframes fadeSlideUp {
+    0% { opacity: 0; transform: translateX(-50%) translateY(2vh); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* === Divider Line === */
+  .divider {
+    position: absolute;
+    top: 30vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0.15vh;
+    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+    z-index: 10;
+  }
+  .divider.active {
+    animation: dividerExpand 0.8s ease 0.5s forwards;
+  }
+  @keyframes dividerExpand {
+    to { width: 30vw; }
+  }
+
+  /* === Features Grid === */
+  .features {
+    position: absolute;
+    top: 35vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 3vw;
+    z-index: 10;
+  }
+  .feature-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1vh;
+    opacity: 0;
+    width: 16vw;
+    text-align: center;
+  }
+  .feature-item.active {
+    animation: featureIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .feature-icon {
+    width: 6vh;
+    height: 6vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1.2vh;
+    background: rgba(255,255,255,0.04);
+    border: 0.1vh solid rgba(255,255,255,0.08);
+    font-size: 2.8vh;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent-alpha), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .feature-item.active .feature-icon::before {
+    animation: iconGlow 2s ease-in-out 0.5s infinite alternate;
+  }
+  @keyframes iconGlow {
+    0% { opacity: 0; }
+    100% { opacity: 0.4; }
+  }
+  .feature-text {
+    font-size: 1.5vh;
+    font-weight: 500;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.4;
+  }
+  @keyframes featureIn {
+    0% { opacity: 0; transform: translateY(3vh) scale(0.9); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* === Price Section === */
+  .price-section {
+    position: absolute;
+    top: 58vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    opacity: 0;
+  }
+  .price-section.active {
+    animation: priceReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .price-label {
+    font-size: 1.5vh;
+    text-transform: uppercase;
+    letter-spacing: 0.3vw;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 0.8vh;
+  }
+  .price-value {
+    font-size: 6vh;
+    font-weight: 800;
+    color: var(--accent-color);
+    line-height: 1;
+    text-shadow: 0 0 3vw var(--accent-alpha);
+  }
+  .price-currency {
+    font-size: 3vh;
+    font-weight: 400;
+    vertical-align: super;
+    margin-right: 0.3vw;
+    opacity: 0.7;
+  }
+  @keyframes priceReveal {
+    0% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+    60% { transform: translateX(-50%) scale(1.08); }
+    100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  }
+
+  /* === Launch Badge === */
+  .launch-badge {
+    position: absolute;
+    top: 72vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 1vw;
+    padding: 1vh 2.5vw;
+    border-radius: 5vh;
+    background: rgba(255,255,255,0.04);
+    border: 0.1vh solid rgba(255,255,255,0.1);
+    font-size: 1.6vh;
+    font-weight: 500;
+    letter-spacing: 0.15vw;
+    color: rgba(255,255,255,0.8);
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0;
+    backdrop-filter: blur(0.5vw);
+  }
+  .launch-badge.active {
+    animation: badgeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .badge-dot {
+    width: 0.8vh;
+    height: 0.8vh;
+    border-radius: 50%;
+    background: var(--accent-color);
+    box-shadow: 0 0 0.8vw var(--accent-color);
+    animation: dotPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+  @keyframes badgeIn {
+    0% { opacity: 0; transform: translateX(-50%) translateY(1vh); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* === CTA Button === */
+  .cta-button {
+    position: absolute;
+    top: 82vh;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1.8vh 4vw;
+    border: none;
+    border-radius: 1vh;
+    font-size: 2vh;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2vw;
+    color: #fff;
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0;
+    background: linear-gradient(135deg, var(--accent-color), var(--secondary-color));
+    position: absolute;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .cta-button::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%);
+    transform: translateX(-100%);
+  }
+  .cta-button.active {
+    animation: ctaIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .cta-button.active::before {
+    animation: ctaSweep 2.5s ease-in-out 1s infinite;
+  }
+  @keyframes ctaIn {
+    0% { opacity: 0; transform: translateX(-50%) translateY(2vh) scale(0.9); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  }
+  @keyframes ctaSweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .cta-button::after {
+    content: '';
+    position: absolute;
+    inset: -0.2vh;
+    border-radius: 1.2vh;
+    background: linear-gradient(135deg, var(--accent-color), var(--secondary-color));
+    z-index: -1;
+    opacity: 0.4;
+    filter: blur(1vw);
+  }
+
+  /* === Corner Accents === */
+  .corner-accent {
+    position: absolute;
+    width: 6vw;
+    height: 6vw;
+    z-index: 5;
+    opacity: 0;
+  }
+  .corner-accent.active {
+    animation: cornerIn 0.6s ease forwards;
+  }
+  @keyframes cornerIn {
+    to { opacity: 0.3; }
+  }
+  .corner-accent.tl { top: 3vh; left: 3vw; border-top: 0.15vh solid var(--accent-color); border-left: 0.15vh solid var(--accent-color); }
+  .corner-accent.tr { top: 3vh; right: 3vw; border-top: 0.15vh solid var(--accent-color); border-right: 0.15vh solid var(--accent-color); }
+  .corner-accent.bl { bottom: 3vh; left: 3vw; border-bottom: 0.15vh solid var(--accent-color); border-left: 0.15vh solid var(--accent-color); }
+  .corner-accent.br { bottom: 3vh; right: 3vw; border-bottom: 0.15vh solid var(--accent-color); border-right: 0.15vh solid var(--accent-color); }
+
+  /* === Grid Overlay === */
+  .grid-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.03;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.1) 0.1vh, transparent 0.1vh),
+      linear-gradient(90deg, rgba(255,255,255,0.1) 0.1vw, transparent 0.1vw);
+    background-size: 5vw 5vh;
+    pointer-events: none;
+  }
+
+  /* === Scanline Overlay === */
+  .scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0.3vh;
+    background: linear-gradient(90deg, transparent, var(--accent-alpha), transparent);
+    opacity: 0;
+    z-index: 15;
+    pointer-events: none;
+  }
+  .scanline.active {
+    animation: scanMove 4s linear infinite;
+  }
+  @keyframes scanMove {
+    0% { top: -1vh; opacity: 0.6; }
+    50% { opacity: 0.3; }
+    100% { top: 101vh; opacity: 0; }
+  }
+
+  /* === Exit Animations === */
+  .exit-fade {
+    animation: exitFade 0.8s ease forwards !important;
+  }
+  @keyframes exitFade {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-2vh) scale(0.95); }
+  }
+  .exit-fade-raw {
+    animation: exitFadeRaw 0.8s ease forwards !important;
+  }
+  @keyframes exitFadeRaw {
+    0% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-2vh); }
+  }
+  .exit-scale {
+    animation: exitScale 0.6s ease forwards !important;
+  }
+  @keyframes exitScale {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+  }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="bg-gradient" id="bgGradient"></div>
+  <div class="grid-overlay"></div>
+  <div class="scanline" id="scanline"></div>
+
+  <div class="spotlight" id="spotlight"></div>
+  <div class="particles-container" id="particles"></div>
+
+  <div class="geo-shape circle" id="geo1"></div>
+  <div class="geo-shape diamond" id="geo2"></div>
+  <div class="geo-shape triangle" id="geo3"></div>
+  <div class="geo-shape ring" id="geo4"></div>
+  <div class="geo-shape hex" id="geo5"></div>
+
+  <div class="corner-accent tl" id="cornerTL"></div>
+  <div class="corner-accent tr" id="cornerTR"></div>
+  <div class="corner-accent bl" id="cornerBL"></div>
+  <div class="corner-accent br" id="cornerBR"></div>
+
+  <div class="product-name" id="productName"></div>
+  <div class="tagline" id="tagline"></div>
+  <div class="divider" id="divider"></div>
+  <div class="features" id="features"></div>
+  <div class="price-section" id="priceSection">
+    <div class="price-label">Starting at</div>
+    <div class="price-value" id="priceValue"></div>
+  </div>
+  <div class="launch-badge" id="launchBadge">
+    <span class="badge-dot"></span>
+    <span id="launchText"></span>
+  </div>
+  <div class="cta-button" id="ctaButton"></div>
+</div>
+
+<script>
+var CONFIG = {
+  productName: "NOVA PRO",
+  tagline: "The Future of Creative Technology",
+  price: "299",
+  currency: "$",
+  launchDate: "Available Now",
+  features: [
+    { icon: "⚡", text: "Lightning Fast Performance" },
+    { icon: "🛡️", text: "Enterprise Security" },
+    { icon: "🎨", text: "Infinite Customization" },
+    { icon: "☁️", text: "Cloud Native Architecture" }
+  ],
+  ctaText: "Pre-order Now",
+  bgColor: "#0a0a1a",
+  accentColor: "#6c5ce7",
+  secondaryColor: "#a855f7",
+  cycleDuration: 12
+};
+
+(function() {
+  /* === Apply CSS Variables === */
+  function applyTheme() {
+    var root = document.documentElement;
+    root.style.setProperty('--bg-color', CONFIG.bgColor);
+    root.style.setProperty('--accent-color', CONFIG.accentColor);
+    root.style.setProperty('--secondary-color', CONFIG.secondaryColor);
+    /* Compute alpha version of accent */
+    var hex = CONFIG.accentColor.replace('#', '');
+    var r = parseInt(hex.substring(0, 2), 16);
+    var g = parseInt(hex.substring(2, 4), 16);
+    var b = parseInt(hex.substring(4, 6), 16);
+    root.style.setProperty('--accent-alpha', 'rgba(' + r + ',' + g + ',' + b + ',0.3)');
+    document.getElementById('bgGradient').style.background =
+      'linear-gradient(135deg, ' + CONFIG.bgColor + ' 0%, #0a0a0f 40%, #0d0d1a 60%, ' + CONFIG.bgColor + ' 100%)';
+  }
+
+  /* === Populate DOM === */
+  function populateContent() {
+    document.getElementById('productName').textContent = CONFIG.productName;
+    document.getElementById('tagline').textContent = CONFIG.tagline;
+    document.getElementById('priceValue').innerHTML =
+      '<span class="price-currency">' + CONFIG.currency + '</span>' + CONFIG.price;
+    document.getElementById('launchText').textContent = CONFIG.launchDate;
+    document.getElementById('ctaButton').textContent = CONFIG.ctaText;
+
+    var featuresEl = document.getElementById('features');
+    featuresEl.innerHTML = '';
+    CONFIG.features.forEach(function(f) {
+      var item = document.createElement('div');
+      item.className = 'feature-item';
+      item.innerHTML =
+        '<div class="feature-icon">' + f.icon + '</div>' +
+        '<div class="feature-text">' + f.text + '</div>';
+      featuresEl.appendChild(item);
+    });
+  }
+
+  /* === Particle Burst === */
+  function createParticles() {
+    var container = document.getElementById('particles');
+    container.innerHTML = '';
+    var count = 40;
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      var angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      var dist = 20 + Math.random() * 30;
+      var tx = Math.cos(angle) * dist;
+      var ty = Math.sin(angle) * dist;
+      var dur = 0.8 + Math.random() * 0.6;
+      var delay = Math.random() * 0.3;
+      var size = 0.2 + Math.random() * 0.5;
+      p.style.cssText =
+        'left:50%;top:50%;width:' + size + 'vw;height:' + size + 'vw;' +
+        'background:' + (Math.random() > 0.5 ? CONFIG.accentColor : CONFIG.secondaryColor) + ';' +
+        'animation:particleBurst ' + dur + 's cubic-bezier(0.16,1,0.3,1) ' + delay + 's forwards;' +
+        '--tx:' + tx + 'vw;--ty:' + ty + 'vh;';
+      container.appendChild(p);
+    }
+  }
+
+  /* Inject particle keyframes */
+  function injectParticleKeyframes() {
+    var existing = document.getElementById('particle-keyframes');
+    if (existing) existing.remove();
+    var style = document.createElement('style');
+    style.id = 'particle-keyframes';
+    style.textContent = '@keyframes particleBurst {' +
+      '0% { opacity: 1; transform: translate(-50%, -50%) scale(0); }' +
+      '20% { opacity: 1; }' +
+      '100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1); }' +
+    '}';
+    document.head.appendChild(style);
+  }
+
+  /* === Animation Timeline === */
+  var animTimer = null;
+  var phaseTimers = [];
+
+  function clearTimers() {
+    if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+    phaseTimers.forEach(function(t) { clearTimeout(t); });
+    phaseTimers = [];
+  }
+
+  function resetAll() {
+    var ids = ['spotlight','productName','tagline','divider','priceSection',
+               'launchBadge','ctaButton','scanline','cornerTL','cornerTR','cornerBL','cornerBR'];
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('active','exit-fade','exit-fade-raw','exit-scale');
+      }
+    });
+    /* Reset geo shapes */
+    for (var g = 1; g <= 5; g++) {
+      var geo = document.getElementById('geo' + g);
+      if (geo) geo.classList.remove('exit-fade-raw');
+      if (geo) geo.style.animation = '';
+    }
+    /* Reset features */
+    var feats = document.querySelectorAll('.feature-item');
+    feats.forEach(function(f) { f.classList.remove('active', 'exit-fade-raw'); });
+    /* Clear particles */
+    document.getElementById('particles').innerHTML = '';
+  }
+
+  function schedulePhase(fn, delayMs) {
+    phaseTimers.push(setTimeout(fn, delayMs));
+  }
+
+  function runCycle() {
+    resetAll();
+    populateContent();
+
+    var dur = CONFIG.cycleDuration * 1000;
+    var introEnd = dur * 0.15;
+    var holdEnd = dur * 0.75;
+    var exitStart = holdEnd;
+    var exitEnd = dur * 0.92;
+
+    /* --- INTRO PHASE --- */
+
+    /* t=0: Spotlight + scanline + corners */
+    schedulePhase(function() {
+      document.getElementById('spotlight').classList.add('active');
+      document.getElementById('scanline').classList.add('active');
+      ['cornerTL','cornerTR','cornerBL','cornerBR'].forEach(function(id) {
+        document.getElementById(id).classList.add('active');
+      });
+    }, 0);
+
+    /* t=200ms: Particle burst */
+    schedulePhase(function() {
+      createParticles();
+    }, 200);
+
+    /* t=400ms: Product name */
+    schedulePhase(function() {
+      document.getElementById('productName').classList.add('active');
+    }, 400);
+
+    /* t=700ms: Tagline */
+    schedulePhase(function() {
+      document.getElementById('tagline').classList.add('active');
+    }, 700);
+
+    /* t=900ms: Divider */
+    schedulePhase(function() {
+      document.getElementById('divider').classList.add('active');
+    }, 900);
+
+    /* t=1100ms+: Features stagger */
+    var featureItems = document.querySelectorAll('.feature-item');
+    featureItems.forEach(function(item, idx) {
+      schedulePhase(function() {
+        item.classList.add('active');
+        item.style.animationDelay = '0s';
+      }, 1100 + idx * 200);
+    });
+
+    /* t=2000ms: Price */
+    schedulePhase(function() {
+      document.getElementById('priceSection').classList.add('active');
+    }, 2000);
+
+    /* t=2400ms: Launch badge */
+    schedulePhase(function() {
+      document.getElementById('launchBadge').classList.add('active');
+    }, 2400);
+
+    /* t=2800ms: CTA */
+    schedulePhase(function() {
+      document.getElementById('ctaButton').classList.add('active');
+    }, 2800);
+
+    /* --- EXIT PHASE --- */
+    schedulePhase(function() {
+      /* Stagger exit */
+      document.getElementById('ctaButton').classList.add('exit-fade');
+      schedulePhase(function() {
+        document.getElementById('launchBadge').classList.add('exit-fade');
+      }, exitStart + 100 - exitStart);
+
+      schedulePhase(function() {
+        document.getElementById('priceSection').classList.add('exit-fade');
+      }, 200);
+
+      schedulePhase(function() {
+        featureItems.forEach(function(item, idx) {
+          setTimeout(function() { item.classList.add('exit-fade-raw'); }, idx * 80);
+        });
+      }, 350);
+
+      schedulePhase(function() {
+        document.getElementById('divider').classList.add('exit-fade-raw');
+        document.getElementById('tagline').classList.add('exit-fade');
+      }, 600);
+
+      schedulePhase(function() {
+        document.getElementById('productName').classList.add('exit-fade');
+      }, 750);
+
+      schedulePhase(function() {
+        document.getElementById('spotlight').classList.add('exit-scale');
+        for (var g = 1; g <= 5; g++) {
+          document.getElementById('geo' + g).classList.add('exit-fade-raw');
+        }
+        ['cornerTL','cornerTR','cornerBL','cornerBR'].forEach(function(id) {
+          document.getElementById(id).classList.add('exit-fade-raw');
+        });
+      }, 900);
+    }, exitStart);
+
+    /* --- LOOP --- */
+    animTimer = setTimeout(function() {
+      runCycle();
+    }, dur);
+  }
+
+  /* === PostMessage Bridge === */
+  window.addEventListener('message', function(e) {
+    if (e.data && typeof e.data === 'object') {
+      if (e.data.type === 'CONFIG_UPDATE' && e.data.payload) {
+        Object.keys(e.data.payload).forEach(function(key) {
+          CONFIG[key] = e.data.payload[key];
+        });
+        applyTheme();
+        clearTimers();
+        runCycle();
+      }
+      if (e.data.type === 'SEEK' || e.data.type === 'RESTART') {
+        clearTimers();
+        runCycle();
+      }
+    }
+  });
+
+  /* === Init === */
+  injectParticleKeyframes();
+  applyTheme();
+  populateContent();
+  runCycle();
+})();
+</script>
+</body>
+</html>

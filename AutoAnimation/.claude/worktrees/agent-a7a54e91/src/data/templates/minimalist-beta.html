@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimalist Beta</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0C0C0C;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    color: #fff;
+  }
+  .subtle-grid {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 80px 80px;
+    z-index: 1;
+  }
+  .content-wrapper {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    text-align: center;
+    width: 85%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+  .beta-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    animation: badgePulse 3s ease-in-out infinite, fadeInUp 6s ease-in-out infinite;
+  }
+  @keyframes badgePulse {
+    0%, 100% { border-color: rgba(255,255,255,0.2); box-shadow: none; }
+    50% { border-color: rgba(255,255,255,0.5); box-shadow: 0 0 15px rgba(255,255,255,0.05); }
+  }
+  .heading-serif {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: clamp(32px, 8vw, 64px);
+    font-weight: 400;
+    line-height: 1.1;
+    color: #fff;
+    animation: fadeInUp 6s ease-in-out infinite 0.3s;
+  }
+  .heading-serif em {
+    font-style: italic;
+    color: rgba(255,255,255,0.6);
+  }
+  .mono-desc {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(10px, 1.5vw, 13px);
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+    animation: fadeInUp 6s ease-in-out infinite 0.6s;
+  }
+  @keyframes fadeInUp {
+    0%, 100% { opacity: 0; transform: translateY(15px); }
+    15%, 85% { opacity: 1; transform: translateY(0); }
+  }
+  .divider {
+    width: 40px; height: 1px;
+    background: rgba(255,255,255,0.2);
+    animation: dividerExpand 6s ease-in-out infinite 0.5s;
+  }
+  @keyframes dividerExpand {
+    0%, 100% { width: 0; opacity: 0; }
+    20%, 80% { width: 40px; opacity: 1; }
+  }
+  /* Countdown timer */
+  .countdown-container {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    animation: fadeInUp 6s ease-in-out infinite 0.9s;
+  }
+  .countdown-unit {
+    text-align: center;
+  }
+  .countdown-value {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(24px, 5vw, 40px);
+    font-weight: 700;
+    color: #fff;
+    min-width: 50px;
+  }
+  .countdown-label {
+    font-family: 'Courier New', monospace;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-top: 4px;
+  }
+  .countdown-sep {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(20px, 4vw, 32px);
+    color: rgba(255,255,255,0.2);
+    animation: colonBlink 1s ease-in-out infinite;
+  }
+  @keyframes colonBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+  /* Email capture styling */
+  .email-form {
+    display: flex;
+    gap: 0;
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: fadeInUp 6s ease-in-out infinite 1.2s;
+  }
+  .email-input {
+    flex: 1;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+    border: none;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    outline: none;
+    letter-spacing: 0.05em;
+  }
+  .email-input::placeholder {
+    color: rgba(255,255,255,0.2);
+  }
+  .email-btn {
+    padding: 14px 20px;
+    background: #fff;
+    border: none;
+    color: #0C0C0C;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  /* Progress indicator */
+  .progress-container {
+    width: 100%;
+    max-width: 300px;
+    animation: fadeInUp 6s ease-in-out infinite 1.5s;
+  }
+  .progress-label {
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #fff;
+    border-radius: 1px;
+    animation: progressGrow 8s ease-in-out infinite;
+  }
+  @keyframes progressGrow {
+    0% { width: 62%; }
+    50% { width: 78%; }
+    100% { width: 62%; }
+  }
+  .corner-mono {
+    position: fixed;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.15);
+    z-index: 20;
+  }
+  .cm-tl { top: 20px; left: 20px; }
+  .cm-tr { top: 20px; right: 20px; text-align: right; }
+  .cm-bl { bottom: 20px; left: 20px; }
+  .cm-br { bottom: 20px; right: 20px; text-align: right; }
+  .floating-accent {
+    position: fixed;
+    width: 1px;
+    background: rgba(255,255,255,0.06);
+    z-index: 2;
+  }
+  .fa-1 { left: 20%; top: 10%; height: 80%; animation: accentPulse 6s ease-in-out infinite; }
+  .fa-2 { left: 80%; top: 10%; height: 80%; animation: accentPulse 6s ease-in-out infinite 3s; }
+  @keyframes accentPulse {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="subtle-grid"></div>
+<div class="floating-accent fa-1"></div>
+<div class="floating-accent fa-2"></div>
+
+<div class="content-wrapper">
+  <div class="beta-badge" id="badgeText">BETA</div>
+  <div class="heading-serif" id="headingText">Something<br><em>Beautiful</em></div>
+  <div class="divider"></div>
+  <div class="mono-desc" id="descText">We're building something extraordinary.<br>Be the first to experience it.</div>
+
+  <div class="countdown-container">
+    <div class="countdown-unit">
+      <div class="countdown-value" id="countDays">14</div>
+      <div class="countdown-label">Days</div>
+    </div>
+    <div class="countdown-sep">:</div>
+    <div class="countdown-unit">
+      <div class="countdown-value" id="countHours">08</div>
+      <div class="countdown-label">Hours</div>
+    </div>
+    <div class="countdown-sep">:</div>
+    <div class="countdown-unit">
+      <div class="countdown-value" id="countMins">42</div>
+      <div class="countdown-label">Mins</div>
+    </div>
+    <div class="countdown-sep">:</div>
+    <div class="countdown-unit">
+      <div class="countdown-value" id="countSecs">00</div>
+      <div class="countdown-label">Secs</div>
+    </div>
+  </div>
+
+  <div class="email-form">
+    <div class="email-input" id="emailPlaceholder">your@email.com</div>
+    <div class="email-btn" id="emailBtn">NOTIFY ME</div>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-label">
+      <span id="progressLabel">DEVELOPMENT</span>
+      <span id="progressValue">72%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+</div>
+
+<div class="corner-mono cm-tl" id="cmTL">V0.1.0-BETA</div>
+<div class="corner-mono cm-tr" id="cmTR">LAUNCHING SOON</div>
+<div class="corner-mono cm-bl" id="cmBL">2025</div>
+<div class="corner-mono cm-br" id="cmBR">INVITE ONLY</div>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var BADGE_TEXT = 'BETA';
+  var HEADING_TEXT = 'Something<br><em>Beautiful</em>';
+  var DESC_TEXT = 'We\'re building something extraordinary.<br>Be the first to experience it.';
+  var EMAIL_PLACEHOLDER = 'your@email.com';
+  var BTN_TEXT = 'NOTIFY ME';
+  var PROGRESS_LABEL = 'DEVELOPMENT';
+  var PROGRESS_PERCENT = 72;
+  var CORNER_TL = 'V0.1.0-BETA';
+  var CORNER_TR = 'LAUNCHING SOON';
+  var CORNER_BL = '2025';
+  var CORNER_BR = 'INVITE ONLY';
+  // Countdown target (days from now)
+  var COUNTDOWN_DAYS = 14;
+  // === END EDITABLE ===
+
+  document.getElementById('badgeText').textContent = BADGE_TEXT;
+  document.getElementById('headingText').innerHTML = HEADING_TEXT;
+  document.getElementById('descText').innerHTML = DESC_TEXT;
+  document.getElementById('emailPlaceholder').textContent = EMAIL_PLACEHOLDER;
+  document.getElementById('emailBtn').textContent = BTN_TEXT;
+  document.getElementById('progressLabel').textContent = PROGRESS_LABEL;
+  document.getElementById('progressValue').textContent = PROGRESS_PERCENT + '%';
+  document.getElementById('cmTL').textContent = CORNER_TL;
+  document.getElementById('cmTR').textContent = CORNER_TR;
+  document.getElementById('cmBL').textContent = CORNER_BL;
+  document.getElementById('cmBR').textContent = CORNER_BR;
+
+  // Animated countdown
+  var targetTime = Date.now() + COUNTDOWN_DAYS * 24 * 60 * 60 * 1000;
+  function updateCountdown() {
+    var now = Date.now();
+    var diff = targetTime - now;
+    if (diff <= 0) {
+      targetTime = Date.now() + COUNTDOWN_DAYS * 24 * 60 * 60 * 1000;
+      diff = targetTime - now;
+    }
+    var days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    var hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    var mins = Math.floor((diff / (1000 * 60)) % 60);
+    var secs = Math.floor((diff / 1000) % 60);
+
+    document.getElementById('countDays').textContent = String(days).padStart(2, '0');
+    document.getElementById('countHours').textContent = String(hours).padStart(2, '0');
+    document.getElementById('countMins').textContent = String(mins).padStart(2, '0');
+    document.getElementById('countSecs').textContent = String(secs).padStart(2, '0');
+
+    requestAnimationFrame(updateCountdown);
+  }
+  updateCountdown();
+</script>
+</body>
+</html>

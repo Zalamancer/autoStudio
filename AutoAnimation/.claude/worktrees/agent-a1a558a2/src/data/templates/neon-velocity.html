@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Velocity</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #050505;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #fff;
+  }
+  canvas#speedCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+  .neon-glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .glow-1 {
+    width: 400px; height: 400px;
+    background: rgba(191,255,0,0.08);
+    top: 20%; left: 30%;
+    animation: glowDrift 8s ease-in-out infinite;
+  }
+  .glow-2 {
+    width: 300px; height: 300px;
+    background: rgba(191,255,0,0.05);
+    bottom: 20%; right: 20%;
+    animation: glowDrift 8s ease-in-out infinite 4s;
+  }
+  @keyframes glowDrift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(30px, -20px) scale(1.2); }
+  }
+  .content-layer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+  .countdown-display {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: clamp(60px, 18vw, 160px);
+    font-weight: 900;
+    color: #BFFF00;
+    text-shadow:
+      0 0 20px rgba(191,255,0,0.6),
+      0 0 60px rgba(191,255,0,0.3),
+      0 0 120px rgba(191,255,0,0.1);
+    animation: numberGlow 2s ease-in-out infinite;
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+  }
+  @keyframes numberGlow {
+    0%, 100% { text-shadow: 0 0 20px rgba(191,255,0,0.6), 0 0 60px rgba(191,255,0,0.3); }
+    50% { text-shadow: 0 0 40px rgba(191,255,0,0.8), 0 0 100px rgba(191,255,0,0.5), 0 0 160px rgba(191,255,0,0.2); }
+  }
+  .velocity-text {
+    font-size: clamp(10px, 2vw, 16px);
+    font-weight: 700;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: rgba(191,255,0,0.6);
+    animation: textFlicker 4s ease-in-out infinite;
+  }
+  @keyframes textFlicker {
+    0%, 100% { opacity: 0.6; }
+    5% { opacity: 0.2; }
+    10% { opacity: 0.8; }
+    15% { opacity: 0.4; }
+    20%, 80% { opacity: 1; }
+    85% { opacity: 0.5; }
+    90% { opacity: 0.9; }
+    95% { opacity: 0.3; }
+  }
+  .glass-panel {
+    position: fixed;
+    background: rgba(191,255,0,0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(191,255,0,0.1);
+    z-index: 8;
+  }
+  .gp-left {
+    left: 20px; top: 30%; width: 4px; height: 40%;
+    background: rgba(191,255,0,0.3);
+    box-shadow: 0 0 15px rgba(191,255,0,0.3);
+    animation: edgePulse 2s ease-in-out infinite;
+  }
+  .gp-right {
+    right: 20px; top: 30%; width: 4px; height: 40%;
+    background: rgba(191,255,0,0.3);
+    box-shadow: 0 0 15px rgba(191,255,0,0.3);
+    animation: edgePulse 2s ease-in-out infinite 1s;
+  }
+  @keyframes edgePulse {
+    0%, 100% { opacity: 0.3; height: 30%; }
+    50% { opacity: 1; height: 50%; }
+  }
+  .speed-line {
+    position: fixed;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #BFFF00, transparent);
+    z-index: 5;
+    opacity: 0;
+    animation: speedLineShoot 1.5s linear infinite;
+  }
+  @keyframes speedLineShoot {
+    0% { left: -20%; opacity: 0; width: 15%; }
+    10% { opacity: 1; }
+    90% { opacity: 0.5; }
+    100% { left: 120%; opacity: 0; width: 15%; }
+  }
+  .blur-streak {
+    position: fixed;
+    height: 1px;
+    z-index: 4;
+    opacity: 0;
+    filter: blur(2px);
+    animation: streakMove 2s linear infinite;
+  }
+  @keyframes streakMove {
+    0% { right: -10%; opacity: 0; width: 20%; }
+    10% { opacity: 0.4; }
+    90% { opacity: 0.2; }
+    100% { right: 110%; opacity: 0; width: 20%; }
+  }
+  .kinetic-word {
+    position: fixed;
+    font-size: clamp(40px, 10vw, 90px);
+    font-weight: 900;
+    text-transform: uppercase;
+    z-index: 6;
+    -webkit-text-stroke: 1px rgba(191,255,0,0.2);
+    color: transparent;
+    animation: kineticScroll 6s linear infinite;
+    white-space: nowrap;
+  }
+  .kw-1 { top: 15%; }
+  .kw-2 { bottom: 15%; animation-direction: reverse; }
+  @keyframes kineticScroll {
+    0% { transform: translateX(100vw); }
+    100% { transform: translateX(-200%); }
+  }
+  .corner-detail {
+    position: fixed;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: rgba(191,255,0,0.3);
+    z-index: 15;
+  }
+  .ct-tl { top: 16px; left: 16px; }
+  .ct-br { bottom: 16px; right: 16px; text-align: right; }
+</style>
+</head>
+<body>
+<canvas id="speedCanvas"></canvas>
+<div class="neon-glow glow-1"></div>
+<div class="neon-glow glow-2"></div>
+
+<div class="glass-panel gp-left"></div>
+<div class="glass-panel gp-right"></div>
+
+<div id="speedLines"></div>
+<div id="blurStreaks"></div>
+
+<div class="kinetic-word kw-1" id="kineticTop">VELOCITY VELOCITY VELOCITY</div>
+<div class="kinetic-word kw-2" id="kineticBottom">SPEED SPEED SPEED SPEED</div>
+
+<div class="content-layer">
+  <div class="countdown-display" id="countdownNum">00:00</div>
+  <div class="velocity-text" id="velocityText">MAXIMUM VELOCITY</div>
+</div>
+
+<div class="corner-detail ct-tl" id="cornerTL">FPS: 120 // RENDER</div>
+<div class="corner-detail ct-br" id="cornerBR">NEON.SYS ACTIVE</div>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var VELOCITY_TEXT = 'MAXIMUM VELOCITY';
+  var KINETIC_TOP = 'VELOCITY VELOCITY VELOCITY';
+  var KINETIC_BOTTOM = 'SPEED SPEED SPEED SPEED';
+  var CORNER_TL = 'FPS: 120 // RENDER';
+  var CORNER_BR = 'NEON.SYS ACTIVE';
+  // === END EDITABLE ===
+
+  document.getElementById('velocityText').textContent = VELOCITY_TEXT;
+  document.getElementById('kineticTop').textContent = KINETIC_TOP;
+  document.getElementById('kineticBottom').textContent = KINETIC_BOTTOM;
+  document.getElementById('cornerTL').textContent = CORNER_TL;
+  document.getElementById('cornerBR').textContent = CORNER_BR;
+
+  // Speed lines
+  var speedLinesContainer = document.getElementById('speedLines');
+  for (var i = 0; i < 8; i++) {
+    var line = document.createElement('div');
+    line.className = 'speed-line';
+    line.style.top = (15 + Math.random() * 70) + '%';
+    line.style.animationDelay = (Math.random() * 1.5) + 's';
+    line.style.animationDuration = (0.8 + Math.random() * 1) + 's';
+    line.style.background = 'linear-gradient(90deg, transparent, rgba(191,255,0,' + (0.3 + Math.random() * 0.5) + '), transparent)';
+    speedLinesContainer.appendChild(line);
+  }
+
+  // Blur streaks
+  var streakContainer = document.getElementById('blurStreaks');
+  for (var j = 0; j < 5; j++) {
+    var streak = document.createElement('div');
+    streak.className = 'blur-streak';
+    streak.style.top = (20 + Math.random() * 60) + '%';
+    streak.style.animationDelay = (Math.random() * 2) + 's';
+    streak.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+    streak.style.background = 'linear-gradient(270deg, transparent, rgba(191,255,0,0.15), transparent)';
+    streakContainer.appendChild(streak);
+  }
+
+  // Rapidly changing countdown numbers
+  var countdownEl = document.getElementById('countdownNum');
+  var countValue = 0;
+  var countDirection = 1;
+
+  function updateCount() {
+    countValue += countDirection * (Math.random() * 3 + 1);
+    if (countValue > 99.99) { countValue = 99.99; countDirection = -1; }
+    if (countValue < 0) { countValue = 0; countDirection = 1; }
+
+    var mins = Math.floor(countValue);
+    var secs = Math.floor((countValue % 1) * 100);
+    countdownEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+  }
+  setInterval(updateCount, 50);
+
+  // Canvas speed tunnel effect
+  var canvas = document.getElementById('speedCanvas');
+  var ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  var particles = [];
+  var PARTICLE_COUNT = 80;
+
+  function initParticles() {
+    particles = [];
+    for (var k = 0; k < PARTICLE_COUNT; k++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        speed: 2 + Math.random() * 6,
+        length: 20 + Math.random() * 60,
+        opacity: 0.05 + Math.random() * 0.15
+      });
+    }
+  }
+  initParticles();
+
+  function renderCanvas() {
+    ctx.fillStyle = 'rgba(5,5,5,0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (var k = 0; k < particles.length; k++) {
+      var p = particles[k];
+      p.x += p.speed;
+
+      if (p.x > canvas.width + p.length) {
+        p.x = -p.length;
+        p.y = Math.random() * canvas.height;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(p.x - p.length, p.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.strokeStyle = 'rgba(191,255,0,' + p.opacity + ')';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(renderCanvas);
+  }
+  renderCanvas();
+</script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Language Flashcard Animation</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: linear-gradient(135deg, var(--bg-from, #1a1a2e), var(--bg-to, #2d1b69));
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    perspective: 1200px;
+  }
+
+  /* Card scene */
+  .card-scene {
+    width: 340px; height: 220px;
+    perspective: 1200px;
+    margin-bottom: 30px;
+  }
+
+  .card {
+    width: 100%; height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .card-front {
+    background: var(--card-color, rgba(255,255,255,0.1));
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  .card-back {
+    background: var(--card-color, rgba(255,255,255,0.1));
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+    transform: rotateY(180deg);
+  }
+
+  .lang-flag { font-size: 28px; margin-bottom: 8px; }
+  .lang-label {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;
+  }
+  .card-word {
+    font-size: 36px; font-weight: 700; color: #fff;
+    text-align: center;
+  }
+  .pronunciation {
+    font-size: 16px; color: rgba(255,255,255,0.5);
+    margin-top: 8px; font-style: italic;
+  }
+
+  /* Sound wave */
+  .sound-wave {
+    display: flex; gap: 3px; align-items: center;
+    margin-top: 16px; opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .sound-wave.active { opacity: 1; }
+  .sound-wave .bar {
+    width: 3px; border-radius: 2px;
+    background: rgba(255,255,255,0.6);
+    animation: soundBounce 0.6s ease-in-out infinite alternate;
+  }
+  .sound-wave .bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+  .sound-wave .bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+  .sound-wave .bar:nth-child(3) { height: 12px; animation-delay: 0.2s; }
+  .sound-wave .bar:nth-child(4) { height: 20px; animation-delay: 0.15s; }
+  .sound-wave .bar:nth-child(5) { height: 10px; animation-delay: 0.05s; }
+  @keyframes soundBounce {
+    from { transform: scaleY(0.4); }
+    to { transform: scaleY(1); }
+  }
+
+  /* Result indicator */
+  .result {
+    position: absolute; top: -20px; right: -20px;
+    width: 50px; height: 50px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 700;
+    opacity: 0; transform: scale(0);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+    z-index: 10;
+  }
+  .result.correct {
+    background: #22c55e; color: #fff;
+    box-shadow: 0 4px 20px rgba(34,197,94,0.5);
+  }
+  .result.incorrect {
+    background: #ef4444; color: #fff;
+    box-shadow: 0 4px 20px rgba(239,68,68,0.5);
+  }
+  .result.show { opacity: 1; transform: scale(1); }
+
+  /* Progress dots */
+  .progress-dots {
+    display: flex; gap: 10px;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .dot.active {
+    background: #fff;
+    transform: scale(1.3);
+    box-shadow: 0 0 10px rgba(255,255,255,0.5);
+  }
+  .dot.done-correct { background: #22c55e; }
+  .dot.done-incorrect { background: #ef4444; }
+
+  /* Entrance */
+  .card-scene {
+    opacity: 0; transform: translateY(30px);
+    animation: entranceUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.2s forwards;
+  }
+  .progress-dots {
+    opacity: 0;
+    animation: fadeIn 0.4s ease 0.5s forwards;
+  }
+  @keyframes entranceUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Exit */
+  .card-scene.exit {
+    animation: exitDown 0.5s ease-in forwards;
+  }
+  @keyframes exitDown {
+    to { opacity: 0; transform: translateY(-30px) scale(0.95); }
+  }
+</style>
+</head>
+<body>
+<div class="card-scene" id="cardScene">
+  <div class="card" id="flashcard">
+    <div class="result" id="resultBadge"></div>
+    <div class="card-face card-front" id="frontFace">
+      <div class="lang-flag" id="frontFlag">🇬🇧</div>
+      <div class="lang-label" id="frontLabel">English</div>
+      <div class="card-word" id="frontWord">Hello</div>
+      <div class="sound-wave" id="soundWave">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        <div class="bar"></div><div class="bar"></div>
+      </div>
+    </div>
+    <div class="card-face card-back" id="backFace">
+      <div class="lang-flag" id="backFlag">🇪🇸</div>
+      <div class="lang-label" id="backLabel">Spanish</div>
+      <div class="card-word" id="backWord">Hola</div>
+      <div class="pronunciation" id="pronunciation">/ˈo.la/</div>
+    </div>
+  </div>
+</div>
+<div class="progress-dots" id="dots"></div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  cards: [
+    { front: 'Hello',     back: 'Hola',      pronunciation: '/ˈo.la/',     correct: true },
+    { front: 'Goodbye',   back: 'Adiós',     pronunciation: '/a.ˈðjos/',   correct: true },
+    { front: 'Thank you', back: 'Gracias',   pronunciation: '/ˈɡɾa.θjas/', correct: true },
+    { front: 'Please',    back: 'Por favor', pronunciation: '/poɾ fa.ˈβoɾ/', correct: false },
+    { front: 'Sorry',     back: 'Lo siento', pronunciation: '/lo ˈsjen.to/', correct: true }
+  ],
+  fromLang: 'English',
+  toLang: 'Spanish',
+  bgGradient: ['#1a1a2e', '#2d1b69'],
+  cardColor: 'rgba(255,255,255,0.1)',
+  cycleDuration: 12
+};
+
+const langFlags = {
+  'English': '🇬🇧', 'Spanish': '🇪🇸', 'French': '🇫🇷', 'German': '🇩🇪',
+  'Italian': '🇮🇹', 'Portuguese': '🇵🇹', 'Japanese': '🇯🇵', 'Chinese': '🇨🇳',
+  'Korean': '🇰🇷', 'Russian': '🇷🇺', 'Arabic': '🇸🇦', 'Hindi': '🇮🇳',
+  'Turkish': '🇹🇷', 'Dutch': '🇳🇱', 'Swedish': '🇸🇪'
+};
+
+function applyConfig() {
+  document.body.style.background = `linear-gradient(135deg, ${CONFIG.bgGradient[0]}, ${CONFIG.bgGradient[1]})`;
+  document.documentElement.style.setProperty('--card-color', CONFIG.cardColor);
+  document.getElementById('frontLabel').textContent = CONFIG.fromLang;
+  document.getElementById('backLabel').textContent = CONFIG.toLang;
+  document.getElementById('frontFlag').textContent = langFlags[CONFIG.fromLang] || '🏳️';
+  document.getElementById('backFlag').textContent = langFlags[CONFIG.toLang] || '🏳️';
+
+  // Build dots
+  const dotsEl = document.getElementById('dots');
+  dotsEl.innerHTML = '';
+  CONFIG.cards.forEach(() => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    dotsEl.appendChild(d);
+  });
+}
+
+function runCycle() {
+  const scene = document.getElementById('cardScene');
+  scene.classList.remove('exit');
+  scene.style.animation = 'none';
+  scene.offsetHeight;
+  scene.style.animation = '';
+
+  applyConfig();
+
+  let currentIndex = 0;
+  const totalCards = CONFIG.cards.length;
+  const perCard = ((CONFIG.cycleDuration - 1.5) * 1000) / totalCards;
+
+  function showCard(index) {
+    if (index >= totalCards) {
+      // Exit
+      setTimeout(() => scene.classList.add('exit'), 200);
+      return;
+    }
+
+    const c = CONFIG.cards[index];
+    const card = document.getElementById('flashcard');
+    const result = document.getElementById('resultBadge');
+    const soundWave = document.getElementById('soundWave');
+    const dots = document.querySelectorAll('.dot');
+
+    // Reset card
+    card.classList.remove('flipped');
+    result.classList.remove('show', 'correct', 'incorrect');
+    result.textContent = '';
+    soundWave.classList.remove('active');
+
+    // Set content
+    document.getElementById('frontWord').textContent = c.front;
+    document.getElementById('backWord').textContent = c.back;
+    document.getElementById('pronunciation').textContent = c.pronunciation;
+
+    // Activate dot
+    dots.forEach((d, i) => {
+      if (i === index) d.classList.add('active');
+      else d.classList.remove('active');
+    });
+
+    // Sound wave
+    setTimeout(() => soundWave.classList.add('active'), 300);
+
+    // Flip
+    setTimeout(() => {
+      card.classList.add('flipped');
+      soundWave.classList.remove('active');
+    }, perCard * 0.4);
+
+    // Show result
+    setTimeout(() => {
+      result.className = 'result ' + (c.correct ? 'correct' : 'incorrect');
+      result.textContent = c.correct ? '✓' : '✗';
+      setTimeout(() => result.classList.add('show'), 50);
+
+      // Mark dot
+      dots[index].classList.remove('active');
+      dots[index].classList.add(c.correct ? 'done-correct' : 'done-incorrect');
+    }, perCard * 0.65);
+
+    // Next card
+    setTimeout(() => showCard(index + 1), perCard);
+  }
+
+  setTimeout(() => showCard(0), 600);
+  setTimeout(runCycle, CONFIG.cycleDuration * 1000);
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+    applyConfig();
+  }
+});
+
+applyConfig();
+setTimeout(runCycle, 100);
+</script>
+</body>
+</html>

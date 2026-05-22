@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>City Skyline - Night View</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0e27; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  skyTop: '#050816',
+  skyBottom: '#1a1a3e',
+  horizonGlow: '#1e2a5a',
+  buildingColor: '#0c1025',
+  buildingHighlight: '#141832',
+  windowOnColor: '#ffd666',
+  windowDimColor: '#ccaa44',
+  windowOffColor: '#0c1025',
+  moonColor: '#e8e0d0',
+  moonGlow: 'rgba(200,190,170,0.08)',
+  starColor: '#ffffff',
+  fogColor: 'rgba(20,25,60,0.3)',
+  craneColor: '#2a2a4a',
+  craneLight: '#ff3333'
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+const stars = [];
+const buildings = [];
+let windows = [];
+let craneAngle = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  initScene();
+}
+
+function initScene() {
+  // Stars
+  stars.length = 0;
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.45,
+      r: 0.5 + Math.random() * 1.5,
+      twinkleSpeed: 1 + Math.random() * 3,
+      twinkleOffset: Math.random() * Math.PI * 2
+    });
+  }
+
+  // Buildings
+  buildings.length = 0;
+  windows = [];
+  const horizonY = H * 0.55;
+  let x = -W * 0.02;
+
+  while (x < W * 1.02) {
+    const w = W * (0.03 + Math.random() * 0.06);
+    const h = H * (0.15 + Math.random() * 0.35);
+    const y = horizonY - h + H * 0.1;
+    const hasAntenna = Math.random() > 0.6;
+    const antennaH = h * (0.05 + Math.random() * 0.1);
+
+    buildings.push({ x, y, w, h: h + H * 0.5, hasAntenna, antennaH, layer: Math.random() });
+
+    // Windows for this building
+    const winW = w * 0.12;
+    const winH = winW * 0.7;
+    const cols = Math.floor(w / (winW * 2.2));
+    const rows = Math.floor((h * 0.85) / (winH * 2.5));
+    const startX = x + (w - cols * winW * 2.2) / 2 + winW * 0.5;
+    const startY = y + h * 0.08;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        windows.push({
+          x: startX + c * winW * 2.2,
+          y: startY + r * winH * 2.5,
+          w: winW,
+          h: winH,
+          on: Math.random() > 0.5,
+          nextToggle: Math.random() * 200,
+          brightness: 0.5 + Math.random() * 0.5
+        });
+      }
+    }
+
+    x += w + W * (0.002 + Math.random() * 0.015);
+  }
+
+  buildings.sort((a, b) => a.layer - b.layer);
+}
+
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+  grad.addColorStop(0, CONFIG.skyTop);
+  grad.addColorStop(0.7, CONFIG.skyBottom);
+  grad.addColorStop(1, CONFIG.horizonGlow);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawMoon() {
+  const mx = W * 0.78;
+  const my = H * 0.15;
+  const mr = W * 0.035;
+
+  // Outer glow
+  for (let i = 5; i >= 1; i--) {
+    ctx.beginPath();
+    ctx.arc(mx, my, mr + mr * i * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.moonGlow;
+    ctx.fill();
+  }
+
+  // Moon body
+  ctx.beginPath();
+  ctx.arc(mx, my, mr, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.moonColor;
+  ctx.fill();
+
+  // Craters
+  ctx.fillStyle = 'rgba(180,170,150,0.3)';
+  ctx.beginPath();
+  ctx.arc(mx - mr * 0.2, my - mr * 0.1, mr * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(mx + mr * 0.3, my + mr * 0.2, mr * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawStars() {
+  stars.forEach(s => {
+    const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(time * s.twinkleSpeed + s.twinkleOffset));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fill();
+  });
+}
+
+function drawBuildings() {
+  buildings.forEach(b => {
+    const shade = b.layer < 0.3 ? 0.6 : b.layer < 0.6 ? 0.8 : 1;
+    ctx.fillStyle = b.layer < 0.5 ? CONFIG.buildingHighlight : CONFIG.buildingColor;
+    ctx.globalAlpha = shade;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // Antenna
+    if (b.hasAntenna) {
+      ctx.strokeStyle = CONFIG.craneColor;
+      ctx.lineWidth = 2;
+      const ax = b.x + b.w / 2;
+      ctx.beginPath();
+      ctx.moveTo(ax, b.y);
+      ctx.lineTo(ax, b.y - b.antennaH);
+      ctx.stroke();
+
+      // Blinking light on antenna
+      const blink = Math.sin(time * 3 + b.x) > 0.3;
+      if (blink) {
+        ctx.beginPath();
+        ctx.arc(ax, b.y - b.antennaH, 3, 0, Math.PI * 2);
+        ctx.fillStyle = CONFIG.craneLight;
+        ctx.fill();
+      }
+    }
+
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawWindows() {
+  windows.forEach(w => {
+    w.nextToggle -= 1;
+    if (w.nextToggle <= 0) {
+      w.on = !w.on;
+      w.nextToggle = 100 + Math.random() * 400;
+      w.brightness = 0.4 + Math.random() * 0.6;
+    }
+
+    if (w.on) {
+      const alpha = w.brightness * (0.7 + 0.3 * Math.sin(time * 0.5 + w.x));
+      ctx.fillStyle = `rgba(255,214,102,${alpha})`;
+      ctx.fillRect(w.x, w.y, w.w, w.h);
+
+      // Window glow
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = CONFIG.windowOnColor;
+      ctx.fillRect(w.x, w.y, w.w, w.h);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = 'rgba(15,20,40,0.5)';
+      ctx.fillRect(w.x, w.y, w.w, w.h);
+    }
+  });
+}
+
+function drawCrane() {
+  const cx = W * 0.35;
+  const baseY = H * 0.32;
+  const towerH = H * 0.22;
+  const armLen = W * 0.1;
+
+  craneAngle = Math.sin(time * 0.15) * 0.3;
+
+  ctx.strokeStyle = CONFIG.craneColor;
+  ctx.lineWidth = 3;
+
+  // Tower
+  ctx.beginPath();
+  ctx.moveTo(cx, baseY);
+  ctx.lineTo(cx, baseY - towerH);
+  ctx.stroke();
+
+  // Arm
+  ctx.save();
+  ctx.translate(cx, baseY - towerH);
+  ctx.rotate(craneAngle);
+  ctx.beginPath();
+  ctx.moveTo(-armLen * 0.3, 0);
+  ctx.lineTo(armLen, 0);
+  ctx.stroke();
+
+  // Cable
+  ctx.beginPath();
+  ctx.moveTo(armLen * 0.7, 0);
+  ctx.lineTo(armLen * 0.7, towerH * 0.3);
+  ctx.stroke();
+
+  // Hook block
+  ctx.fillStyle = CONFIG.craneColor;
+  ctx.fillRect(armLen * 0.7 - 4, towerH * 0.3, 8, 8);
+
+  ctx.restore();
+
+  // Warning light
+  const pulse = Math.sin(time * 4) > 0;
+  if (pulse) {
+    ctx.beginPath();
+    ctx.arc(cx, baseY - towerH, 4, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.craneLight;
+    ctx.fill();
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = CONFIG.craneLight;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawFog() {
+  const fogY = H * 0.5;
+  const fogH = H * 0.15;
+
+  for (let i = 0; i < 3; i++) {
+    const offset = (time * (8 + i * 3) + i * W * 0.4) % (W * 1.5) - W * 0.25;
+    const grad = ctx.createRadialGradient(offset, fogY + i * 20, 0, offset, fogY + i * 20, W * 0.4);
+    grad.addColorStop(0, `rgba(20,25,60,${0.12 - i * 0.03})`);
+    grad.addColorStop(1, 'rgba(20,25,60,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, fogY - fogH, W, fogH * 2);
+  }
+}
+
+function draw() {
+  drawSky();
+  drawMoon();
+  drawStars();
+  drawBuildings();
+  drawWindows();
+  drawCrane();
+  drawFog();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

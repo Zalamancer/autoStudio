@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Instant Camera Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #1c1c1c; }
+  #stage { position: absolute; inset: 0; z-index: 1; }
+
+  .instant { position: absolute; opacity: 0; will-change: transform, opacity; }
+  .inst-frame { background: #fefefe; padding: 12px 12px 50px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .inst-photo { width: 170px; height: 170px; overflow: hidden; position: relative; }
+  .inst-color { width: 100%; height: 100%; }
+  .inst-photo::after { content:''; position: absolute; inset: 0; box-shadow: inset 0 0 20px rgba(0,0,0,0.15); }
+  .inst-label { position: absolute; bottom: 12px; left: 12px; right: 12px; text-align: center; font-family: 'Georgia', serif; font-style: italic; font-size: 14px; color: #666; }
+
+  @keyframes flashIn { 0% { opacity: 0; transform: var(--fi-start); filter: brightness(3); } 30% { opacity: 1; filter: brightness(1.5); } 100% { opacity: var(--fo); transform: var(--fi-end); filter: brightness(1); } }
+  @keyframes fadeAway { 0% { opacity: var(--fo); transform: var(--fi-end); } 100% { opacity: 0; transform: var(--fi-end) scale(0.9); filter: brightness(0.5); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  photos: [
+    { color: '#c62828', label: 'sunset' },
+    { color: '#1565c0', label: 'ocean' },
+    { color: '#2e7d32', label: 'forest' },
+    { color: '#f57f17', label: 'autumn' },
+    { color: '#6a1b9a', label: 'twilight' },
+    { color: '#00838f', label: 'lagoon' },
+    { color: '#d84315', label: 'desert' },
+    { color: '#283593', label: 'night sky' },
+  ],
+  bgColor: '#1c1c1c',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createPhotos() {
+  const els = [], n = CONFIG.photos.length, vw = window.innerWidth, vh = window.innerHeight;
+  const cols = 4, rows = 2;
+  const cellW = (vw - 60) / cols, cellH = (vh - 60) / rows;
+
+  for (let i = 0; i < n; i++) {
+    const p = CONFIG.photos[i], rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div'); el.className = 'instant';
+    const frame = document.createElement('div'); frame.className = 'inst-frame';
+    const photo = document.createElement('div'); photo.className = 'inst-photo';
+    const color = document.createElement('div'); color.className = 'inst-color'; color.style.background = p.color;
+    photo.appendChild(color); frame.appendChild(photo);
+    const label = document.createElement('div'); label.className = 'inst-label'; label.textContent = p.label;
+    frame.appendChild(label); el.appendChild(frame);
+
+    const col = i % cols, row = Math.floor(i / cols);
+    const bx = 30 + col * cellW + (cellW - 194) / 2;
+    const by = 30 + row * cellH + (cellH - 232) / 2;
+    const ox = (rng() - 0.5) * 16, oy = (rng() - 0.5) * 12;
+    el.style.left = (bx + ox) + 'px'; el.style.top = (by + oy) + 'px';
+
+    const rot = (rng() - 0.5) * 12, fo = 0.9 + rng() * 0.1;
+    el.style.setProperty('--fi-start', `translate(0, 40px) rotate(${rot}deg) scale(0.7)`);
+    el.style.setProperty('--fi-end', `translate(0, 0) rotate(${rot}deg) scale(1)`);
+    el.style.setProperty('--fo', String(fo));
+
+    stage.appendChild(el); els.push(el);
+  }
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=350, inD=550, hold=3500, outS=200, outD=400, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`flashIn ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{const ri=n-1-i;if(oe>=ri*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`fadeAway ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=createPhotos();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{stage.innerHTML='';els=createPhotos();runAnimation(els);},300);});
+</script>
+</body>
+</html>

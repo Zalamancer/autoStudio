@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blackletter Gothic Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #0f0f0f;
+  }
+
+  /* Dark leather/parchment texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse at 30% 30%, rgba(60,40,20,0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 70%, rgba(60,40,20,0.15) 0%, transparent 50%);
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.3;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 4px 12px;
+    position: relative;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+  }
+
+  /* Gold ornamental border */
+  .word-block.ornate .word-inner {
+    border: 2px solid #a08040;
+    padding: 10px 20px;
+    box-shadow: inset 0 0 10px rgba(160,128,64,0.1);
+  }
+
+  .word-block.ornate .word-inner::before,
+  .word-block.ornate .word-inner::after {
+    content: '\u2726';
+    position: absolute;
+    color: #a08040;
+    font-size: 16px;
+    opacity: 0.6;
+  }
+  .word-block.ornate .word-inner::before { top: -8px; left: -8px; }
+  .word-block.ornate .word-inner::after { bottom: -8px; right: -8px; }
+
+  /* Underline flourish */
+  .word-block.flourish .word-inner::after {
+    content: '\u2E3B';
+    position: absolute;
+    left: 10%;
+    bottom: -10px;
+    width: 80%;
+    text-align: center;
+    color: #a08040;
+    font-size: 20px;
+    opacity: 0.5;
+    letter-spacing: 8px;
+  }
+
+  @keyframes etchIn {
+    0% { opacity: 0; transform: var(--etch-start); filter: brightness(0.3); }
+    30% { opacity: 0.7; filter: brightness(1.3); }
+    60% { opacity: 0.95; transform: var(--etch-mid); filter: brightness(1.1); }
+    100% { opacity: var(--final-opacity); transform: var(--etch-end); filter: brightness(1); }
+  }
+
+  @keyframes smolderOut {
+    0% { opacity: var(--final-opacity); filter: brightness(1); }
+    30% { filter: brightness(1.5) sepia(0.3); }
+    60% { opacity: 0.4; filter: brightness(0.6) sepia(0.6); }
+    100% { opacity: 0; filter: brightness(0.2) sepia(1); }
+  }
+
+  /* Ornamental corner pieces */
+  .corner-ornament {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    color: #a08040;
+    opacity: 0.15;
+    font-size: 30px;
+    line-height: 1;
+  }
+
+  /* Decorative rule lines */
+  .rule-line {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    background: #a08040;
+    opacity: 0.1;
+  }
+
+  /* Cross decoration */
+  .deco-cross {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    color: #a08040;
+    opacity: 0.1;
+    font-size: 36px;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['DARK', 'REIGN', 'ETERNAL', 'SHADOW', 'IRON', 'THRONE'],
+  colors: ['#d4af37', '#e0e0e0', '#d4af37', '#e0e0e0', '#d4af37', '#e0e0e0'],
+  bgColor: '#0f0f0f',
+  maxRotation: 5,
+  overlapAmount: 0.22,
+  cycleDuration: 9500,
+  etchEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+// Using system fonts that approximate blackletter/gothic feel
+const fontPresets = [
+  { family: 'Georgia', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '12px' },
+  { family: 'Georgia', weight: '700', style: 'italic', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Georgia', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '14px' },
+];
+
+const fontSizes = [150, 85, 130, 90, 170, 80];
+const wordStyles = ['ornate', '', 'flourish', 'ornate', '', 'flourish'];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  // Corner ornaments
+  const corners = [
+    { top: '3%', left: '3%', char: '\u2726' },
+    { top: '3%', right: '3%', char: '\u2726' },
+    { bottom: '3%', left: '3%', char: '\u2726' },
+    { bottom: '3%', right: '3%', char: '\u2726' },
+  ];
+  corners.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'corner-ornament';
+    el.textContent = c.char;
+    if (c.top) el.style.top = c.top;
+    if (c.bottom) el.style.bottom = c.bottom;
+    if (c.left) el.style.left = c.left;
+    if (c.right) el.style.right = c.right;
+    stage.appendChild(el);
+  });
+
+  // Rule lines
+  const rules = [
+    { top: '10%', left: '15%', right: '15%', height: 1 },
+    { bottom: '10%', left: '15%', right: '15%', height: 1 },
+    { top: '12%', left: '15%', right: '15%', height: 1 },
+    { bottom: '12%', left: '15%', right: '15%', height: 1 },
+  ];
+  rules.forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'rule-line';
+    el.style.height = r.height + 'px';
+    if (r.top) el.style.top = r.top;
+    if (r.bottom) el.style.bottom = r.bottom;
+    el.style.left = r.left;
+    el.style.right = r.right;
+    stage.appendChild(el);
+  });
+
+  // Crosses
+  const crosses = [
+    { top: '48%', left: '4%' },
+    { top: '48%', right: '4%' },
+  ];
+  crosses.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'deco-cross';
+    el.textContent = '\u2720';
+    if (c.top) el.style.top = c.top;
+    if (c.left) el.style.left = c.left;
+    if (c.right) el.style.right = c.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.66;
+  const baseTop = vh * 0.17;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyles[i % wordStyles.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * vw * 0.18;
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.88 + rng() * 0.12;
+
+    el.style.setProperty('--etch-start', `translate(0, 0) rotate(${rotation}deg) scale(0.95)`);
+    el.style.setProperty('--etch-mid', `translate(0, 0) rotate(${rotation}deg) scale(1.02)`);
+    el.style.setProperty('--etch-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const etchStagger = 420;
+  const etchDuration = 650;
+  const holdDuration = 2400;
+  const smolderStagger = 250;
+  const smolderDuration = 600;
+  const pauseBeforeLoop = 800;
+
+  const totalEtchTime = (count - 1) * etchStagger + etchDuration;
+  const totalSmolderTime = (count - 1) * smolderStagger + smolderDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalEtchTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * etchStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `etchIn ${etchDuration}ms ease-out forwards`;
+        }
+      });
+    } else if (elapsed < totalEtchTime + holdDuration) {
+    } else if (elapsed < totalEtchTime + holdDuration + totalSmolderTime) {
+      const smolderElapsed = elapsed - totalEtchTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const wordStart = i * smolderStagger;
+        if (smolderElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `smolderOut ${smolderDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalEtchTime + holdDuration + totalSmolderTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

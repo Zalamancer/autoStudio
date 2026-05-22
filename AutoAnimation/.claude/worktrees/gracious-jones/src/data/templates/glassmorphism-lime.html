@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glassmorphism Lime</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #e0e0e0;
+  }
+  .bg-grid {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image:
+      linear-gradient(rgba(132,204,22,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(132,204,22,0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    z-index: 0;
+    animation: gridShift 20s linear infinite;
+  }
+  @keyframes gridShift {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(60px, 60px); }
+  }
+  .particle-field {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+  .particle {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: #84CC16;
+    border-radius: 50%;
+    opacity: 0;
+    animation: particleFloat 8s ease-in-out infinite;
+  }
+  @keyframes particleFloat {
+    0% { opacity: 0; transform: translateY(100vh) scale(0); }
+    20% { opacity: 0.6; }
+    80% { opacity: 0.4; }
+    100% { opacity: 0; transform: translateY(-20vh) scale(1); }
+  }
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+    opacity: 0.3;
+  }
+  .glow-orb-1 {
+    width: 300px; height: 300px;
+    background: #84CC16;
+    top: 20%; left: 10%;
+    animation: orbFloat 10s ease-in-out infinite;
+  }
+  .glow-orb-2 {
+    width: 200px; height: 200px;
+    background: #65a30d;
+    bottom: 20%; right: 15%;
+    animation: orbFloat 10s ease-in-out infinite 5s;
+  }
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(30px, -40px); }
+    50% { transform: translate(-20px, 20px); }
+    75% { transform: translate(40px, 30px); }
+  }
+  .bento-grid {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 16px;
+    width: 85vw;
+    height: 75vh;
+    z-index: 10;
+    max-width: 700px;
+    max-height: 900px;
+  }
+  .glass-card {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(132,204,22,0.15);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    position: relative;
+    opacity: 0;
+    animation: cardAppear 6s ease-in-out infinite;
+  }
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(132,204,22,0.06), transparent);
+    animation: shimmer 4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
+  }
+  .card-1 { grid-column: 1 / 3; animation-delay: 0s; }
+  .card-2 { grid-column: 3; animation-delay: 0.5s; }
+  .card-3 { animation-delay: 1s; }
+  .card-4 { grid-column: 2 / 4; animation-delay: 1.5s; }
+  .card-5 { grid-column: 1 / 2; grid-row: 3; animation-delay: 2s; }
+  .card-6 { grid-column: 2 / 4; grid-row: 3; animation-delay: 2.5s; }
+  @keyframes cardAppear {
+    0%, 100% { opacity: 0; transform: translateY(10px); }
+    15%, 85% { opacity: 1; transform: translateY(0); }
+  }
+  .card-label {
+    font-size: 10px;
+    color: #84CC16;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    opacity: 0.7;
+  }
+  .card-value {
+    font-size: clamp(20px, 4vw, 36px);
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+  }
+  .card-detail {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+  }
+  .lime-glow-line {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, #84CC16, transparent);
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+  .readout {
+    position: fixed;
+    bottom: 30px; left: 30px;
+    z-index: 20;
+    font-size: 11px;
+    color: rgba(132,204,22,0.5);
+    letter-spacing: 0.15em;
+    animation: textFade 4s ease-in-out infinite;
+  }
+  .readout-top {
+    position: fixed;
+    top: 30px; right: 30px;
+    z-index: 20;
+    font-size: 11px;
+    color: rgba(132,204,22,0.5);
+    letter-spacing: 0.15em;
+    text-align: right;
+    animation: textFade 4s ease-in-out infinite 2s;
+  }
+  @keyframes textFade {
+    0%, 100% { opacity: 0; }
+    30%, 70% { opacity: 1; }
+  }
+  .title-overlay {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+    text-align: center;
+    pointer-events: none;
+  }
+  .title-main {
+    font-size: clamp(28px, 6vw, 60px);
+    font-weight: 700;
+    color: #84CC16;
+    text-shadow: 0 0 60px rgba(132,204,22,0.4);
+    animation: titlePulse 6s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%, 100% { opacity: 0; transform: scale(0.95); }
+    30%, 70% { opacity: 0.15; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="glow-orb glow-orb-1"></div>
+<div class="glow-orb glow-orb-2"></div>
+
+<div class="particle-field" id="particles"></div>
+
+<div class="bento-grid">
+  <div class="glass-card card-1">
+    <div class="card-label">SYSTEM.STATUS</div>
+    <div class="card-value" id="val1">ONLINE</div>
+    <div class="card-detail">uptime: 99.97%</div>
+    <div class="lime-glow-line"></div>
+  </div>
+  <div class="glass-card card-2">
+    <div class="card-label">REQUESTS</div>
+    <div class="card-value" id="val2">14.2K</div>
+    <div class="card-detail">/sec</div>
+    <div class="lime-glow-line"></div>
+  </div>
+  <div class="glass-card card-3">
+    <div class="card-label">LATENCY</div>
+    <div class="card-value" id="val3">12ms</div>
+    <div class="card-detail">p99</div>
+    <div class="lime-glow-line"></div>
+  </div>
+  <div class="glass-card card-4">
+    <div class="card-label">THROUGHPUT</div>
+    <div class="card-value" id="val4">847 MB/s</div>
+    <div class="card-detail">peak transfer rate</div>
+    <div class="lime-glow-line"></div>
+  </div>
+  <div class="glass-card card-5">
+    <div class="card-label">NODES</div>
+    <div class="card-value" id="val5">128</div>
+    <div class="card-detail">active</div>
+    <div class="lime-glow-line"></div>
+  </div>
+  <div class="glass-card card-6">
+    <div class="card-label">DEPLOYMENT</div>
+    <div class="card-value" id="val6">v3.14.1</div>
+    <div class="card-detail">last deploy: 4m ago</div>
+    <div class="lime-glow-line"></div>
+  </div>
+</div>
+
+<div class="title-overlay">
+  <div class="title-main" id="titleText">DASHBOARD</div>
+</div>
+
+<div class="readout" id="readoutBottom">SYS://CORE.MONITOR.ACTIVE</div>
+<div class="readout-top" id="readoutTop">ENCRYPTED // TLS 1.3</div>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var TITLE_TEXT = 'DASHBOARD';
+  var READOUT_BOTTOM = 'SYS://CORE.MONITOR.ACTIVE';
+  var READOUT_TOP = 'ENCRYPTED // TLS 1.3';
+  var CARD_VALUES = {
+    status: 'ONLINE',
+    requests: '14.2K',
+    latency: '12ms',
+    throughput: '847 MB/s',
+    nodes: '128',
+    deployment: 'v3.14.1'
+  };
+  // === END EDITABLE ===
+
+  document.getElementById('titleText').textContent = TITLE_TEXT;
+  document.getElementById('readoutBottom').textContent = READOUT_BOTTOM;
+  document.getElementById('readoutTop').textContent = READOUT_TOP;
+  document.getElementById('val1').textContent = CARD_VALUES.status;
+  document.getElementById('val2').textContent = CARD_VALUES.requests;
+  document.getElementById('val3').textContent = CARD_VALUES.latency;
+  document.getElementById('val4').textContent = CARD_VALUES.throughput;
+  document.getElementById('val5').textContent = CARD_VALUES.nodes;
+  document.getElementById('val6').textContent = CARD_VALUES.deployment;
+
+  // Generate particles
+  var particleField = document.getElementById('particles');
+  for (var i = 0; i < 40; i++) {
+    var p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = (Math.random() * 100) + '%';
+    p.style.animationDelay = (Math.random() * 8) + 's';
+    p.style.animationDuration = (6 + Math.random() * 6) + 's';
+    p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+    particleField.appendChild(p);
+  }
+</script>
+</body>
+</html>

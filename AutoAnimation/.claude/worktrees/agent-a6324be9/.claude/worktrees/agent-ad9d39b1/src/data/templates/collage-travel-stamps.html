@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Travel Stamps Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #f5efe6; font-family: 'Arial', sans-serif; }
+  body::before { content:''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.03;
+    background-image: repeating-linear-gradient(0deg, #000 0px, transparent 1px, transparent 20px),
+      repeating-linear-gradient(90deg, #000 0px, transparent 1px, transparent 20px); }
+  #stage { position: absolute; inset: 0; z-index: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 20px; padding: 30px; }
+
+  .stamp { width: 160px; opacity: 0; will-change: transform, opacity; }
+  .stamp-border { border: 3px dashed rgba(0,0,0,0.15); border-radius: 4px; padding: 10px; background: #fff; }
+  .stamp-color { width: 100%; height: 80px; border-radius: 2px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .stamp-circle { width: 60px; height: 60px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); display: flex; align-items: center; justify-content: center; }
+  .stamp-icon { font-size: 22px; }
+  .stamp-info { padding: 8px 2px 0; text-align: center; }
+  .stamp-city { font-size: 13px; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: 2px; }
+  .stamp-country { font-size: 10px; color: #999; margin-top: 2px; text-transform: uppercase; letter-spacing: 1px; }
+  .stamp-date { font-size: 9px; color: #bbb; margin-top: 4px; }
+
+  @keyframes stampDown { 0% { opacity: 0; transform: scale(1.5) rotate(var(--rot)); } 50% { transform: scale(0.95) rotate(var(--rot)); } 100% { opacity: 1; transform: scale(1) rotate(var(--rot)); } }
+  @keyframes stampUp { 0% { opacity: 1; transform: scale(1) rotate(var(--rot)); } 100% { opacity: 0; transform: scale(0.6) rotate(calc(var(--rot) - 10deg)); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  stamps: [
+    { color: '#e74c3c', city: 'Tokyo', country: 'Japan', date: '2024-03-15', icon: '🗼' },
+    { color: '#3498db', city: 'Paris', country: 'France', date: '2024-01-22', icon: '🗼' },
+    { color: '#2ecc71', city: 'Rio', country: 'Brazil', date: '2023-12-01', icon: '🌴' },
+    { color: '#f39c12', city: 'Cairo', country: 'Egypt', date: '2024-02-10', icon: '🏛️' },
+    { color: '#9b59b6', city: 'London', country: 'England', date: '2024-04-05', icon: '🎡' },
+    { color: '#1abc9c', city: 'Sydney', country: 'Australia', date: '2023-11-18', icon: '🏖️' },
+    { color: '#e67e22', city: 'NYC', country: 'USA', date: '2024-05-30', icon: '🗽' },
+    { color: '#34495e', city: 'Seoul', country: 'Korea', date: '2024-06-12', icon: '🏯' },
+  ],
+  bgColor: '#f5efe6',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.stamps.forEach((s, i) => {
+    const rng = seededRandom(i * 97 + 13);
+    const el = document.createElement('div'); el.className = 'stamp';
+    const rot = (rng() - 0.5) * 8;
+    el.style.setProperty('--rot', rot + 'deg');
+    const border = document.createElement('div'); border.className = 'stamp-border';
+    const color = document.createElement('div'); color.className = 'stamp-color'; color.style.background = s.color;
+    const circle = document.createElement('div'); circle.className = 'stamp-circle';
+    const icon = document.createElement('div'); icon.className = 'stamp-icon'; icon.textContent = s.icon;
+    circle.appendChild(icon); color.appendChild(circle);
+    const info = document.createElement('div'); info.className = 'stamp-info';
+    const city = document.createElement('div'); city.className = 'stamp-city'; city.textContent = s.city;
+    const country = document.createElement('div'); country.className = 'stamp-country'; country.textContent = s.country;
+    const date = document.createElement('div'); date.className = 'stamp-date'; date.textContent = s.date;
+    info.appendChild(city); info.appendChild(country); info.appendChild(date);
+    border.appendChild(color); border.appendChild(info);
+    el.appendChild(border); stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=250, inD=400, hold=3500, outS=200, outD=350, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`stampDown ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`stampUp ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

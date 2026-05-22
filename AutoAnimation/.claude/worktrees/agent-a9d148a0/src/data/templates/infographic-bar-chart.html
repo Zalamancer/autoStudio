@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bar Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Monthly Revenue',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  barColors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
+  data: [
+    { category: 'Jan', value: 42000 },
+    { category: 'Feb', value: 38000 },
+    { category: 'Mar', value: 51000 },
+    { category: 'Apr', value: 47000 },
+    { category: 'May', value: 53000 },
+    { category: 'Jun', value: 59000 },
+    { category: 'Jul', value: 62000 },
+    { category: 'Aug', value: 55000 }
+  ],
+  showValues: true,
+  barRadius: 6,
+  orientation: 'vertical'
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function formatValue(v) {
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return v.toString();
+}
+
+function roundRect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  if (r <= 0) { ctx.fillRect(x, y, w, h); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawGrid(T, area, maxVal) {
+  ctx.strokeStyle = T.grid;
+  ctx.lineWidth = 1;
+  ctx.fillStyle = T.text;
+  const steps = 5;
+  const isV = CONFIG.orientation === 'vertical';
+  for (let i = 0; i <= steps; i++) {
+    const val = (maxVal / steps) * i;
+    if (isV) {
+      const y = area.y + area.h - (area.h / steps) * i;
+      ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+      ctx.font = `${W * 0.018}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(formatValue(val), area.x - W * 0.015, y);
+    } else {
+      const x = area.x + (area.w / steps) * i;
+      ctx.beginPath(); ctx.moveTo(x, area.y); ctx.lineTo(x, area.y + area.h); ctx.stroke();
+      ctx.font = `${W * 0.018}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(formatValue(val), x, area.y + area.h + W * 0.01);
+    }
+  }
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+  const data = CONFIG.data;
+  const n = data.length;
+  const maxVal = Math.max(...data.map(d => d.value)) * 1.15;
+  const isV = CONFIG.orientation === 'vertical';
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  // Chart area
+  const area = isV
+    ? { x: W * 0.14, y: H * 0.15, w: W * 0.8, h: H * 0.7 }
+    : { x: W * 0.2, y: H * 0.15, w: W * 0.72, h: H * 0.7 };
+
+  drawGrid(T, area, maxVal);
+
+  const gap = isV ? area.w * 0.04 : area.h * 0.04;
+  const barSize = isV ? (area.w - gap * (n + 1)) / n : (area.h - gap * (n + 1)) / n;
+
+  for (let i = 0; i < n; i++) {
+    const d = data[i];
+    const barEase = easeOutCubic(Math.min(Math.max((progress - i * 0.06) / (1 - n * 0.04), 0), 1));
+    const ratio = (d.value / maxVal) * barEase;
+    const color = CONFIG.barColors[i % CONFIG.barColors.length];
+
+    if (isV) {
+      const x = area.x + gap + i * (barSize + gap);
+      const barH = area.h * ratio;
+      const y = area.y + area.h - barH;
+      ctx.fillStyle = color;
+      ctx.shadowColor = color; ctx.shadowBlur = W * 0.008;
+      roundRect(x, y, barSize, barH, CONFIG.barRadius * (W / 1000));
+      ctx.shadowBlur = 0;
+      // Category label
+      ctx.fillStyle = T.text;
+      ctx.font = `${W * 0.018}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(d.category, x + barSize / 2, area.y + area.h + W * 0.01);
+      // Value label
+      if (CONFIG.showValues && barEase > 0.1) {
+        ctx.fillStyle = T.title;
+        ctx.font = `bold ${W * 0.016}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(formatValue(d.value), x + barSize / 2, y - W * 0.008);
+      }
+    } else {
+      const y = area.y + gap + i * (barSize + gap);
+      const barW = area.w * ratio;
+      ctx.fillStyle = color;
+      ctx.shadowColor = color; ctx.shadowBlur = W * 0.008;
+      roundRect(area.x, y, barW, barSize, CONFIG.barRadius * (W / 1000));
+      ctx.shadowBlur = 0;
+      // Category label
+      ctx.fillStyle = T.text;
+      ctx.font = `${W * 0.018}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(d.category, area.x - W * 0.015, y + barSize / 2);
+      // Value label
+      if (CONFIG.showValues && barEase > 0.1) {
+        ctx.fillStyle = T.title;
+        ctx.font = `bold ${W * 0.016}px system-ui`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(formatValue(d.value), area.x + barW + W * 0.01, y + barSize / 2);
+      }
+    }
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

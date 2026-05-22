@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Manager</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  color: #cdd6f4;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.window {
+  position: relative;
+  z-index: 1;
+  width: 92vw;
+  height: 88vh;
+  margin: 4vh auto 0;
+  background: rgba(30, 30, 46, 0.95);
+  border-radius: 1.5vh;
+  border: 0.1vh solid rgba(180, 190, 254, 0.1);
+  box-shadow: 0 2vh 8vh rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.92) translateY(2vh);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.window.show {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* Title bar */
+.title-bar {
+  display: flex;
+  align-items: center;
+  padding: 1.2vh 1.5vw;
+  background: rgba(24, 24, 37, 0.9);
+  border-bottom: 0.1vh solid rgba(180, 190, 254, 0.08);
+  gap: 1vw;
+  flex-shrink: 0;
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 0.6vw;
+}
+
+.traffic-light {
+  width: 1.3vh;
+  height: 1.3vh;
+  border-radius: 50%;
+}
+
+.tl-red { background: #f38ba8; }
+.tl-yellow { background: #f9e2af; }
+.tl-green { background: #a6e3a1; }
+
+.title-bar-text {
+  flex: 1;
+  text-align: center;
+  font-size: 1.5vh;
+  color: rgba(205, 214, 244, 0.6);
+}
+
+/* Search bar */
+.search-bar {
+  margin-left: auto;
+  width: 15vw;
+  height: 3vh;
+  background: rgba(49, 50, 68, 0.8);
+  border-radius: 0.6vh;
+  border: 0.1vh solid rgba(180, 190, 254, 0.1);
+  display: flex;
+  align-items: center;
+  padding: 0 1vw;
+  gap: 0.5vw;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.search-bar.show { opacity: 1; }
+
+.search-icon {
+  font-size: 1.4vh;
+  color: rgba(205, 214, 244, 0.4);
+}
+
+.search-text {
+  font-size: 1.3vh;
+  color: rgba(205, 214, 244, 0.3);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  padding: 1vh 1.5vw;
+  gap: 0.5vw;
+  background: rgba(24, 24, 37, 0.5);
+  border-bottom: 0.1vh solid rgba(180, 190, 254, 0.05);
+  opacity: 0;
+  transform: translateY(-1vh);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  flex-shrink: 0;
+}
+
+.breadcrumb.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.breadcrumb-item {
+  font-size: 1.4vh;
+  color: rgba(205, 214, 244, 0.5);
+}
+
+.breadcrumb-item.active {
+  color: #89b4fa;
+}
+
+.breadcrumb-sep {
+  font-size: 1.2vh;
+  color: rgba(205, 214, 244, 0.2);
+}
+
+/* Main area */
+.main-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 18vw;
+  background: rgba(24, 24, 37, 0.6);
+  border-right: 0.1vh solid rgba(180, 190, 254, 0.06);
+  padding: 1.5vh 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidebar-group {
+  margin-bottom: 2vh;
+}
+
+.sidebar-label {
+  font-size: 1.1vh;
+  text-transform: uppercase;
+  letter-spacing: 0.2vw;
+  color: rgba(205, 214, 244, 0.3);
+  padding: 0 1.5vw;
+  margin-bottom: 0.5vh;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  padding: 0.8vh 1.5vw;
+  font-size: 1.4vh;
+  color: rgba(205, 214, 244, 0.7);
+  cursor: default;
+  opacity: 0;
+  transform: translateX(-2vw);
+  transition: opacity 0.4s ease, transform 0.4s ease, background 0.2s ease;
+}
+
+.sidebar-item.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sidebar-item.active {
+  background: rgba(137, 180, 250, 0.1);
+  color: #89b4fa;
+}
+
+.sidebar-icon {
+  font-size: 1.6vh;
+}
+
+/* File grid */
+.file-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10vw, 1fr));
+  gap: 1vw;
+  padding: 2vh 2vw;
+  align-content: start;
+  overflow: hidden;
+}
+
+.file-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8vh;
+  padding: 1.5vh 0.5vw;
+  border-radius: 1vh;
+  cursor: default;
+  opacity: 0;
+  transform: translateY(2vh) scale(0.85);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
+}
+
+.file-item.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.file-item.selected {
+  background: rgba(137, 180, 250, 0.12);
+}
+
+.file-icon {
+  font-size: 5vh;
+  line-height: 1;
+}
+
+.file-name {
+  font-size: 1.3vh;
+  text-align: center;
+  color: rgba(205, 214, 244, 0.8);
+  max-width: 10vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-meta {
+  font-size: 1vh;
+  color: rgba(205, 214, 244, 0.3);
+}
+
+/* Storage bar */
+.storage-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5vw;
+  padding: 1.2vh 2vw;
+  background: rgba(24, 24, 37, 0.6);
+  border-top: 0.1vh solid rgba(180, 190, 254, 0.06);
+  opacity: 0;
+  transform: translateY(1vh);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  flex-shrink: 0;
+}
+
+.storage-bar.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.storage-label {
+  font-size: 1.2vh;
+  color: rgba(205, 214, 244, 0.4);
+  white-space: nowrap;
+}
+
+.storage-track {
+  flex: 1;
+  height: 0.8vh;
+  background: rgba(49, 50, 68, 0.8);
+  border-radius: 0.4vh;
+  overflow: hidden;
+}
+
+.storage-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #89b4fa, #b4befe);
+  border-radius: 0.4vh;
+  transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  width: 0%;
+}
+
+.storage-text {
+  font-size: 1.2vh;
+  color: rgba(205, 214, 244, 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Fade-out */
+.window.fade-out {
+  opacity: 0 !important;
+  transform: scale(0.95) translateY(-2vh) !important;
+  transition: opacity 0.8s ease, transform 0.8s ease !important;
+}
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<div class="window" id="window">
+  <div class="title-bar">
+    <div class="traffic-lights">
+      <div class="traffic-light tl-red"></div>
+      <div class="traffic-light tl-yellow"></div>
+      <div class="traffic-light tl-green"></div>
+    </div>
+    <div class="title-bar-text" id="titleBarText">Finder</div>
+    <div class="search-bar" id="searchBar">
+      <span class="search-icon">&#128269;</span>
+      <span class="search-text">Search</span>
+    </div>
+  </div>
+  <div class="breadcrumb" id="breadcrumb"></div>
+  <div class="main-area">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="file-grid" id="fileGrid"></div>
+  </div>
+  <div class="storage-bar" id="storageBar">
+    <span class="storage-label">Storage</span>
+    <div class="storage-track"><div class="storage-fill" id="storageFill"></div></div>
+    <span class="storage-text" id="storageText">0 GB / 0 GB</span>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  currentPath: "~/Projects/MyApp",
+  folders: ["Favorites", "Desktop", "Documents", "Downloads", "Projects", "Applications"],
+  files: [
+    { name: "index.tsx", type: "code", size: "4.2 KB", modified: "Today" },
+    { name: "package.json", type: "code", size: "1.8 KB", modified: "Yesterday" },
+    { name: "README.md", type: "doc", size: "3.1 KB", modified: "2 days ago" },
+    { name: "Assets", type: "folder", size: "48 MB", modified: "Today" },
+    { name: "Components", type: "folder", size: "12 MB", modified: "Today" },
+    { name: "design-v2.fig", type: "image", size: "24 MB", modified: "3 days ago" },
+    { name: "node_modules", type: "folder", size: "285 MB", modified: "Yesterday" },
+    { name: "tsconfig.json", type: "code", size: "0.8 KB", modified: "Last week" },
+    { name: "styles.css", type: "code", size: "6.4 KB", modified: "Today" },
+    { name: "screenshot.png", type: "image", size: "1.2 MB", modified: "Today" },
+    { name: "dist", type: "folder", size: "8.5 MB", modified: "Yesterday" },
+    { name: "notes.txt", type: "doc", size: "0.3 KB", modified: "Last week" }
+  ],
+  storageUsed: 384,
+  storageTotal: 512,
+  cycleDuration: 16000,
+  bgColor: "#1e1e2e"
+};
+
+var fileIcons = {
+  folder: "\uD83D\uDCC1",
+  code: "\uD83D\uDCC4",
+  doc: "\uD83D\uDDD2",
+  image: "\uD83C\uDFA8",
+  default: "\uD83D\uDCC3"
+};
+
+var cycleTimer = null;
+var animTimers = [];
+
+function clearAllTimers() {
+  if (cycleTimer) clearTimeout(cycleTimer);
+  animTimers.forEach(function(t) { clearTimeout(t); });
+  animTimers = [];
+}
+
+function sched(fn, ms) {
+  var id = setTimeout(fn, ms);
+  animTimers.push(id);
+  return id;
+}
+
+function init() {
+  document.getElementById('bg').style.background = CONFIG.bgColor;
+
+  // Breadcrumb
+  var bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
+  var parts = CONFIG.currentPath.split('/');
+  parts.forEach(function(p, i) {
+    if (i > 0) {
+      var sep = document.createElement('span');
+      sep.className = 'breadcrumb-sep';
+      sep.textContent = '\u203A';
+      bc.appendChild(sep);
+    }
+    var span = document.createElement('span');
+    span.className = 'breadcrumb-item' + (i === parts.length - 1 ? ' active' : '');
+    span.textContent = p;
+    bc.appendChild(span);
+  });
+
+  // Sidebar
+  var sb = document.getElementById('sidebar');
+  sb.innerHTML = '';
+  var grp = document.createElement('div');
+  grp.className = 'sidebar-group';
+  var lbl = document.createElement('div');
+  lbl.className = 'sidebar-label';
+  lbl.textContent = 'Favorites';
+  grp.appendChild(lbl);
+  CONFIG.folders.forEach(function(f, i) {
+    var item = document.createElement('div');
+    item.className = 'sidebar-item';
+    if (f === 'Projects') item.className += ' active';
+    item.innerHTML = '<span class="sidebar-icon">\uD83D\uDCC2</span>' + f;
+    grp.appendChild(item);
+  });
+  sb.appendChild(grp);
+
+  // File grid
+  var fg = document.getElementById('fileGrid');
+  fg.innerHTML = '';
+  CONFIG.files.forEach(function(f) {
+    var div = document.createElement('div');
+    div.className = 'file-item';
+    var icon = fileIcons[f.type] || fileIcons.default;
+    div.innerHTML = '<div class="file-icon">' + icon + '</div>' +
+                    '<div class="file-name">' + f.name + '</div>' +
+                    '<div class="file-meta">' + f.size + '</div>';
+    fg.appendChild(div);
+  });
+}
+
+function runCycle() {
+  clearAllTimers();
+
+  var win = document.getElementById('window');
+  var dur = CONFIG.cycleDuration;
+  var sidebarItems = document.querySelectorAll('.sidebar-item');
+  var fileItems = document.querySelectorAll('.file-item');
+
+  win.classList.remove('show', 'fade-out');
+  document.getElementById('breadcrumb').classList.remove('show');
+  document.getElementById('searchBar').classList.remove('show');
+  document.getElementById('storageBar').classList.remove('show');
+  sidebarItems.forEach(function(el) { el.classList.remove('show'); });
+  fileItems.forEach(function(el) { el.classList.remove('show', 'selected'); });
+  document.getElementById('storageFill').style.width = '0%';
+
+  var t = 0;
+
+  // Show window
+  t = 200;
+  sched(function() { win.classList.add('show'); }, t);
+
+  // Breadcrumb
+  t += 500;
+  sched(function() { document.getElementById('breadcrumb').classList.add('show'); }, t);
+
+  // Search bar
+  t += 200;
+  sched(function() { document.getElementById('searchBar').classList.add('show'); }, t);
+
+  // Sidebar items stagger
+  t += 200;
+  sidebarItems.forEach(function(el, i) {
+    sched(function() { el.classList.add('show'); }, t + i * 120);
+  });
+  t += sidebarItems.length * 120;
+
+  // File items stagger
+  t += 200;
+  var fileStagger = Math.min(150, (dur * 0.3) / Math.max(fileItems.length, 1));
+  fileItems.forEach(function(el, i) {
+    sched(function() { el.classList.add('show'); }, t + i * fileStagger);
+  });
+  t += fileItems.length * fileStagger;
+
+  // Highlight a few files
+  t += 400;
+  var selectIndices = [0, 3, 4];
+  selectIndices.forEach(function(idx, i) {
+    if (idx < fileItems.length) {
+      sched(function() {
+        fileItems.forEach(function(el) { el.classList.remove('selected'); });
+        fileItems[idx].classList.add('selected');
+      }, t + i * 800);
+    }
+  });
+  t += selectIndices.length * 800;
+
+  // Storage bar
+  t += 300;
+  sched(function() {
+    document.getElementById('storageBar').classList.add('show');
+  }, t);
+  t += 200;
+  sched(function() {
+    var pct = Math.round((CONFIG.storageUsed / CONFIG.storageTotal) * 100);
+    document.getElementById('storageFill').style.width = pct + '%';
+    document.getElementById('storageText').textContent = CONFIG.storageUsed + ' GB / ' + CONFIG.storageTotal + ' GB';
+  }, t);
+
+  // Fade out
+  sched(function() { win.classList.add('fade-out'); }, dur - 1200);
+
+  // Restart
+  cycleTimer = setTimeout(runCycle, dur);
+}
+
+init();
+runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brutalist Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f0ece4;
+    font-family: 'Arial', sans-serif;
+  }
+
+  #stage { position: absolute; inset: 0; z-index: 1; }
+
+  .brut-item {
+    position: absolute;
+    opacity: 0;
+    will-change: transform, opacity;
+    user-select: none;
+  }
+
+  /* Heavy bordered block */
+  .brut-item.block .inner {
+    border: 5px solid #1a1a1a;
+    overflow: hidden;
+  }
+
+  .brut-item.block .block-color {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Large outlined text */
+  .brut-item.text-outline .inner {
+    font-family: 'Arial', sans-serif;
+    font-weight: 900;
+    -webkit-text-stroke: 3px #1a1a1a;
+    color: transparent;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+  }
+
+  /* Filled text bar */
+  .brut-item.text-bar .inner {
+    background: #1a1a1a;
+    color: #f0ece4;
+    font-family: 'Arial', sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    padding: 10px 20px;
+    display: inline-block;
+  }
+
+  /* Accent color block */
+  .brut-item.accent .inner {
+    box-shadow: 6px 6px 0 #1a1a1a;
+  }
+
+  .brut-item.accent .accent-color {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Number huge */
+  .brut-item.number .inner {
+    font-family: 'Arial', sans-serif;
+    font-weight: 900;
+    color: #1a1a1a;
+    opacity: 0.08;
+    line-height: 0.85;
+  }
+
+  /* Thick line */
+  .brut-item.line .inner {
+    background: #1a1a1a;
+  }
+
+  @keyframes hardSnap {
+    0% { opacity: 0; transform: var(--snap-start); }
+    50% { opacity: 1; transform: var(--snap-mid); }
+    100% { opacity: 1; transform: var(--snap-end); }
+  }
+
+  @keyframes hardExit {
+    0% { opacity: 1; transform: var(--snap-end); }
+    100% { opacity: 0; transform: var(--exit-end); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  items: [
+    { type: 'block', w: 240, h: 300, color: '#c62828' },
+    { type: 'text-outline', text: 'RAW', size: 80 },
+    { type: 'block', w: 180, h: 180, color: '#1565c0' },
+    { type: 'text-bar', text: 'FORM', size: 28 },
+    { type: 'accent', w: 120, h: 160, color: '#f57f17' },
+    { type: 'number', text: '01', size: 220 },
+    { type: 'line', w: 200, h: 5 },
+    { type: 'block', w: 160, h: 240, color: '#2e7d32' },
+    { type: 'text-outline', text: 'BOLD', size: 60 },
+    { type: 'accent', w: 100, h: 100, color: '#e91e63' },
+    { type: 'line', w: 5, h: 180 },
+    { type: 'text-bar', text: 'EDGE', size: 22 },
+  ],
+  bgColor: '#f0ece4',
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createItems() {
+  const elements = [];
+  const count = CONFIG.items.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  for (let i = 0; i < count; i++) {
+    const item = CONFIG.items[i];
+    const rng = seededRandom(i * 163 + 41);
+
+    const el = document.createElement('div');
+    el.className = `brut-item ${item.type}`;
+
+    const inner = document.createElement('div');
+    inner.className = 'inner';
+
+    if (item.type === 'block') {
+      inner.style.width = item.w + 'px';
+      inner.style.height = item.h + 'px';
+      const c = document.createElement('div');
+      c.className = 'block-color';
+      c.style.background = item.color;
+      inner.appendChild(c);
+    } else if (item.type === 'text-outline' || item.type === 'number') {
+      inner.style.fontSize = item.size + 'px';
+      inner.textContent = item.text;
+    } else if (item.type === 'text-bar') {
+      inner.style.fontSize = item.size + 'px';
+      inner.textContent = item.text;
+    } else if (item.type === 'accent') {
+      inner.style.width = item.w + 'px';
+      inner.style.height = item.h + 'px';
+      const c = document.createElement('div');
+      c.className = 'accent-color';
+      c.style.background = item.color;
+      inner.appendChild(c);
+    } else if (item.type === 'line') {
+      inner.style.width = item.w + 'px';
+      inner.style.height = item.h + 'px';
+    }
+
+    el.appendChild(inner);
+
+    // Rigid grid-like positions with slight offset
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const bx = vw * 0.05 + col * (vw * 0.23);
+    const by = vh * 0.05 + row * (vh * 0.30);
+    const ox = (rng() - 0.5) * vw * 0.04;
+    const oy = (rng() - 0.5) * vh * 0.03;
+
+    el.style.left = Math.max(5, bx + ox) + 'px';
+    el.style.top = Math.max(5, by + oy) + 'px';
+
+    // Brutalist = no rotation, snappy animations
+    const dir = i % 2 === 0 ? -1 : 1;
+    el.style.setProperty('--snap-start', `translate(${dir * vw * 0.5}px, 0) scale(1)`);
+    el.style.setProperty('--snap-mid', `translate(${dir * -8}px, 0) scale(1)`);
+    el.style.setProperty('--snap-end', `translate(0, 0) scale(1)`);
+    el.style.setProperty('--exit-end', `translate(${-dir * vw * 0.5}px, 0) scale(1)`);
+
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(elements) {
+  const count = elements.length;
+  const inStagger = 200;
+  const inDuration = 350;
+  const holdDuration = 3500;
+  const outStagger = 150;
+  const outDuration = 300;
+  const pause = 800;
+
+  const totalIn = (count - 1) * inStagger + inDuration;
+  const totalOut = (count - 1) * outStagger + outDuration;
+
+  let af, st;
+
+  function resetAll() {
+    elements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(ts) {
+    if (!st) st = ts;
+    const e = ts - st;
+
+    if (e < totalIn) {
+      elements.forEach((el, i) => {
+        if (e >= i * inStagger && !el.dataset.in) {
+          el.dataset.in = '1';
+          el.style.animation = `hardSnap ${inDuration}ms cubic-bezier(0.16, 1, 0.3, 1) forwards`;
+        }
+      });
+    } else if (e < totalIn + holdDuration) {
+    } else if (e < totalIn + holdDuration + totalOut) {
+      const oe = e - totalIn - holdDuration;
+      elements.forEach((el, i) => {
+        if (oe >= i * outStagger && !el.dataset.out) {
+          el.dataset.out = '1';
+          el.style.animation = `hardExit ${outDuration}ms cubic-bezier(0.7, 0, 0.84, 0) forwards`;
+        }
+      });
+    } else if (e < totalIn + holdDuration + totalOut + pause) {
+    } else {
+      resetAll();
+      elements.forEach(el => { delete el.dataset.in; delete el.dataset.out; });
+      st = ts;
+    }
+    af = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  af = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(af);
+}
+
+let items = createItems();
+runAnimation(items);
+
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    stage.innerHTML = '';
+    items = createItems();
+    runAnimation(items);
+  }, 300);
+});
+</script>
+</body>
+</html>

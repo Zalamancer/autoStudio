@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Sign Shop</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.wall { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; }
+.brick-pattern { position: absolute; inset: 0; opacity: 0.15; background:
+  repeating-linear-gradient(90deg, transparent 0px, transparent 8vw, rgba(0,0,0,0.3) 8vw, rgba(0,0,0,0.3) 8.3vw),
+  repeating-linear-gradient(0deg, transparent 0px, transparent 3vh, rgba(0,0,0,0.2) 3vh, rgba(0,0,0,0.2) 3.3vh); }
+.neon-text { font-family: 'Georgia', serif; text-align: center; position: relative; z-index: 1; }
+.main-sign { font-size: 10vh; font-weight: 700; letter-spacing: 0.08em; animation: neonFlicker 4s ease-in-out infinite; }
+.sub-sign { font-size: 3vh; font-style: italic; letter-spacing: 0.15em; margin-top: 1vh; animation: neonFlicker 4s ease-in-out 0.5s infinite; }
+.open-sign { font-size: 5vh; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em; margin-top: 2vh; padding: 1.5vh 4vw; border: 0.4vh solid; border-radius: 1.5vh; animation: openFlash 2s ease-in-out infinite; }
+.hours { font-size: 1.8vh; letter-spacing: 0.1em; margin-top: 2vh; opacity: 0.4; font-family: 'Courier New', monospace; }
+@keyframes neonFlicker {
+  0%,100% { opacity: 1; }
+  5% { opacity: 0.85; }
+  10% { opacity: 1; }
+  15% { opacity: 0.9; }
+  20% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.7; }
+  94% { opacity: 1; }
+}
+@keyframes openFlash {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.ambient-glow { position: absolute; width: 50vw; height: 50vh; border-radius: 50%; filter: blur(80px); opacity: 0.15; pointer-events: none; z-index: 0; }
+.glow-1 { top: 20%; left: 30%; }
+.glow-2 { bottom: 20%; right: 25%; }
+</style>
+</head>
+<body>
+<div class="wall" id="wall">
+  <div class="brick-pattern"></div>
+  <div class="ambient-glow glow-1" id="glow1"></div>
+  <div class="ambient-glow glow-2" id="glow2"></div>
+  <div class="neon-text">
+    <div class="main-sign" id="mainSign">CAFE</div>
+    <div class="sub-sign" id="subSign">& Bakery</div>
+  </div>
+  <div class="open-sign" id="openSign">OPEN</div>
+  <div class="hours" id="hours">MON-SAT 7AM - 10PM</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  shopName: 'CAFE',
+  shopSubtitle: '& Bakery',
+  statusText: 'OPEN',
+  hours: 'MON-SAT 7AM - 10PM',
+  neonColor: '#ff6ec7',
+  secondaryColor: '#00e5ff',
+  bgColor: '#1a0a0a',
+  wallColor: '#2a1515',
+  cycleDuration: 10000
+};
+
+var wall = document.getElementById('wall');
+wall.style.background = 'radial-gradient(ellipse at center, ' + CONFIG.wallColor + ', ' + CONFIG.bgColor + ')';
+document.body.style.background = CONFIG.bgColor;
+
+var mainSign = document.getElementById('mainSign');
+var subSign = document.getElementById('subSign');
+var openSign = document.getElementById('openSign');
+
+mainSign.textContent = CONFIG.shopName;
+mainSign.style.color = CONFIG.neonColor;
+mainSign.style.textShadow = '0 0 10px ' + CONFIG.neonColor + ', 0 0 40px ' + CONFIG.neonColor + ', 0 0 80px ' + CONFIG.neonColor + '80';
+
+subSign.textContent = CONFIG.shopSubtitle;
+subSign.style.color = CONFIG.secondaryColor;
+subSign.style.textShadow = '0 0 10px ' + CONFIG.secondaryColor + ', 0 0 30px ' + CONFIG.secondaryColor;
+
+openSign.textContent = CONFIG.statusText;
+openSign.style.color = CONFIG.neonColor;
+openSign.style.borderColor = CONFIG.neonColor;
+openSign.style.textShadow = '0 0 10px ' + CONFIG.neonColor + ', 0 0 30px ' + CONFIG.neonColor;
+openSign.style.boxShadow = 'inset 0 0 15px ' + CONFIG.neonColor + '30, 0 0 15px ' + CONFIG.neonColor + '30';
+
+document.getElementById('hours').textContent = CONFIG.hours;
+document.getElementById('hours').style.color = CONFIG.secondaryColor;
+
+document.getElementById('glow1').style.background = CONFIG.neonColor;
+document.getElementById('glow2').style.background = CONFIG.secondaryColor;
+</script>
+</body>
+</html>

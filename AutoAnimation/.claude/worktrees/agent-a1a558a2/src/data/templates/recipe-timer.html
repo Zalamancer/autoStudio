@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipe Timer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Georgia', 'Times New Roman', serif; }
+.kitchen { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 3vh 4vw; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5vh; }
+.recipe-title { font-size: 3.8vh; font-weight: 700; color: #2d1810; line-height: 1.2; }
+.recipe-sub { font-size: 1.6vh; color: #8b6f47; margin-top: 0.5vh; font-style: italic; }
+.timer-circle { width: 11vh; height: 11vh; border-radius: 50%; border: 3px solid #d4a574; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+.timer-val { font-size: 2.5vh; font-weight: 700; color: #2d1810; font-family: 'Courier New', monospace; }
+.timer-label { font-size: 1.1vh; color: #8b6f47; text-transform: uppercase; letter-spacing: 0.1em; }
+.ingredients { display: flex; flex-wrap: wrap; gap: 1vh; margin-bottom: 2.5vh; }
+.ingredient { background: #fff; padding: 0.8vh 1.5vw; border-radius: 3vh; font-size: 1.5vh; color: #5a3e28; border: 1px solid #e8ddd0; opacity: 0; transform: translateY(8px); transition: all 0.4s ease; font-family: sans-serif; }
+.ingredient.show { opacity: 1; transform: translateY(0); }
+.ing-dot { display: inline-block; width: 0.8vh; height: 0.8vh; border-radius: 50%; background: #d4a574; margin-right: 0.5vw; vertical-align: middle; }
+.steps { flex: 1; display: flex; flex-direction: column; gap: 1.5vh; overflow: hidden; }
+.step { display: flex; gap: 1.5vw; padding: 1.5vh 2vw; background: #fff; border-radius: 1.2vh; border-left: 4px solid #e8ddd0; opacity: 0; transform: translateX(-15px); transition: all 0.5s ease; font-family: sans-serif; }
+.step.show { opacity: 1; transform: translateX(0); }
+.step.active { border-left-color: #d4a574; background: #fff9f0; }
+.step.done { border-left-color: #7cb342; opacity: 0.5; }
+.step-num { width: 3.5vh; height: 3.5vh; border-radius: 50%; background: #e8ddd0; display: flex; align-items: center; justify-content: center; font-size: 1.6vh; font-weight: 700; color: #5a3e28; flex-shrink: 0; }
+.step.active .step-num { background: #d4a574; color: #fff; }
+.step.done .step-num { background: #7cb342; color: #fff; }
+.step-text { font-size: 1.5vh; color: #3d2b1f; line-height: 1.5; }
+.step-time { font-size: 1.2vh; color: #8b6f47; margin-top: 0.2vh; }
+.progress-bar { height: 0.5vh; background: #e8ddd0; border-radius: 0.25vh; margin-top: 2vh; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #d4a574, #c98b4e); border-radius: 0.25vh; transition: width 0.5s; width: 0%; }
+</style>
+</head>
+<body>
+<div class="kitchen" id="kitchen">
+  <div class="header">
+    <div><div class="recipe-title" id="title">Classic Chocolate Cake</div><div class="recipe-sub" id="subtitle">A rich, moist chocolate cake with ganache frosting</div></div>
+    <div class="timer-circle"><div class="timer-val" id="timerVal">00:00</div><div class="timer-label">Total Time</div></div>
+  </div>
+  <div class="ingredients" id="ingredients"></div>
+  <div class="steps" id="steps"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  recipeName: 'Classic Chocolate Cake',
+  recipeSubtitle: 'A rich, moist chocolate cake with ganache frosting',
+  ingredients: ['2 cups flour', '1 cup cocoa', '2 cups sugar', '3 eggs', '1 cup butter', '1 cup milk', '2 tsp vanilla', '1 tsp salt'],
+  steps: [
+    { text: 'Preheat oven to 350\u00B0F. Grease and flour two 9-inch round pans.', time: '5 min' },
+    { text: 'Whisk together flour, cocoa, sugar, and salt in a large bowl.', time: '3 min' },
+    { text: 'Add eggs, butter, milk, and vanilla. Beat until smooth and creamy.', time: '5 min' },
+    { text: 'Divide batter between pans. Bake until a toothpick comes out clean.', time: '25 min' },
+    { text: 'Let cool completely. Prepare ganache and frost the cake generously.', time: '15 min' }
+  ],
+  bgColor: '#faf7f2',
+  accentColor: '#d4a574',
+  cycleDuration: 14000
+};
+
+document.getElementById('kitchen').style.background = CONFIG.bgColor;
+document.getElementById('title').textContent = CONFIG.recipeName;
+document.getElementById('subtitle').textContent = CONFIG.recipeSubtitle;
+
+function runCycle() {
+  var ingredientsEl = document.getElementById('ingredients');
+  var stepsEl = document.getElementById('steps');
+  ingredientsEl.innerHTML = ''; stepsEl.innerHTML = '';
+  document.getElementById('progFill').style.width = '0%';
+
+  CONFIG.ingredients.forEach(function(ing, i) {
+    var div = document.createElement('div'); div.className = 'ingredient';
+    div.innerHTML = '<span class="ing-dot"></span>' + ing;
+    ingredientsEl.appendChild(div);
+    setTimeout(function(){ div.classList.add('show'); }, 300 + i*120);
+  });
+
+  CONFIG.steps.forEach(function(s, i) {
+    var div = document.createElement('div'); div.className = 'step'; div.id = 'step'+i;
+    div.innerHTML = '<div class="step-num">'+(i+1)+'</div><div><div class="step-text">'+s.text+'</div><div class="step-time">'+s.time+'</div></div>';
+    stepsEl.appendChild(div);
+    setTimeout(function(){ div.classList.add('show'); }, 1500 + i*200);
+  });
+
+  var total = CONFIG.steps.length;
+  var stepDelay = (CONFIG.cycleDuration - 4000) / total;
+  CONFIG.steps.forEach(function(s, i) {
+    setTimeout(function() {
+      for (var j = 0; j < i; j++) { var p = document.getElementById('step'+j); if(p){ p.classList.remove('active'); p.classList.add('done'); } }
+      var cur = document.getElementById('step'+i); if(cur) cur.classList.add('active');
+      document.getElementById('progFill').style.width = ((i+1)/total*100) + '%';
+      var mins = 0; for (var k=0; k<=i; k++) mins += parseInt(CONFIG.steps[k].time);
+      document.getElementById('timerVal').textContent = mins + ':00';
+    }, 3000 + i*stepDelay);
+  });
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

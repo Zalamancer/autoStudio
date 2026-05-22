@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows 98</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #008080;
+    font-family: 'MS Sans Serif', 'Arial', 'Helvetica', sans-serif;
+    font-size: 11px; color: #000;
+    cursor: default;
+  }
+  .desktop { width: 100%; height: calc(100% - 32px); position: relative; }
+  /* Window chrome */
+  .win-window {
+    position: absolute; background: #c0c0c0;
+    border-top: 2px solid #ffffff; border-left: 2px solid #ffffff;
+    border-right: 2px solid #404040; border-bottom: 2px solid #404040;
+    box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #808080;
+  }
+  .win-titlebar {
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: white; font-weight: bold; font-size: 11px;
+    padding: 2px 4px; display: flex; align-items: center;
+    justify-content: space-between; height: 20px;
+  }
+  .win-title-text { flex: 1; padding-left: 2px; }
+  .win-btn-group { display: flex; gap: 2px; }
+  .win-btn {
+    width: 16px; height: 14px; background: #c0c0c0;
+    border-top: 1px solid #fff; border-left: 1px solid #fff;
+    border-right: 1px solid #404040; border-bottom: 1px solid #404040;
+    font-size: 8px; text-align: center; line-height: 12px; cursor: pointer;
+  }
+  .win-body { padding: 8px; }
+  .win-menubar {
+    background: #c0c0c0; padding: 2px 0;
+    border-bottom: 1px solid #808080;
+    font-size: 11px;
+  }
+  .win-menubar span { padding: 2px 8px; }
+  .win-menubar span:first-child { text-decoration: underline; }
+  /* Error dialog */
+  .error-dialog {
+    position: absolute; z-index: 20;
+    animation: errorPopup 6s ease-in-out infinite;
+  }
+  @keyframes errorPopup {
+    0%, 10% { opacity: 0; transform: scale(0.8); }
+    15%, 75% { opacity: 1; transform: scale(1); }
+    85%, 100% { opacity: 0; transform: scale(0.8); }
+  }
+  .error-body { display: flex; align-items: flex-start; gap: 12px; padding: 12px; }
+  .error-icon {
+    width: 32px; height: 32px; background: #ff0000;
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; color: white; font-weight: bold;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .error-text { font-size: 11px; line-height: 1.5; padding-top: 4px; }
+  .error-btn-row { text-align: center; padding: 4px 12px 12px; }
+  .win98-btn {
+    background: #c0c0c0; border: none; padding: 2px 20px;
+    font-size: 11px; font-family: inherit;
+    border-top: 2px solid #fff; border-left: 2px solid #fff;
+    border-right: 2px solid #404040; border-bottom: 2px solid #404040;
+    cursor: pointer;
+  }
+  /* Desktop icons */
+  .desktop-icon {
+    position: absolute; width: 64px; text-align: center;
+    color: white; font-size: 10px; text-shadow: 1px 1px 1px #000;
+  }
+  .icon-img {
+    width: 32px; height: 32px; margin: 0 auto 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .icon1 { top: 10px; left: 16px; animation: iconBounce 4s ease-in-out infinite; }
+  .icon2 { top: 90px; left: 16px; animation: iconBounce 4s ease-in-out infinite 0.5s; }
+  .icon3 { top: 170px; left: 16px; animation: iconBounce 4s ease-in-out infinite 1s; }
+  .icon4 { top: 250px; left: 16px; animation: iconBounce 4s ease-in-out infinite 1.5s; }
+  @keyframes iconBounce {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-6px); }
+    50% { transform: translateY(0); }
+  }
+  /* Taskbar */
+  .taskbar {
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 32px;
+    background: #c0c0c0; z-index: 30;
+    border-top: 2px solid #ffffff;
+    display: flex; align-items: center; padding: 2px 4px;
+    justify-content: space-between;
+  }
+  .start-btn {
+    background: #c0c0c0; border: none; padding: 2px 8px;
+    font-size: 11px; font-weight: bold; font-family: inherit;
+    border-top: 2px solid #fff; border-left: 2px solid #fff;
+    border-right: 2px solid #404040; border-bottom: 2px solid #404040;
+    display: flex; align-items: center; gap: 4px; cursor: pointer;
+    height: 24px;
+  }
+  .start-flag { font-size: 16px; }
+  .taskbar-items { display: flex; gap: 2px; flex: 1; margin-left: 4px; }
+  .taskbar-item {
+    background: #c0c0c0; padding: 2px 8px; font-size: 11px;
+    border-top: 1px solid #808080; border-left: 1px solid #808080;
+    border-right: 1px solid #fff; border-bottom: 1px solid #fff;
+    max-width: 140px; overflow: hidden; height: 22px;
+    display: flex; align-items: center;
+  }
+  .tray {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 4px; height: 22px; font-size: 11px;
+    border-top: 1px solid #808080; border-left: 1px solid #808080;
+    border-right: 1px solid #fff; border-bottom: 1px solid #fff;
+  }
+  /* Start menu */
+  .start-menu {
+    position: fixed; bottom: 32px; left: 0; z-index: 35;
+    background: #c0c0c0; width: 180px;
+    border-top: 2px solid #fff; border-left: 2px solid #fff;
+    border-right: 2px solid #404040; border-bottom: 2px solid #404040;
+    animation: startMenuAnim 8s ease-in-out infinite;
+  }
+  @keyframes startMenuAnim {
+    0%, 5% { opacity: 0; transform: translateY(10px); }
+    12%, 40% { opacity: 1; transform: translateY(0); }
+    48%, 100% { opacity: 0; transform: translateY(10px); }
+  }
+  .start-sidebar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 22px;
+    background: linear-gradient(to top, #000080, #1084d0);
+  }
+  .start-sidebar-text {
+    color: white; font-weight: bold; font-size: 14px;
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    padding: 8px 3px; letter-spacing: 2px;
+  }
+  .start-items { margin-left: 22px; padding: 4px 0; }
+  .start-item {
+    padding: 4px 12px; font-size: 11px; display: flex;
+    align-items: center; gap: 8px;
+  }
+  .start-item:hover { background: #000080; color: white; }
+  .start-item-icon { font-size: 16px; width: 20px; text-align: center; }
+  .start-sep { height: 1px; background: #808080; margin: 2px 8px 2px 30px; }
+  /* Notepad window */
+  .notepad-window {
+    top: 8%; left: 30%; width: 55%; min-width: 200px; min-height: 200px;
+    z-index: 10;
+  }
+  .notepad-content {
+    background: white; width: 100%; height: 180px; padding: 4px;
+    font-family: 'Courier New', monospace; font-size: 12px;
+    border-top: 1px solid #808080; border-left: 1px solid #808080;
+    border-right: 1px solid #fff; border-bottom: 1px solid #fff;
+    overflow: hidden; white-space: pre-wrap; line-height: 1.6;
+  }
+  .notepad-cursor {
+    display: inline-block; width: 1px; height: 14px;
+    background: #000; vertical-align: text-bottom;
+    animation: cursorBlink98 0.6s step-end infinite;
+  }
+  @keyframes cursorBlink98 { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  /* Error window positions */
+  .error1 { top: 25%; left: 25%; z-index: 21; }
+  .error2 { top: 40%; left: 40%; z-index: 22; animation-delay: 2s; }
+</style>
+</head>
+<body>
+<div class="desktop">
+  <!-- Desktop Icons -->
+  <div class="desktop-icon icon1">
+    <div class="icon-img">&#128187;</div>
+    <div>My Computer</div>
+  </div>
+  <div class="desktop-icon icon2">
+    <div class="icon-img">&#128193;</div>
+    <div>My Documents</div>
+  </div>
+  <div class="desktop-icon icon3">
+    <div class="icon-img">&#127760;</div>
+    <div>Internet Explorer</div>
+  </div>
+  <div class="desktop-icon icon4">
+    <div class="icon-img">&#128465;</div>
+    <div>Recycle Bin</div>
+  </div>
+
+  <!-- Notepad window -->
+  <div class="win-window notepad-window">
+    <div class="win-titlebar">
+      <span class="win-title-text">Untitled - Notepad</span>
+      <div class="win-btn-group">
+        <div class="win-btn">_</div>
+        <div class="win-btn">&#9633;</div>
+        <div class="win-btn">X</div>
+      </div>
+    </div>
+    <div class="win-menubar">
+      <span>File</span><span>Edit</span><span>Search</span><span>Help</span>
+    </div>
+    <div class="win-body" style="padding:0">
+      <div class="notepad-content" id="notepadContent"><span class="notepad-cursor"></span></div>
+    </div>
+  </div>
+
+  <!-- Error dialogs -->
+  <div class="win-window error-dialog error1">
+    <div class="win-titlebar">
+      <span class="win-title-text" id="errorTitle1">System Error</span>
+      <div class="win-btn-group"><div class="win-btn">X</div></div>
+    </div>
+    <div class="error-body">
+      <div class="error-icon">X</div>
+      <div class="error-text" id="errorMsg1">A fatal exception 0E has occurred at 0028:C0034B03. The current application will be terminated.</div>
+    </div>
+    <div class="error-btn-row">
+      <button class="win98-btn">OK</button>
+    </div>
+  </div>
+
+  <div class="win-window error-dialog error2">
+    <div class="win-titlebar">
+      <span class="win-title-text" id="errorTitle2">Warning</span>
+      <div class="win-btn-group"><div class="win-btn">X</div></div>
+    </div>
+    <div class="error-body">
+      <div class="error-icon" style="background:#FFD700;color:#000">!</div>
+      <div class="error-text" id="errorMsg2">This program has performed an illegal operation and will be shut down.</div>
+    </div>
+    <div class="error-btn-row">
+      <button class="win98-btn">OK</button>
+      <button class="win98-btn" style="margin-left:4px">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Start Menu -->
+<div class="start-menu" id="startMenu">
+  <div class="start-sidebar">
+    <div class="start-sidebar-text">Windows 98</div>
+  </div>
+  <div class="start-items">
+    <div class="start-item"><span class="start-item-icon">&#128196;</span> Programs</div>
+    <div class="start-item"><span class="start-item-icon">&#128193;</span> Documents</div>
+    <div class="start-item"><span class="start-item-icon">&#9881;</span> Settings</div>
+    <div class="start-item"><span class="start-item-icon">&#128270;</span> Find</div>
+    <div class="start-item"><span class="start-item-icon">&#10067;</span> Help</div>
+    <div class="start-item"><span class="start-item-icon">&#9654;</span> Run...</div>
+    <div class="start-sep"></div>
+    <div class="start-item"><span class="start-item-icon">&#9211;</span> Shut Down...</div>
+  </div>
+</div>
+
+<!-- Taskbar -->
+<div class="taskbar">
+  <button class="start-btn">
+    <span class="start-flag">&#127987;</span> Start
+  </button>
+  <div class="taskbar-items">
+    <div class="taskbar-item">&#128196; Untitled - Notepad</div>
+  </div>
+  <div class="tray">
+    <span>&#128266;</span>
+    <span id="taskbarClock">12:00 PM</span>
+  </div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TYPING_TEXT = 'Hello World!\n\nThis is Windows 98.\nThe good old days of computing.\n\nC:\\> dir /s\nVolume in drive C has no label.\nDirectory of C:\\WINDOWS\n\n';
+const ERROR_TITLE_1 = 'System Error';
+const ERROR_MSG_1 = 'A fatal exception 0E has occurred at 0028:C0034B03. The current application will be terminated.';
+const ERROR_TITLE_2 = 'Warning';
+const ERROR_MSG_2 = 'This program has performed an illegal operation and will be shut down.';
+const DESKTOP_COLOR = '#008080';
+// ==============================
+
+document.body.style.background = DESKTOP_COLOR;
+document.querySelector('.desktop').style.background = DESKTOP_COLOR;
+document.getElementById('errorTitle1').textContent = ERROR_TITLE_1;
+document.getElementById('errorMsg1').textContent = ERROR_MSG_1;
+document.getElementById('errorTitle2').textContent = ERROR_TITLE_2;
+document.getElementById('errorMsg2').textContent = ERROR_MSG_2;
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById('taskbarClock').textContent = `${h}:${m} ${ampm}`;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Typing animation
+const notepad = document.getElementById('notepadContent');
+let charIndex = 0;
+let currentText = '';
+function typeChar() {
+  if (charIndex < TYPING_TEXT.length) {
+    currentText += TYPING_TEXT[charIndex];
+    notepad.innerHTML = currentText.replace(/\n/g, '<br>') + '<span class="notepad-cursor"></span>';
+    charIndex++;
+    setTimeout(typeChar, 60 + Math.random() * 80);
+  } else {
+    setTimeout(() => {
+      charIndex = 0;
+      currentText = '';
+      notepad.innerHTML = '<span class="notepad-cursor"></span>';
+      typeChar();
+    }, 3000);
+  }
+}
+typeChar();
+</script>
+</body>
+</html>

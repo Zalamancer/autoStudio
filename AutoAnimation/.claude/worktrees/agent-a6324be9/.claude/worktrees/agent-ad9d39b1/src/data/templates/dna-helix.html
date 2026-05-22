@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNA Helix Motion Graphics</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #060818;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  bgColor: '#060818',
+  bgGradientTop: '#080C24',
+  bgGradientBot: '#040610',
+  helixRadius: 80,
+  helixSpacing: 28,
+  nodeCount: 40,
+  rotationSpeed: 0.6,
+  verticalScroll: 15,
+  strandAColor: '#2266FF',
+  strandBColor: '#FF4466',
+  bondColors: { A: '#44FF88', T: '#FF8844', C: '#44DDFF', G: '#FFDD44' },
+  basePairs: ['AT', 'CG', 'TA', 'GC', 'AT', 'TA', 'CG', 'GC', 'AT', 'CG', 'TA', 'AT', 'GC', 'CG', 'AT', 'TA', 'GC', 'AT', 'CG', 'TA', 'AT', 'GC', 'TA', 'CG', 'AT', 'GC', 'TA', 'CG', 'AT', 'TA', 'GC', 'CG', 'AT', 'TA', 'GC', 'AT', 'CG', 'TA', 'GC', 'AT'],
+  phosphateGlow: 'rgba(100, 160, 255, 0.3)',
+  particleCount: 60,
+  codeScrollSpeed: 30,
+  nodeRadius: 5,
+  bondWidth: 2,
+  backboneWidth: 2.5,
+  depthFade: true
+};
+// =========================================
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2;
+  cy = H / 2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Floating particles
+const particles = [];
+for (let i = 0; i < CONFIG.particleCount; i++) {
+  particles.push({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    r: Math.random() * 1.5 + 0.3,
+    alpha: Math.random() * 0.2 + 0.05,
+    twinkle: Math.random() * 2 + 1
+  });
+}
+
+// Genetic code sequence for scrolling
+const geneSequence = 'ATCGATCGATCGTAGCTAGCTAGCATCGATCGTAGCTAGCATCGATCGTAGCTAGCATCGATCG';
+
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, CONFIG.bgGradientTop);
+  grad.addColorStop(0.5, CONFIG.bgColor);
+  grad.addColorStop(1, CONFIG.bgGradientBot);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle radial glow at center
+  const centerGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W, H) * 0.5);
+  centerGlow.addColorStop(0, 'rgba(20, 40, 100, 0.08)');
+  centerGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = centerGlow;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0) p.x = W;
+    if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H;
+    if (p.y > H) p.y = 0;
+
+    const twinkle = Math.sin(time * p.twinkle) * 0.5 + 0.5;
+    const alpha = p.alpha * twinkle;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(140, 180, 255, ${alpha})`;
+    ctx.fill();
+  });
+}
+
+function getHelixPoint(index, strand, t) {
+  const vertOffset = (t * CONFIG.verticalScroll) % (CONFIG.helixSpacing * CONFIG.nodeCount);
+  const y = index * CONFIG.helixSpacing - vertOffset;
+  const wrappedY = ((y % (CONFIG.helixSpacing * CONFIG.nodeCount)) + CONFIG.helixSpacing * CONFIG.nodeCount) % (CONFIG.helixSpacing * CONFIG.nodeCount) - CONFIG.helixSpacing * CONFIG.nodeCount / 2;
+
+  const angle = (index * 0.45) + t * CONFIG.rotationSpeed + (strand === 1 ? Math.PI : 0);
+  const x = Math.sin(angle) * CONFIG.helixRadius;
+  const z = Math.cos(angle); // -1 to 1 for depth
+
+  return {
+    x: cx + x,
+    y: cy + wrappedY,
+    z: z,
+    angle: angle,
+    rawIndex: index
+  };
+}
+
+function drawHelix() {
+  // Collect all nodes for depth sorting
+  const allNodes = [];
+
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    const pA = getHelixPoint(i, 0, time);
+    const pB = getHelixPoint(i, 1, time);
+
+    if (pA.y < -H * 0.6 || pA.y > H * 0.6) continue;
+
+    const pair = CONFIG.basePairs[i % CONFIG.basePairs.length];
+    const avgZ = (pA.z + pB.z) / 2;
+
+    allNodes.push({
+      type: 'bond',
+      pA, pB, pair,
+      z: avgZ,
+      index: i
+    });
+
+    allNodes.push({ type: 'nodeA', p: pA, z: pA.z, index: i, base: pair[0] });
+    allNodes.push({ type: 'nodeB', p: pB, z: pB.z, index: i, base: pair[1] });
+  }
+
+  // Sort by depth (back to front)
+  allNodes.sort((a, b) => a.z - b.z);
+
+  // Draw backbone connections first (behind everything)
+  drawBackbone(0, time);
+  drawBackbone(1, time);
+
+  // Draw sorted elements
+  allNodes.forEach(node => {
+    const depthAlpha = CONFIG.depthFade ? (node.z * 0.35 + 0.65) : 1;
+    const depthScale = node.z * 0.2 + 0.8;
+
+    if (node.type === 'bond') {
+      drawBond(node.pA, node.pB, node.pair, depthAlpha);
+    } else if (node.type === 'nodeA') {
+      drawNode(node.p, CONFIG.strandAColor, depthAlpha, depthScale, node.base);
+    } else {
+      drawNode(node.p, CONFIG.strandBColor, depthAlpha, depthScale, node.base);
+    }
+  });
+}
+
+function drawBackbone(strand, t) {
+  ctx.beginPath();
+  ctx.lineWidth = CONFIG.backboneWidth;
+
+  let firstPoint = true;
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    const p = getHelixPoint(i, strand, t);
+    if (p.y < -H * 0.6 || p.y > H * 0.6) { firstPoint = true; continue; }
+
+    const depthAlpha = CONFIG.depthFade ? (p.z * 0.3 + 0.5) : 0.5;
+    if (firstPoint) {
+      ctx.moveTo(p.x, p.y);
+      firstPoint = false;
+    } else {
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+
+  const color = strand === 0 ? CONFIG.strandAColor : CONFIG.strandBColor;
+  ctx.strokeStyle = color + '60';
+  ctx.stroke();
+
+  // Phosphate glow
+  ctx.lineWidth = CONFIG.backboneWidth + 4;
+  ctx.strokeStyle = CONFIG.phosphateGlow.replace('0.3', '0.08');
+  ctx.stroke();
+}
+
+function drawBond(pA, pB, pair, alpha) {
+  // Base pair bond line
+  ctx.beginPath();
+  ctx.moveTo(pA.x, pA.y);
+  ctx.lineTo(pB.x, pB.y);
+
+  // Double/triple bond styling
+  const isStrong = (pair === 'CG' || pair === 'GC');
+  ctx.lineWidth = isStrong ? CONFIG.bondWidth + 1 : CONFIG.bondWidth;
+  ctx.strokeStyle = `rgba(100, 150, 200, ${0.25 * alpha})`;
+  ctx.stroke();
+
+  if (isStrong) {
+    // Extra bond line for triple bond
+    const dx = (pB.x - pA.x) * 0.05;
+    const dy = (pB.y - pA.y) * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(pA.x + dy, pA.y - dx);
+    ctx.lineTo(pB.x + dy, pB.y - dx);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = `rgba(100, 150, 200, ${0.15 * alpha})`;
+    ctx.stroke();
+  }
+
+  // Hydrogen bond dots
+  const midX = (pA.x + pB.x) / 2;
+  const midY = (pA.y + pB.y) / 2;
+  ctx.beginPath();
+  ctx.arc(midX, midY, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(180, 200, 255, ${0.3 * alpha})`;
+  ctx.fill();
+}
+
+function drawNode(p, color, alpha, scale, base) {
+  const r = CONFIG.nodeRadius * scale;
+
+  // Outer glow
+  const glowGrad = ctx.createRadialGradient(p.x, p.y, r * 0.3, p.x, p.y, r * 3);
+  glowGrad.addColorStop(0, color + Math.floor(alpha * 60).toString(16).padStart(2, '0'));
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2);
+  ctx.fillStyle = glowGrad;
+  ctx.fill();
+
+  // Node sphere
+  const nodeGrad = ctx.createRadialGradient(p.x - r * 0.3, p.y - r * 0.3, 0, p.x, p.y, r);
+  nodeGrad.addColorStop(0, '#FFFFFF');
+  nodeGrad.addColorStop(0.3, color);
+  nodeGrad.addColorStop(1, shadeColor(color, -60));
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fillStyle = nodeGrad;
+  ctx.globalAlpha = alpha;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Base letter
+  if (scale > 0.7 && alpha > 0.5) {
+    const baseColor = CONFIG.bondColors[base] || '#FFFFFF';
+    ctx.font = `bold ${Math.floor(8 * scale)}px Courier New`;
+    ctx.fillStyle = baseColor + Math.floor(alpha * 200).toString(16).padStart(2, '0');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(base, p.x, p.y);
+    ctx.textBaseline = 'alphabetic';
+  }
+}
+
+function shadeColor(color, amount) {
+  let hex = color.replace('#', '');
+  let r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+  let g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+  let b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawGeneticCode() {
+  const scrollX = (time * CONFIG.codeScrollSpeed) % (geneSequence.length * 12);
+
+  // Left side scrolling code
+  ctx.font = '11px Courier New';
+  ctx.textAlign = 'left';
+
+  for (let i = 0; i < geneSequence.length * 2; i++) {
+    const char = geneSequence[i % geneSequence.length];
+    const x = 15;
+    const y = i * 14 - scrollX + H;
+
+    if (y < -20 || y > H + 20) continue;
+
+    const distFromCenter = Math.abs(y - cy) / (H / 2);
+    const alpha = Math.max(0, 0.4 - distFromCenter * 0.4);
+
+    ctx.fillStyle = (CONFIG.bondColors[char] || '#FFFFFF') + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+    ctx.fillText(char, x, y);
+  }
+
+  // Right side
+  for (let i = 0; i < geneSequence.length * 2; i++) {
+    const char = geneSequence[i % geneSequence.length];
+    const complement = char === 'A' ? 'T' : char === 'T' ? 'A' : char === 'C' ? 'G' : 'C';
+    const x = W - 20;
+    const y = i * 14 - scrollX * 0.8 + H;
+
+    if (y < -20 || y > H + 20) continue;
+
+    const distFromCenter = Math.abs(y - cy) / (H / 2);
+    const alpha = Math.max(0, 0.4 - distFromCenter * 0.4);
+
+    ctx.fillStyle = (CONFIG.bondColors[complement] || '#FFFFFF') + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+    ctx.textAlign = 'right';
+    ctx.fillText(complement, x, y);
+  }
+}
+
+function drawInfoOverlay() {
+  ctx.font = '10px Courier New';
+  ctx.fillStyle = 'rgba(100, 150, 220, 0.35)';
+  ctx.textAlign = 'left';
+  ctx.fillText('DEOXYRIBONUCLEIC ACID', 15, 25);
+  ctx.fillText('DOUBLE HELIX STRUCTURE', 15, 40);
+
+  ctx.textAlign = 'right';
+  ctx.fillText('BASE PAIRS:', W - 15, 25);
+
+  const pairs = [
+    { label: 'A-T', color: CONFIG.bondColors.A },
+    { label: 'T-A', color: CONFIG.bondColors.T },
+    { label: 'C-G', color: CONFIG.bondColors.C },
+    { label: 'G-C', color: CONFIG.bondColors.G }
+  ];
+
+  pairs.forEach((p, i) => {
+    ctx.fillStyle = p.color + '88';
+    ctx.fillText(p.label, W - 15, 42 + i * 16);
+  });
+
+  // Bottom readout
+  const seqPos = Math.floor(time * 5) % geneSequence.length;
+  const displaySeq = geneSequence.substr(seqPos, 16);
+  ctx.font = '12px Courier New';
+  ctx.fillStyle = 'rgba(80, 140, 200, 0.25)';
+  ctx.textAlign = 'center';
+  ctx.fillText(`5'-${displaySeq}-3'`, cx, H - 20);
+
+  // Nucleotide counter
+  ctx.font = '9px Courier New';
+  ctx.fillStyle = 'rgba(80, 140, 200, 0.3)';
+  ctx.textAlign = 'left';
+  ctx.fillText(`POSITION: ${(seqPos + 1).toString().padStart(4, '0')}`, 15, H - 20);
+}
+
+function drawVignette() {
+  // Top/bottom fade for seamless vertical loop
+  const vigH = H * 0.15;
+
+  const topGrad = ctx.createLinearGradient(0, 0, 0, vigH);
+  topGrad.addColorStop(0, CONFIG.bgColor);
+  topGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, W, vigH);
+
+  const botGrad = ctx.createLinearGradient(0, H - vigH, 0, H);
+  botGrad.addColorStop(0, 'transparent');
+  botGrad.addColorStop(1, CONFIG.bgColor);
+  ctx.fillStyle = botGrad;
+  ctx.fillRect(0, H - vigH, W, vigH);
+}
+
+function draw() {
+  drawBackground();
+  drawParticles();
+  drawGeneticCode();
+  drawHelix();
+  drawVignette();
+  drawInfoOverlay();
+
+  time += 1 / 60;
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>

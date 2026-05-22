@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Voting Poll Results</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .poll-container {
+    width: 82vw;
+    max-width: 700px;
+    opacity: 0;
+    transform: translateY(3vh) scale(0.97);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .poll-container.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .poll-container.exiting {
+    opacity: 0;
+    transform: translateY(-2vh) scale(0.98);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  /* Live badge */
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5vw;
+    background: #ff1744;
+    color: white;
+    font-size: clamp(9px, 1vw, 12px);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.4vh 1vw;
+    border-radius: 0.5vw;
+    margin-bottom: 1.5vh;
+    text-transform: uppercase;
+  }
+  .live-dot {
+    width: 0.6vw;
+    height: 0.6vw;
+    min-width: 5px;
+    min-height: 5px;
+    border-radius: 50%;
+    background: white;
+    animation: livePulse 1.5s infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* Question */
+  .poll-question {
+    font-size: clamp(18px, 3vw, 36px);
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 3vh;
+    line-height: 1.25;
+  }
+
+  /* Options */
+  .poll-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1.8vh;
+  }
+
+  .poll-option {
+    position: relative;
+    opacity: 0;
+    transform: translateX(-2vw);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .poll-option.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.6vh;
+  }
+  .option-label {
+    font-size: clamp(13px, 1.5vw, 18px);
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  .option-stats {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8vw;
+  }
+  .option-percent {
+    font-size: clamp(16px, 2vw, 24px);
+    font-weight: 800;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .option-votes {
+    font-size: clamp(10px, 1.1vw, 13px);
+    color: var(--text-color);
+    opacity: 0.5;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .bar-track {
+    width: 100%;
+    height: 4.5vh;
+    min-height: 28px;
+    background: rgba(128,128,128,0.12);
+    border-radius: 0.8vw;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 0.8vw;
+    width: 0%;
+    transition: width 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    animation: barShimmer 2s infinite;
+  }
+  @keyframes barShimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .bar-fill.leading {
+    box-shadow: 0 0 2vh rgba(var(--fill-rgb), 0.3);
+  }
+
+  /* Winner badge */
+  .winner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3vw;
+    font-size: clamp(9px, 0.9vw, 11px);
+    font-weight: 700;
+    color: #ffc107;
+    opacity: 0;
+    transition: opacity 0.5s;
+    margin-left: 0.8vw;
+  }
+  .winner-badge.visible { opacity: 1; }
+
+  /* Total counter */
+  .total-votes {
+    margin-top: 3vh;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1.5vh;
+    border-top: 1px solid rgba(128,128,128,0.15);
+  }
+  .total-label {
+    font-size: clamp(11px, 1.2vw, 14px);
+    color: var(--text-color);
+    opacity: 0.4;
+    font-weight: 500;
+  }
+  .total-count {
+    font-size: clamp(18px, 2.2vw, 28px);
+    font-weight: 800;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<div class="poll-container" id="pollContainer">
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    LIVE
+  </div>
+  <div class="poll-question" id="pollQuestion"></div>
+  <div class="poll-options" id="pollOptions"></div>
+  <div class="total-votes">
+    <span class="total-label">Total Votes</span>
+    <span class="total-count" id="totalCount">0</span>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  question: 'What is the most impactful technology of 2025?',
+  options: [
+    { label: 'AI / Large Language Models', votes: 12847, color: '#6366f1' },
+    { label: 'Quantum Computing', votes: 4293, color: '#06b6d4' },
+    { label: 'AR / Spatial Computing', votes: 6518, color: '#f59e0b' },
+    { label: 'Autonomous Vehicles', votes: 3764, color: '#10b981' },
+    { label: 'Brain-Computer Interfaces', votes: 2891, color: '#ef4444' }
+  ],
+  showPercentages: true,
+  bgColor: '#0f0f13',
+  textColor: '#f0f0f5',
+  cycleDuration: 10
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.body.style.setProperty('--text-color', CONFIG.textColor);
+document.getElementById('pollQuestion').textContent = CONFIG.question;
+
+// Compute totals
+const totalVotes = CONFIG.options.reduce((s, o) => s + o.votes, 0);
+const maxVotes = Math.max(...CONFIG.options.map(o => o.votes));
+
+// Build option elements
+const optionsContainer = document.getElementById('pollOptions');
+const optionEls = [];
+
+CONFIG.options.forEach((opt, i) => {
+  const pct = ((opt.votes / totalVotes) * 100).toFixed(1);
+  const isLeading = opt.votes === maxVotes;
+
+  const el = document.createElement('div');
+  el.className = 'poll-option';
+  el.innerHTML = `
+    <div class="option-header">
+      <span class="option-label">${opt.label}
+        <span class="winner-badge" data-winner="${isLeading}">&#9733; LEADING</span>
+      </span>
+      <div class="option-stats">
+        ${CONFIG.showPercentages ? `<span class="option-percent" data-target="${pct}">0%</span>` : ''}
+        <span class="option-votes" data-target="${opt.votes}">0 votes</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill ${isLeading ? 'leading' : ''}" data-target="${pct}" style="background:${opt.color};--fill-rgb:${hexToRgbStr(opt.color)}"></div>
+    </div>
+  `;
+  optionsContainer.appendChild(el);
+  optionEls.push(el);
+});
+
+function hexToRgbStr(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r},${g},${b}`;
+}
+
+const pollContainer = document.getElementById('pollContainer');
+const totalCountEl = document.getElementById('totalCount');
+const cycleDurationMs = CONFIG.cycleDuration * 1000;
+let cycleStart = 0;
+let phase = 'intro';
+let countAnimStart = 0;
+let barsAnimated = false;
+let voteUpdateStart = 0;
+
+function formatNumber(n) {
+  return n.toLocaleString('en-US');
+}
+
+// Animate counting numbers
+function animateCountUp(el, targetVal, duration, startTime, currentTime, suffix) {
+  const elapsed = currentTime - startTime;
+  const progress = Math.min(1, elapsed / duration);
+  const eased = 1 - Math.pow(1 - progress, 3);
+  const current = Math.round(eased * targetVal);
+  if (suffix === '%') {
+    el.textContent = (eased * targetVal).toFixed(1) + '%';
+  } else {
+    el.textContent = formatNumber(current) + (suffix || '');
+  }
+  return progress >= 1;
+}
+
+function resetAll() {
+  pollContainer.classList.remove('visible', 'exiting');
+  optionEls.forEach(el => {
+    el.classList.remove('visible');
+    const fill = el.querySelector('.bar-fill');
+    fill.style.width = '0%';
+    const pctEl = el.querySelector('.option-percent');
+    if (pctEl) pctEl.textContent = '0%';
+    const votesEl = el.querySelector('.option-votes');
+    if (votesEl) votesEl.textContent = '0 votes';
+    const badge = el.querySelector('.winner-badge');
+    if (badge) badge.classList.remove('visible');
+  });
+  totalCountEl.textContent = '0';
+  phase = 'intro';
+  cycleStart = 0;
+  barsAnimated = false;
+}
+
+function runCycle(timestamp) {
+  if (!cycleStart) cycleStart = timestamp;
+  const elapsed = timestamp - cycleStart;
+
+  if (phase === 'intro') {
+    pollContainer.classList.add('visible');
+    pollContainer.classList.remove('exiting');
+    if (elapsed >= 400) {
+      phase = 'showOptions';
+    }
+  }
+
+  if (phase === 'showOptions') {
+    const stagger = 200;
+    let allVisible = true;
+    optionEls.forEach((el, i) => {
+      if (elapsed >= 400 + i * stagger) {
+        el.classList.add('visible');
+      } else {
+        allVisible = false;
+      }
+    });
+    if (allVisible && elapsed >= 400 + optionEls.length * stagger + 300) {
+      phase = 'animateBars';
+      countAnimStart = elapsed;
+    }
+  }
+
+  if (phase === 'animateBars') {
+    // Animate bars
+    if (!barsAnimated) {
+      optionEls.forEach(el => {
+        const fill = el.querySelector('.bar-fill');
+        fill.style.width = fill.dataset.target + '%';
+      });
+      barsAnimated = true;
+    }
+
+    // Animate number count-ups
+    const countDuration = 1800;
+    let allDone = true;
+
+    optionEls.forEach((el, i) => {
+      const pctEl = el.querySelector('.option-percent');
+      const votesEl = el.querySelector('.option-votes');
+      const targetPct = parseFloat(el.querySelector('.bar-fill').dataset.target);
+      const targetVotes = CONFIG.options[i].votes;
+
+      if (pctEl) {
+        const done = animateCountUp(pctEl, targetPct, countDuration, countAnimStart, elapsed, '%');
+        if (!done) allDone = false;
+      }
+      if (votesEl) {
+        const vElapsed = elapsed - countAnimStart;
+        const vProg = Math.min(1, vElapsed / countDuration);
+        const vEased = 1 - Math.pow(1 - vProg, 3);
+        votesEl.textContent = formatNumber(Math.round(vEased * targetVotes)) + ' votes';
+        if (vProg < 1) allDone = false;
+      }
+    });
+
+    // Total counter
+    const tElapsed = elapsed - countAnimStart;
+    const tProg = Math.min(1, tElapsed / countDuration);
+    const tEased = 1 - Math.pow(1 - tProg, 3);
+    totalCountEl.textContent = formatNumber(Math.round(tEased * totalVotes));
+
+    if (allDone) {
+      phase = 'showWinner';
+    }
+  }
+
+  if (phase === 'showWinner') {
+    optionEls.forEach(el => {
+      const badge = el.querySelector('.winner-badge');
+      if (badge && badge.dataset.winner === 'true') {
+        badge.classList.add('visible');
+      }
+    });
+    if (elapsed >= cycleDurationMs - 2000) {
+      phase = 'voteUpdate';
+      voteUpdateStart = elapsed;
+    }
+    // Hold and show leading
+    if (elapsed >= cycleDurationMs - 1200) {
+      phase = 'exit';
+    }
+  }
+
+  if (phase === 'voteUpdate') {
+    // Brief vote count bump animation
+    const bumpDuration = 800;
+    const bumpProgress = Math.min(1, (elapsed - voteUpdateStart) / bumpDuration);
+    const bumpEased = 1 - Math.pow(1 - bumpProgress, 3);
+
+    optionEls.forEach((el, i) => {
+      const votesEl = el.querySelector('.option-votes');
+      const bump = Math.round(bumpEased * Math.floor(Math.random() * 50 + 10));
+      const newVotes = CONFIG.options[i].votes + bump;
+      if (votesEl) votesEl.textContent = formatNumber(newVotes) + ' votes';
+    });
+
+    const totalBump = Math.round(bumpEased * Math.floor(Math.random() * 200 + 50));
+    totalCountEl.textContent = formatNumber(totalVotes + totalBump);
+
+    if (elapsed >= cycleDurationMs - 1200) {
+      phase = 'exit';
+    }
+  }
+
+  if (phase === 'exit') {
+    pollContainer.classList.add('exiting');
+    pollContainer.classList.remove('visible');
+    setTimeout(() => {
+      resetAll();
+      requestAnimationFrame(runCycle);
+    }, 800);
+    return;
+  }
+
+  requestAnimationFrame(runCycle);
+}
+
+requestAnimationFrame(runCycle);
+</script>
+</body>
+</html>

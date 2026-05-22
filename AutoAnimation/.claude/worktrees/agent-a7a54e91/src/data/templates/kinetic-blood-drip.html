@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blood Drip - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0000; font-family: 'Impact', 'Arial Black', sans-serif; position: relative; }
+  body::before { content:''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, rgba(100,0,0,0.08), transparent 60%); }
+  #stage { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .word-block { position: absolute; white-space: nowrap; line-height: 1; opacity: 0; will-change: transform, opacity; user-select: none; }
+  .drip { position: absolute; width: 4px; border-radius: 0 0 3px 3px; pointer-events: none; z-index: 3; }
+
+  @keyframes slashIn { 0% { opacity: 0; transform: translate(-50%,-50%) translateX(-30px) skewX(-15deg); } 30% { opacity: 1; } 100% { opacity: 1; transform: translate(-50%,-50%) translateX(0) skewX(0deg); } }
+  @keyframes meltOut { 0% { opacity: 1; transform: translate(-50%,-50%); } 100% { opacity: 0; transform: translate(-50%,-50%) translateY(30px) scaleY(1.3) scaleX(0.8); filter: blur(2px); } }
+  @keyframes dripFall { 0% { height: 0; opacity: 0.8; } 30% { height: var(--dh); opacity: 0.8; } 100% { height: var(--dh); opacity: 0; transform: translateY(var(--dh)); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  words: ['HORROR','TERROR','SCREAM','DREAD','FRIGHT','CREEP','HAUNT','DOOM'],
+  bgColor: '#0a0000',
+  fontFamily: "'Impact', 'Arial Black', sans-serif",
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+const W = () => window.innerWidth, H = () => window.innerHeight;
+
+function seededRandom(seed) {
+  let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+const dripColors = ['#cc0000','#990000','#aa0000','#bb0000','#880000','#dd1111','#aa0000','#cc1100'];
+
+function spawnDrips(x, y, color) {
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement('div'); d.className = 'drip';
+    const dh = 15 + Math.random() * 25;
+    d.style.cssText = `left:${x+(Math.random()-0.5)*40}px;top:${y+8}px;background:${color};--dh:${dh}px;animation:dripFall ${600+Math.random()*400}ms ease-in forwards;animation-delay:${Math.random()*200}ms;`;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1200);
+  }
+}
+
+function build() {
+  stage.innerHTML = '';
+  const els = [], n = CONFIG.words.length;
+  // Adaptive grid: works for both landscape and portrait
+    const pad = { x: W() * 0.05, y: H() * 0.05 };
+    const usableW = W() - pad.x * 2, usableH = H() - pad.y * 2;
+    const aspect = usableW / usableH;
+    const cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
+    const rows = Math.ceil(n / cols);
+    const cellW = usableW / cols, cellH = usableH / rows;
+
+  CONFIG.words.forEach((word, i) => {
+    const rng = seededRandom(i * 79 + 43);
+    const col = i % cols, row = Math.floor(i / cols);
+    const size = Math.min(40 + rng() * 26, cellW * 0.38, cellH * 0.5);
+    const color = dripColors[i % dripColors.length];
+    const el = document.createElement('div'); el.className = 'word-block';
+    el.textContent = word;
+    el.style.cssText = `font-size:${size}px;font-family:${CONFIG.fontFamily};color:${color};text-shadow:0 0 15px rgba(200,0,0,0.4),0 2px 4px rgba(0,0,0,0.5);letter-spacing:5px;left:${pad.x+col*cellW+cellW/2}px;top:${pad.y+row*cellH+cellH/2}px;transform:translate(-50%,-50%);`;
+    stage.appendChild(el); els.push({ el, x: col*cellW+cellW/2, y: row*cellH+cellH/2, color });
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=300, inD=450, hold=3000, outS=220, outD=550, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.el.style.animation='none';e.el.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((item,i)=>{if(e>=i*inS&&!item.el.dataset.i){item.el.dataset.i='1';item.el.style.animation=`slashIn ${inD}ms ease-out forwards`;spawnDrips(item.x,item.y,item.color);}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((item,i)=>{if(oe>=i*outS&&!item.el.dataset.o){item.el.dataset.o='1';item.el.style.animation=`meltOut ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(item=>{delete item.el.dataset.i;delete item.el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

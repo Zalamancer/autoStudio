@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Propaganda Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #c62828;
+  }
+
+  /* Radiating lines background */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: repeating-conic-gradient(
+      from 0deg at 50% 55%,
+      rgba(0,0,0,0.06) 0deg,
+      transparent 5deg,
+      transparent 10deg,
+      rgba(0,0,0,0.06) 15deg
+    );
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.3;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 6px 16px;
+    position: relative;
+  }
+
+  /* Banner style */
+  .word-block.banner .word-inner {
+    background: #FDD835;
+    color: #1a1a1a;
+    padding: 10px 24px;
+    clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%);
+  }
+
+  /* Heavy underline */
+  .word-block.heavy-underline .word-inner::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 100%;
+    height: 6px;
+    background: #FDD835;
+  }
+
+  /* Outlined text */
+  .word-block.outlined .word-inner {
+    -webkit-text-stroke: 3px currentColor;
+    color: transparent;
+  }
+
+  @keyframes marchIn {
+    0% { opacity: 0; transform: var(--march-start); }
+    50% { opacity: 1; transform: var(--march-mid); }
+    80% { transform: var(--march-settle); }
+    100% { opacity: var(--final-opacity); transform: var(--march-end); }
+  }
+
+  @keyframes crumble {
+    0% { opacity: var(--final-opacity); transform: var(--march-end); filter: none; }
+    30% { filter: brightness(1.3) contrast(1.2); }
+    60% { opacity: 0.5; transform: var(--crumble-mid); filter: sepia(0.5) brightness(0.8); }
+    100% { opacity: 0; transform: var(--crumble-end); filter: sepia(1) brightness(0.3); }
+  }
+
+  /* Star decoration */
+  .deco-star-red {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    color: #FDD835;
+    opacity: 0.2;
+    font-size: 50px;
+    line-height: 1;
+  }
+
+  /* Thick border lines */
+  .thick-line {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    background: #FDD835;
+    opacity: 0.15;
+  }
+
+  /* Arrow decorations */
+  .arrow-deco {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    font-size: 48px;
+    color: #FDD835;
+    opacity: 0.12;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['RISE', 'UNITE', 'POWER', 'GLORY', 'MARCH', 'ONWARD'],
+  colors: ['#FDD835', '#ffffff', '#FDD835', '#ffffff', '#FDD835', '#ffffff'],
+  bgColor: '#c62828',
+  maxRotation: 4,
+  overlapAmount: 0.2,
+  cycleDuration: 9000,
+  marchEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '14px' },
+  { family: 'Georgia', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '12px' },
+];
+
+const fontSizes = [160, 90, 180, 80, 150, 100];
+const wordStyles = ['banner', '', 'heavy-underline', 'outlined', 'banner', ''];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  const stars = [
+    { top: '3%', left: '50%', transform: 'translateX(-50%)' },
+    { bottom: '3%', left: '50%', transform: 'translateX(-50%)' },
+  ];
+  stars.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'deco-star-red';
+    el.textContent = '\u2605';
+    Object.keys(s).forEach(k => el.style[k] = s[k]);
+    stage.appendChild(el);
+  });
+
+  const lines = [
+    { top: '8%', left: '10%', right: '10%', height: 4 },
+    { bottom: '8%', left: '10%', right: '10%', height: 4 },
+  ];
+  lines.forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'thick-line';
+    el.style.height = l.height + 'px';
+    if (l.top) el.style.top = l.top;
+    if (l.bottom) el.style.bottom = l.bottom;
+    el.style.left = l.left;
+    el.style.right = l.right;
+    stage.appendChild(el);
+  });
+
+  const arrows = [
+    { top: '45%', left: '3%', char: '\u25B6' },
+    { top: '45%', right: '3%', char: '\u25C0' },
+  ];
+  arrows.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'arrow-deco';
+    el.textContent = a.char;
+    if (a.top) el.style.top = a.top;
+    if (a.left) el.style.left = a.left;
+    if (a.right) el.style.right = a.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.68;
+  const baseTop = vh * 0.16;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyles[i % wordStyles.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * vw * 0.15;
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.9 + rng() * 0.1;
+
+    const dir = i % 2 === 0 ? -1 : 1;
+    el.style.setProperty('--march-start', `translate(${dir * vw}px, 0) rotate(${rotation}deg)`);
+    el.style.setProperty('--march-mid', `translate(${dir * -20}px, 0) rotate(${rotation + dir * 2}deg)`);
+    el.style.setProperty('--march-settle', `translate(${dir * 5}px, 0) rotate(${rotation - dir}deg)`);
+    el.style.setProperty('--march-end', `translate(0, 0) rotate(${rotation}deg)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.style.setProperty('--crumble-mid', `translate(0, 10px) rotate(${rotation + 3}deg) scale(0.98)`);
+    el.style.setProperty('--crumble-end', `translate(0, 30px) rotate(${rotation + 5}deg) scale(0.9)`);
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const marchStagger = 350;
+  const marchDuration = 600;
+  const holdDuration = 2200;
+  const crumbleStagger = 150;
+  const crumbleDuration = 700;
+  const pauseBeforeLoop = 800;
+
+  const totalMarchTime = (count - 1) * marchStagger + marchDuration;
+  const totalCrumbleTime = (count - 1) * crumbleStagger + crumbleDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalMarchTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * marchStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `marchIn ${marchDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalMarchTime + holdDuration) {
+    } else if (elapsed < totalMarchTime + holdDuration + totalCrumbleTime) {
+      const crumbleElapsed = elapsed - totalMarchTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const wordStart = i * crumbleStagger;
+        if (crumbleElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `crumble ${crumbleDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalMarchTime + holdDuration + totalCrumbleTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

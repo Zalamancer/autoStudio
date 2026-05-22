@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparison Table</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color);
+    color: #e2e8f0;
+  }
+
+  .container {
+    width: 90vw;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5vh;
+    padding: 2vh 0;
+  }
+
+  /* ── Title ── */
+  .title {
+    font-size: 4.2vh;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #f1f5f9;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(-3vh);
+  }
+  .title.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .title.exit {
+    opacity: 0;
+    transform: translateY(-3vh);
+    transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+  }
+
+  .subtitle {
+    font-size: 2vh;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: -1.5vh;
+    opacity: 0;
+    transform: translateY(-2vh);
+  }
+  .subtitle.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.5s ease-out 0.15s, transform 0.5s ease-out 0.15s;
+  }
+  .subtitle.exit {
+    opacity: 0;
+    transform: translateY(-2vh);
+    transition: opacity 0.35s ease-in, transform 0.35s ease-in;
+  }
+
+  /* ── Table Wrapper ── */
+  .table-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .table {
+    display: grid;
+    gap: 0;
+    width: 100%;
+    max-width: 85vw;
+    border-radius: 1.6vh;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.6);
+    border: 0.15vh solid rgba(148, 163, 184, 0.1);
+    backdrop-filter: blur(1vh);
+  }
+
+  /* ── Header Row ── */
+  .header-row {
+    display: contents;
+  }
+
+  .header-cell {
+    padding: 2.5vh 2vw 2vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8vh;
+    position: relative;
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 0.15vh solid rgba(148, 163, 184, 0.08);
+    opacity: 0;
+    transform: translateY(-4vh) scale(0.95);
+  }
+  .header-cell.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: opacity 0.55s ease-out, transform 0.55s ease-out;
+  }
+  .header-cell.exit {
+    opacity: 0;
+    transform: translateY(-4vh) scale(0.95);
+    transition: opacity 0.35s ease-in, transform 0.35s ease-in;
+  }
+
+  .header-cell.feature-label-header {
+    background: transparent;
+    border-bottom: 0.15vh solid rgba(148, 163, 184, 0.08);
+  }
+
+  .header-cell.highlighted {
+    background: rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.08);
+    border-left: 0.15vh solid rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.25);
+    border-right: 0.15vh solid rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.25);
+    border-top: 0.3vh solid var(--accent-color);
+    box-shadow: inset 0 1vh 4vh rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.06);
+  }
+
+  /* ── Badge ── */
+  .badge {
+    position: absolute;
+    top: -0.1vh;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent-color);
+    color: #0f172a;
+    font-size: 1.2vh;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0.5vh 1.8vw;
+    border-radius: 0 0 0.8vh 0.8vh;
+    white-space: nowrap;
+    box-shadow: 0 0.4vh 1.5vh rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.4);
+  }
+
+  .plan-name {
+    font-size: 2.4vh;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  .plan-price {
+    font-size: 3.8vh;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+  }
+  .highlighted .plan-price {
+    color: var(--accent-color);
+  }
+
+  .plan-period {
+    font-size: 1.5vh;
+    color: #64748b;
+    font-weight: 400;
+  }
+
+  /* ── Feature Rows ── */
+  .feature-row {
+    display: contents;
+  }
+
+  .feature-cell {
+    padding: 1.8vh 2vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8vh;
+    border-bottom: 0.1vh solid rgba(148, 163, 184, 0.06);
+    position: relative;
+    opacity: 0;
+    transform: translateX(-3vw);
+  }
+  .feature-cell.visible {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.45s ease-out, transform 0.45s ease-out;
+  }
+  .feature-cell.exit {
+    opacity: 0;
+    transform: translateX(3vw);
+    transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+  }
+
+  .feature-cell.highlighted-col {
+    background: rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.04);
+    border-left: 0.15vh solid rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.15);
+    border-right: 0.15vh solid rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.15);
+  }
+
+  .feature-label {
+    justify-content: flex-start;
+    color: #cbd5e1;
+    font-weight: 500;
+    padding-left: 3vw;
+  }
+
+  /* Row highlight sweep */
+  .feature-cell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(148,163,184,0.04) 50%, transparent 100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .feature-cell.sweep::before {
+    animation: rowSweep 1.2s ease-out forwards;
+  }
+
+  @keyframes rowSweep {
+    0%   { opacity: 0; transform: translateX(-100%); }
+    30%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(100%); }
+  }
+
+  /* ── Checkmark (CSS Only) ── */
+  .check {
+    width: 2.4vh;
+    height: 2.4vh;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .check.yes {
+    background: rgba(52, 211, 153, 0.15);
+  }
+  .check.yes::after {
+    content: '';
+    width: 1.1vh;
+    height: 0.55vh;
+    border-left: 0.22vh solid #34d399;
+    border-bottom: 0.22vh solid #34d399;
+    transform: rotate(-45deg) translateY(-0.1vh);
+    display: block;
+  }
+
+  .check.no {
+    background: rgba(248, 113, 113, 0.12);
+  }
+  .check.no::before,
+  .check.no::after {
+    content: '';
+    position: absolute;
+    width: 1.1vh;
+    height: 0.22vh;
+    background: #f87171;
+    border-radius: 0.1vh;
+  }
+  .check.no::before { transform: rotate(45deg); }
+  .check.no::after  { transform: rotate(-45deg); }
+
+  /* Highlighted column checks get accent glow */
+  .highlighted-col .check.yes {
+    background: rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.2);
+  }
+  .highlighted-col .check.yes::after {
+    border-color: var(--accent-color);
+  }
+
+  /* ── CTA Row ── */
+  .cta-row {
+    display: contents;
+  }
+
+  .cta-cell {
+    padding: 2vh 2vw 2.5vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(2vh);
+  }
+  .cta-cell.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  }
+  .cta-cell.exit {
+    opacity: 0;
+    transform: translateY(2vh);
+    transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+  }
+
+  .cta-cell.feature-label-cta {
+    background: transparent;
+  }
+
+  .cta-cell.highlighted-col {
+    background: rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.04);
+    border-left: 0.15vh solid rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.15);
+    border-right: 0.15vh solid rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.15);
+    border-bottom: 0.3vh solid var(--accent-color);
+    border-radius: 0 0 0.4vh 0.4vh;
+  }
+
+  .cta-btn {
+    padding: 1.2vh 3vw;
+    border-radius: 0.8vh;
+    font-size: 1.6vh;
+    font-weight: 600;
+    border: 0.15vh solid rgba(148, 163, 184, 0.2);
+    background: rgba(30, 41, 59, 0.6);
+    color: #cbd5e1;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  .cta-btn.primary {
+    background: var(--accent-color);
+    color: #0f172a;
+    border-color: var(--accent-color);
+    box-shadow: 0 0.4vh 2vh rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.35),
+                0 0 3vh rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.15);
+  }
+
+  /* ── Glow pulse on highlighted column ── */
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 2vh rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.08); }
+    50%      { box-shadow: 0 0 4vh rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.18); }
+  }
+
+  .header-cell.highlighted.visible {
+    animation: glowPulse 3s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+
+  /* ── Background decoration ── */
+  .bg-glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(12vh);
+    pointer-events: none;
+    opacity: 0.35;
+    z-index: -1;
+  }
+  .bg-glow-1 {
+    width: 50vw;
+    height: 50vw;
+    top: -15vh;
+    right: -10vw;
+    background: radial-gradient(circle, rgba(var(--accent-r), var(--accent-g), var(--accent-b), 0.15), transparent 70%);
+  }
+  .bg-glow-2 {
+    width: 40vw;
+    height: 40vw;
+    bottom: -10vh;
+    left: -8vw;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1), transparent 70%);
+  }
+
+  /* ── Grid dots background ── */
+  .bg-dots {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image: radial-gradient(rgba(148, 163, 184, 0.06) 0.1vh, transparent 0.1vh);
+    background-size: 3vh 3vh;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="bg-dots"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div class="container" id="container"></div>
+
+<script>
+var CONFIG = {
+  title: "Choose Your Plan",
+  subtitle: "Simple pricing. No hidden fees.",
+  plans: [
+    {
+      name: "Starter",
+      price: "$9",
+      period: "/month",
+      features: [true, true, false, false, false, false],
+      highlighted: false,
+      cta: "Get Started"
+    },
+    {
+      name: "Professional",
+      price: "$29",
+      period: "/month",
+      features: [true, true, true, true, true, false],
+      highlighted: true,
+      cta: "Start Free Trial"
+    },
+    {
+      name: "Enterprise",
+      price: "$79",
+      period: "/month",
+      features: [true, true, true, true, true, true],
+      highlighted: false,
+      cta: "Contact Sales"
+    }
+  ],
+  featureNames: [
+    "Unlimited Projects",
+    "Custom Exports",
+    "Team Collaboration",
+    "Priority Support",
+    "API Access",
+    "White Label"
+  ],
+  badgeText: "Most Popular",
+  bgColor: "#0b1120",
+  accentColor: "#38bdf8",
+  cycleDuration: 12
+};
+
+// ── Parse accent color into RGB components ──
+function parseColor(hex) {
+  var c = hex.replace('#', '');
+  if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+  return {
+    r: parseInt(c.substring(0,2), 16),
+    g: parseInt(c.substring(2,4), 16),
+    b: parseInt(c.substring(4,6), 16)
+  };
+}
+
+function applyTheme() {
+  var rgb = parseColor(CONFIG.accentColor);
+  document.documentElement.style.setProperty('--bg-color', CONFIG.bgColor);
+  document.documentElement.style.setProperty('--accent-color', CONFIG.accentColor);
+  document.documentElement.style.setProperty('--accent-r', rgb.r);
+  document.documentElement.style.setProperty('--accent-g', rgb.g);
+  document.documentElement.style.setProperty('--accent-b', rgb.b);
+  document.body.style.background = CONFIG.bgColor;
+}
+
+// ── Build DOM ──
+function buildTable() {
+  var container = document.getElementById('container');
+  container.innerHTML = '';
+
+  var numPlans = CONFIG.plans.length;
+  var numFeatures = CONFIG.featureNames.length;
+  var totalCols = numPlans + 1; // feature label col + plan cols
+
+  // Title
+  var titleEl = document.createElement('div');
+  titleEl.className = 'title';
+  titleEl.textContent = CONFIG.title;
+  titleEl.id = 'title';
+  container.appendChild(titleEl);
+
+  // Subtitle
+  if (CONFIG.subtitle) {
+    var subEl = document.createElement('div');
+    subEl.className = 'subtitle';
+    subEl.textContent = CONFIG.subtitle;
+    subEl.id = 'subtitle';
+    container.appendChild(subEl);
+  }
+
+  // Table wrapper
+  var wrapper = document.createElement('div');
+  wrapper.className = 'table-wrapper';
+  var table = document.createElement('div');
+  table.className = 'table';
+  table.style.gridTemplateColumns = '1fr ' + CONFIG.plans.map(function() { return '1fr'; }).join(' ');
+
+  // ── Header Row ──
+  // Empty top-left corner
+  var cornerCell = document.createElement('div');
+  cornerCell.className = 'header-cell feature-label-header';
+  cornerCell.dataset.animGroup = 'header';
+  cornerCell.dataset.animIndex = '0';
+  table.appendChild(cornerCell);
+
+  // Plan headers
+  CONFIG.plans.forEach(function(plan, i) {
+    var cell = document.createElement('div');
+    cell.className = 'header-cell' + (plan.highlighted ? ' highlighted' : '');
+    cell.dataset.animGroup = 'header';
+    cell.dataset.animIndex = String(i + 1);
+
+    if (plan.highlighted && CONFIG.badgeText) {
+      var badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = CONFIG.badgeText;
+      cell.appendChild(badge);
+    }
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'plan-name';
+    nameEl.textContent = plan.name;
+    cell.appendChild(nameEl);
+
+    var priceRow = document.createElement('div');
+    priceRow.style.display = 'flex';
+    priceRow.style.alignItems = 'baseline';
+    priceRow.style.gap = '0.3vw';
+
+    var priceEl = document.createElement('span');
+    priceEl.className = 'plan-price';
+    priceEl.textContent = plan.price;
+    priceRow.appendChild(priceEl);
+
+    var periodEl = document.createElement('span');
+    periodEl.className = 'plan-period';
+    periodEl.textContent = plan.period;
+    priceRow.appendChild(periodEl);
+
+    cell.appendChild(priceRow);
+    table.appendChild(cell);
+  });
+
+  // ── Feature Rows ──
+  CONFIG.featureNames.forEach(function(featureName, rowIdx) {
+    // Feature label
+    var labelCell = document.createElement('div');
+    labelCell.className = 'feature-cell feature-label';
+    labelCell.textContent = featureName;
+    labelCell.dataset.animGroup = 'row';
+    labelCell.dataset.animRow = String(rowIdx);
+    labelCell.dataset.animCol = '0';
+    table.appendChild(labelCell);
+
+    // Plan columns
+    CONFIG.plans.forEach(function(plan, colIdx) {
+      var cell = document.createElement('div');
+      cell.className = 'feature-cell' + (plan.highlighted ? ' highlighted-col' : '');
+      cell.dataset.animGroup = 'row';
+      cell.dataset.animRow = String(rowIdx);
+      cell.dataset.animCol = String(colIdx + 1);
+
+      var check = document.createElement('div');
+      check.className = 'check ' + (plan.features[rowIdx] ? 'yes' : 'no');
+      cell.appendChild(check);
+      table.appendChild(cell);
+    });
+  });
+
+  // ── CTA Row ──
+  // Empty CTA label cell
+  var ctaLabel = document.createElement('div');
+  ctaLabel.className = 'cta-cell feature-label-cta';
+  ctaLabel.dataset.animGroup = 'cta';
+  ctaLabel.dataset.animIndex = '0';
+  table.appendChild(ctaLabel);
+
+  CONFIG.plans.forEach(function(plan, i) {
+    var cell = document.createElement('div');
+    cell.className = 'cta-cell' + (plan.highlighted ? ' highlighted-col' : '');
+    cell.dataset.animGroup = 'cta';
+    cell.dataset.animIndex = String(i + 1);
+
+    var btn = document.createElement('div');
+    btn.className = 'cta-btn' + (plan.highlighted ? ' primary' : '');
+    btn.textContent = plan.cta || 'Select';
+    cell.appendChild(btn);
+    table.appendChild(cell);
+  });
+
+  wrapper.appendChild(table);
+  container.appendChild(wrapper);
+}
+
+// ── Animation Engine ──
+var animationTimer = null;
+var sweepTimers = [];
+
+function clearTimers() {
+  if (animationTimer) { clearTimeout(animationTimer); animationTimer = null; }
+  sweepTimers.forEach(function(t) { clearTimeout(t); });
+  sweepTimers = [];
+}
+
+function queueClass(el, cls, delayMs) {
+  var t = setTimeout(function() {
+    el.classList.add(cls);
+  }, delayMs);
+  sweepTimers.push(t);
+  return t;
+}
+
+function removeClass(el, cls) {
+  el.classList.remove(cls);
+}
+
+function runCycle() {
+  clearTimers();
+
+  var dur = CONFIG.cycleDuration * 1000;
+  var introDuration = Math.min(dur * 0.35, 3500);
+  var exitStart = dur * 0.75;
+  var exitDuration = Math.min(dur * 0.2, 2000);
+
+  var titleEl = document.getElementById('title');
+  var subEl = document.getElementById('subtitle');
+  var headerCells = document.querySelectorAll('[data-anim-group="header"]');
+  var featureCells = document.querySelectorAll('[data-anim-group="row"]');
+  var ctaCells = document.querySelectorAll('[data-anim-group="cta"]');
+
+  var allAnimated = [];
+
+  // Reset all elements
+  function resetAll() {
+    if (titleEl) { titleEl.classList.remove('visible', 'exit'); }
+    if (subEl) { subEl.classList.remove('visible', 'exit'); }
+    headerCells.forEach(function(c) { c.classList.remove('visible', 'exit'); });
+    featureCells.forEach(function(c) { c.classList.remove('visible', 'exit', 'sweep'); });
+    ctaCells.forEach(function(c) { c.classList.remove('visible', 'exit'); });
+  }
+
+  resetAll();
+
+  // ── INTRO ──
+  var baseDelay = 80;
+
+  // Title
+  if (titleEl) {
+    queueClass(titleEl, 'visible', baseDelay);
+    allAnimated.push(titleEl);
+  }
+
+  // Subtitle
+  if (subEl) {
+    queueClass(subEl, 'visible', baseDelay + 100);
+    allAnimated.push(subEl);
+  }
+
+  // Header cells stagger
+  var headerBase = baseDelay + 250;
+  headerCells.forEach(function(cell, i) {
+    var d = headerBase + i * 120;
+    cell.style.transitionDelay = '0ms';
+    queueClass(cell, 'visible', d);
+    allAnimated.push(cell);
+  });
+
+  // Feature rows stagger
+  var numFeatures = CONFIG.featureNames.length;
+  var numCols = CONFIG.plans.length + 1;
+  var rowBase = headerBase + headerCells.length * 120 + 150;
+
+  featureCells.forEach(function(cell) {
+    var row = parseInt(cell.dataset.animRow);
+    var col = parseInt(cell.dataset.animCol);
+    var rowDelay = rowBase + row * 140;
+    var colDelay = col * 60;
+    var d = rowDelay + colDelay;
+    cell.style.transitionDelay = '0ms';
+    queueClass(cell, 'visible', d);
+    allAnimated.push(cell);
+  });
+
+  // CTA row
+  var ctaBase = rowBase + numFeatures * 140 + 200;
+  ctaCells.forEach(function(cell, i) {
+    var d = ctaBase + i * 100;
+    cell.style.transitionDelay = '0ms';
+    queueClass(cell, 'visible', d);
+    allAnimated.push(cell);
+  });
+
+  // ── ROW SWEEP (highlight effect during hold phase) ──
+  var sweepStart = Math.min(introDuration + 800, exitStart - 2000);
+  if (sweepStart > introDuration) {
+    for (var r = 0; r < numFeatures; r++) {
+      (function(rowIndex) {
+        var rowCells = document.querySelectorAll('[data-anim-group="row"][data-anim-row="' + rowIndex + '"]');
+        var sweepDelay = sweepStart + rowIndex * 350;
+        sweepTimers.push(setTimeout(function() {
+          rowCells.forEach(function(c) {
+            c.classList.remove('sweep');
+            void c.offsetWidth; // force reflow
+            c.classList.add('sweep');
+          });
+        }, sweepDelay));
+      })(r);
+    }
+  }
+
+  // ── EXIT ──
+  var exitStagger = Math.min(exitDuration / (allAnimated.length + 2), 60);
+
+  // Exit CTA first
+  ctaCells.forEach(function(cell, i) {
+    var d = exitStart + i * exitStagger;
+    sweepTimers.push(setTimeout(function() {
+      cell.classList.add('exit');
+    }, d));
+  });
+
+  // Exit feature rows (bottom to top)
+  var exitRowBase = exitStart + ctaCells.length * exitStagger + 80;
+  for (var ri = numFeatures - 1; ri >= 0; ri--) {
+    (function(rowIndex, rOffset) {
+      var rowCells = document.querySelectorAll('[data-anim-group="row"][data-anim-row="' + rowIndex + '"]');
+      rowCells.forEach(function(cell, ci) {
+        var d = exitRowBase + rOffset * 100 + ci * 30;
+        sweepTimers.push(setTimeout(function() {
+          cell.classList.add('exit');
+        }, d));
+      });
+    })(ri, numFeatures - 1 - ri);
+  }
+
+  // Exit headers
+  var exitHeaderBase = exitRowBase + numFeatures * 100 + 60;
+  headerCells.forEach(function(cell, i) {
+    var d = exitHeaderBase + (headerCells.length - 1 - i) * 80;
+    sweepTimers.push(setTimeout(function() {
+      cell.classList.add('exit');
+    }, d));
+  });
+
+  // Exit title and subtitle last
+  var exitTitleBase = exitHeaderBase + headerCells.length * 80 + 50;
+  if (subEl) {
+    sweepTimers.push(setTimeout(function() {
+      subEl.classList.add('exit');
+    }, exitTitleBase));
+  }
+  if (titleEl) {
+    sweepTimers.push(setTimeout(function() {
+      titleEl.classList.add('exit');
+    }, exitTitleBase + 80));
+  }
+
+  // ── LOOP ──
+  animationTimer = setTimeout(function() {
+    resetAll();
+    setTimeout(runCycle, 150);
+  }, dur);
+}
+
+// ── postMessage bridge for live CONFIG updates ──
+window.addEventListener('message', function(e) {
+  if (e.data && typeof e.data === 'object') {
+    if (e.data.type === 'CONFIG_UPDATE' && e.data.config) {
+      Object.keys(e.data.config).forEach(function(key) {
+        CONFIG[key] = e.data.config[key];
+      });
+      applyTheme();
+      buildTable();
+      runCycle();
+    } else if (e.data.type === 'SEEK' || e.data.type === 'PLAY') {
+      // restart cycle on seek/play commands
+      runCycle();
+    }
+  }
+});
+
+// ── Init ──
+applyTheme();
+buildTable();
+runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dark Avant-Garde Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #050505;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #f0f0f0;
+  }
+
+  .container {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  .mega-text {
+    position: absolute;
+    font-size: 220px;
+    font-weight: 400;
+    line-height: 0.85;
+    color: #f0f0f0;
+    letter-spacing: -8px;
+    transition: all 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+    z-index: 10;
+  }
+
+  .mega-text.lime {
+    color: #BFFF00;
+  }
+
+  .mono-label {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(191, 255, 0, 0.5);
+    z-index: 15;
+  }
+
+  .bold-line {
+    position: absolute;
+    background: #BFFF00;
+    z-index: 12;
+  }
+
+  .bold-line.h {
+    height: 3px;
+    width: 0;
+    transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .bold-line.v {
+    width: 3px;
+    height: 0;
+    transition: height 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .bold-line.active.h { width: 100%; }
+  .bold-line.active.v { height: 100%; }
+
+  .shape-block {
+    position: absolute;
+    z-index: 8;
+    transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .shape-block.rect {
+    background: #BFFF00;
+  }
+
+  .shape-block.outline {
+    border: 2px solid #BFFF00;
+    background: transparent;
+  }
+
+  .editorial-number {
+    position: absolute;
+    font-family: Georgia, serif;
+    font-size: 160px;
+    font-weight: 400;
+    color: rgba(191, 255, 0, 0.06);
+    z-index: 5;
+    line-height: 1;
+  }
+
+  .thin-serif {
+    position: absolute;
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.35);
+    z-index: 15;
+    letter-spacing: 1px;
+  }
+
+  .contrast-flash {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #BFFF00;
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.05s;
+  }
+
+  .vertical-text {
+    position: absolute;
+    writing-mode: vertical-lr;
+    font-family: Georgia, serif;
+    font-size: 14px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: rgba(191, 255, 0, 0.3);
+    z-index: 6;
+  }
+
+  @keyframes slideReveal {
+    0% { clip-path: inset(0 100% 0 0); }
+    100% { clip-path: inset(0 0 0 0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes expandWidth {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="container">
+  <div class="contrast-flash" id="flash"></div>
+</div>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#050505',
+    limeColor: '#BFFF00',
+    textColor: '#f0f0f0',
+    sceneDuration: 4000,
+    flashDuration: 60,
+    megaTexts: ['ART', 'BOLD', 'EDGE', 'FORM', 'NOIR', 'VOID'],
+    editorialWords: ['AVANT-GARDE', 'EDITORIAL', 'MANIFESTO', 'PROVOCATION', 'BRUTALISM'],
+    numbers: ['01', '02', '03', '04', '05', '06'],
+    italicPhrases: [
+      'the intersection of chaos and form',
+      'where darkness meets intention',
+      'a study in contrast',
+      'the weight of negative space',
+      'tension between order and entropy',
+    ],
+  };
+
+  const container = document.getElementById('container');
+  const flash = document.getElementById('flash');
+  let sceneIndex = 0;
+
+  function rand(a, b) { return Math.random() * (b - a) + a; }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function clearScene() {
+    const children = Array.from(container.children);
+    children.forEach(c => {
+      if (c !== flash) container.removeChild(c);
+    });
+  }
+
+  function triggerFlash() {
+    flash.style.opacity = '0.9';
+    setTimeout(() => { flash.style.opacity = '0'; }, CONFIG.flashDuration);
+  }
+
+  function createScene1() {
+    // Giant text with asymmetric layout
+    const word = pick(CONFIG.megaTexts);
+    const isLime = Math.random() > 0.5;
+
+    const mega = document.createElement('div');
+    mega.className = `mega-text ${isLime ? 'lime' : ''}`;
+    mega.textContent = word;
+    mega.style.cssText = `
+      bottom: 10%;
+      left: -5%;
+      animation: slideReveal 1s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    `;
+    container.appendChild(mega);
+
+    // Mono label
+    const label = document.createElement('div');
+    label.className = 'mono-label';
+    label.textContent = pick(CONFIG.editorialWords);
+    label.style.cssText = `top:8%;left:8%;animation:fadeIn 0.5s 0.3s both;`;
+    container.appendChild(label);
+
+    // Horizontal lime line
+    const line = document.createElement('div');
+    line.className = 'bold-line h';
+    line.style.cssText = `top:35%;left:0;`;
+    container.appendChild(line);
+    setTimeout(() => line.classList.add('active'), 200);
+
+    // Editorial number
+    const num = document.createElement('div');
+    num.className = 'editorial-number';
+    num.textContent = pick(CONFIG.numbers);
+    num.style.cssText = `top:5%;right:5%;animation:fadeIn 1s 0.5s both;`;
+    container.appendChild(num);
+
+    // Italic phrase
+    const phrase = document.createElement('div');
+    phrase.className = 'thin-serif';
+    phrase.textContent = pick(CONFIG.italicPhrases);
+    phrase.style.cssText = `top:38%;left:8%;animation:fadeIn 0.8s 0.6s both;`;
+    container.appendChild(phrase);
+  }
+
+  function createScene2() {
+    // Geometric shapes + vertical text
+    const shapes = [
+      { w: '30%', h: '40%', top: '5%', left: '5%', type: 'rect' },
+      { w: '25%', h: '25%', top: '50%', right: '10%', type: 'outline' },
+      { w: '15%', h: '60%', top: '20%', left: '40%', type: 'outline' },
+    ];
+
+    shapes.forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = `shape-block ${s.type}`;
+      const pos = s.right ? `right:${s.right}` : `left:${s.left}`;
+      el.style.cssText = `
+        width:${s.w};height:${s.h};top:${s.top};${pos};
+        opacity:0;
+        animation: fadeIn 0.6s ${i * 0.2}s both;
+      `;
+      container.appendChild(el);
+    });
+
+    // Vertical text
+    const vText = document.createElement('div');
+    vText.className = 'vertical-text';
+    vText.textContent = pick(CONFIG.editorialWords);
+    vText.style.cssText = `right:5%;top:10%;animation:fadeIn 0.8s 0.4s both;`;
+    container.appendChild(vText);
+
+    // Mega text overlay
+    const mega = document.createElement('div');
+    mega.className = 'mega-text lime';
+    mega.textContent = pick(CONFIG.megaTexts);
+    mega.style.cssText = `
+      top: 30%;
+      left: 8%;
+      font-size: 160px;
+      mix-blend-mode: difference;
+      animation: slideReveal 0.8s 0.3s both;
+    `;
+    container.appendChild(mega);
+
+    // Mono label bottom
+    const label = document.createElement('div');
+    label.className = 'mono-label';
+    label.textContent = `VOL. ${pick(CONFIG.numbers)} / ${new Date().getFullYear()}`;
+    label.style.cssText = `bottom:8%;left:8%;animation:fadeIn 0.5s 0.6s both;`;
+    container.appendChild(label);
+  }
+
+  function createScene3() {
+    // Split composition - half lime, half black
+    const leftHalf = document.createElement('div');
+    leftHalf.style.cssText = `
+      position:absolute;top:0;left:0;width:50%;height:100%;
+      background:${CONFIG.limeColor};
+      animation: slideReveal 0.6s cubic-bezier(0.23,1,0.32,1) forwards;
+    `;
+    container.appendChild(leftHalf);
+
+    // Black text on lime
+    const leftText = document.createElement('div');
+    leftText.className = 'mega-text';
+    leftText.textContent = pick(CONFIG.megaTexts);
+    leftText.style.cssText = `
+      top:30%;left:3%;color:#050505;font-size:140px;
+      animation:fadeIn 0.6s 0.4s both;
+    `;
+    container.appendChild(leftText);
+
+    // Lime text on black (right side)
+    const rightText = document.createElement('div');
+    rightText.className = 'mega-text lime';
+    rightText.textContent = pick(CONFIG.megaTexts);
+    rightText.style.cssText = `
+      top:50%;left:53%;font-size:140px;
+      animation:fadeIn 0.6s 0.5s both;
+    `;
+    container.appendChild(rightText);
+
+    // Vertical line at center
+    const vLine = document.createElement('div');
+    vLine.className = 'bold-line v';
+    vLine.style.cssText = `top:0;left:50%;background:#050505;`;
+    container.appendChild(vLine);
+    setTimeout(() => vLine.classList.add('active'), 300);
+
+    // Labels
+    const topLabel = document.createElement('div');
+    topLabel.className = 'mono-label';
+    topLabel.textContent = pick(CONFIG.editorialWords);
+    topLabel.style.cssText = `top:8%;right:5%;color:rgba(191,255,0,0.7);animation:fadeIn 0.5s 0.7s both;`;
+    container.appendChild(topLabel);
+
+    // Italic phrase
+    const phrase = document.createElement('div');
+    phrase.className = 'thin-serif';
+    phrase.textContent = pick(CONFIG.italicPhrases);
+    phrase.style.cssText = `bottom:10%;left:55%;color:rgba(191,255,0,0.4);animation:fadeIn 0.5s 0.8s both;`;
+    container.appendChild(phrase);
+  }
+
+  function createScene4() {
+    // Diagonal composition with extreme typography
+    const diag = document.createElement('div');
+    diag.style.cssText = `
+      position:absolute;top:-20%;left:-10%;width:60%;height:140%;
+      background:${CONFIG.limeColor};
+      transform:rotate(-15deg);
+      transform-origin:center;
+      animation:fadeIn 0.4s both;
+    `;
+    container.appendChild(diag);
+
+    // Giant number
+    const num = document.createElement('div');
+    num.className = 'mega-text';
+    num.style.cssText = `
+      font-size:300px;top:10%;left:5%;color:#050505;
+      letter-spacing:-15px;
+      mix-blend-mode:difference;
+      animation:slideReveal 0.8s 0.2s both;
+    `;
+    num.textContent = pick(CONFIG.numbers);
+    container.appendChild(num);
+
+    // Small serif text
+    const serif = document.createElement('div');
+    serif.className = 'thin-serif';
+    serif.textContent = pick(CONFIG.italicPhrases);
+    serif.style.cssText = `
+      bottom:15%;right:8%;
+      color:rgba(191,255,0,0.5);font-size:18px;
+      animation:fadeIn 0.8s 0.5s both;
+    `;
+    container.appendChild(serif);
+
+    // Mono label
+    const label = document.createElement('div');
+    label.className = 'mono-label';
+    label.textContent = pick(CONFIG.editorialWords);
+    label.style.cssText = `bottom:10%;right:8%;animation:fadeIn 0.5s 0.7s both;`;
+    container.appendChild(label);
+  }
+
+  const scenes = [createScene1, createScene2, createScene3, createScene4];
+
+  function nextScene() {
+    triggerFlash();
+    setTimeout(() => {
+      clearScene();
+      scenes[sceneIndex % scenes.length]();
+      sceneIndex++;
+    }, CONFIG.flashDuration);
+  }
+
+  nextScene();
+  setInterval(nextScene, CONFIG.sceneDuration);
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recipe Card Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #faf3e8; font-family: 'Georgia', serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 20px; padding: 30px; }
+
+  .recipe-card { width: 280px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); opacity: 0; will-change: transform, opacity; }
+  .rc-image { width: 100%; height: 120px; position: relative; }
+  .rc-color { width: 100%; height: 100%; }
+  .rc-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 3px 8px; border-radius: 10px; font-family: 'Arial', sans-serif; }
+  .rc-body { padding: 14px 16px; }
+  .rc-title { font-family: 'Georgia', serif; font-size: 18px; font-weight: 700; color: #2a1f14; margin-bottom: 6px; }
+  .rc-meta { font-size: 11px; color: #999; font-family: 'Arial', sans-serif; display: flex; gap: 12px; margin-bottom: 8px; }
+  .rc-desc { font-size: 12px; color: #666; line-height: 1.5; font-family: 'Georgia', serif; }
+
+  @keyframes flipIn { 0% { opacity: 0; transform: perspective(600px) rotateY(90deg); } 60% { transform: perspective(600px) rotateY(-5deg); } 100% { opacity: 1; transform: perspective(600px) rotateY(0deg); } }
+  @keyframes flipOut { 0% { opacity: 1; transform: perspective(600px) rotateY(0deg); } 100% { opacity: 0; transform: perspective(600px) rotateY(-90deg); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  recipes: [
+    { color: '#c0392b', title: 'Tomato Basil Soup', time: '30 min', servings: '4', desc: 'Fresh tomatoes slow-simmered with basil and garlic', badge: 'EASY' },
+    { color: '#27ae60', title: 'Garden Salad', time: '15 min', servings: '2', desc: 'Crisp greens with seasonal vegetables and vinaigrette', badge: 'QUICK' },
+    { color: '#d4a574', title: 'Sourdough Bread', time: '4 hrs', servings: '8', desc: 'Artisan bread with a perfectly crispy crust', badge: 'ADVANCED' },
+    { color: '#8e44ad', title: 'Berry Smoothie', time: '5 min', servings: '1', desc: 'Mixed berries blended with yogurt and honey', badge: 'QUICK' },
+    { color: '#e67e22', title: 'Pumpkin Risotto', time: '45 min', servings: '4', desc: 'Creamy arborio rice with roasted pumpkin', badge: 'MEDIUM' },
+    { color: '#2c3e50', title: 'Dark Chocolate Tart', time: '1 hr', servings: '6', desc: 'Rich ganache in a buttery pastry shell', badge: 'ADVANCED' },
+  ],
+  bgColor: '#faf3e8',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.recipes.forEach(r => {
+    const card = document.createElement('div'); card.className = 'recipe-card';
+    const img = document.createElement('div'); img.className = 'rc-image';
+    const color = document.createElement('div'); color.className = 'rc-color'; color.style.background = r.color;
+    const badge = document.createElement('div'); badge.className = 'rc-badge'; badge.textContent = r.badge;
+    img.appendChild(color); img.appendChild(badge);
+    const body = document.createElement('div'); body.className = 'rc-body';
+    const title = document.createElement('div'); title.className = 'rc-title'; title.textContent = r.title;
+    const meta = document.createElement('div'); meta.className = 'rc-meta';
+    meta.innerHTML = `<span>\u23F1 ${r.time}</span><span>\u{1F374} ${r.servings} servings</span>`;
+    const desc = document.createElement('div'); desc.className = 'rc-desc'; desc.textContent = r.desc;
+    body.appendChild(title); body.appendChild(meta); body.appendChild(desc);
+    card.appendChild(img); card.appendChild(body);
+    stage.appendChild(card); els.push(card);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=350, inD=550, hold=3500, outS=250, outD=450, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`flipIn ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`flipOut ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

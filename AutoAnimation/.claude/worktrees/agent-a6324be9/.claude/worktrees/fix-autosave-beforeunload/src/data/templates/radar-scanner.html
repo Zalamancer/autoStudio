@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar Scanner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; }
+  body { background: #020a02; color: #00ff41; }
+
+  canvas#radarCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+
+  /* ── Corner HUD readouts ── */
+  .hud-panel {
+    position: fixed; z-index: 5; pointer-events: none;
+    font-size: 1.4vh; line-height: 2.2vh; letter-spacing: 0.12em;
+    color: rgba(0, 255, 65, 0.7);
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.3);
+  }
+  .hud-tl { top: 2.5vh; left: 2.5vw; }
+  .hud-tr { top: 2.5vh; right: 2.5vw; text-align: right; }
+  .hud-bl { bottom: 2.5vh; left: 2.5vw; }
+  .hud-br { bottom: 2.5vh; right: 2.5vw; text-align: right; }
+
+  .hud-label {
+    color: rgba(0, 255, 65, 0.35); font-size: 1.05vh;
+    text-transform: uppercase; margin-bottom: 0.2vh; letter-spacing: 0.18em;
+  }
+  .hud-value {
+    color: rgba(0, 255, 65, 0.85); font-size: 1.55vh; font-weight: bold;
+  }
+  .hud-spacer { height: 1.2vh; }
+
+  /* ── Title bar ── */
+  .radar-title-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 6;
+    height: 4vh; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, rgba(0, 255, 65, 0.06) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.12);
+    pointer-events: none;
+  }
+  .radar-title-text {
+    font-size: 1.8vh; font-weight: bold; letter-spacing: 0.35em;
+    color: rgba(0, 255, 65, 0.8);
+    text-shadow: 0 0 15px rgba(0, 255, 65, 0.4), 0 0 30px rgba(0, 255, 65, 0.15);
+    animation: titleFlicker 4s ease-in-out infinite;
+  }
+  @keyframes titleFlicker {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Alert overlay ── */
+  .alert-overlay {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 10; pointer-events: none; text-align: center;
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .alert-overlay.active { opacity: 1; }
+  .alert-text {
+    font-size: 3vh; font-weight: bold; letter-spacing: 0.4em;
+    color: #00ff41;
+    text-shadow: 0 0 20px rgba(0, 255, 65, 0.6), 0 0 40px rgba(0, 255, 65, 0.3), 0 0 80px rgba(0, 255, 65, 0.12);
+    animation: alertPulse 0.8s ease-in-out infinite;
+  }
+  .alert-text.warning {
+    color: #ff4444;
+    text-shadow: 0 0 20px rgba(255, 68, 68, 0.6), 0 0 40px rgba(255, 68, 68, 0.3);
+  }
+  @keyframes alertPulse {
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.03); }
+  }
+
+  /* ── CRT scanlines ── */
+  .scanlines {
+    position: fixed; inset: 0; z-index: 4; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0, 0, 0, 0.07) 2px, rgba(0, 0, 0, 0.07) 4px
+    );
+  }
+
+  /* ── Vignette ── */
+  .vignette {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 5, 0, 0.65) 100%);
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 6;
+    height: 3.5vh; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5vw;
+    background: linear-gradient(0deg, rgba(0, 255, 65, 0.05) 0%, transparent 100%);
+    border-top: 1px solid rgba(0, 255, 65, 0.1);
+    pointer-events: none;
+  }
+  .status-item {
+    font-size: 1.05vh; letter-spacing: 0.15em;
+    color: rgba(0, 255, 65, 0.45);
+  }
+  .status-item .val { color: rgba(0, 255, 65, 0.75); }
+</style>
+</head>
+<body>
+<canvas id="radarCanvas"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="radar-title-bar">
+  <div class="radar-title-text" id="titleText">TACTICAL RADAR SYSTEM</div>
+</div>
+
+<div class="hud-panel hud-tl">
+  <div class="hud-label">COORDINATES</div>
+  <div class="hud-value" id="hudCoords">N 34.0522 W 118.2437</div>
+  <div class="hud-spacer"></div>
+  <div class="hud-label">ALTITUDE</div>
+  <div class="hud-value" id="hudAlt">FL350 / 35,000 FT</div>
+</div>
+
+<div class="hud-panel hud-tr">
+  <div class="hud-label">GROUND SPEED</div>
+  <div class="hud-value" id="hudSpeed">487 KTS</div>
+  <div class="hud-spacer"></div>
+  <div class="hud-label">HEADING</div>
+  <div class="hud-value" id="hudHeading">HDG 274</div>
+</div>
+
+<div class="hud-panel hud-bl">
+  <div class="hud-label">MODE</div>
+  <div class="hud-value" id="hudMode">SEARCH</div>
+  <div class="hud-spacer"></div>
+  <div class="hud-label">TRACKS</div>
+  <div class="hud-value" id="hudTracks">0 / 0</div>
+</div>
+
+<div class="hud-panel hud-br">
+  <div class="hud-label">RANGE</div>
+  <div class="hud-value" id="hudRange">200 NM</div>
+  <div class="hud-spacer"></div>
+  <div class="hud-label">UTC</div>
+  <div class="hud-value" id="hudTime">00:00:00</div>
+</div>
+
+<div class="alert-overlay" id="alertOverlay">
+  <div class="alert-text" id="alertText">SCANNING</div>
+</div>
+
+<div class="status-bar">
+  <div class="status-item">SYS <span class="val">NOMINAL</span></div>
+  <div class="status-item">XMIT <span class="val">ACTIVE</span></div>
+  <div class="status-item">IFF <span class="val">MODE 4</span></div>
+  <div class="status-item">ECCM <span class="val">ON</span></div>
+  <div class="status-item">PWR <span class="val" id="pwrVal">98%</span></div>
+</div>
+
+<script>
+// ===== EDITABLE CONFIG =====
+const CONFIG = {
+  radarTitle: 'TACTICAL RADAR SYSTEM',
+  range: 200,
+  coordinates: 'N 34.0522 W 118.2437',
+  altitude: 'FL350 / 35,000 FT',
+  speed: '487 KTS',
+  heading: 274,
+  sweepSpeed: 4,
+  cycleDuration: 20000,
+  blipCount: 8,
+  ringCount: 5,
+  greenColor: '#00ff41',
+  bgColor: '#020a02'
+};
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config);
+});
+
+// ── Canvas ──
+const canvas = document.getElementById('radarCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, CX, CY, R;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+  R = Math.min(W, H) * 0.37;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── Helpers ──
+function hexToRgb(hex) {
+  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+}
+function rgba(r, g, b, a) { return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')'; }
+function rgbaHex(hex, a) { var c = hexToRgb(hex); return rgba(c.r, c.g, c.b, a); }
+
+// ── Blip class ──
+function Blip() { this.reset(true); }
+Blip.prototype.reset = function(init) {
+  var a = Math.random() * Math.PI * 2;
+  var d = 0.15 + Math.random() * 0.78;
+  this.x = Math.cos(a) * d;
+  this.y = Math.sin(a) * d;
+  this.vx = (Math.random() - 0.5) * 0.0006;
+  this.vy = (Math.random() - 0.5) * 0.0006;
+  this.brightness = 0;
+  this.maxBright = 0.55 + Math.random() * 0.45;
+  this.trail = [];
+  this.id = 'TGT-' + (100 + Math.floor(Math.random() * 900));
+  this.hostile = Math.random() < 0.25;
+  this.sz = 2 + Math.random() * 2;
+  this.spd = (120 + Math.random() * 380).toFixed(0);
+  this.alt = (5000 + Math.random() * 40000).toFixed(0);
+};
+Blip.prototype.update = function(sweep) {
+  this.x += this.vx;
+  this.y += this.vy;
+  var dd = Math.sqrt(this.x * this.x + this.y * this.y);
+  if (dd > 0.93) { this.x *= 0.92 / dd; this.y *= 0.92 / dd; this.vx *= -0.6; this.vy *= -0.6; }
+  var ba = Math.atan2(this.y, this.x); if (ba < 0) ba += Math.PI * 2;
+  var diff = sweep - ba; if (diff < 0) diff += Math.PI * 2;
+  if (diff < 0.18) {
+    this.brightness = this.maxBright;
+    this.trail.push({ x: this.x, y: this.y, t: Date.now() });
+    if (this.trail.length > 5) this.trail.shift();
+  }
+  this.brightness *= 0.984;
+  if (this.brightness < 0.008) this.brightness = 0;
+};
+Blip.prototype.draw = function() {
+  var gc = hexToRgb(CONFIG.greenColor);
+  var now = Date.now();
+  // trail
+  for (var i = 0; i < this.trail.length; i++) {
+    var th = this.trail[i];
+    var age = (now - th.t) / 5000;
+    if (age > 1) continue;
+    var ta = (1 - age) * 0.2;
+    var tx = CX + th.x * R, ty = CY + th.y * R;
+    ctx.beginPath(); ctx.arc(tx, ty, this.sz * 0.5, 0, Math.PI * 2);
+    ctx.fillStyle = this.hostile ? rgba(255, 80, 80, ta) : rgba(gc.r, gc.g, gc.b, ta);
+    ctx.fill();
+  }
+  if (this.brightness < 0.008) return;
+  var px = CX + this.x * R, py = CY + this.y * R;
+  // glow
+  var gr = this.sz * 7;
+  var grad = ctx.createRadialGradient(px, py, 0, px, py, gr);
+  grad.addColorStop(0, this.hostile ? rgba(255, 80, 80, this.brightness * 0.35) : rgba(gc.r, gc.g, gc.b, this.brightness * 0.35));
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad; ctx.fillRect(px - gr, py - gr, gr * 2, gr * 2);
+  // dot
+  ctx.beginPath(); ctx.arc(px, py, this.sz, 0, Math.PI * 2);
+  ctx.fillStyle = this.hostile ? rgba(255, 100, 100, this.brightness) : rgba(gc.r, gc.g, gc.b, this.brightness);
+  ctx.fill();
+  // label
+  if (this.brightness > 0.25) {
+    var fs = Math.max(9, H * 0.012);
+    ctx.font = fs + "px 'Courier New', monospace";
+    ctx.fillStyle = this.hostile ? rgba(255, 100, 100, this.brightness * 0.65) : rgba(gc.r, gc.g, gc.b, this.brightness * 0.65);
+    ctx.textAlign = 'left';
+    ctx.fillText(this.id, px + this.sz + 5, py - 3);
+    var dd = Math.sqrt(this.x * this.x + this.y * this.y);
+    ctx.fillText(Math.round(dd * CONFIG.range) + ' NM', px + this.sz + 5, py + fs + 1);
+  }
+};
+
+// ── Target Lock ──
+var lockObj = { active: false, blip: null, progress: 0, startTime: 0 };
+function engageLock(b) { lockObj.active = true; lockObj.blip = b; lockObj.progress = 0; lockObj.startTime = Date.now(); }
+function disengageLock() { lockObj.active = false; lockObj.blip = null; lockObj.progress = 0; }
+function updateLock() { if (lockObj.active && lockObj.blip) lockObj.progress = Math.min(1, (Date.now() - lockObj.startTime) / 2800); }
+function drawLock() {
+  if (!lockObj.active || !lockObj.blip) return;
+  var b = lockObj.blip;
+  var px = CX + b.x * R, py = CY + b.y * R;
+  var gc = hexToRgb(CONFIG.greenColor);
+  var baseS = R * 0.075;
+  var curS = baseS * (2.2 - lockObj.progress * 1.2);
+  var half = curS / 2, corner = curS * 0.32;
+  var al = 0.35 + lockObj.progress * 0.65;
+  var sc = b.hostile ? rgba(255, 80, 80, al) : rgba(gc.r, gc.g, gc.b, al);
+  ctx.strokeStyle = sc; ctx.lineWidth = 1.5;
+  // TL
+  ctx.beginPath(); ctx.moveTo(px - half, py - half + corner); ctx.lineTo(px - half, py - half); ctx.lineTo(px - half + corner, py - half); ctx.stroke();
+  // TR
+  ctx.beginPath(); ctx.moveTo(px + half - corner, py - half); ctx.lineTo(px + half, py - half); ctx.lineTo(px + half, py - half + corner); ctx.stroke();
+  // BL
+  ctx.beginPath(); ctx.moveTo(px - half, py + half - corner); ctx.lineTo(px - half, py + half); ctx.lineTo(px - half + corner, py + half); ctx.stroke();
+  // BR
+  ctx.beginPath(); ctx.moveTo(px + half - corner, py + half); ctx.lineTo(px + half, py + half); ctx.lineTo(px + half, py + half - corner); ctx.stroke();
+  // crosshair
+  if (lockObj.progress > 0.65) {
+    var ca = (lockObj.progress - 0.65) / 0.35;
+    ctx.strokeStyle = b.hostile ? rgba(255, 80, 80, ca * 0.45) : rgba(gc.r, gc.g, gc.b, ca * 0.45);
+    ctx.lineWidth = 0.8;
+    var ch = half * 0.55;
+    ctx.beginPath(); ctx.moveTo(px - ch, py); ctx.lineTo(px - ch * 0.25, py); ctx.moveTo(px + ch * 0.25, py); ctx.lineTo(px + ch, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py - ch); ctx.lineTo(px, py - ch * 0.25); ctx.moveTo(px, py + ch * 0.25); ctx.lineTo(px, py + ch); ctx.stroke();
+    // diamond reticle
+    if (lockObj.progress > 0.85) {
+      var da = (lockObj.progress - 0.85) / 0.15;
+      var ds = half * 0.3;
+      ctx.strokeStyle = b.hostile ? rgba(255, 80, 80, da * 0.3) : rgba(gc.r, gc.g, gc.b, da * 0.3);
+      ctx.beginPath(); ctx.moveTo(px, py - ds); ctx.lineTo(px + ds, py); ctx.lineTo(px, py + ds); ctx.lineTo(px - ds, py); ctx.closePath(); ctx.stroke();
+    }
+  }
+  // percentage
+  ctx.font = "bold " + Math.max(10, H * 0.013) + "px 'Courier New', monospace";
+  ctx.fillStyle = sc; ctx.textAlign = 'center';
+  ctx.fillText(Math.round(lockObj.progress * 100) + '%', px, py + half + H * 0.024);
+  // info box
+  if (lockObj.progress > 0.4) {
+    var ia = Math.min(1, (lockObj.progress - 0.4) / 0.3) * al;
+    ctx.font = Math.max(8, H * 0.01) + "px 'Courier New', monospace";
+    ctx.fillStyle = b.hostile ? rgba(255, 100, 100, ia * 0.6) : rgba(gc.r, gc.g, gc.b, ia * 0.6);
+    ctx.textAlign = 'left';
+    ctx.fillText('SPD: ' + b.spd + ' KTS', px + half + 6, py - H * 0.008);
+    ctx.fillText('ALT: ' + b.alt + ' FT', px + half + 6, py + H * 0.008);
+    if (b.hostile) { ctx.fillStyle = rgba(255, 80, 80, ia * 0.8); ctx.fillText('HOSTILE', px + half + 6, py + H * 0.024); }
+  }
+  ctx.textAlign = 'left';
+}
+
+// ── Noise particles ──
+var noise = [];
+for (var ni = 0; ni < 150; ni++) {
+  var na = Math.random() * Math.PI * 2, nd = Math.random();
+  noise.push({ x: Math.cos(na) * nd, y: Math.sin(na) * nd, life: Math.random() * 0.6, ml: 0.3 + Math.random() * 0.3, sz: 0.5 + Math.random() * 1 });
+}
+
+// ── Objects ──
+var blips = [];
+for (var bi = 0; bi < CONFIG.blipCount; bi++) blips.push(new Blip());
+
+var sweepAngle = 0;
+var frameCount = 0;
+
+// ── Draw: background ──
+function drawBackground() {
+  var bg = hexToRgb(CONFIG.bgColor);
+  var grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.6);
+  grad.addColorStop(0, 'rgba(' + (bg.r + 4) + ',' + (bg.g + 12) + ',' + (bg.b + 4) + ',1)');
+  grad.addColorStop(0.5, 'rgb(' + bg.r + ',' + bg.g + ',' + bg.b + ')');
+  grad.addColorStop(1, 'rgb(' + Math.max(0, bg.r - 1) + ',' + Math.max(0, bg.g - 2) + ',' + Math.max(0, bg.b - 1) + ')');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+}
+
+// ── Draw: radar base ──
+function drawRadarBase() {
+  var gc = hexToRgb(CONFIG.greenColor);
+  // outer glow
+  var og = ctx.createRadialGradient(CX, CY, R * 0.94, CX, CY, R * 1.1);
+  og.addColorStop(0, rgba(gc.r, gc.g, gc.b, 0.07)); og.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = og; ctx.fillRect(0, 0, W, H);
+  // rings
+  for (var i = 1; i <= CONFIG.ringCount; i++) {
+    var rr = (R / CONFIG.ringCount) * i;
+    var isOuter = i === CONFIG.ringCount;
+    ctx.beginPath(); ctx.arc(CX, CY, rr, 0, Math.PI * 2);
+    ctx.strokeStyle = rgba(gc.r, gc.g, gc.b, isOuter ? 0.22 : 0.09);
+    ctx.lineWidth = isOuter ? 1.5 : 0.6; ctx.stroke();
+    // range label
+    var rv = Math.round((CONFIG.range / CONFIG.ringCount) * i);
+    ctx.font = Math.max(8, H * 0.0105) + "px 'Courier New', monospace";
+    ctx.fillStyle = rgba(gc.r, gc.g, gc.b, 0.3); ctx.textAlign = 'center';
+    ctx.fillText(rv + ' NM', CX, CY - rr + H * 0.014);
+  }
+  // axes
+  ctx.strokeStyle = rgba(gc.r, gc.g, gc.b, 0.07); ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(CX, CY - R); ctx.lineTo(CX, CY + R); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX - R, CY); ctx.lineTo(CX + R, CY); ctx.stroke();
+  var dr = R * 0.707;
+  ctx.strokeStyle = rgba(gc.r, gc.g, gc.b, 0.04);
+  ctx.beginPath(); ctx.moveTo(CX - dr, CY - dr); ctx.lineTo(CX + dr, CY + dr); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX + dr, CY - dr); ctx.lineTo(CX - dr, CY + dr); ctx.stroke();
+  // tick marks
+  for (var deg = 0; deg < 360; deg += 5) {
+    var rad = (deg - 90) * Math.PI / 180;
+    var isMajor = deg % 30 === 0;
+    var inner = isMajor ? R * 0.93 : R * 0.96;
+    ctx.beginPath();
+    ctx.moveTo(CX + Math.cos(rad) * inner, CY + Math.sin(rad) * inner);
+    ctx.lineTo(CX + Math.cos(rad) * R, CY + Math.sin(rad) * R);
+    ctx.strokeStyle = rgba(gc.r, gc.g, gc.b, isMajor ? 0.28 : 0.1);
+    ctx.lineWidth = isMajor ? 1 : 0.5; ctx.stroke();
+  }
+  // compass
+  var lfs = Math.max(12, H * 0.02);
+  ctx.font = 'bold ' + lfs + "px 'Courier New', monospace";
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = rgba(gc.r, gc.g, gc.b, 0.6);
+  var lo = R + H * 0.028;
+  ctx.fillText('N', CX, CY - lo);
+  ctx.fillText('S', CX, CY + lo);
+  ctx.fillText('E', CX + lo, CY);
+  ctx.fillText('W', CX - lo, CY);
+  // bearing numbers
+  ctx.font = Math.max(7, H * 0.009) + "px 'Courier New', monospace";
+  ctx.fillStyle = rgba(gc.r, gc.g, gc.b, 0.22);
+  var bears = [30, 60, 120, 150, 210, 240, 300, 330];
+  for (var bi2 = 0; bi2 < bears.length; bi2++) {
+    var bDeg = bears[bi2];
+    var bRad = (bDeg - 90) * Math.PI / 180;
+    ctx.fillText(String(bDeg).padStart(3, '0'), CX + Math.cos(bRad) * (R + H * 0.019), CY + Math.sin(bRad) * (R + H * 0.019));
+  }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  // center dot
+  ctx.beginPath(); ctx.arc(CX, CY, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = rgba(gc.r, gc.g, gc.b, 0.5); ctx.fill();
+}
+
+// ── Draw: sweep ──
+function drawSweep() {
+  var gc = hexToRgb(CONFIG.greenColor);
+  // phosphor trail
+  var trailArc = Math.PI * 0.5;
+  var steps = 50;
+  for (var i = 0; i < steps; i++) {
+    var frac = i / steps;
+    var a = sweepAngle - trailArc * frac;
+    var al = (1 - frac) * 0.055;
+    if (al < 0.002) continue;
+    ctx.beginPath(); ctx.moveTo(CX, CY);
+    ctx.lineTo(CX + Math.cos(a) * R, CY + Math.sin(a) * R);
+    ctx.strokeStyle = rgba(gc.r, gc.g, gc.b, al); ctx.lineWidth = 2; ctx.stroke();
+  }
+  // bright wedge
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(CX, CY);
+  ctx.arc(CX, CY, R, sweepAngle - 0.1, sweepAngle, false); ctx.closePath();
+  var sg = ctx.createRadialGradient(CX, CY, 0, CX, CY, R);
+  sg.addColorStop(0, rgba(gc.r, gc.g, gc.b, 0.14));
+  sg.addColorStop(0.6, rgba(gc.r, gc.g, gc.b, 0.06));
+  sg.addColorStop(1, rgba(gc.r, gc.g, gc.b, 0.01));
+  ctx.fillStyle = sg; ctx.fill(); ctx.restore();
+  // main line
+  ctx.save();
+  ctx.shadowColor = rgbaHex(CONFIG.greenColor, 0.45); ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.moveTo(CX, CY);
+  ctx.lineTo(CX + Math.cos(sweepAngle) * R, CY + Math.sin(sweepAngle) * R);
+  ctx.strokeStyle = rgba(gc.r, gc.g, gc.b, 0.75); ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+}
+
+// ── Draw: noise ──
+function drawNoise() {
+  var gc = hexToRgb(CONFIG.greenColor);
+  for (var i = 0; i < noise.length; i++) {
+    var p = noise[i];
+    p.life -= 0.007;
+    if (p.life <= 0) {
+      var na2 = Math.random() * Math.PI * 2, nd2 = Math.random();
+      p.x = Math.cos(na2) * nd2; p.y = Math.sin(na2) * nd2;
+      p.life = p.ml; p.sz = 0.5 + Math.random() * 1;
+    }
+    var al = (p.life / p.ml) * 0.12;
+    var px = CX + p.x * R, py = CY + p.y * R;
+    ctx.fillStyle = rgba(gc.r, gc.g, gc.b, al);
+    ctx.fillRect(px, py, p.sz, p.sz);
+  }
+}
+
+// ── Draw: heading indicator ──
+function drawHeading() {
+  var gc = hexToRgb(CONFIG.greenColor);
+  var hr = (CONFIG.heading - 90) * Math.PI / 180;
+  var ax = CX + Math.cos(hr) * (R + H * 0.009);
+  var ay = CY + Math.sin(hr) * (R + H * 0.009);
+  ctx.save(); ctx.translate(ax, ay); ctx.rotate(hr + Math.PI / 2);
+  ctx.beginPath(); ctx.moveTo(0, -H * 0.011); ctx.lineTo(-H * 0.005, 0); ctx.lineTo(H * 0.005, 0); ctx.closePath();
+  ctx.fillStyle = rgba(gc.r, gc.g, gc.b, 0.65); ctx.fill(); ctx.restore();
+}
+
+// ── HUD update ──
+function updateHUD() {
+  document.getElementById('titleText').textContent = CONFIG.radarTitle;
+  document.getElementById('hudCoords').textContent = CONFIG.coordinates;
+  document.getElementById('hudAlt').textContent = CONFIG.altitude;
+  document.getElementById('hudSpeed').textContent = CONFIG.speed;
+  document.getElementById('hudHeading').textContent = 'HDG ' + CONFIG.heading;
+  document.getElementById('hudRange').textContent = CONFIG.range + ' NM';
+  var now = new Date();
+  document.getElementById('hudTime').textContent = now.toISOString().slice(11, 19);
+  var active = 0;
+  for (var i = 0; i < blips.length; i++) if (blips[i].brightness > 0.04) active++;
+  document.getElementById('hudTracks').textContent = active + ' / ' + blips.length;
+  document.getElementById('hudMode').textContent = lockObj.active ? 'TRACK' : 'SEARCH';
+  document.getElementById('pwrVal').textContent = (95 + Math.floor(Math.random() * 5)) + '%';
+}
+
+// ── Alert system ──
+var alertTimer = 0;
+function showAlert(text, isWarn, duration) {
+  var ov = document.getElementById('alertOverlay');
+  var te = document.getElementById('alertText');
+  te.textContent = text;
+  te.className = 'alert-text' + (isWarn ? ' warning' : '');
+  ov.classList.add('active');
+  alertTimer = Date.now() + duration;
+}
+function updateAlerts() {
+  if (alertTimer > 0 && Date.now() > alertTimer) {
+    document.getElementById('alertOverlay').classList.remove('active');
+    alertTimer = 0;
+  }
+}
+
+// ── Cycle state machine ──
+var cyclePhase = 0;
+var phaseStart = Date.now();
+var lockIdx = -1;
+
+function runCycle() {
+  var elapsed = Date.now() - phaseStart;
+  switch (cyclePhase) {
+    case 0: // scanning
+      if (elapsed > CONFIG.cycleDuration * 0.35) {
+        cyclePhase = 1; phaseStart = Date.now();
+        var cands = [];
+        for (var i = 0; i < blips.length; i++) if (blips[i].brightness > 0.08) cands.push(i);
+        if (cands.length > 0) {
+          lockIdx = cands[Math.floor(Math.random() * cands.length)];
+          showAlert('TARGET DETECTED', false, 2000);
+        } else {
+          showAlert('NO CONTACTS', false, 1500);
+          cyclePhase = 4; phaseStart = Date.now();
+        }
+      }
+      break;
+    case 1: // detected
+      if (elapsed > 2500) {
+        cyclePhase = 2; phaseStart = Date.now();
+        if (lockIdx >= 0) { engageLock(blips[lockIdx]); showAlert('LOCKING', false, 2500); }
+      }
+      break;
+    case 2: // locking
+      if (elapsed > 3200) {
+        cyclePhase = 3; phaseStart = Date.now();
+        var h2 = lockIdx >= 0 && blips[lockIdx].hostile;
+        showAlert(h2 ? 'HOSTILE ACQUIRED' : 'TARGET ACQUIRED', h2, 2500);
+      }
+      break;
+    case 3: // acquired
+      if (elapsed > 3200) {
+        cyclePhase = 4; phaseStart = Date.now();
+        disengageLock(); lockIdx = -1;
+        showAlert('SCANNING', false, 1500);
+      }
+      break;
+    case 4: // cooldown
+      if (elapsed > CONFIG.cycleDuration * 0.12) {
+        cyclePhase = 0; phaseStart = Date.now();
+        if (Math.random() < 0.35) blips[Math.floor(Math.random() * blips.length)].reset(false);
+      }
+      break;
+  }
+  setTimeout(runCycle, 120);
+}
+
+// ── Radar clip helper ──
+function clippedDraw(fn) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.clip();
+  fn();
+  ctx.restore();
+}
+
+// ── Main loop ──
+function animate() {
+  frameCount++;
+  sweepAngle += (CONFIG.sweepSpeed * Math.PI * 2) / (60 * 60);
+  if (sweepAngle > Math.PI * 2) sweepAngle -= Math.PI * 2;
+
+  drawBackground();
+  drawRadarBase();
+  drawHeading();
+
+  clippedDraw(function() {
+    drawNoise();
+    for (var i = 0; i < blips.length; i++) { blips[i].update(sweepAngle); blips[i].draw(); }
+    drawSweep();
+  });
+
+  updateLock();
+  drawLock();
+
+  if (frameCount % 8 === 0) updateHUD();
+  updateAlerts();
+
+  requestAnimationFrame(animate);
+}
+
+// ── Start ──
+updateHUD();
+animate();
+runCycle();
+</script>
+</body>
+</html>

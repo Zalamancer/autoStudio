@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lava Lamp</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .ambient-glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .lamp-container {
+    position: relative;
+    width: 36vmin;
+    height: 80vmin;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .lamp-cap {
+    width: 14vmin;
+    height: 5vmin;
+    background: linear-gradient(180deg, #555, #333, #222);
+    border-radius: 3vmin 3vmin 0 0;
+    z-index: 5;
+    position: relative;
+    box-shadow: 0 -0.5vmin 2vmin rgba(0,0,0,0.3);
+  }
+  .lamp-cap::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5vmin;
+    left: -2vmin;
+    right: -2vmin;
+    height: 1vmin;
+    background: linear-gradient(180deg, #666, #444);
+    border-radius: 0.3vmin;
+  }
+  .lamp-glass {
+    width: 22vmin;
+    height: 58vmin;
+    background: rgba(20, 10, 30, 0.4);
+    border-radius: 8vmin 8vmin 5vmin 5vmin;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      inset 2vmin 0 4vmin rgba(255,255,255,0.05),
+      inset -1vmin 0 3vmin rgba(0,0,0,0.3),
+      0 0 6vmin rgba(0,0,0,0.5);
+    z-index: 3;
+  }
+  .lamp-glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 2vmin;
+    width: 3vmin;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .lamp-glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 4vmin rgba(0,0,0,0.4);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .blob-container {
+    position: absolute;
+    inset: 0;
+    filter: url(#goo);
+  }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    will-change: transform;
+  }
+  .lamp-base {
+    width: 28vmin;
+    height: 8vmin;
+    background: linear-gradient(180deg, #444, #222);
+    border-radius: 0 0 4vmin 4vmin;
+    position: relative;
+    z-index: 4;
+    box-shadow: 0 1vmin 3vmin rgba(0,0,0,0.5);
+  }
+  .lamp-base::before {
+    content: '';
+    position: absolute;
+    top: -0.5vmin;
+    left: -1vmin;
+    right: -1vmin;
+    height: 1.5vmin;
+    background: linear-gradient(180deg, #666, #444);
+    border-radius: 0.3vmin;
+  }
+  .lamp-base-light {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6vmin;
+    height: 2vmin;
+    border-radius: 50%;
+    filter: blur(1vmin);
+    opacity: 0.6;
+  }
+  .groovy-text {
+    position: fixed;
+    bottom: 6vmin;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Georgia', serif;
+    font-size: 5vmin;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: 0.8vmin;
+    text-transform: uppercase;
+    z-index: 5;
+    opacity: 0.8;
+    text-shadow: 0 0 3vmin currentColor;
+    animation: textPulse 3s ease-in-out infinite alternate;
+  }
+  @keyframes textPulse {
+    0% { opacity: 0.5; transform: translateX(-50%) scale(0.98); }
+    100% { opacity: 0.9; transform: translateX(-50%) scale(1.02); }
+  }
+  .bg-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(8vmin);
+    opacity: 0.15;
+    z-index: 0;
+    animation: bgFloat 12s ease-in-out infinite alternate;
+  }
+  @keyframes bgFloat {
+    0% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(5vmin, -8vmin) scale(1.1); }
+    66% { transform: translate(-3vmin, 4vmin) scale(0.9); }
+    100% { transform: translate(2vmin, -2vmin) scale(1.05); }
+  }
+
+  svg.goo-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+</style>
+</head>
+<body>
+
+<svg class="goo-defs">
+  <defs>
+    <filter id="goo">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+      <feColorMatrix in="blur" mode="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 20 -9" result="goo" />
+      <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="ambient-glow" id="ambientGlow"></div>
+
+<div class="bg-blob" id="bgBlob1" style="width:40vmin;height:40vmin;top:10%;left:10%;"></div>
+<div class="bg-blob" id="bgBlob2" style="width:35vmin;height:35vmin;top:50%;right:10%;animation-delay:-4s;"></div>
+<div class="bg-blob" id="bgBlob3" style="width:30vmin;height:30vmin;bottom:10%;left:30%;animation-delay:-8s;"></div>
+
+<div class="lamp-container">
+  <div class="lamp-cap"></div>
+  <div class="lamp-glass" id="lampGlass">
+    <div class="blob-container" id="blobContainer"></div>
+  </div>
+  <div class="lamp-base">
+    <div class="lamp-base-light" id="baseLight"></div>
+  </div>
+</div>
+
+<div class="groovy-text" id="groovyText"></div>
+
+<script>
+  // ===== EDITABLE CONFIG =====
+  const CONFIG = {
+    titleText: 'GROOVY',
+    blobColor1: '#ff3388',
+    blobColor2: '#ff8833',
+    blobColor3: '#ffdd33',
+    bgColor: '#0a0515',
+    blobSpeed: 1.0,
+    blobCount: 8
+  };
+  // ==============================
+
+  const body = document.body;
+  const blobContainer = document.getElementById('blobContainer');
+  const groovyText = document.getElementById('groovyText');
+  const ambientGlow = document.getElementById('ambientGlow');
+  const baseLight = document.getElementById('baseLight');
+
+  function applyConfig() {
+    body.style.background = CONFIG.bgColor;
+    groovyText.textContent = CONFIG.titleText;
+    groovyText.style.color = CONFIG.blobColor1;
+
+    document.getElementById('bgBlob1').style.background = CONFIG.blobColor1;
+    document.getElementById('bgBlob2').style.background = CONFIG.blobColor2;
+    document.getElementById('bgBlob3').style.background = CONFIG.blobColor3;
+
+    baseLight.style.background = CONFIG.blobColor1;
+
+    ambientGlow.style.background = `
+      radial-gradient(ellipse 50% 30% at 50% 60%, ${CONFIG.blobColor1}15 0%, transparent 70%),
+      radial-gradient(ellipse 30% 40% at 40% 40%, ${CONFIG.blobColor2}10 0%, transparent 60%),
+      radial-gradient(ellipse 30% 40% at 60% 50%, ${CONFIG.blobColor3}10 0%, transparent 60%)
+    `;
+  }
+
+  const colors = () => [CONFIG.blobColor1, CONFIG.blobColor2, CONFIG.blobColor3];
+  let blobs = [];
+
+  function hexToRgba(hex, alpha) {
+    hex = hex.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function createBlobs() {
+    blobContainer.innerHTML = '';
+    blobs = [];
+    const count = CONFIG.blobCount;
+    const cols = colors();
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      el.className = 'blob';
+      const color = cols[i % cols.length];
+      const size = 4 + Math.random() * 8;
+      el.style.width = size + 'vmin';
+      el.style.height = size + 'vmin';
+      el.style.background = `radial-gradient(circle at 40% 35%, ${hexToRgba(color, 0.9)}, ${hexToRgba(color, 0.5)})`;
+
+      const blob = {
+        el: el,
+        x: 20 + Math.random() * 60,
+        y: 30 + Math.random() * 50,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: -0.1 - Math.random() * 0.4,
+        size: size,
+        phase: Math.random() * Math.PI * 2,
+        morphPhase: Math.random() * Math.PI * 2,
+        baseColor: color,
+        wobbleAmp: 0.5 + Math.random() * 1.5,
+        wobbleFreq: 0.3 + Math.random() * 0.5,
+        riseSpeed: 0.02 + Math.random() * 0.06,
+        scalePhase: Math.random() * Math.PI * 2
+      };
+      blobs.push(blob);
+      blobContainer.appendChild(el);
+    }
+  }
+
+  function updateBlobs(time) {
+    const speed = CONFIG.blobSpeed;
+    blobs.forEach(b => {
+      const t = time * 0.001 * speed;
+
+      // Vertical movement: rise and fall cycle
+      b.y -= b.riseSpeed * speed;
+      if (b.y < -b.size) {
+        b.y = 100 + b.size;
+        b.x = 20 + Math.random() * 60;
+      }
+      if (b.y > 100 + b.size) {
+        b.y = -b.size;
+      }
+
+      // Horizontal wobble
+      const wobbleX = Math.sin(t * b.wobbleFreq + b.phase) * b.wobbleAmp * 3;
+
+      // Morphing (squash and stretch)
+      const scaleX = 1 + Math.sin(t * 0.8 + b.morphPhase) * 0.25;
+      const scaleY = 1 + Math.cos(t * 0.6 + b.morphPhase) * 0.3;
+
+      // Border radius morphing for organic shape
+      const r1 = 40 + Math.sin(t * 0.5 + b.phase) * 15;
+      const r2 = 40 + Math.cos(t * 0.4 + b.phase * 1.3) * 15;
+      const r3 = 40 + Math.sin(t * 0.6 + b.phase * 0.7) * 15;
+      const r4 = 40 + Math.cos(t * 0.3 + b.phase * 1.5) * 15;
+
+      b.el.style.left = (b.x + wobbleX) + '%';
+      b.el.style.top = b.y + '%';
+      b.el.style.transform = `translate(-50%, -50%) scale(${scaleX}, ${scaleY})`;
+      b.el.style.borderRadius = `${r1}% ${r2}% ${r3}% ${r4}%`;
+    });
+  }
+
+  // Heat shimmer at bottom
+  function drawHeatShimmer(time) {
+    const lampGlass = document.getElementById('lampGlass');
+    const shimmerIntensity = 0.3 + Math.sin(time * 0.003) * 0.1;
+    lampGlass.style.filter = `url(#goo) brightness(${1 + shimmerIntensity * 0.1})`;
+  }
+
+  // Ambient glow pulsation
+  function updateAmbient(time) {
+    const pulse = 0.8 + Math.sin(time * 0.001) * 0.2;
+    ambientGlow.style.opacity = pulse;
+  }
+
+  // Text color cycling
+  function updateTextColor(time) {
+    const cols = colors();
+    const t = (time * 0.0005) % cols.length;
+    const idx = Math.floor(t);
+    const frac = t - idx;
+    const c1 = cols[idx % cols.length];
+    const c2 = cols[(idx + 1) % cols.length];
+    groovyText.style.color = lerpColor(c1, c2, frac);
+    groovyText.style.textShadow = `0 0 3vmin ${lerpColor(c1, c2, frac)}`;
+  }
+
+  function lerpColor(a, b, t) {
+    a = a.replace('#', '');
+    b = b.replace('#', '');
+    const r = Math.round(parseInt(a.substring(0, 2), 16) * (1 - t) + parseInt(b.substring(0, 2), 16) * t);
+    const g = Math.round(parseInt(a.substring(2, 4), 16) * (1 - t) + parseInt(b.substring(2, 4), 16) * t);
+    const bl = Math.round(parseInt(a.substring(4, 6), 16) * (1 - t) + parseInt(b.substring(4, 6), 16) * t);
+    return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bl.toString(16).padStart(2,'0')}`;
+  }
+
+  applyConfig();
+  createBlobs();
+
+  function animate(time) {
+    updateBlobs(time);
+    updateAmbient(time);
+    updateTextColor(time);
+    drawHeatShimmer(time);
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  // postMessage CONFIG bridge
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'CONFIG_UPDATE') {
+      Object.assign(CONFIG, e.data.payload);
+      applyConfig();
+      createBlobs();
+    }
+  });
+</script>
+</body>
+</html>

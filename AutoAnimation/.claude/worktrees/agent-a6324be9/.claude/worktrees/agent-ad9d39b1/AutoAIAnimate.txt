@@ -1,0 +1,12 @@
+Fsdf
+╭─── Claude Code v2.1.30 ──────────────────────────────────────────────────────╮
+│                                        │ Tips for getting started            │
+│        Welcome back Zalamancer!        │ Run /init to create a CLAUDE.md fi… │
+│                                        │ ─────────────────────────────────── │
+│                 ▐▛███▜▌                │ Recent activity                     │
+│                ▝▜█████▛▘               │ No recent activity                  │
+│                  ▘▘ ▝▝                 │                                     │
+│                                        │                                     │
+│   Opus 4.5 · Claude API · Zalamancer   │                                     │
+│       ~/autoStudio/AutoAnimation       │                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯

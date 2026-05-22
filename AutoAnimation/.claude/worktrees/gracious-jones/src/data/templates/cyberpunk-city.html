@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyberpunk City</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #0a0a1a;
+    font-family: 'Courier New', monospace;
+  }
+  canvas#city {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .scanlines {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0.05;
+    background: repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.35) 1px, rgba(0,0,0,0.35) 2px);
+    animation: scanMove 0.08s linear infinite;
+  }
+  @keyframes scanMove { to { transform: translateY(2px); } }
+  .vignette {
+    position: fixed; inset: 0; z-index: 4; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.65) 100%);
+  }
+  .neon-title {
+    position: fixed; z-index: 6; top: 8%; left: 50%; transform: translateX(-50%);
+    text-align: center; white-space: nowrap;
+  }
+  .neon-title h1 {
+    font-size: 46px; font-weight: 900; letter-spacing: 6px; text-transform: uppercase;
+    animation: neonFlicker 4s ease-in-out infinite;
+  }
+  .neon-title .tag {
+    font-size: 11px; letter-spacing: 8px; margin-top: 6px;
+    text-transform: uppercase; opacity: 0.5;
+  }
+  @keyframes neonFlicker {
+    0%,18%,22%,25%,53%,57%,100% { opacity: 1; }
+    20%,24%,55% { opacity: 0.45; }
+  }
+  .holo {
+    position: fixed; z-index: 6; padding: 8px 18px;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    border: 1px solid; opacity: 0; backdrop-filter: blur(4px);
+    background: rgba(0,0,0,0.25);
+    animation: holoFade 10s ease-in-out infinite;
+  }
+  .holo.h1 { top: 25%; left: 5%; animation-delay: 0s; }
+  .holo.h2 { top: 38%; right: 4%; animation-delay: -3.5s; }
+  .holo.h3 { top: 16%; right: 10%; animation-delay: -7s; font-size: 9px; }
+  @keyframes holoFade {
+    0%,100% { opacity: 0; transform: translateY(8px); }
+    15%,85% { opacity: 0.55; transform: translateY(0); }
+    50% { opacity: 0.75; transform: translateY(-5px); }
+  }
+</style>
+</head>
+<body>
+<canvas id="city"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+<div class="neon-title">
+  <h1 id="titleEl">NEON DISTRICT</h1>
+  <div class="tag" id="tagEl">YEAR 2087</div>
+</div>
+<div class="holo h1" id="h1">SYN-CORP // UPGRADE NOW</div>
+<div class="holo h2" id="h2">NEURAL LINK v4.2</div>
+<div class="holo h3" id="h3">CYBERDYNE SYSTEMS</div>
+
+<script>
+const CONFIG = {
+  titleText: 'NEON DISTRICT',
+  taglineText: 'YEAR 2087',
+  holoText1: 'SYN-CORP // UPGRADE NOW',
+  holoText2: 'NEURAL LINK v4.2',
+  holoText3: 'CYBERDYNE SYSTEMS',
+  neonPrimary: '#ff00ff',
+  neonSecondary: '#00ffff',
+  neonWarm: '#ff6600',
+  bgColor: '#0a0a1a',
+  rainCount: 350,
+  trafficCount: 14,
+};
+
+function hexRgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function applyConfig(){
+  document.body.style.background=CONFIG.bgColor;
+  const t=document.getElementById('titleEl'),g=document.getElementById('tagEl');
+  t.textContent=CONFIG.titleText; g.textContent=CONFIG.taglineText;
+  t.style.color=CONFIG.neonPrimary;
+  t.style.textShadow=`0 0 20px ${CONFIG.neonPrimary},0 0 60px ${CONFIG.neonPrimary}80,0 0 120px ${CONFIG.neonPrimary}30`;
+  g.style.color=CONFIG.neonSecondary; g.style.textShadow=`0 0 15px ${CONFIG.neonSecondary}60`;
+  const holos=[document.getElementById('h1'),document.getElementById('h2'),document.getElementById('h3')];
+  const texts=[CONFIG.holoText1,CONFIG.holoText2,CONFIG.holoText3];
+  const cols=[CONFIG.neonSecondary,CONFIG.neonPrimary,CONFIG.neonWarm];
+  holos.forEach((el,i)=>{el.textContent=texts[i];el.style.color=cols[i];el.style.borderColor=cols[i]+'50';el.style.boxShadow=`0 0 12px ${cols[i]}15,inset 0 0 12px ${cols[i]}08`;});
+}
+applyConfig();
+window.addEventListener('message',e=>{if(e.data?.type==='CONFIG_UPDATE'){Object.assign(CONFIG,e.data.config);applyConfig();}});
+
+const C=document.getElementById('city'),X=C.getContext('2d');
+let W,H;
+const pri=()=>hexRgb(CONFIG.neonPrimary),sec=()=>hexRgb(CONFIG.neonSecondary),wrm=()=>hexRgb(CONFIG.neonWarm);
+
+// --- Buildings ---
+var bldgs=[];
+function genBuildings(){
+  bldgs.length=0; let x=0;
+  while(x<W+70){
+    const w=22+Math.random()*55, h=H*(0.12+Math.random()*0.58);
+    const neonEdge=Math.random()>0.55, edgeCol=[pri,sec,wrm][Math.floor(Math.random()*3)]();
+    const wins=[];
+    const cols=Math.floor(w/10), rows=Math.floor(h/13);
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      if(Math.random()>0.28){
+        const lit=Math.random()>0.22;
+        const color=lit?[CONFIG.neonPrimary,CONFIG.neonSecondary,CONFIG.neonWarm,'#ffdd00','#ffffff'][Math.floor(Math.random()*5)]:'#08080f';
+        wins.push({rx:3+c*10,ry:5+r*13,color,phase:Math.random()*6.28,lit});
+      }
+    }
+    const hasAnt=Math.random()>0.5, antH=15+Math.random()*35;
+    const hasSign=Math.random()>0.6, signCol=[CONFIG.neonPrimary,CONFIG.neonSecondary,CONFIG.neonWarm][Math.floor(Math.random()*3)];
+    const depth=Math.random();
+    bldgs.push({x,w,h,wins,neonEdge,edgeCol,hasAnt,antH,hasSign,signCol,depth});
+    x+=w+1+Math.random()*3;
+  }
+}
+
+// --- Rain ---
+var rain=[];
+function initRain(){
+  rain.length=0;
+  for(let i=0;i<CONFIG.rainCount;i++) rain.push({
+    x:Math.random()*(W+200)-100, y:Math.random()*H,
+    len:5+Math.random()*20, speed:5+Math.random()*9,
+    opacity:0.04+Math.random()*0.2, wind:-0.6-Math.random()*0.4,
+  });
+}
+function resize(){W=C.width=innerWidth;H=C.height=innerHeight;genBuildings();initRain();}
+resize(); addEventListener('resize',resize);
+
+// --- Fog ---
+const fog=[];
+for(let i=0;i<18;i++) fog.push({
+  x:Math.random()*2000, y:H*(0.35+Math.random()*0.4),
+  w:200+Math.random()*500, h:20+Math.random()*50,
+  speed:0.15+Math.random()*0.4, opacity:0.015+Math.random()*0.035,
+});
+
+// --- Flying vehicles ---
+const vehs=[];
+for(let i=0;i<6;i++) vehs.push({
+  x:Math.random()*W, y:H*(0.08+Math.random()*0.3),
+  speed:0.4+Math.random()*1.8, dir:Math.random()>0.5?1:-1,
+  size:1.5+Math.random()*3, tail:25+Math.random()*70,
+  color:Math.random()>0.5?'pri':'sec',
+});
+
+// --- Traffic at bottom ---
+const traffic=[];
+for(let i=0;i<CONFIG.trafficCount;i++) traffic.push({
+  x:Math.random()*W, y:H-6-Math.random()*28,
+  speed:1.2+Math.random()*3.5, dir:Math.random()>0.5?1:-1,
+  size:1.5+Math.random()*3, tail:25+Math.random()*65,
+  color:Math.random()>0.5?'pri':'sec',
+});
+
+function drawSkyGlow(){
+  const g=X.createRadialGradient(W*0.5,H*0.65,0,W*0.5,H*0.65,H*0.65);
+  const p=pri(),s=sec();
+  g.addColorStop(0,`rgba(${p[0]},${p[1]},${p[2]},0.04)`);
+  g.addColorStop(0.5,`rgba(${s[0]},${s[1]},${s[2]},0.02)`);
+  g.addColorStop(1,'transparent');
+  X.fillStyle=g; X.fillRect(0,0,W,H);
+}
+
+function drawBuildings(t){
+  bldgs.sort((a,b)=>a.depth-b.depth).forEach(b=>{
+    const by=H-b.h, df=0.25+b.depth*0.75;
+    X.fillStyle=`rgb(${Math.floor(6*df)},${Math.floor(6*df)},${Math.floor(15*df)})`;
+    X.fillRect(b.x,by,b.w,b.h);
+    if(b.neonEdge){
+      const a=0.12+0.08*Math.sin(t*0.001);
+      X.strokeStyle=`rgba(${b.edgeCol[0]},${b.edgeCol[1]},${b.edgeCol[2]},${a})`;
+      X.lineWidth=0.8; X.strokeRect(b.x,by,b.w,b.h);
+    }
+    b.wins.forEach(win=>{
+      if(!win.lit){X.fillStyle='#08080f';X.fillRect(b.x+win.rx,by+win.ry,5,7);return;}
+      const fl=Math.sin(t*0.002+win.phase);
+      if(fl<-0.87) return;
+      const al=Math.max(0.15,Math.min(0.6,0.3+fl*0.15));
+      const hex=Math.round(al*255).toString(16).padStart(2,'0');
+      X.fillStyle=win.color+hex;
+      X.fillRect(b.x+win.rx,by+win.ry,5,7);
+    });
+    if(b.hasAnt){
+      const ax=b.x+b.w*0.5, ay=by-b.antH;
+      X.strokeStyle='#1a1a30';X.lineWidth=1;
+      X.beginPath();X.moveTo(ax,by);X.lineTo(ax,ay);X.stroke();
+      if(Math.sin(t*0.005+b.x)>0.3){
+        X.fillStyle='rgba(255,0,50,0.8)';X.beginPath();X.arc(ax,ay,1.8,0,6.28);X.fill();
+        X.fillStyle='rgba(255,0,50,0.15)';X.beginPath();X.arc(ax,ay,7,0,6.28);X.fill();
+      }
+    }
+    if(b.hasSign){
+      const sy=by+8;
+      X.fillStyle=b.signCol+'25'; X.fillRect(b.x+2,sy,b.w-4,7);
+      X.shadowColor=b.signCol;X.shadowBlur=8;
+      X.fillStyle=b.signCol+'45'; X.fillRect(b.x+4,sy+1,b.w-8,5);
+      X.shadowBlur=0;
+    }
+  });
+}
+
+function drawRain(){
+  rain.forEach(r=>{
+    r.y+=r.speed; r.x+=r.wind;
+    if(r.y>H){r.y=-20;r.x=Math.random()*(W+200)-100;}
+    if(r.x>W+100)r.x=-100; if(r.x<-100)r.x=W+100;
+    const s=sec();
+    X.beginPath();X.moveTo(r.x,r.y);X.lineTo(r.x+r.wind*2,r.y+r.len);
+    X.strokeStyle=`rgba(${s[0]},${s[1]},${s[2]},${r.opacity})`;
+    X.lineWidth=0.6;X.stroke();
+  });
+}
+
+function drawFog(t){
+  fog.forEach(f=>{
+    f.x+=f.speed; if(f.x>W+f.w)f.x=-f.w;
+    const pulse=0.7+0.3*Math.sin(t*0.001+f.x*0.01);
+    const g=X.createRadialGradient(f.x+f.w*0.5,f.y,0,f.x+f.w*0.5,f.y,f.w*0.5);
+    g.addColorStop(0,`rgba(80,100,160,${f.opacity*pulse})`);
+    g.addColorStop(1,'transparent');
+    X.fillStyle=g;X.fillRect(f.x,f.y-f.h,f.w,f.h*2);
+  });
+}
+
+function drawStreaks(arr,t){
+  arr.forEach(v=>{
+    v.x+=v.speed*v.dir;
+    if(v.x>W+100)v.x=-100; if(v.x<-100)v.x=W+100;
+    const c=v.color==='pri'?pri():sec();
+    const g=X.createLinearGradient(v.x-v.tail*v.dir,v.y,v.x,v.y);
+    g.addColorStop(0,'transparent');g.addColorStop(1,`rgba(${c[0]},${c[1]},${c[2]},0.5)`);
+    X.beginPath();X.moveTo(v.x-v.tail*v.dir,v.y);X.lineTo(v.x,v.y);
+    X.strokeStyle=g;X.lineWidth=v.size*0.5;X.stroke();
+    X.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},0.85)`;
+    X.beginPath();X.arc(v.x,v.y,v.size,0,6.28);X.fill();
+    X.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},0.08)`;
+    X.beginPath();X.arc(v.x,v.y,v.size*5,0,6.28);X.fill();
+  });
+}
+
+function drawReflections(t){
+  const gy=H*0.88;
+  const p=pri(),s=sec();
+  const g=X.createLinearGradient(0,gy,0,H);
+  g.addColorStop(0,'transparent');
+  g.addColorStop(0.3,`rgba(${p[0]},${p[1]},${p[2]},0.04)`);
+  g.addColorStop(0.7,`rgba(${s[0]},${s[1]},${s[2]},0.03)`);
+  g.addColorStop(1,`rgba(${p[0]},${p[1]},${p[2]},0.02)`);
+  X.fillStyle=g;X.fillRect(0,gy,W,H-gy);
+  for(let i=0;i<10;i++){
+    const px=(i*W/9)+Math.sin(t*0.001+i)*15;
+    const pw=30+Math.random()*25;
+    const sh=0.5+0.5*Math.sin(t*0.003+i*2);
+    const c=i%2===0?p:s;
+    X.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},${sh*0.06})`;
+    X.fillRect(px,H-18+Math.sin(t*0.002+i)*3,pw,2);
+  }
+}
+
+function drawLightning(){
+  if(Math.random()>0.998){
+    X.fillStyle='rgba(180,180,255,0.025)';X.fillRect(0,0,W,H);
+  }
+}
+
+function animate(t){
+  if (!W || !H) { requestAnimationFrame(animate); return; }
+  X.fillStyle=CONFIG.bgColor;X.fillRect(0,0,W,H);
+  drawSkyGlow();
+  drawBuildings(t);
+  drawFog(t);
+  drawStreaks(vehs,t);
+  drawStreaks(traffic,t);
+  drawReflections(t);
+  drawRain();
+  drawLightning();
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

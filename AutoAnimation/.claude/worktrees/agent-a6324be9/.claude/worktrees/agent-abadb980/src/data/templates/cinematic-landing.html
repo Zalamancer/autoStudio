@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cinematic Landing</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #FFF8F0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    color: #2D5016;
+  }
+  .parallax-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 110%; height: 110%;
+    z-index: 0;
+    animation: parallaxSlow 20s ease-in-out infinite alternate;
+  }
+  @keyframes parallaxSlow {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-5%, -3%) scale(1.05); }
+  }
+  .bg-gradient {
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(45,80,22,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(45,80,22,0.04) 0%, transparent 50%),
+      #FFF8F0;
+  }
+  .depth-layer-1 {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    animation: depthFloat1 15s ease-in-out infinite alternate;
+  }
+  @keyframes depthFloat1 {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(-15px, -10px); }
+  }
+  .depth-layer-2 {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    animation: depthFloat2 15s ease-in-out infinite alternate;
+  }
+  @keyframes depthFloat2 {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(10px, 8px); }
+  }
+  .grid-dots {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    background-image: radial-gradient(circle, rgba(45,80,22,0.08) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: dotShift 25s linear infinite;
+  }
+  @keyframes dotShift {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(40px, 40px); }
+  }
+  .content-main {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    text-align: center;
+    width: 90%;
+    max-width: 650px;
+  }
+  .heading-space {
+    font-family: 'Helvetica Neue', 'Arial', sans-serif;
+    font-size: clamp(36px, 9vw, 80px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.0;
+    color: #2D5016;
+    animation: cinematicReveal 8s ease-in-out infinite;
+  }
+  @keyframes cinematicReveal {
+    0%, 100% { opacity: 0; transform: translateY(30px) scale(0.97); letter-spacing: 0.05em; }
+    15%, 85% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: -0.02em; }
+  }
+  .mono-tag {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(9px, 1.2vw, 11px);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(45,80,22,0.45);
+    margin-top: 28px;
+    animation: cinematicReveal 8s ease-in-out infinite 0.4s;
+  }
+  .gradient-bar {
+    width: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #2D5016, rgba(45,80,22,0.2));
+    margin: 24px auto;
+    border-radius: 2px;
+    animation: barGrow 8s ease-in-out infinite 0.6s;
+  }
+  @keyframes barGrow {
+    0%, 100% { width: 0; opacity: 0; }
+    20%, 80% { width: clamp(80px, 20vw, 200px); opacity: 1; }
+  }
+  .description {
+    font-family: 'Georgia', serif;
+    font-size: clamp(13px, 2vw, 17px);
+    color: rgba(45,80,22,0.6);
+    font-style: italic;
+    line-height: 1.6;
+    animation: cinematicReveal 8s ease-in-out infinite 0.8s;
+  }
+  /* Floating geometric shapes in depth layers */
+  .depth-shape {
+    position: absolute;
+    border: 1px solid rgba(45,80,22,0.1);
+    border-radius: 4px;
+  }
+  .ds-1 { width: 120px; height: 120px; top: 15%; left: 10%; animation: shapeFloat 12s ease-in-out infinite; }
+  .ds-2 { width: 80px; height: 80px; top: 65%; right: 12%; border-radius: 50%; animation: shapeFloat 12s ease-in-out infinite 3s; }
+  .ds-3 { width: 160px; height: 60px; bottom: 25%; left: 20%; animation: shapeFloat 12s ease-in-out infinite 6s; }
+  @keyframes shapeFloat {
+    0%, 100% { opacity: 0; transform: translateY(15px); }
+    25%, 75% { opacity: 1; transform: translateY(0); }
+  }
+  .gradient-overlay {
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 100%; height: 40%;
+    background: linear-gradient(to top, rgba(255,248,240,0.8), transparent);
+    z-index: 15;
+    pointer-events: none;
+  }
+  .gradient-overlay-top {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 30%;
+    background: linear-gradient(to bottom, rgba(255,248,240,0.6), transparent);
+    z-index: 15;
+    pointer-events: none;
+  }
+  .corner-detail {
+    position: fixed;
+    z-index: 25;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: rgba(45,80,22,0.3);
+  }
+  .cd-tl { top: 24px; left: 24px; animation: fadeIn 8s ease-in-out infinite 1s; }
+  .cd-br { bottom: 24px; right: 24px; text-align: right; animation: fadeIn 8s ease-in-out infinite 1.5s; }
+  @keyframes fadeIn {
+    0%, 100% { opacity: 0; }
+    20%, 80% { opacity: 1; }
+  }
+  .pan-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 30;
+    background: #2D5016;
+    animation: panReveal 10s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes panReveal {
+    0% { clip-path: inset(0 0 0 0); }
+    10% { clip-path: inset(0 0 100% 0); }
+    90% { clip-path: inset(0 0 100% 0); }
+    100% { clip-path: inset(0 0 0 0); }
+  }
+</style>
+</head>
+<body>
+<div class="parallax-bg">
+  <div class="bg-gradient"></div>
+</div>
+<div class="grid-dots"></div>
+
+<div class="depth-layer-1">
+  <div class="depth-shape ds-1"></div>
+  <div class="depth-shape ds-3"></div>
+</div>
+<div class="depth-layer-2">
+  <div class="depth-shape ds-2"></div>
+</div>
+
+<div class="gradient-overlay-top"></div>
+
+<div class="content-main">
+  <div class="heading-space" id="headingText">Cinematic<br>Vision</div>
+  <div class="gradient-bar"></div>
+  <div class="mono-tag" id="tagText">DIRECTED BY NATURE // 2025</div>
+  <div class="description" id="descText">Where artistry meets intention</div>
+</div>
+
+<div class="gradient-overlay"></div>
+
+<div class="corner-detail cd-tl" id="cornerTL">001 / LANDING</div>
+<div class="corner-detail cd-br" id="cornerBR">SCROLL TO EXPLORE</div>
+
+<div class="pan-overlay"></div>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var HEADING_TEXT = 'Cinematic<br>Vision';
+  var TAG_TEXT = 'DIRECTED BY NATURE // 2025';
+  var DESC_TEXT = 'Where artistry meets intention';
+  var CORNER_TL = '001 / LANDING';
+  var CORNER_BR = 'SCROLL TO EXPLORE';
+  // === END EDITABLE ===
+
+  document.getElementById('headingText').innerHTML = HEADING_TEXT;
+  document.getElementById('tagText').textContent = TAG_TEXT;
+  document.getElementById('descText').textContent = DESC_TEXT;
+  document.getElementById('cornerTL').textContent = CORNER_TL;
+  document.getElementById('cornerBR').textContent = CORNER_BR;
+</script>
+</body>
+</html>

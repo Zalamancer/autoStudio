@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synthwave Sunset</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; }
+  body { background: #0a0015; }
+  canvas#synthCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="synthCanvas"></canvas>
+
+<script>
+const CONFIG = {
+  titleText: 'SYNTHWAVE',
+  subtitleText: 'RETROWAVE',
+  sunColor1: '#ff6600',
+  sunColor2: '#ff0066',
+  sunColor3: '#cc00aa',
+  skyTop: '#0a0025',
+  skyMid: '#220044',
+  skyBottom: '#ff3388',
+  gridColor: '#ff00cc',
+  gridSecondary: '#cc00ff',
+  mountainColor: '#110022',
+  starCount: 200,
+  gridSpeed: 1.0,
+  sunLineCount: 7,
+  floatingShapeCount: 8,
+  cycleDuration: 20,
+};
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config);
+});
+
+const canvas = document.getElementById('synthCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, horizon;
+
+function hexToRgb(hex) {
+  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+}
+
+// --- Stars ---
+const stars = [];
+for (let i = 0; i < CONFIG.starCount; i++) {
+  stars.push({
+    x: Math.random(), y: Math.random() * 0.5,
+    size: Math.random() * 1.8 + 0.3,
+    brightness: 0.3 + Math.random() * 0.7,
+    twinklePhase: Math.random() * Math.PI * 2,
+    twinkleSpeed: Math.random() * 0.02 + 0.005,
+  });
+}
+
+function drawStars(t) {
+  stars.forEach(s => {
+    s.twinklePhase += s.twinkleSpeed;
+    const alpha = s.brightness * (0.3 + 0.7 * Math.abs(Math.sin(s.twinklePhase)));
+    const sx = s.x * W;
+    const sy = s.y * H;
+    if (sy < horizon - 40) {
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    }
+  });
+}
+
+// --- Sky gradient ---
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, horizon + 20);
+  grad.addColorStop(0, CONFIG.skyTop);
+  grad.addColorStop(0.4, CONFIG.skyMid);
+  grad.addColorStop(0.85, CONFIG.skyBottom);
+  grad.addColorStop(1, '#ff7744');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, horizon + 20);
+}
+
+// --- Sun with horizontal line breaks ---
+function drawSun(t) {
+  const sunCx = W / 2;
+  const sunCy = horizon - H * 0.06;
+  const sunR = Math.min(W, H) * 0.18;
+  const pulse = 1 + 0.02 * Math.sin(t * 0.002);
+
+  // Sun glow
+  const outerGlow = ctx.createRadialGradient(sunCx, sunCy, sunR * 0.5, sunCx, sunCy, sunR * 2.5);
+  outerGlow.addColorStop(0, 'rgba(255, 100, 50, 0.15)');
+  outerGlow.addColorStop(0.5, 'rgba(255, 50, 100, 0.05)');
+  outerGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = outerGlow;
+  ctx.fillRect(sunCx - sunR * 2.5, sunCy - sunR * 2.5, sunR * 5, sunR * 5);
+
+  // Sun body with gradient
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(sunCx, sunCy, sunR * pulse, 0, Math.PI * 2);
+  ctx.clip();
+
+  const sunGrad = ctx.createLinearGradient(0, sunCy - sunR, 0, sunCy + sunR);
+  sunGrad.addColorStop(0, CONFIG.sunColor1);
+  sunGrad.addColorStop(0.5, CONFIG.sunColor2);
+  sunGrad.addColorStop(1, CONFIG.sunColor3);
+  ctx.fillStyle = sunGrad;
+  ctx.fillRect(sunCx - sunR, sunCy - sunR, sunR * 2, sunR * 2);
+
+  // Horizontal line breaks (classic synthwave sun)
+  const lineCount = CONFIG.sunLineCount;
+  for (let i = 0; i < lineCount; i++) {
+    const progress = (i + 1) / (lineCount + 1);
+    const lineY = sunCy - sunR + progress * sunR * 2;
+    const lineH = 2 + progress * 6; // Lines get thicker toward bottom
+    // Only draw lines in bottom half of sun
+    if (lineY > sunCy) {
+      ctx.fillStyle = CONFIG.skyMid;
+      ctx.fillRect(sunCx - sunR, lineY, sunR * 2, lineH);
+    }
+  }
+
+  ctx.restore();
+
+  // Sun rim glow
+  ctx.beginPath();
+  ctx.arc(sunCx, sunCy, sunR * pulse, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255, 100, 50, 0.3)`;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+// --- Mountains ---
+var mountainLayers = [];
+function generateMountains() {
+  mountainLayers = [];
+  for (let layer = 0; layer < 3; layer++) {
+    const points = [];
+    const baseY = horizon + layer * 3;
+    const amplitude = H * (0.06 - layer * 0.015);
+    const segments = 40;
+    for (let i = 0; i <= segments; i++) {
+      const x = (i / segments) * W;
+      let y = baseY;
+      y -= Math.abs(Math.sin(i * 0.2 + layer * 3)) * amplitude;
+      y -= Math.abs(Math.sin(i * 0.35 + layer * 7)) * amplitude * 0.5;
+      if (i % 5 === 0) y -= Math.random() * amplitude * 0.3;
+      points.push({ x, y });
+    }
+    mountainLayers.push(points);
+  }
+}
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  horizon = H * 0.52;
+  generateMountains();
+}
+resize();
+window.addEventListener('resize', resize);
+
+function drawMountains() {
+  const mc = hexToRgb(CONFIG.mountainColor);
+  mountainLayers.forEach((points, li) => {
+    const brightness = 1 + li * 0.15;
+    ctx.beginPath();
+    ctx.moveTo(0, horizon + 10);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(W, horizon + 10);
+    ctx.closePath();
+    ctx.fillStyle = `rgb(${Math.min(255, Math.floor(mc.r * brightness))}, ${Math.min(255, Math.floor(mc.g * brightness))}, ${Math.min(255, Math.floor(mc.b * brightness))})`;
+    ctx.fill();
+
+    // Mountain edge glow
+    if (li === 0) {
+      ctx.beginPath();
+      points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+      ctx.strokeStyle = 'rgba(255, 0, 150, 0.15)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
+}
+
+// --- Perspective grid floor ---
+function drawGrid(t) {
+  const gc = hexToRgb(CONFIG.gridColor);
+  const sc = hexToRgb(CONFIG.gridSecondary);
+  const vanishX = W / 2;
+  const vanishY = horizon;
+  const gridOffset = (t * 0.001 * CONFIG.gridSpeed) % 1;
+
+  // Floor background
+  const floorGrad = ctx.createLinearGradient(0, horizon, 0, H);
+  floorGrad.addColorStop(0, 'rgba(10, 0, 25, 0.8)');
+  floorGrad.addColorStop(0.5, 'rgba(15, 0, 35, 0.9)');
+  floorGrad.addColorStop(1, 'rgba(5, 0, 15, 1)');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, horizon, W, H - horizon);
+
+  // Horizontal lines (perspective) — scrolling toward viewer
+  const hLineCount = 30;
+  for (let i = 0; i < hLineCount; i++) {
+    const rawProgress = (i + gridOffset) / hLineCount;
+    const perspProgress = Math.pow(rawProgress, 2.5); // Perspective compression
+    const lineY = horizon + perspProgress * (H - horizon);
+    const lineOpacity = rawProgress * 0.6;
+
+    ctx.beginPath();
+    ctx.moveTo(0, lineY);
+    ctx.lineTo(W, lineY);
+    ctx.strokeStyle = `rgba(${gc.r},${gc.g},${gc.b},${lineOpacity})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Glow
+    if (rawProgress > 0.3) {
+      ctx.strokeStyle = `rgba(${gc.r},${gc.g},${gc.b},${lineOpacity * 0.15})`;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+  }
+
+  // Vertical lines (converging to vanishing point)
+  const vLineCount = 24;
+  for (let i = -vLineCount / 2; i <= vLineCount / 2; i++) {
+    const bottomX = vanishX + i * (W / vLineCount) * 2;
+    const lineOpacity = 0.3 - Math.abs(i / (vLineCount / 2)) * 0.15;
+
+    ctx.beginPath();
+    ctx.moveTo(vanishX, vanishY);
+    ctx.lineTo(bottomX, H);
+    ctx.strokeStyle = `rgba(${sc.r},${sc.g},${sc.b},${Math.max(0.05, lineOpacity)})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Grid glow at horizon
+  const horizonGlow = ctx.createLinearGradient(0, horizon - 5, 0, horizon + 30);
+  horizonGlow.addColorStop(0, 'transparent');
+  horizonGlow.addColorStop(0.5, `rgba(${gc.r},${gc.g},${gc.b},0.15)`);
+  horizonGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = horizonGlow;
+  ctx.fillRect(0, horizon - 5, W, 35);
+}
+
+// --- Floating geometric shapes ---
+class FloatingShape {
+  constructor() { this.reset(true); }
+  reset(init) {
+    this.x = Math.random() * W;
+    this.y = init ? Math.random() * horizon * 0.8 : -50;
+    this.size = 15 + Math.random() * 40;
+    this.type = Math.floor(Math.random() * 4); // 0: triangle, 1: diamond, 2: circle outline, 3: hexagon
+    this.rotSpeed = (Math.random() - 0.5) * 0.02;
+    this.rot = Math.random() * Math.PI * 2;
+    this.driftX = (Math.random() - 0.5) * 0.3;
+    this.driftY = 0.1 + Math.random() * 0.2;
+    this.hue = 280 + Math.random() * 60;
+    this.opacity = 0.1 + Math.random() * 0.2;
+    this.glowPulse = Math.random() * Math.PI * 2;
+  }
+  update(t) {
+    this.x += this.driftX;
+    this.y += this.driftY;
+    this.rot += this.rotSpeed;
+    if (this.y > horizon + 20 || this.x < -60 || this.x > W + 60) this.reset(false);
+  }
+  draw(t) {
+    const pulse = 0.6 + 0.4 * Math.sin(t * 0.004 + this.glowPulse);
+    const alpha = this.opacity * pulse;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+
+    ctx.strokeStyle = `hsla(${this.hue}, 100%, 60%, ${alpha})`;
+    ctx.lineWidth = 1.5;
+
+    switch (this.type) {
+      case 0: // Triangle
+        ctx.beginPath();
+        ctx.moveTo(0, -this.size / 2);
+        ctx.lineTo(-this.size / 2, this.size / 2);
+        ctx.lineTo(this.size / 2, this.size / 2);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      case 1: // Diamond
+        ctx.beginPath();
+        ctx.moveTo(0, -this.size / 2);
+        ctx.lineTo(this.size / 3, 0);
+        ctx.lineTo(0, this.size / 2);
+        ctx.lineTo(-this.size / 3, 0);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      case 2: // Circle outline
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      case 3: // Hexagon
+        ctx.beginPath();
+        for (let v = 0; v < 6; v++) {
+          const a = (v / 6) * Math.PI * 2 - Math.PI / 2;
+          const hx = Math.cos(a) * this.size / 2;
+          const hy = Math.sin(a) * this.size / 2;
+          if (v === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        break;
+    }
+
+    // Glow effect
+    ctx.strokeStyle = `hsla(${this.hue}, 100%, 60%, ${alpha * 0.2})`;
+    ctx.lineWidth = 5;
+    switch (this.type) {
+      case 0:
+        ctx.beginPath(); ctx.moveTo(0, -this.size / 2); ctx.lineTo(-this.size / 2, this.size / 2); ctx.lineTo(this.size / 2, this.size / 2); ctx.closePath(); ctx.stroke();
+        break;
+      case 1:
+        ctx.beginPath(); ctx.moveTo(0, -this.size / 2); ctx.lineTo(this.size / 3, 0); ctx.lineTo(0, this.size / 2); ctx.lineTo(-this.size / 3, 0); ctx.closePath(); ctx.stroke();
+        break;
+      case 2:
+        ctx.beginPath(); ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2); ctx.stroke();
+        break;
+      case 3:
+        ctx.beginPath();
+        for (let v = 0; v < 6; v++) { const a = (v / 6) * Math.PI * 2 - Math.PI / 2; if (v === 0) ctx.moveTo(Math.cos(a) * this.size / 2, Math.sin(a) * this.size / 2); else ctx.lineTo(Math.cos(a) * this.size / 2, Math.sin(a) * this.size / 2); }
+        ctx.closePath(); ctx.stroke();
+        break;
+    }
+
+    ctx.restore();
+  }
+}
+
+const floatingShapes = [];
+for (let i = 0; i < CONFIG.floatingShapeCount; i++) floatingShapes.push(new FloatingShape());
+
+// --- Title text ---
+function drawTitle(t) {
+  const pulse = 0.6 + 0.4 * Math.sin(t * 0.003);
+  ctx.save();
+  ctx.font = `bold ${Math.min(W * 0.06, 48)}px 'Courier New', monospace`;
+  ctx.textAlign = 'center';
+  ctx.letterSpacing = '12px';
+
+  // Glow
+  ctx.shadowColor = CONFIG.sunColor2;
+  ctx.shadowBlur = 30 * pulse;
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.5 * pulse})`;
+  ctx.fillText(CONFIG.titleText, W / 2, H * 0.12);
+
+  ctx.shadowBlur = 0;
+  ctx.font = `${Math.min(W * 0.02, 14)}px 'Courier New', monospace`;
+  ctx.fillStyle = `rgba(255, 200, 255, ${0.3 * pulse})`;
+  ctx.fillText(CONFIG.subtitleText, W / 2, H * 0.16);
+  ctx.restore();
+}
+
+// --- Scanlines overlay ---
+function drawScanlines() {
+  ctx.fillStyle = 'rgba(0,0,0,0.06)';
+  for (let y = 0; y < H; y += 4) {
+    ctx.fillRect(0, y, W, 2);
+  }
+}
+
+// --- Chrome/reflection line on horizon ---
+function drawHorizonChrome(t) {
+  const pulse = 0.5 + 0.5 * Math.sin(t * 0.003);
+  ctx.strokeStyle = `rgba(255, 100, 200, ${0.4 * pulse})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, horizon);
+  ctx.lineTo(W, horizon);
+  ctx.stroke();
+
+  ctx.strokeStyle = `rgba(255, 100, 200, ${0.1 * pulse})`;
+  ctx.lineWidth = 8;
+  ctx.stroke();
+}
+
+resize();
+window.addEventListener('resize', resize);
+
+function animate(t) {
+  if (!W || !H) { requestAnimationFrame(animate); return; }
+  drawSky();
+  drawStars(t);
+  drawSun(t);
+  drawMountains();
+  drawHorizonChrome(t);
+  drawGrid(t);
+
+  floatingShapes.forEach(s => { s.update(t); s.draw(t); });
+  drawTitle(t);
+  drawScanlines();
+
+  // Vignette
+  const vig = ctx.createRadialGradient(W / 2, H * 0.4, W * 0.15, W / 2, H * 0.4, W * 0.7);
+  vig.addColorStop(0, 'transparent');
+  vig.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

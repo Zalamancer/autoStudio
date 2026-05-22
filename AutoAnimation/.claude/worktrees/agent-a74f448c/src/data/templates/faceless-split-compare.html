@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faceless Split Compare</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+.split { display: flex; width: 100%; height: 100%; }
+.side { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 6%; gap: 3vmin; }
+.side.left { background: rgba(255,255,255,0.02); }
+.side.right { background: rgba(255,255,255,0.05); }
+.divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 0.5vmin; background: var(--accent); transform: translateX(-50%); z-index: 2; }
+.vs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; background: var(--accent); color: #000; font-size: 4vmin; font-weight: 900; width: 10vmin; height: 10vmin; border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; animation: vsIn 0.6s 0.5s forwards cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes vsIn { to { opacity: 1; } }
+.label { font-size: 5vmin; font-weight: 800; color: #fff; text-align: center; opacity: 0; transform: translateY(20px); animation: slideIn 0.5s forwards cubic-bezier(0.16, 1, 0.3, 1); }
+.side.left .label { animation-delay: 0.3s; }
+.side.right .label { animation-delay: 0.6s; }
+.stat { font-size: 3vmin; color: rgba(255,255,255,0.6); text-align: center; opacity: 0; transform: translateY(15px); animation: slideIn 0.4s forwards; }
+.stat:nth-child(2) { animation-delay: 1s; }
+.stat:nth-child(3) { animation-delay: 1.3s; }
+.stat:nth-child(4) { animation-delay: 1.6s; }
+.stat:nth-child(5) { animation-delay: 1.9s; }
+@keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="split">
+  <div class="side left" id="left"></div>
+  <div class="side right" id="right"></div>
+</div>
+<div class="divider"></div>
+<div class="vs" id="vs"></div>
+<script>
+const CONFIG = {
+  leftLabel: 'Option A',
+  rightLabel: 'Option B',
+  leftStats: ['Faster performance', 'Lower cost', 'Easier setup'],
+  rightStats: ['More features', 'Better support', 'Wider ecosystem'],
+  vsText: 'VS',
+  bgColor: '#0a0a0a',
+  accentColor: '#ef4444'
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+
+function build() {
+  const left = document.getElementById('left');
+  const right = document.getElementById('right');
+  const vs = document.getElementById('vs');
+  left.innerHTML = `<div class="label">${CONFIG.leftLabel}</div>${CONFIG.leftStats.map(s => `<div class="stat">${s}</div>`).join('')}`;
+  right.innerHTML = `<div class="label">${CONFIG.rightLabel}</div>${CONFIG.rightStats.map(s => `<div class="stat">${s}</div>`).join('')}`;
+  vs.textContent = CONFIG.vsText;
+}
+
+build();
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    document.body.style.background = CONFIG.bgColor;
+    document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+    build();
+  }
+});
+</script>
+</body>
+</html>

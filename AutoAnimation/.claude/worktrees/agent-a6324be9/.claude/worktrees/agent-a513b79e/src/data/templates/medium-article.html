@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medium Article</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #ffffff;
+    font-family: 'Source Serif 4', Georgia, serif;
+    color: #242424;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    padding: 3vh 5vw;
+    position: relative;
+  }
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 2vh;
+    border-bottom: 1px solid #e6e6e6;
+    margin-bottom: 2.5vh;
+    opacity: 0;
+  }
+  .logo {
+    font-family: 'Inter', sans-serif;
+    font-size: 2.8vh; font-weight: 700;
+    color: #242424;
+    letter-spacing: -0.02em;
+  }
+  .follow-btn {
+    font-family: 'Inter', sans-serif;
+    background: #1a8917;
+    color: #fff;
+    border: none;
+    padding: 0.8vh 2.5vw;
+    border-radius: 10vh;
+    font-size: 1.4vh;
+    font-weight: 500;
+  }
+  .author-row {
+    display: flex; align-items: center; gap: 2vw;
+    margin-bottom: 2vh;
+    opacity: 0;
+  }
+  .author-avatar {
+    width: 5vh; height: 5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .author-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.6vh; font-weight: 600;
+    color: #242424;
+  }
+  .author-meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.2vh; color: #6b6b6b;
+    display: flex; align-items: center; gap: 1vw;
+    margin-top: 0.3vh;
+  }
+  .article-title {
+    font-size: 4vh; font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 1.5vh;
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  .article-subtitle {
+    font-size: 2.2vh;
+    color: #6b6b6b;
+    line-height: 1.4;
+    margin-bottom: 2.5vh;
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  .hero-image {
+    width: 100%; height: 22vh;
+    border-radius: 0.4vh;
+    margin-bottom: 1vh;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .image-caption {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1vh; color: #6b6b6b;
+    text-align: center;
+    margin-bottom: 2.5vh;
+    opacity: 0;
+  }
+  .article-body p {
+    font-size: 1.8vh; line-height: 1.8;
+    margin-bottom: 2vh;
+    color: #242424;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .highlight-quote {
+    border-left: 3px solid #242424;
+    padding-left: 3vw;
+    font-size: 2.2vh;
+    font-style: italic;
+    color: #242424;
+    line-height: 1.5;
+    margin: 2.5vh 0;
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  .clap-bar {
+    position: absolute;
+    bottom: 3vh;
+    left: 5vw; right: 5vw;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5vh 0;
+    border-top: 1px solid #e6e6e6;
+    font-family: 'Inter', sans-serif;
+    opacity: 0;
+  }
+  .clap-left {
+    display: flex; align-items: center; gap: 1.5vw;
+  }
+  .clap-icon {
+    font-size: 2.5vh;
+    cursor: pointer;
+  }
+  .clap-count {
+    font-size: 1.4vh; color: #6b6b6b;
+    font-variant-numeric: tabular-nums;
+  }
+  .clap-right {
+    display: flex; gap: 3vw;
+    font-size: 1.6vh;
+    color: #6b6b6b;
+  }
+  .member-badge {
+    display: inline-block;
+    background: #ffc017;
+    color: #242424;
+    font-family: 'Inter', sans-serif;
+    font-size: 1vh;
+    font-weight: 600;
+    padding: 0.2vh 1vw;
+    border-radius: 0.3vh;
+    margin-left: 1vw;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-bar" id="topBar">
+    <div class="logo" id="logoText">Medium</div>
+    <div class="follow-btn" id="followBtn">Follow</div>
+  </div>
+
+  <div class="author-row" id="authorRow">
+    <div class="author-avatar" id="authorAvatar" style="background: #1a8917;"></div>
+    <div>
+      <div class="author-name" id="authorName">Sarah Johnson<span class="member-badge">Member</span></div>
+      <div class="author-meta">
+        <span id="readTime">8 min read</span>
+        <span>&middot;</span>
+        <span id="publishDate">Dec 15, 2024</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="article-title" id="articleTitle">The Future of AI Writing: Why Human Creativity Still Matters More Than Ever</div>
+  <div class="article-subtitle" id="articleSubtitle">A deep dive into the evolving relationship between artificial intelligence and human expression in the age of generative models.</div>
+
+  <div class="hero-image" id="heroImage" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+  <div class="image-caption" id="imageCaption">Photo by Author — The intersection of technology and creativity</div>
+
+  <div class="article-body" id="articleBody">
+    <p id="para1">We stand at an unprecedented crossroads in creative history. For the first time, machines can generate prose that passes casual inspection. Yet something fundamental separates generated text from genuine human expression.</p>
+    <div class="highlight-quote" id="pullQuote">"The best writing has never been about perfection — it's about the beautiful imperfection of a unique human perspective trying to make sense of the world."</div>
+    <p id="para2">The writers who thrive in this new landscape won't be those who compete with AI on efficiency. They'll be the ones who lean into everything that makes human writing irreplaceable: vulnerability, lived experience, and the courage to say something only they could say.</p>
+  </div>
+
+  <div class="clap-bar" id="clapBar">
+    <div class="clap-left">
+      <span class="clap-icon">&#x1F44F;</span>
+      <span class="clap-count" id="clapCount">2.4K</span>
+    </div>
+    <div class="clap-right">
+      <span>&#x1F4AC; 186</span>
+      <span>&#x1F516;</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    logoText: 'Medium',
+    authorName: 'Sarah Johnson',
+    authorAvatar: '#1a8917',
+    readTime: '8 min read',
+    publishDate: 'Dec 15, 2024',
+    articleTitle: 'The Future of AI Writing: Why Human Creativity Still Matters More Than Ever',
+    articleSubtitle: 'A deep dive into the evolving relationship between artificial intelligence and human expression in the age of generative models.',
+    imageCaption: 'Photo by Author — The intersection of technology and creativity',
+    paragraph1: 'We stand at an unprecedented crossroads in creative history. For the first time, machines can generate prose that passes casual inspection. Yet something fundamental separates generated text from genuine human expression.',
+    pullQuote: '"The best writing has never been about perfection — it\'s about the beautiful imperfection of a unique human perspective trying to make sense of the world."',
+    paragraph2: 'The writers who thrive in this new landscape won\'t be those who compete with AI on efficiency. They\'ll be the ones who lean into everything that makes human writing irreplaceable: vulnerability, lived experience, and the courage to say something only they could say.',
+    clapCount: '2.4K',
+    commentCount: '186',
+    accentColor: '#1a8917',
+    bgColor: '#ffffff',
+    heroGradient1: '#667eea',
+    heroGradient2: '#764ba2',
+    cycleDuration: 14000
+  };
+
+  // Apply config
+  document.getElementById('logoText').textContent = CONFIG.logoText;
+  document.getElementById('authorName').innerHTML = CONFIG.authorName + '<span class="member-badge">Member</span>';
+  document.getElementById('authorAvatar').style.background = CONFIG.authorAvatar;
+  document.getElementById('readTime').textContent = CONFIG.readTime;
+  document.getElementById('publishDate').textContent = CONFIG.publishDate;
+  document.getElementById('articleTitle').textContent = CONFIG.articleTitle;
+  document.getElementById('articleSubtitle').textContent = CONFIG.articleSubtitle;
+  document.getElementById('imageCaption').textContent = CONFIG.imageCaption;
+  document.getElementById('para1').textContent = CONFIG.paragraph1;
+  document.getElementById('pullQuote').textContent = CONFIG.pullQuote;
+  document.getElementById('para2').textContent = CONFIG.paragraph2;
+  document.getElementById('clapCount').textContent = CONFIG.clapCount;
+  document.getElementById('heroImage').style.background = 'linear-gradient(135deg, ' + CONFIG.heroGradient1 + ' 0%, ' + CONFIG.heroGradient2 + ' 100%)';
+  document.getElementById('followBtn').style.background = CONFIG.accentColor;
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.7s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    const ids = ['topBar','authorRow','articleTitle','articleSubtitle','heroImage','imageCaption','para1','pullQuote','para2','clapBar'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      if (['articleTitle','articleSubtitle','heroImage','para1','para2'].includes(id)) el.style.transform = 'translateY(15px)';
+      if (id === 'pullQuote') el.style.transform = 'translateX(-10px)';
+    });
+    void document.getElementById('topBar').offsetWidth;
+
+    anim(document.getElementById('topBar'), { opacity: '1' }, 200);
+    anim(document.getElementById('authorRow'), { opacity: '1' }, 500);
+    anim(document.getElementById('articleTitle'), { opacity: '1', transform: 'translateY(0)' }, 900);
+    anim(document.getElementById('articleSubtitle'), { opacity: '1', transform: 'translateY(0)' }, 1300);
+    anim(document.getElementById('heroImage'), { opacity: '1', transform: 'translateY(0)' }, 1800);
+    anim(document.getElementById('imageCaption'), { opacity: '1' }, 2400);
+    anim(document.getElementById('para1'), { opacity: '1', transform: 'translateY(0)' }, 3000);
+    anim(document.getElementById('pullQuote'), { opacity: '1', transform: 'translateX(0)' }, 4000);
+    anim(document.getElementById('para2'), { opacity: '1', transform: 'translateY(0)' }, 5200);
+    anim(document.getElementById('clapBar'), { opacity: '1' }, 6200);
+
+    // Clap increment animation
+    setTimeout(() => {
+      const cc = document.getElementById('clapCount');
+      const base = parseFloat(CONFIG.clapCount) * (CONFIG.clapCount.includes('K') ? 1000 : 1);
+      let c = 0;
+      const iv = setInterval(() => {
+        c++;
+        const v = base + c;
+        cc.textContent = v >= 1000 ? (v / 1000).toFixed(1) + 'K' : v.toString();
+        if (c >= 5) clearInterval(iv);
+      }, 300);
+    }, 7500);
+
+    // Fade out
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

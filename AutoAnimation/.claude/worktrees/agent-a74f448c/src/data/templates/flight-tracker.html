@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Flight Tracker</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#e0eaff;}
+  body{background:linear-gradient(175deg,#060e1f 0%,#0b1a3a 40%,#0f2347 70%,#091428 100%);}
+
+  .scene{width:100%;height:100%;position:relative;overflow:hidden;}
+
+  /* Stars */
+  .stars{position:absolute;inset:0;pointer-events:none;}
+  .star{
+    position:absolute;
+    width:0.2vh;height:0.2vh;
+    background:#fff;border-radius:50%;
+    animation:twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle{0%,100%{opacity:0.2;}50%{opacity:0.8;}}
+
+  /* Route line */
+  .route-svg{position:absolute;inset:0;pointer-events:none;}
+  .route-svg svg{width:100%;height:100%;}
+  .route-dashed{
+    fill:none;stroke:#1e4a7a;stroke-width:2;
+    stroke-dasharray:10 8;
+    opacity:0;
+  }
+  .route-progress{
+    fill:none;stroke:url(#routeGrad);stroke-width:3;
+    stroke-linecap:round;
+    opacity:0;
+  }
+
+  /* Airport markers */
+  .airport{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    opacity:0;transition:opacity 0.6s ease;
+  }
+  .airport-ring{
+    width:3.5vh;height:3.5vh;
+    border-radius:50%;
+    border:2px solid #38bdf8;
+    margin:0 auto 0.8vh;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .airport-ring::after{
+    content:'';position:absolute;inset:-0.5vh;
+    border-radius:50%;border:1px solid rgba(56,189,248,0.2);
+    animation:radarPing 2.5s ease-out infinite;
+  }
+  @keyframes radarPing{0%{transform:scale(1);opacity:0.5;}100%{transform:scale(2);opacity:0;}}
+  .airport-dot{width:1vh;height:1vh;border-radius:50%;background:#38bdf8;}
+  .airport-code{font-size:2.2vh;font-weight:800;letter-spacing:0.08em;color:#f1f5f9;text-shadow:0 0 1.5vh rgba(56,189,248,0.4);}
+  .airport-city{font-size:1.2vh;color:#94a3b8;margin-top:0.2vh;}
+  .airport-time{font-size:1.3vh;color:#e2e8f0;font-weight:600;margin-top:0.4vh;font-variant-numeric:tabular-nums;}
+
+  /* Airplane */
+  .airplane{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    opacity:0;transition:opacity 0.4s;
+    z-index:10;
+    filter:drop-shadow(0 0 1.2vh rgba(56,189,248,0.6));
+  }
+  .airplane-icon{
+    width:3.5vh;height:3.5vh;
+    display:block;
+  }
+  .plane-trail{
+    position:absolute;
+    width:0.6vh;height:0.6vh;
+    border-radius:50%;
+    background:rgba(56,189,248,0.5);
+    pointer-events:none;
+    animation:trailFade 1.5s ease-out forwards;
+  }
+  @keyframes trailFade{0%{opacity:0.6;transform:scale(1);}100%{opacity:0;transform:scale(0.2);}}
+
+  /* Flight info header */
+  .flight-header{
+    position:absolute;top:3vh;left:50%;transform:translateX(-50%);
+    text-align:center;
+    opacity:0;transition:opacity 0.6s;
+  }
+  .flight-num{
+    font-size:2.6vh;font-weight:800;letter-spacing:0.1em;
+    background:linear-gradient(135deg,#38bdf8,#818cf8);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+  }
+  .airline-name{font-size:1.2vh;color:#94a3b8;margin-top:0.3vh;letter-spacing:0.1em;text-transform:uppercase;}
+
+  /* Status badge */
+  .status-badge{
+    position:absolute;top:3.5vh;right:4vw;
+    padding:0.8vh 1.6vw;
+    border-radius:1vh;
+    font-size:1.3vh;font-weight:700;letter-spacing:0.08em;
+    opacity:0;transition:opacity 0.5s,transform 0.3s,background 0.5s,border-color 0.5s;
+    transform:translateY(1vh);
+  }
+  .status-badge.visible{opacity:1;transform:translateY(0);}
+  .status-on-time{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;}
+  .status-arrived{background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);color:#38bdf8;}
+
+  /* Info cards */
+  .info-cards{
+    position:absolute;bottom:10vh;left:50%;transform:translateX(-50%);
+    display:flex;gap:1.5vw;
+  }
+  .info-card{
+    background:rgba(15,30,60,0.8);
+    border:1px solid rgba(56,189,248,0.15);
+    border-radius:1.2vh;
+    padding:1.5vh 2vw;
+    min-width:10vw;
+    text-align:center;
+    backdrop-filter:blur(10px);
+    opacity:0;transform:translateY(2vh);
+    transition:opacity 0.5s,transform 0.5s cubic-bezier(0.22,1,0.36,1);
+  }
+  .info-card.visible{opacity:1;transform:translateY(0);}
+  .info-label{font-size:1vh;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.5vh;}
+  .info-value{font-size:1.8vh;color:#f1f5f9;font-weight:700;font-variant-numeric:tabular-nums;}
+
+  /* Progress bar */
+  .flight-progress{
+    position:absolute;bottom:5vh;left:10vw;right:10vw;
+    opacity:0;transition:opacity 0.6s;
+  }
+  .progress-track{height:0.4vh;background:rgba(56,189,248,0.1);border-radius:1vh;}
+  .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#38bdf8,#818cf8);border-radius:1vh;transition:width 0.15s linear;}
+  .progress-labels{display:flex;justify-content:space-between;margin-top:0.6vh;}
+  .progress-label{font-size:1.1vh;color:#64748b;font-weight:600;}
+  .progress-pct{
+    position:absolute;top:-2.5vh;font-size:1.2vh;color:#38bdf8;font-weight:700;
+    transition:left 0.15s linear;transform:translateX(-50%);
+  }
+
+  /* Gate */
+  .gate-badge{
+    position:absolute;top:3.5vh;left:4vw;
+    padding:0.6vh 1.2vw;
+    background:rgba(99,102,241,0.12);
+    border:1px solid rgba(99,102,241,0.25);
+    border-radius:0.8vh;
+    font-size:1.1vh;color:#a5b4fc;font-weight:600;
+    letter-spacing:0.08em;
+    opacity:0;transition:opacity 0.5s;
+  }
+  .gate-badge.visible{opacity:1;}
+
+  /* Landed overlay */
+  .landed-overlay{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(6,14,31,0.7);
+    opacity:0;transition:opacity 0.6s;pointer-events:none;
+    z-index:20;
+  }
+  .landed-overlay.visible{opacity:1;}
+  .landed-text{
+    font-size:6vh;font-weight:900;letter-spacing:0.15em;
+    background:linear-gradient(135deg,#4ade80,#38bdf8);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+    animation:landedPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes landedPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.8;transform:scale(1.03);}}
+
+  /* Fade out */
+  .scene.fade-out{animation:sceneOut 0.8s ease forwards;}
+  @keyframes sceneOut{to{opacity:0;}}
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="stars" id="stars"></div>
+
+  <div class="route-svg">
+    <svg viewBox="0 0 1000 600" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#38bdf8"/>
+          <stop offset="100%" stop-color="#818cf8"/>
+        </linearGradient>
+      </defs>
+      <path id="routeDashed" class="route-dashed" d=""/>
+      <path id="routeProgress" class="route-progress" d=""/>
+    </svg>
+  </div>
+
+  <div class="airport" id="depAirport" style="left:18%;top:48%;">
+    <div class="airport-ring"><div class="airport-dot"></div></div>
+    <div class="airport-code" id="depCode"></div>
+    <div class="airport-city" id="depCity"></div>
+    <div class="airport-time" id="depTime"></div>
+  </div>
+  <div class="airport" id="arrAirport" style="left:82%;top:52%;">
+    <div class="airport-ring"><div class="airport-dot"></div></div>
+    <div class="airport-code" id="arrCode"></div>
+    <div class="airport-city" id="arrCity"></div>
+    <div class="airport-time" id="arrTime"></div>
+  </div>
+
+  <div class="airplane" id="airplane">
+    <svg class="airplane-icon" viewBox="0 0 40 40" fill="none">
+      <path d="M20 4L26 18H36L22 24L26 36L20 30L14 36L18 24L4 18H14L20 4Z" fill="#38bdf8" stroke="#1e3a5f" stroke-width="0.5"/>
+    </svg>
+  </div>
+
+  <div class="flight-header" id="flightHeader">
+    <div class="flight-num" id="flightNum"></div>
+    <div class="airline-name" id="airlineName"></div>
+  </div>
+
+  <div class="gate-badge" id="gateBadge"></div>
+  <div class="status-badge status-on-time" id="statusBadge">ON TIME</div>
+
+  <div class="info-cards" id="infoCards">
+    <div class="info-card" id="cardAlt">
+      <div class="info-label">Altitude</div>
+      <div class="info-value" id="valAlt"></div>
+    </div>
+    <div class="info-card" id="cardSpeed">
+      <div class="info-label">Speed</div>
+      <div class="info-value" id="valSpeed"></div>
+    </div>
+    <div class="info-card" id="cardEta">
+      <div class="info-label">ETA</div>
+      <div class="info-value" id="valEta"></div>
+    </div>
+    <div class="info-card" id="cardDist">
+      <div class="info-label">Distance</div>
+      <div class="info-value" id="valDist"></div>
+    </div>
+  </div>
+
+  <div class="flight-progress" id="flightProgress">
+    <div class="progress-pct" id="progressPct">0%</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-labels">
+      <span class="progress-label" id="progDep"></span>
+      <span class="progress-label" id="progArr"></span>
+    </div>
+  </div>
+
+  <div class="landed-overlay" id="landedOverlay">
+    <div class="landed-text">LANDED</div>
+  </div>
+</div>
+
+<script>
+const CONFIG = {
+  flightNumber: "BA 2491",
+  airlineName: "British Airways",
+  departureCode: "LHR",
+  departureCity: "London Heathrow",
+  departureTime: "08:15",
+  arrivalCode: "JFK",
+  arrivalCity: "New York JFK",
+  arrivalTime: "11:32",
+  altitude: "38,000 ft",
+  speed: "542 mph",
+  eta: "2h 17m",
+  distance: "3,459 mi",
+  gate: "GATE B42",
+  status: "ON TIME",
+  depX: 18,
+  depY: 48,
+  arrX: 82,
+  arrY: 52,
+  cpX: 50,
+  cpY: 18,
+  accentColor: "#38bdf8",
+  cycleDuration: 15000
+};
+
+// DOM refs
+const scene = document.getElementById('scene');
+const starsEl = document.getElementById('stars');
+const depAirport = document.getElementById('depAirport');
+const arrAirport = document.getElementById('arrAirport');
+const airplane = document.getElementById('airplane');
+const flightHeader = document.getElementById('flightHeader');
+const statusBadge = document.getElementById('statusBadge');
+const gateBadge = document.getElementById('gateBadge');
+const landedOverlay = document.getElementById('landedOverlay');
+const flightProgress = document.getElementById('flightProgress');
+const progressFill = document.getElementById('progressFill');
+const progressPct = document.getElementById('progressPct');
+const routeDashed = document.getElementById('routeDashed');
+const routeProgress = document.getElementById('routeProgress');
+const infoCards = document.querySelectorAll('.info-card');
+
+function applyConfig() {
+  document.getElementById('flightNum').textContent = CONFIG.flightNumber;
+  document.getElementById('airlineName').textContent = CONFIG.airlineName;
+  document.getElementById('depCode').textContent = CONFIG.departureCode;
+  document.getElementById('depCity').textContent = CONFIG.departureCity;
+  document.getElementById('depTime').textContent = CONFIG.departureTime;
+  document.getElementById('arrCode').textContent = CONFIG.arrivalCode;
+  document.getElementById('arrCity').textContent = CONFIG.arrivalCity;
+  document.getElementById('arrTime').textContent = CONFIG.arrivalTime;
+  document.getElementById('valAlt').textContent = CONFIG.altitude;
+  document.getElementById('valSpeed').textContent = CONFIG.speed;
+  document.getElementById('valEta').textContent = CONFIG.eta;
+  document.getElementById('valDist').textContent = CONFIG.distance;
+  document.getElementById('progDep').textContent = CONFIG.departureCode;
+  document.getElementById('progArr').textContent = CONFIG.arrivalCode;
+  gateBadge.textContent = CONFIG.gate;
+
+  depAirport.style.left = CONFIG.depX + '%';
+  depAirport.style.top = CONFIG.depY + '%';
+  arrAirport.style.left = CONFIG.arrX + '%';
+  arrAirport.style.top = CONFIG.arrY + '%';
+
+  const dx = CONFIG.depX * 10, dy = CONFIG.depY * 6;
+  const ax = CONFIG.arrX * 10, ay = CONFIG.arrY * 6;
+  const cx = CONFIG.cpX * 10, cy = CONFIG.cpY * 6;
+  const pathD = 'M ' + dx + ' ' + dy + ' Q ' + cx + ' ' + cy + ' ' + ax + ' ' + ay;
+  routeDashed.setAttribute('d', pathD);
+  routeProgress.setAttribute('d', pathD);
+}
+
+function generateStars() {
+  starsEl.innerHTML = '';
+  for (let i = 0; i < 60; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 60 + '%';
+    star.style.animationDelay = (Math.random() * 3) + 's';
+    star.style.width = star.style.height = (0.15 + Math.random() * 0.25) + 'vh';
+    starsEl.appendChild(star);
+  }
+}
+
+function getQuadPoint(t) {
+  const dx = CONFIG.depX, dy = CONFIG.depY;
+  const ax = CONFIG.arrX, ay = CONFIG.arrY;
+  const cx = CONFIG.cpX, cy = CONFIG.cpY;
+  const x = (1 - t) * (1 - t) * dx + 2 * (1 - t) * t * cx + t * t * ax;
+  const y = (1 - t) * (1 - t) * dy + 2 * (1 - t) * t * cy + t * t * ay;
+  return { x, y };
+}
+
+function getQuadAngle(t) {
+  const dx = CONFIG.depX, dy = CONFIG.depY;
+  const ax = CONFIG.arrX, ay = CONFIG.arrY;
+  const cx = CONFIG.cpX, cy = CONFIG.cpY;
+  const ddx = 2 * (1 - t) * (cx - dx) + 2 * t * (ax - cx);
+  const ddy = 2 * (1 - t) * (cy - dy) + 2 * t * (ay - cy);
+  return Math.atan2(ddy, ddx) * 180 / Math.PI;
+}
+
+let animFrame;
+
+function runCycle() {
+  scene.classList.remove('fade-out');
+  airplane.style.opacity = '0';
+  depAirport.style.opacity = '0';
+  arrAirport.style.opacity = '0';
+  flightHeader.style.opacity = '0';
+  statusBadge.classList.remove('visible');
+  statusBadge.className = 'status-badge status-on-time';
+  statusBadge.textContent = CONFIG.status;
+  gateBadge.classList.remove('visible');
+  landedOverlay.classList.remove('visible');
+  flightProgress.style.opacity = '0';
+  progressFill.style.width = '0%';
+  progressPct.textContent = '0%';
+  progressPct.style.left = '0%';
+  routeDashed.style.opacity = '0';
+  routeProgress.style.opacity = '0';
+  infoCards.forEach(c => c.classList.remove('visible'));
+
+  let t = 0;
+
+  // Header
+  setTimeout(() => { flightHeader.style.opacity = '1'; }, t += 300);
+  // Gate
+  setTimeout(() => { gateBadge.classList.add('visible'); }, t += 300);
+  // Airports
+  setTimeout(() => { depAirport.style.opacity = '1'; }, t += 300);
+  setTimeout(() => { arrAirport.style.opacity = '1'; }, t += 300);
+  // Route draws
+  setTimeout(() => {
+    routeDashed.style.opacity = '1';
+    routeDashed.style.transition = 'none';
+    const len = routeDashed.getTotalLength ? routeDashed.getTotalLength() : 1200;
+    routeDashed.style.strokeDasharray = '10 8';
+    routeDashed.style.strokeDashoffset = len;
+    void routeDashed.offsetWidth;
+    routeDashed.style.transition = 'stroke-dashoffset 1.2s ease-out';
+    routeDashed.style.strokeDashoffset = '0';
+  }, t += 200);
+  // Status badge
+  setTimeout(() => { statusBadge.classList.add('visible'); }, t += 400);
+  // Info cards stagger
+  setTimeout(() => {
+    infoCards.forEach((card, i) => {
+      setTimeout(() => card.classList.add('visible'), i * 150);
+    });
+  }, t += 300);
+  // Progress bar
+  setTimeout(() => { flightProgress.style.opacity = '1'; }, t += 600);
+
+  // Start flight animation
+  const flightStartT = t + 300;
+  const flightDur = CONFIG.cycleDuration - flightStartT - 3500;
+  let startTime;
+
+  setTimeout(() => {
+    airplane.style.opacity = '1';
+    routeProgress.style.opacity = '0.7';
+
+    function animateFlight(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const raw = Math.min(elapsed / flightDur, 1);
+      const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+
+      const pos = getQuadPoint(eased);
+      const angle = getQuadAngle(eased);
+
+      airplane.style.left = pos.x + '%';
+      airplane.style.top = pos.y + '%';
+      airplane.style.transform = 'translate(-50%,-50%) rotate(' + (angle - 90) + 'deg)';
+
+      progressFill.style.width = (eased * 100) + '%';
+      const pctVal = Math.round(eased * 100);
+      progressPct.textContent = pctVal + '%';
+      progressPct.style.left = pctVal + '%';
+
+      // Update trail on route SVG
+      try {
+        const totalLen = routeProgress.getTotalLength();
+        routeProgress.style.strokeDasharray = (eased * totalLen) + ' ' + totalLen;
+      } catch (e) {}
+
+      if (raw < 1) {
+        animFrame = requestAnimationFrame(animateFlight);
+      }
+    }
+    animFrame = requestAnimationFrame(animateFlight);
+  }, flightStartT);
+
+  // Landed
+  const landedT = CONFIG.cycleDuration - 2800;
+  setTimeout(() => {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    statusBadge.className = 'status-badge status-arrived visible';
+    statusBadge.textContent = 'ARRIVED';
+    landedOverlay.classList.add('visible');
+  }, landedT);
+
+  // Fade out
+  setTimeout(() => {
+    scene.classList.add('fade-out');
+  }, CONFIG.cycleDuration - 1200);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+applyConfig();
+generateStars();
+
+window.addEventListener('message', function(e) {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+    applyConfig();
+  }
+});
+
+runCycle();
+</script>
+</body>
+</html>

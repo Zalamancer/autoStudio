@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kitchen Counter</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5e6d0;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #3a2a1a;
+  }
+  .scene {
+    width: 100%; height: 100%;
+    position: relative;
+    background: linear-gradient(180deg, #f5e6d0 0%, #e8d5bb 60%, #c9b08a 100%);
+  }
+
+  /* Counter surface */
+  .counter-surface {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 35vh;
+    background: linear-gradient(180deg, #d4b896 0%, #c4a882 100%);
+    border-top: 3px solid #b8996e;
+  }
+  .counter-edge {
+    position: absolute;
+    bottom: 35vh; left: 0; right: 0;
+    height: 1.5vh;
+    background: linear-gradient(180deg, #a88a60, #c4a882);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  /* Tiles background */
+  .tiles {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 35vh;
+    background:
+      linear-gradient(90deg, rgba(200,180,150,0.15) 1px, transparent 1px),
+      linear-gradient(rgba(200,180,150,0.15) 1px, transparent 1px);
+    background-size: 8vw 8vw;
+  }
+
+  /* Ingredients */
+  .ingredient {
+    position: absolute;
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ingredient.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* Recipe card */
+  .recipe-card {
+    position: absolute;
+    top: 8vh; right: -40vw;
+    width: 32vw;
+    background: #fffdf5;
+    border-radius: 1vh;
+    padding: 2vh 2.5vw;
+    box-shadow: 2px 4px 12px rgba(0,0,0,0.1);
+    transform: rotate(2deg);
+    transition: right 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    border: 1px solid #e8dcc8;
+  }
+  .recipe-card.visible { right: 4vw; }
+  .recipe-title {
+    font-size: 2.2vh;
+    font-weight: 700;
+    color: #5a3a1a;
+    border-bottom: 1px solid #e0d0b8;
+    padding-bottom: 0.8vh;
+    margin-bottom: 1vh;
+  }
+  .recipe-list {
+    list-style: none;
+    font-size: 1.3vh;
+    line-height: 2.2;
+    color: #6a5030;
+  }
+  .recipe-list li::before {
+    content: '\u2022 ';
+    color: #c87830;
+  }
+  .recipe-list li {
+    opacity: 0;
+    transform: translateX(10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .recipe-list li.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Timer */
+  .timer {
+    position: absolute;
+    top: 5vh; left: 5vw;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .timer.visible { opacity: 1; }
+  .timer-label {
+    font-size: 1.1vh;
+    color: #8a7050;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .timer-display {
+    font-size: 4vh;
+    font-weight: 700;
+    color: #c87830;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  }
+
+  /* Temperature */
+  .temp-gauge {
+    position: absolute;
+    top: 14vh; left: 5vw;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .temp-gauge.visible { opacity: 1; }
+  .temp-bar {
+    width: 1.5vw;
+    height: 10vh;
+    background: #e8dcc8;
+    border-radius: 1vh;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #d0c0a0;
+  }
+  .temp-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, #e85020, #ff8844);
+    border-radius: 0 0 1vh 1vh;
+    transition: height 1s ease;
+  }
+  .temp-text {
+    font-size: 1.4vh;
+    font-weight: 700;
+    color: #c87830;
+    margin-top: 0.5vh;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Utensils */
+  .utensil {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .utensil.visible { opacity: 0.2; }
+
+  /* Steam */
+  .steam-container {
+    position: absolute;
+    bottom: 45vh; left: 35vw;
+    width: 10vw; height: 15vh;
+    overflow: visible;
+  }
+  @keyframes steamRise {
+    0% { transform: translateY(0) translateX(0) scaleX(1); opacity: 0.4; }
+    50% { transform: translateY(-8vh) translateX(5px) scaleX(1.3); opacity: 0.2; }
+    100% { transform: translateY(-15vh) translateX(-3px) scaleX(0.8); opacity: 0; }
+  }
+  .steam-wisp {
+    position: absolute;
+    bottom: 0;
+    width: 2px;
+    height: 4vh;
+    background: linear-gradient(to top, rgba(255,255,255,0.3), transparent);
+    border-radius: 50%;
+    animation: steamRise 3s ease-out infinite;
+  }
+
+  /* Cutting board */
+  .cutting-board {
+    position: absolute;
+    bottom: 38vh; left: 25vw;
+    width: 20vw; height: 3vh;
+    background: linear-gradient(90deg, #c89060, #d4a070, #c89060);
+    border-radius: 0.5vh;
+    opacity: 0;
+    transition: opacity 0.6s;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.15);
+  }
+  .cutting-board.visible { opacity: 1; }
+  .board-lines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 3vw,
+      rgba(0,0,0,0.05) 3vw,
+      rgba(0,0,0,0.05) 3.1vw
+    );
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="tiles"></div>
+
+  <!-- Steam -->
+  <div class="steam-container" id="steamContainer"></div>
+
+  <!-- Counter -->
+  <div class="counter-edge"></div>
+  <div class="counter-surface"></div>
+
+  <!-- Cutting board -->
+  <div class="cutting-board" id="cuttingBoard">
+    <div class="board-lines"></div>
+  </div>
+
+  <!-- Ingredients (SVG shapes) -->
+  <svg class="ingredient" id="tomato" style="bottom: 42vh; left: 30vw; width: 6vh; height: 6vh;" viewBox="0 0 50 50">
+    <circle cx="25" cy="28" r="18" fill="#e84030"/>
+    <ellipse cx="25" cy="12" rx="8" ry="4" fill="#4a8c2a"/>
+    <path d="M25 8 L25 14" stroke="#4a8c2a" stroke-width="2"/>
+  </svg>
+
+  <svg class="ingredient" id="lemon" style="bottom: 40vh; left: 42vw; width: 5.5vh; height: 5.5vh;" viewBox="0 0 50 50">
+    <ellipse cx="25" cy="25" rx="20" ry="16" fill="#f0d040" transform="rotate(-15 25 25)"/>
+    <ellipse cx="28" cy="22" rx="3" ry="2" fill="#f8e870" opacity="0.5"/>
+  </svg>
+
+  <svg class="ingredient" id="herbs" style="bottom: 44vh; left: 55vw; width: 7vh; height: 7vh;" viewBox="0 0 60 60">
+    <ellipse cx="20" cy="20" rx="8" ry="12" fill="#5a9a3a" transform="rotate(-20 20 20)"/>
+    <ellipse cx="35" cy="18" rx="7" ry="11" fill="#4a8a2a" transform="rotate(10 35 18)"/>
+    <ellipse cx="45" cy="22" rx="6" ry="10" fill="#5aaa3a" transform="rotate(25 45 22)"/>
+    <line x1="20" y1="32" x2="30" y2="50" stroke="#6a7a4a" stroke-width="2"/>
+    <line x1="35" y1="29" x2="33" y2="50" stroke="#6a7a4a" stroke-width="2"/>
+    <line x1="45" y1="32" x2="36" y2="50" stroke="#6a7a4a" stroke-width="2"/>
+  </svg>
+
+  <svg class="ingredient" id="garlic" style="bottom: 38vh; left: 66vw; width: 5vh; height: 5vh;" viewBox="0 0 50 50">
+    <ellipse cx="25" cy="28" rx="14" ry="16" fill="#f0e8d8"/>
+    <path d="M20 18 Q25 8 30 18" fill="none" stroke="#d0c8b0" stroke-width="2"/>
+    <line x1="25" y1="12" x2="25" y2="6" stroke="#9a8a60" stroke-width="1.5"/>
+  </svg>
+
+  <svg class="ingredient" id="pepper" style="bottom: 43vh; left: 75vw; width: 6vh; height: 6vh;" viewBox="0 0 50 60">
+    <path d="M25 15 Q15 25 18 40 Q20 52 25 55 Q30 52 32 40 Q35 25 25 15Z" fill="#cc2200"/>
+    <path d="M25 15 L25 5" stroke="#4a8c2a" stroke-width="2"/>
+    <ellipse cx="25" cy="5" rx="5" ry="3" fill="#4a8c2a"/>
+  </svg>
+
+  <!-- Utensils -->
+  <svg class="utensil" id="fork" style="bottom: 36vh; right: 20vw; width: 3vw; height: 18vh;" viewBox="0 0 20 100">
+    <rect x="4" y="40" width="2" height="55" rx="1" fill="#888"/>
+    <rect x="8" y="40" width="2" height="55" rx="1" fill="#888"/>
+    <rect x="12" y="40" width="2" height="55" rx="1" fill="#888"/>
+    <rect x="2" y="0" width="2" height="45" rx="1" fill="#888"/>
+    <rect x="7" y="0" width="2" height="45" rx="1" fill="#888"/>
+    <rect x="12" y="0" width="2" height="45" rx="1" fill="#888"/>
+    <rect x="2" y="40" width="14" height="4" rx="2" fill="#999"/>
+  </svg>
+
+  <svg class="utensil" id="spoon" style="bottom: 36vh; right: 14vw; width: 3vw; height: 18vh;" viewBox="0 0 20 100">
+    <ellipse cx="10" cy="15" rx="8" ry="12" fill="none" stroke="#888" stroke-width="2"/>
+    <rect x="9" y="25" width="2" height="70" rx="1" fill="#888"/>
+  </svg>
+
+  <!-- Recipe Card -->
+  <div class="recipe-card" id="recipeCard">
+    <div class="recipe-title" id="recipeTitle">Fresh Bruschetta</div>
+    <ul class="recipe-list" id="recipeList">
+      <li>4 ripe tomatoes, diced</li>
+      <li>2 cloves garlic, minced</li>
+      <li>Fresh basil leaves</li>
+      <li>Extra virgin olive oil</li>
+      <li>Balsamic vinegar</li>
+      <li>Salt and pepper to taste</li>
+      <li>Crusty bread, sliced</li>
+    </ul>
+  </div>
+
+  <!-- Timer -->
+  <div class="timer" id="timer">
+    <div class="timer-label">PREP TIME</div>
+    <div class="timer-display" id="timerDisplay">15:00</div>
+  </div>
+
+  <!-- Temperature -->
+  <div class="temp-gauge" id="tempGauge">
+    <div class="temp-bar">
+      <div class="temp-fill" id="tempFill" style="height: 0%;"></div>
+    </div>
+    <div class="temp-text" id="tempText">72\u00b0</div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    recipeName: 'Fresh Bruschetta',
+    ingredients: [
+      '4 ripe tomatoes, diced',
+      '2 cloves garlic, minced',
+      'Fresh basil leaves',
+      'Extra virgin olive oil',
+      'Balsamic vinegar',
+      'Salt and pepper to taste',
+      'Crusty bread, sliced'
+    ],
+    timerStart: 900, // 15 minutes in seconds
+    targetTemp: 375,
+    bgColor: '#f5e6d0',
+    accentColor: '#c87830',
+    cycleDuration: 14000,
+    steamWisps: 5
+  };
+
+  document.getElementById('recipeTitle').textContent = CONFIG.recipeName;
+  const recipeList = document.getElementById('recipeList');
+  recipeList.innerHTML = CONFIG.ingredients.map(i => `<li>${i}</li>`).join('');
+
+  // Steam wisps
+  const steamContainer = document.getElementById('steamContainer');
+  for (let i = 0; i < CONFIG.steamWisps; i++) {
+    const wisp = document.createElement('div');
+    wisp.className = 'steam-wisp';
+    wisp.style.left = (Math.random() * 100) + '%';
+    wisp.style.animationDelay = (Math.random() * 3) + 's';
+    wisp.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
+    steamContainer.appendChild(wisp);
+  }
+
+  // Timer countdown
+  let timerSec = CONFIG.timerStart;
+  function updateTimer() {
+    const min = Math.floor(timerSec / 60);
+    const sec = timerSec % 60;
+    document.getElementById('timerDisplay').textContent =
+      String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    if (timerSec > 0) timerSec--;
+    else timerSec = CONFIG.timerStart;
+  }
+
+  // Temperature animation
+  let temp = 72;
+  let tempTarget = CONFIG.targetTemp;
+  function updateTemp() {
+    if (temp < tempTarget) temp += 2;
+    else if (temp >= tempTarget) { temp = 72; } // reset for loop
+    const pct = Math.min(100, ((temp - 72) / (tempTarget - 72)) * 100);
+    document.getElementById('tempFill').style.height = pct + '%';
+    document.getElementById('tempText').textContent = Math.round(temp) + '\u00b0';
+  }
+
+  function runCycle() {
+    const ingredients = ['tomato', 'lemon', 'herbs', 'garlic', 'pepper'];
+    const utensils = ['fork', 'spoon'];
+    const cuttingBoard = document.getElementById('cuttingBoard');
+    const recipeCard = document.getElementById('recipeCard');
+    const timerEl = document.getElementById('timer');
+    const tempGauge = document.getElementById('tempGauge');
+    const listItems = document.querySelectorAll('.recipe-list li');
+
+    // Reset
+    ingredients.forEach(id => document.getElementById(id).classList.remove('visible'));
+    utensils.forEach(id => document.getElementById(id).classList.remove('visible'));
+    cuttingBoard.classList.remove('visible');
+    recipeCard.classList.remove('visible');
+    timerEl.classList.remove('visible');
+    tempGauge.classList.remove('visible');
+    listItems.forEach(li => li.classList.remove('visible'));
+
+    // Sequence
+    setTimeout(() => { timerEl.classList.add('visible'); }, 300);
+    setTimeout(() => { tempGauge.classList.add('visible'); }, 500);
+    setTimeout(() => { cuttingBoard.classList.add('visible'); }, 800);
+
+    // Ingredients appear one by one
+    ingredients.forEach((id, i) => {
+      setTimeout(() => {
+        document.getElementById(id).classList.add('visible');
+      }, 1500 + i * 600);
+    });
+
+    // Utensils
+    utensils.forEach((id, i) => {
+      setTimeout(() => {
+        document.getElementById(id).classList.add('visible');
+      }, 4500 + i * 400);
+    });
+
+    // Recipe card
+    setTimeout(() => {
+      recipeCard.classList.add('visible');
+    }, 5500);
+
+    // Recipe items
+    setTimeout(() => {
+      listItems.forEach((li, i) => {
+        setTimeout(() => li.classList.add('visible'), i * 250);
+      });
+    }, 6200);
+
+    // Fade out
+    setTimeout(() => {
+      ingredients.forEach(id => document.getElementById(id).classList.remove('visible'));
+      utensils.forEach(id => document.getElementById(id).classList.remove('visible'));
+      cuttingBoard.classList.remove('visible');
+      recipeCard.classList.remove('visible');
+      timerEl.classList.remove('visible');
+      tempGauge.classList.remove('visible');
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  // Timers
+  setInterval(updateTimer, 1000);
+  setInterval(updateTemp, 200);
+
+  runCycle();
+</script>
+</body>
+</html>

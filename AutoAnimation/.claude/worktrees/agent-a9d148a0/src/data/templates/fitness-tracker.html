@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitness Tracker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #fff; }
+.tracker { width: 100%; height: 100%; display: grid; grid-template-rows: auto 1fr auto; padding: 2vh 3vw; gap: 1.5vh; }
+.header { display: flex; justify-content: space-between; align-items: center; opacity: 0; transition: opacity 0.6s; }
+.header.show { opacity: 1; }
+.greeting { font-size: 2.5vh; font-weight: 700; }
+.date { font-size: 1.4vh; color: #64748b; margin-top: 0.3vh; }
+.streak { display: flex; align-items: center; gap: 0.8vw; font-size: 1.6vh; font-weight: 600; color: #f97316; }
+.main { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.2vh; overflow: hidden; }
+.card { background: #1a1a2e; border-radius: 1.8vh; padding: 2vh 2vw; position: relative; overflow: hidden; opacity: 0; transform: translateY(20px); transition: all 0.5s ease; }
+.card.show { opacity: 1; transform: translateY(0); }
+.card-title { font-size: 1.3vh; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
+.card-value { font-size: 3.5vh; font-weight: 800; margin: 0.8vh 0 0.3vh; font-variant-numeric: tabular-nums; }
+.card-sub { font-size: 1.2vh; color: #475569; }
+.ring-wrap { position: absolute; right: 2vw; top: 50%; transform: translateY(-50%); }
+.ring { width: 7vh; height: 7vh; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-bg { fill: none; stroke: #1e293b; stroke-width: 4; }
+.ring-fill { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1.5s ease; }
+.ring-pct { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 1.4vh; font-weight: 700; }
+.workout-card { grid-column: 1/-1; display: flex; align-items: center; gap: 2vw; }
+.workout-list { display: flex; gap: 1.5vw; flex: 1; }
+.workout-item { background: rgba(15,15,26,0.8); border-radius: 1.2vh; padding: 1.2vh 1.2vw; flex: 1; text-align: center; opacity: 0; transform: scale(0.9); transition: all 0.4s ease; }
+.workout-item.show { opacity: 1; transform: scale(1); }
+.workout-icon { font-size: 2.5vh; margin-bottom: 0.4vh; }
+.workout-name { font-size: 1.2vh; font-weight: 600; }
+.workout-val { font-size: 1vh; color: #64748b; margin-top: 0.2vh; }
+.footer { display: flex; gap: 1vw; align-items: flex-end; opacity: 0; transition: opacity 0.6s; }
+.footer.show { opacity: 1; }
+.day-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.4vh; }
+.day-bar { width: 55%; border-radius: 0.8vh; background: linear-gradient(to top, #8b5cf6, #a78bfa); transition: height 1s ease; }
+.day-label { font-size: 1vh; color: #475569; }
+</style>
+</head>
+<body>
+<div class="tracker" id="tracker">
+  <div class="header" id="header">
+    <div><div class="greeting" id="greeting">Good Morning, Alex</div><div class="date" id="dateStr"></div></div>
+    <div class="streak">\uD83D\uDD25 14 Day Streak</div>
+  </div>
+  <div class="main">
+    <div class="card" id="c0">
+      <div class="card-title">Steps</div>
+      <div class="card-value" id="steps" style="color:#22c55e">0</div>
+      <div class="card-sub">Goal: 10,000</div>
+      <div class="ring-wrap"><div class="ring"><svg viewBox="0 0 40 40"><circle class="ring-bg" cx="20" cy="20" r="16"/><circle class="ring-fill" cx="20" cy="20" r="16" stroke="#22c55e" stroke-dasharray="100.5" id="stepsRing" stroke-dashoffset="100.5"/></svg><div class="ring-pct" id="stepsPct">0%</div></div></div>
+    </div>
+    <div class="card" id="c1">
+      <div class="card-title">Calories</div>
+      <div class="card-value" id="calories" style="color:#f97316">0</div>
+      <div class="card-sub">Goal: 2,500</div>
+      <div class="ring-wrap"><div class="ring"><svg viewBox="0 0 40 40"><circle class="ring-bg" cx="20" cy="20" r="16"/><circle class="ring-fill" cx="20" cy="20" r="16" stroke="#f97316" stroke-dasharray="100.5" id="calRing" stroke-dashoffset="100.5"/></svg><div class="ring-pct" id="calPct">0%</div></div></div>
+    </div>
+    <div class="card" id="c2">
+      <div class="card-title">Heart Rate</div>
+      <div class="card-value" id="heartRate" style="color:#ef4444">72</div>
+      <div class="card-sub">Resting: 62 bpm</div>
+      <div class="ring-wrap"><div class="ring"><svg viewBox="0 0 40 40"><circle class="ring-bg" cx="20" cy="20" r="16"/><circle class="ring-fill" cx="20" cy="20" r="16" stroke="#ef4444" stroke-dasharray="100.5" stroke-dashoffset="50"/></svg><div class="ring-pct" style="color:#ef4444">\u2665</div></div></div>
+    </div>
+    <div class="card workout-card" id="c3">
+      <div style="min-width:15%"><div class="card-title">Today</div><div class="card-value" style="font-size:3vh;color:#8b5cf6">3</div><div class="card-sub">Workouts</div></div>
+      <div class="workout-list" id="workouts"></div>
+    </div>
+  </div>
+  <div class="footer" id="footer"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  userName: 'Alex',
+  steps: 8742,
+  stepsGoal: 10000,
+  calories: 1856,
+  caloriesGoal: 2500,
+  heartRate: 72,
+  workouts: [
+    { icon: '\uD83C\uDFC3', name: 'Running', value: '5.2 km' },
+    { icon: '\uD83C\uDFCB\uFE0F', name: 'Weights', value: '45 min' },
+    { icon: '\uD83E\uDDD8', name: 'Yoga', value: '30 min' }
+  ],
+  weekData: [65, 80, 45, 90, 70, 85, 55],
+  weekDays: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+  bgColor: '#0f0f1a',
+  cycleDuration: 10000
+};
+
+document.getElementById('tracker').style.background = CONFIG.bgColor;
+var now = new Date();
+document.getElementById('greeting').textContent = (now.getHours()<12?'Good Morning':now.getHours()<18?'Good Afternoon':'Good Evening') + ', ' + CONFIG.userName;
+document.getElementById('dateStr').textContent = now.toLocaleDateString([], { weekday:'long', month:'short', day:'numeric' });
+
+var workoutsEl = document.getElementById('workouts');
+CONFIG.workouts.forEach(function(w) {
+  var d = document.createElement('div'); d.className = 'workout-item';
+  d.innerHTML = '<div class="workout-icon">'+w.icon+'</div><div class="workout-name">'+w.name+'</div><div class="workout-val">'+w.value+'</div>';
+  workoutsEl.appendChild(d);
+});
+
+var footerEl = document.getElementById('footer');
+CONFIG.weekDays.forEach(function(d, i) {
+  var col = document.createElement('div'); col.className = 'day-col';
+  col.innerHTML = '<div class="day-bar" id="bar'+i+'" style="height:0vh"></div><div class="day-label">'+d+'</div>';
+  footerEl.appendChild(col);
+});
+
+function animateValues() {
+  document.getElementById('header').classList.add('show');
+  setTimeout(function(){ document.getElementById('footer').classList.add('show'); }, 400);
+  ['c0','c1','c2','c3'].forEach(function(id, i) {
+    setTimeout(function(){ document.getElementById(id).classList.add('show'); }, 300 + i*200);
+  });
+
+  var start = Date.now(), dur = 2000;
+  function step() {
+    var t = Math.min((Date.now()-start)/dur, 1), ease = 1-Math.pow(1-t,3);
+    var sv = Math.floor(CONFIG.steps*ease), cv = Math.floor(CONFIG.calories*ease);
+    document.getElementById('steps').textContent = sv.toLocaleString();
+    document.getElementById('calories').textContent = cv.toLocaleString();
+    var sp = sv/CONFIG.stepsGoal, cp = cv/CONFIG.caloriesGoal;
+    document.getElementById('stepsRing').style.strokeDashoffset = 100.5*(1-Math.min(sp,1));
+    document.getElementById('stepsPct').textContent = Math.floor(sp*100)+'%';
+    document.getElementById('calRing').style.strokeDashoffset = 100.5*(1-Math.min(cp,1));
+    document.getElementById('calPct').textContent = Math.floor(cp*100)+'%';
+    if (t < 1) requestAnimationFrame(step);
+  }
+  step();
+
+  document.querySelectorAll('.workout-item').forEach(function(el, i) {
+    setTimeout(function(){ el.classList.add('show'); }, 600+i*250);
+  });
+  CONFIG.weekData.forEach(function(v, i) {
+    setTimeout(function(){ document.getElementById('bar'+i).style.height = (v/100*7)+'vh'; }, 800+i*120);
+  });
+}
+
+function resetAll() {
+  document.getElementById('header').classList.remove('show');
+  document.getElementById('footer').classList.remove('show');
+  ['c0','c1','c2','c3'].forEach(function(id){ document.getElementById(id).classList.remove('show'); });
+  document.getElementById('steps').textContent = '0';
+  document.getElementById('calories').textContent = '0';
+  document.getElementById('stepsRing').style.strokeDashoffset = '100.5';
+  document.getElementById('calRing').style.strokeDashoffset = '100.5';
+  document.getElementById('stepsPct').textContent = '0%';
+  document.getElementById('calPct').textContent = '0%';
+  document.querySelectorAll('.workout-item').forEach(function(el){ el.classList.remove('show'); });
+  CONFIG.weekData.forEach(function(v,i){ document.getElementById('bar'+i).style.height = '0vh'; });
+}
+
+setInterval(function(){ document.getElementById('heartRate').textContent = CONFIG.heartRate + Math.floor(Math.random()*6-3); }, 2000);
+
+function cycle() { resetAll(); setTimeout(animateValues, 300); setTimeout(cycle, CONFIG.cycleDuration); }
+cycle();
+</script>
+</body>
+</html>

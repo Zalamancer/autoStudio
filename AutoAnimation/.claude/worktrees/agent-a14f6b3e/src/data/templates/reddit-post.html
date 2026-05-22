@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit Post</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #0e1113;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #d7dadc;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .reddit-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5vh 4vw;
+    background: #1a1a1b;
+    border-bottom: 1px solid #343536;
+    opacity: 0;
+  }
+  .reddit-logo {
+    display: flex; align-items: center; gap: 1.5vw;
+    font-size: 2vh; font-weight: 700;
+  }
+  .reddit-icon {
+    width: 3.5vh; height: 3.5vh;
+    background: #ff4500;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2vh; color: #fff;
+  }
+  .search-bar {
+    flex: 1; max-width: 50%;
+    background: #272729;
+    border: 1px solid #343536;
+    border-radius: 10vh;
+    padding: 0.8vh 2vw;
+    margin: 0 2vw;
+    font-size: 1.2vh; color: #818384;
+  }
+  .sub-header {
+    display: flex; align-items: center; gap: 2vw;
+    padding: 1.5vh 4vw;
+    background: #1a1a1b;
+    border-bottom: 1px solid #343536;
+    opacity: 0;
+  }
+  .sub-icon {
+    width: 4vh; height: 4vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sub-name { font-size: 1.6vh; font-weight: 700; }
+  .sub-members { font-size: 1vh; color: #818384; }
+  .join-btn {
+    margin-left: auto;
+    background: #d7dadc;
+    color: #1a1a1b;
+    padding: 0.6vh 2.5vw;
+    border-radius: 10vh;
+    font-size: 1.2vh; font-weight: 700;
+  }
+  .sort-bar {
+    display: flex; gap: 3vw;
+    padding: 1vh 4vw;
+    font-size: 1.2vh; color: #818384;
+    opacity: 0;
+  }
+  .sort-active { color: #d7dadc; font-weight: 600; }
+  .post-card {
+    background: #1a1a1b;
+    margin: 0.5vh 0;
+    display: flex;
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  .vote-col {
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 1.5vh 1.5vw;
+    gap: 0.3vh;
+  }
+  .vote-arrow { font-size: 2vh; color: #818384; cursor: pointer; }
+  .vote-arrow.up-voted { color: #ff4500; }
+  .vote-count { font-size: 1.4vh; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .post-content { flex: 1; padding: 1.5vh 2vw 1.5vh 0; }
+  .post-sub-line {
+    font-size: 1vh; color: #818384;
+    margin-bottom: 0.5vh;
+  }
+  .post-sub-line strong { color: #d7dadc; }
+  .post-title {
+    font-size: 1.8vh; font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 1vh;
+  }
+  .post-flair {
+    display: inline-block;
+    background: rgba(255,69,0,0.15);
+    color: #ff4500;
+    padding: 0.2vh 1.5vw;
+    border-radius: 10vh;
+    font-size: 0.9vh;
+    font-weight: 600;
+    margin-bottom: 1vh;
+  }
+  .post-body-text {
+    font-size: 1.3vh; line-height: 1.6;
+    color: #d7dadc;
+    margin-bottom: 1vh;
+  }
+  .post-link-card {
+    background: #272729;
+    border: 1px solid #343536;
+    border-radius: 0.8vh;
+    overflow: hidden;
+    margin-bottom: 1vh;
+    opacity: 0;
+  }
+  .post-link-thumb { width: 100%; height: 14vh; }
+  .post-link-info { padding: 1vh 2vw; }
+  .post-link-title { font-size: 1.2vh; font-weight: 600; }
+  .post-link-domain { font-size: 0.9vh; color: #818384; }
+  .post-actions-bar {
+    display: flex; gap: 3vw;
+    font-size: 1.1vh; color: #818384; font-weight: 600;
+    padding-top: 0.5vh;
+  }
+  .post-action-item { display: flex; align-items: center; gap: 0.8vw; }
+  .comments-divider {
+    padding: 1.5vh 4vw 0.5vh;
+    font-size: 1.1vh; color: #818384;
+    opacity: 0;
+  }
+  .reddit-comment {
+    padding: 1vh 4vw;
+    border-left: 2px solid #343536;
+    margin-left: 4vw;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .rc-header {
+    display: flex; align-items: center; gap: 1vw;
+    margin-bottom: 0.5vh;
+  }
+  .rc-avatar {
+    width: 2.5vh; height: 2.5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .rc-name { font-size: 1.1vh; font-weight: 600; }
+  .rc-time { font-size: 0.9vh; color: #818384; }
+  .rc-text { font-size: 1.2vh; line-height: 1.5; margin-bottom: 0.5vh; }
+  .rc-actions {
+    display: flex; gap: 2vw;
+    font-size: 0.9vh; color: #818384;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="reddit-header" id="redditHeader">
+    <div class="reddit-logo"><div class="reddit-icon">&#x265B;</div><span id="logoText">reddit</span></div>
+    <div class="search-bar">Search Reddit</div>
+  </div>
+
+  <div class="sub-header" id="subHeader">
+    <div class="sub-icon" id="subIcon" style="background: #ff4500;"></div>
+    <div>
+      <div class="sub-name" id="subName">r/technology</div>
+      <div class="sub-members" id="subMembers">14.2M members</div>
+    </div>
+    <div class="join-btn">Joined</div>
+  </div>
+
+  <div class="sort-bar" id="sortBar">
+    <span class="sort-active">&#x1F525; Hot</span>
+    <span>&#x2B06; Top</span>
+    <span>&#x2728; New</span>
+  </div>
+
+  <div class="post-card" id="postCard">
+    <div class="vote-col">
+      <div class="vote-arrow up-voted">&#x25B2;</div>
+      <div class="vote-count" id="voteCount">24.5k</div>
+      <div class="vote-arrow">&#x25BC;</div>
+    </div>
+    <div class="post-content">
+      <div class="post-sub-line">
+        <strong id="postSubreddit">r/technology</strong> &middot; Posted by <span id="postAuthor">u/techreporter</span> &middot; <span id="postAge">6 hours ago</span>
+      </div>
+      <div class="post-flair" id="postFlair">Discussion</div>
+      <div class="post-title" id="postTitle">AI Models Can Now Write Code, Diagnose Diseases, and Create Art — Are We Ready for What Comes Next?</div>
+      <div class="post-body-text" id="postBody">The rapid advancement of AI capabilities has sparked intense debate among technologists, ethicists, and policymakers. While the potential benefits are enormous, the challenges of alignment, job displacement, and misuse require serious attention.</div>
+      <div class="post-actions-bar">
+        <div class="post-action-item">&#x1F4AC; <span id="commentCountBar">2,847 Comments</span></div>
+        <div class="post-action-item">&#x21A9; Share</div>
+        <div class="post-action-item">&#x1F516; Save</div>
+        <div class="post-action-item">&#x2022;&#x2022;&#x2022;</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="comments-divider" id="commentsDivider">Sorted by: Best</div>
+
+  <div class="reddit-comment" id="comment1">
+    <div class="rc-header">
+      <div class="rc-avatar" style="background: #46d160;"></div>
+      <div class="rc-name" id="c1Name">quantum_dev</div>
+      <div class="rc-time" id="c1Time">4h</div>
+    </div>
+    <div class="rc-text" id="c1Text">As someone who works in ML research, I can confirm the pace is unprecedented. We're seeing capabilities emerge that we didn't predict would appear for another 5-10 years.</div>
+    <div class="rc-actions"><span>&#x25B2; 1.2k</span><span>Reply</span><span>Award</span></div>
+  </div>
+
+  <div class="reddit-comment" id="comment2" style="margin-left: 8vw;">
+    <div class="rc-header">
+      <div class="rc-avatar" style="background: #ff6b35;"></div>
+      <div class="rc-name" id="c2Name">policy_wonk</div>
+      <div class="rc-time" id="c2Time">3h</div>
+    </div>
+    <div class="rc-text" id="c2Text">Agreed. The regulatory framework hasn't kept up at all. The EU AI Act is a start but we need global coordination.</div>
+    <div class="rc-actions"><span>&#x25B2; 847</span><span>Reply</span><span>Award</span></div>
+  </div>
+
+  <div class="reddit-comment" id="comment3">
+    <div class="rc-header">
+      <div class="rc-avatar" style="background: #9b59b6;"></div>
+      <div class="rc-name" id="c3Name">skeptical_sam</div>
+      <div class="rc-time" id="c3Time">2h</div>
+    </div>
+    <div class="rc-text" id="c3Text">I think the hype is overblown. Yes, these models are impressive, but they still make basic errors. We're far from AGI.</div>
+    <div class="rc-actions"><span>&#x25B2; 423</span><span>Reply</span><span>Award</span></div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    subreddit: 'r/technology',
+    subredditMembers: '14.2M members',
+    subredditColor: '#ff4500',
+    postAuthor: 'u/techreporter',
+    postAge: '6 hours ago',
+    postFlair: 'Discussion',
+    postTitle: 'AI Models Can Now Write Code, Diagnose Diseases, and Create Art — Are We Ready for What Comes Next?',
+    postBody: 'The rapid advancement of AI capabilities has sparked intense debate among technologists, ethicists, and policymakers. While the potential benefits are enormous, the challenges of alignment, job displacement, and misuse require serious attention.',
+    voteCount: '24.5k',
+    commentCount: '2,847 Comments',
+    comment1Name: 'quantum_dev',
+    comment1Time: '4h',
+    comment1Text: 'As someone who works in ML research, I can confirm the pace is unprecedented. We\'re seeing capabilities emerge that we didn\'t predict would appear for another 5-10 years.',
+    comment2Name: 'policy_wonk',
+    comment2Time: '3h',
+    comment2Text: 'Agreed. The regulatory framework hasn\'t kept up at all. The EU AI Act is a start but we need global coordination.',
+    comment3Name: 'skeptical_sam',
+    comment3Time: '2h',
+    comment3Text: 'I think the hype is overblown. Yes, these models are impressive, but they still make basic errors. We\'re far from AGI.',
+    bgColor: '#0e1113',
+    accentColor: '#ff4500',
+    cycleDuration: 15000
+  };
+
+  document.getElementById('subName').textContent = CONFIG.subreddit;
+  document.getElementById('subMembers').textContent = CONFIG.subredditMembers;
+  document.getElementById('subIcon').style.background = CONFIG.subredditColor;
+  document.getElementById('postSubreddit').textContent = CONFIG.subreddit;
+  document.getElementById('postAuthor').textContent = CONFIG.postAuthor;
+  document.getElementById('postAge').textContent = CONFIG.postAge;
+  document.getElementById('postFlair').textContent = CONFIG.postFlair;
+  document.getElementById('postTitle').textContent = CONFIG.postTitle;
+  document.getElementById('postBody').textContent = CONFIG.postBody;
+  document.getElementById('voteCount').textContent = CONFIG.voteCount;
+  document.getElementById('commentCountBar').textContent = CONFIG.commentCount;
+  document.getElementById('c1Name').textContent = CONFIG.comment1Name;
+  document.getElementById('c1Time').textContent = CONFIG.comment1Time;
+  document.getElementById('c1Text').textContent = CONFIG.comment1Text;
+  document.getElementById('c2Name').textContent = CONFIG.comment2Name;
+  document.getElementById('c2Time').textContent = CONFIG.comment2Time;
+  document.getElementById('c2Text').textContent = CONFIG.comment2Text;
+  document.getElementById('c3Name').textContent = CONFIG.comment3Name;
+  document.getElementById('c3Time').textContent = CONFIG.comment3Time;
+  document.getElementById('c3Text').textContent = CONFIG.comment3Text;
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.6s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    ['redditHeader','subHeader','sortBar','postCard','commentsDivider','comment1','comment2','comment3'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      if (id === 'postCard') el.style.transform = 'translateY(15px)';
+      if (['comment1','comment2','comment3'].includes(id)) el.style.transform = 'translateY(8px)';
+    });
+    void document.getElementById('redditHeader').offsetWidth;
+
+    anim(document.getElementById('redditHeader'), { opacity: '1' }, 200);
+    anim(document.getElementById('subHeader'), { opacity: '1' }, 500);
+    anim(document.getElementById('sortBar'), { opacity: '1' }, 800);
+    anim(document.getElementById('postCard'), { opacity: '1', transform: 'translateY(0)' }, 1200);
+    anim(document.getElementById('commentsDivider'), { opacity: '1' }, 3000);
+    anim(document.getElementById('comment1'), { opacity: '1', transform: 'translateY(0)' }, 3500);
+    anim(document.getElementById('comment2'), { opacity: '1', transform: 'translateY(0)' }, 4500);
+    anim(document.getElementById('comment3'), { opacity: '1', transform: 'translateY(0)' }, 5500);
+
+    // Vote animation
+    setTimeout(() => {
+      const vc = document.getElementById('voteCount');
+      const arrow = document.querySelector('.vote-arrow');
+      arrow.classList.add('up-voted');
+      const base = parseFloat(CONFIG.voteCount) * (CONFIG.voteCount.includes('k') ? 1000 : 1);
+      vc.textContent = ((base + 1) / 1000).toFixed(1) + 'k';
+    }, 2500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donut Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Market Share',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  innerRadius: 0.6,
+  showLabels: true,
+  showPercentages: true,
+  centerLabel: 'TOTAL',
+  data: [
+    { category: 'Chrome', value: 65, color: '#3B82F6' },
+    { category: 'Safari', value: 18, color: '#10B981' },
+    { category: 'Firefox', value: 8, color: '#F59E0B' },
+    { category: 'Edge', value: 5, color: '#8B5CF6' },
+    { category: 'Other', value: 4, color: '#64748B' }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+  const data = CONFIG.data;
+  const total = data.reduce((s, d) => s + d.value, 0);
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const cx = W * 0.45;
+  const cy = H * 0.55;
+  const radius = Math.min(W, H) * 0.3;
+  const innerR = radius * CONFIG.innerRadius;
+  const gapAngle = 0.02;
+
+  // Draw arcs
+  let startAngle = -Math.PI / 2;
+  const sweepTotal = Math.PI * 2 * ease;
+
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const sliceAngle = (d.value / total) * Math.PI * 2;
+    const actualSweep = Math.min(sliceAngle, Math.max(sweepTotal - (startAngle + Math.PI / 2), 0));
+    if (actualSweep <= 0) { startAngle += sliceAngle; continue; }
+
+    const endAngle = startAngle + actualSweep;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle + gapAngle / 2, endAngle - gapAngle / 2);
+    if (CONFIG.innerRadius > 0) {
+      ctx.arc(cx, cy, innerR, endAngle - gapAngle / 2, startAngle + gapAngle / 2, true);
+    } else {
+      ctx.lineTo(cx, cy);
+    }
+    ctx.closePath();
+
+    ctx.fillStyle = d.color;
+    ctx.shadowColor = d.color; ctx.shadowBlur = W * 0.008;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Label line + text
+    if (CONFIG.showLabels && actualSweep > 0.1) {
+      const midAngle = startAngle + actualSweep / 2;
+      const labelR = radius * 1.15;
+      const lx = cx + Math.cos(midAngle) * labelR;
+      const ly = cy + Math.sin(midAngle) * labelR;
+      const endX = cx + Math.cos(midAngle) * (labelR + W * 0.04);
+
+      ctx.strokeStyle = d.color + '80'; ctx.lineWidth = W * 0.002;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(midAngle) * radius, cy + Math.sin(midAngle) * radius);
+      ctx.lineTo(lx, ly);
+      ctx.lineTo(endX, ly);
+      ctx.stroke();
+
+      const isRight = Math.cos(midAngle) >= 0;
+      ctx.fillStyle = T.title;
+      ctx.font = `bold ${W * 0.016}px system-ui`;
+      ctx.textAlign = isRight ? 'left' : 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(d.category, endX + (isRight ? W * 0.008 : -W * 0.008), ly - W * 0.003);
+
+      if (CONFIG.showPercentages) {
+        ctx.fillStyle = T.text;
+        ctx.font = `${W * 0.014}px system-ui`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(((d.value / total) * 100).toFixed(1) + '%', endX + (isRight ? W * 0.008 : -W * 0.008), ly + W * 0.003);
+      }
+    }
+
+    startAngle += sliceAngle;
+  }
+
+  // Center label
+  if (CONFIG.innerRadius > 0 && CONFIG.centerLabel) {
+    ctx.fillStyle = T.text;
+    ctx.font = `${W * 0.014}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(CONFIG.centerLabel, cx, cy - W * 0.005);
+
+    const countUp = Math.round(total * ease);
+    ctx.fillStyle = T.title;
+    ctx.font = `bold ${W * 0.035}px system-ui`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(countUp.toLocaleString(), cx, cy + W * 0.005);
+  }
+
+  // Legend (right side)
+  const legendX = W * 0.75;
+  let legendY = H * 0.3;
+  const boxS = W * 0.012;
+  ctx.font = `${W * 0.015}px system-ui`;
+  for (const d of data) {
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.arc(legendX, legendY, boxS / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = T.text;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${d.category} (${d.value})`, legendX + boxS, legendY);
+    legendY += W * 0.028;
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

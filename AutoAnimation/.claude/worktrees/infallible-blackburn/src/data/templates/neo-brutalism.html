@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neo Brutalism Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #FFFFF0;
+    font-family: 'Arial Black', 'Impact', sans-serif;
+  }
+
+  .element {
+    position: absolute;
+    border: 2px solid #1a1a1a;
+    transition: transform 0.1s;
+  }
+
+  .element.shadow {
+    box-shadow: 4px 4px 0px #1a1a1a;
+  }
+
+  .sticker {
+    position: absolute;
+    border: 2px solid #1a1a1a;
+    box-shadow: 3px 3px 0px #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #1a1a1a;
+    padding: 8px 16px;
+    will-change: transform;
+  }
+
+  .sticker.yellow { background: #FFE500; }
+  .sticker.pink { background: #FF6B9D; }
+  .sticker.blue { background: #4ECDC4; }
+  .sticker.orange { background: #FF8A65; }
+  .sticker.purple { background: #B39DDB; }
+  .sticker.green { background: #AED581; }
+
+  .big-text {
+    position: absolute;
+    font-size: 80px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #1a1a1a;
+    letter-spacing: 2px;
+    line-height: 0.9;
+    z-index: 5;
+  }
+
+  .block-button {
+    position: absolute;
+    border: 2px solid #1a1a1a;
+    box-shadow: 4px 4px 0px #1a1a1a;
+    padding: 12px 24px;
+    font-weight: 900;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    will-change: transform;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .block-button.yellow { background: #FFE500; color: #1a1a1a; }
+  .block-button.pink { background: #FF6B9D; color: #1a1a1a; }
+  .block-button.blue { background: #4ECDC4; color: #1a1a1a; }
+
+  .card-brutal {
+    position: absolute;
+    border: 2px solid #1a1a1a;
+    box-shadow: 6px 6px 0px #1a1a1a;
+    background: white;
+    padding: 20px;
+    will-change: transform;
+  }
+
+  .card-brutal .card-title {
+    font-size: 20px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+  }
+
+  .card-brutal .card-body {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .card-brutal .card-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 2px solid #1a1a1a;
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+
+  .circle-badge {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid #1a1a1a;
+    box-shadow: 3px 3px 0px #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 16px;
+    color: #1a1a1a;
+    will-change: transform;
+  }
+
+  .zigzag-line {
+    position: absolute;
+    height: 4px;
+    z-index: 3;
+  }
+
+  .marquee-strip {
+    position: absolute;
+    left: 0;
+    width: 200%;
+    height: 36px;
+    background: #FFE500;
+    border-top: 2px solid #1a1a1a;
+    border-bottom: 2px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    font-weight: 900;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #1a1a1a;
+    white-space: nowrap;
+    z-index: 15;
+  }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  @keyframes bounceIn {
+    0% { transform: scale(0) rotate(var(--rot, 0deg)); }
+    60% { transform: scale(1.2) rotate(var(--rot, 0deg)); }
+    80% { transform: scale(0.9) rotate(var(--rot, 0deg)); }
+    100% { transform: scale(1) rotate(var(--rot, 0deg)); }
+  }
+
+  @keyframes springBounce {
+    0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+    25% { transform: translateY(-12px) rotate(var(--rot, 0deg)); }
+    50% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+    75% { transform: translateY(-5px) rotate(var(--rot, 0deg)); }
+  }
+
+  @keyframes wobble {
+    0%, 100% { transform: rotate(calc(var(--rot, 0deg) - 2deg)); }
+    50% { transform: rotate(calc(var(--rot, 0deg) + 2deg)); }
+  }
+
+  @keyframes popIn {
+    0% { transform: scale(0) rotate(var(--rot, 0deg)); opacity: 0; }
+    70% { transform: scale(1.15) rotate(var(--rot, 0deg)); opacity: 1; }
+    100% { transform: scale(1) rotate(var(--rot, 0deg)); opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    0% { transform: translateY(120vh); }
+    100% { transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#FFFFF0',
+    shadowColor: '#1a1a1a',
+    colors: ['#FFE500', '#FF6B9D', '#4ECDC4', '#FF8A65', '#B39DDB', '#AED581'],
+    colorClasses: ['yellow', 'pink', 'blue', 'orange', 'purple', 'green'],
+    stickerTexts: ['WOW!', 'COOL', 'NEW', 'HOT', 'YES!', 'OMG', 'NICE', 'TOP', 'FIRE', 'EPIC'],
+    headings: ['CREATE', 'DESIGN', 'BUILD', 'DREAM', 'PLAY', 'BOLD'],
+    buttonTexts: ['GET STARTED', 'TRY NOW', 'LEARN MORE', 'JOIN US', 'CLICK ME'],
+    cardTitles: ['Design System', 'Components', 'Templates', 'Analytics', 'Dashboard'],
+    cardBodies: [
+      'Build faster with pre-made blocks.',
+      'Drag and drop your way to beauty.',
+      'No-code design at its finest.',
+      'Track everything that matters.',
+      'Your command center awaits.',
+    ],
+    marqueeText: 'NEO BRUTALISM * BOLD DESIGN * ACID COLORS * THICK BORDERS * ',
+    sceneDuration: 4500,
+    gravity: 0.3,
+    bounceFactor: 0.6,
+  };
+
+  const scene = document.getElementById('scene');
+  let sceneIndex = 0;
+
+  function rand(a, b) { return Math.random() * (b - a) + a; }
+  function randInt(a, b) { return Math.floor(rand(a, b)); }
+  function pick(arr) { return arr[randInt(0, arr.length)]; }
+  function pickColor() { return CONFIG.colorClasses[randInt(0, CONFIG.colorClasses.length)]; }
+
+  function clearScene() {
+    while (scene.firstChild) scene.removeChild(scene.firstChild);
+  }
+
+  // Physics-based spring bounce for elements
+  class SpringElement {
+    constructor(el, targetY, delay) {
+      this.el = el;
+      this.y = window.innerHeight + 100;
+      this.targetY = targetY;
+      this.vy = 0;
+      this.delay = delay;
+      this.started = false;
+      this.settled = false;
+      this.startTime = performance.now();
+    }
+
+    update(now) {
+      if (now - this.startTime < this.delay) return;
+      this.started = true;
+
+      const spring = 0.08;
+      const damping = 0.85;
+      const dy = this.targetY - this.y;
+      this.vy += dy * spring;
+      this.vy *= damping;
+      this.y += this.vy;
+
+      if (Math.abs(dy) < 0.5 && Math.abs(this.vy) < 0.5) {
+        this.y = this.targetY;
+        this.settled = true;
+      }
+
+      this.el.style.transform = `translateY(${this.y - this.targetY}px) rotate(${this.el.dataset.rot || 0}deg)`;
+    }
+  }
+
+  let springElements = [];
+  let animFrame;
+
+  function animateSprings() {
+    const now = performance.now();
+    let allSettled = true;
+    springElements.forEach(se => {
+      se.update(now);
+      if (!se.settled) allSettled = false;
+    });
+
+    if (!allSettled) {
+      animFrame = requestAnimationFrame(animateSprings);
+    } else {
+      // Start wobble animations after settling
+      springElements.forEach(se => {
+        if (!se.el.dataset.nowobble) {
+          se.el.style.animation = `wobble ${1.5 + Math.random()}s ease-in-out infinite`;
+          se.el.style.setProperty('--rot', (se.el.dataset.rot || 0) + 'deg');
+        }
+      });
+    }
+  }
+
+  function createScene1() {
+    springElements = [];
+
+    // Marquee strip
+    const marquee = document.createElement('div');
+    marquee.className = 'marquee-strip';
+    marquee.style.top = '0';
+    const text = CONFIG.marqueeText.repeat(6);
+    marquee.innerHTML = `<div style="animation:marquee 15s linear infinite;">${text}</div>`;
+    scene.appendChild(marquee);
+
+    // Big heading
+    const heading = document.createElement('div');
+    heading.className = 'big-text';
+    heading.textContent = pick(CONFIG.headings);
+    heading.style.cssText = `top:15%;left:8%;`;
+    heading.dataset.rot = rand(-3, 3).toFixed(1);
+    scene.appendChild(heading);
+    springElements.push(new SpringElement(heading, 0, 200));
+
+    // Stickers
+    const positions = [
+      { top: '35%', left: '10%' },
+      { top: '30%', right: '15%' },
+      { top: '55%', left: '25%' },
+      { top: '50%', right: '10%' },
+      { top: '70%', left: '8%' },
+      { top: '65%', right: '25%' },
+    ];
+
+    positions.forEach((pos, i) => {
+      const sticker = document.createElement('div');
+      sticker.className = `sticker ${pickColor()}`;
+      sticker.textContent = pick(CONFIG.stickerTexts);
+      const rot = rand(-15, 15).toFixed(1);
+      sticker.dataset.rot = rot;
+      const posStr = Object.entries(pos).map(([k, v]) => `${k}:${v}`).join(';');
+      sticker.style.cssText = `${posStr};`;
+      scene.appendChild(sticker);
+      springElements.push(new SpringElement(sticker, 0, 300 + i * 100));
+    });
+
+    // Button
+    const btn = document.createElement('div');
+    btn.className = `block-button ${pickColor()}`;
+    btn.textContent = pick(CONFIG.buttonTexts);
+    btn.style.cssText = `bottom:15%;left:50%;transform:translateX(-50%);`;
+    btn.dataset.rot = '0';
+    scene.appendChild(btn);
+    springElements.push(new SpringElement(btn, 0, 800));
+
+    // Bottom marquee
+    const marquee2 = document.createElement('div');
+    marquee2.className = 'marquee-strip';
+    marquee2.style.cssText = `bottom:0;background:#FF6B9D;`;
+    marquee2.innerHTML = `<div style="animation:marquee 12s linear infinite reverse;">${text}</div>`;
+    scene.appendChild(marquee2);
+
+    animateSprings();
+  }
+
+  function createScene2() {
+    springElements = [];
+
+    // Cards layout
+    const cardData = [
+      { top: '8%', left: '5%', w: '55%', color: 'yellow' },
+      { top: '8%', right: '5%', w: '35%', color: 'blue' },
+      { top: '50%', left: '5%', w: '40%', color: 'pink' },
+      { top: '50%', right: '5%', w: '50%', color: 'green' },
+    ];
+
+    cardData.forEach((cd, i) => {
+      const card = document.createElement('div');
+      card.className = 'card-brutal';
+      const posStr = cd.right
+        ? `top:${cd.top};right:${cd.right};width:${cd.w};`
+        : `top:${cd.top};left:${cd.left};width:${cd.w};`;
+      card.style.cssText = `${posStr}height:38%;`;
+      card.dataset.rot = rand(-2, 2).toFixed(1);
+
+      const title = document.createElement('div');
+      title.className = 'card-title';
+      title.textContent = CONFIG.cardTitles[i];
+
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      body.textContent = CONFIG.cardBodies[i];
+
+      const tag = document.createElement('div');
+      tag.className = 'card-tag';
+      tag.style.background = CONFIG.colors[i];
+      tag.textContent = pick(CONFIG.stickerTexts);
+
+      card.appendChild(title);
+      card.appendChild(body);
+      card.appendChild(tag);
+      scene.appendChild(card);
+      springElements.push(new SpringElement(card, 0, i * 150));
+    });
+
+    // Circle badges
+    for (let i = 0; i < 3; i++) {
+      const badge = document.createElement('div');
+      badge.className = 'circle-badge';
+      const size = 50 + Math.random() * 30;
+      badge.style.cssText = `
+        width:${size}px;height:${size}px;
+        background:${pick(CONFIG.colors)};
+        left:${15 + i * 30}%;
+        top:${42 + rand(-5, 5)}%;
+        z-index:20;
+      `;
+      badge.textContent = pick(['!', '?', '*', '+', '#']);
+      badge.dataset.rot = rand(-10, 10).toFixed(1);
+      scene.appendChild(badge);
+      springElements.push(new SpringElement(badge, 0, 500 + i * 100));
+    }
+
+    animateSprings();
+  }
+
+  function createScene3() {
+    springElements = [];
+
+    // Full-color background with big centered text
+    const bgBlock = document.createElement('div');
+    bgBlock.style.cssText = `
+      position:absolute;top:0;left:0;width:100%;height:100%;
+      background:${pick(CONFIG.colors)};
+    `;
+    scene.appendChild(bgBlock);
+
+    // Grid of stickers
+    const gridCols = 3;
+    const gridRows = 4;
+    for (let r = 0; r < gridRows; r++) {
+      for (let c = 0; c < gridCols; c++) {
+        const sticker = document.createElement('div');
+        sticker.className = `sticker ${pickColor()}`;
+        sticker.textContent = pick(CONFIG.stickerTexts);
+        const rot = rand(-20, 20).toFixed(1);
+        sticker.dataset.rot = rot;
+        sticker.style.cssText = `
+          left: ${8 + c * 32}%;
+          top: ${8 + r * 24}%;
+        `;
+        scene.appendChild(sticker);
+        springElements.push(new SpringElement(sticker, 0, (r * gridCols + c) * 80));
+      }
+    }
+
+    // Center heading
+    const heading = document.createElement('div');
+    heading.className = 'big-text';
+    heading.textContent = pick(CONFIG.headings);
+    heading.style.cssText = `
+      top:50%;left:50%;transform:translate(-50%,-50%);
+      font-size:100px;
+      color:#1a1a1a;
+      z-index:20;
+      text-shadow: 4px 4px 0px rgba(0,0,0,0.15);
+    `;
+    heading.dataset.rot = '0';
+    heading.dataset.nowobble = 'true';
+    scene.appendChild(heading);
+    springElements.push(new SpringElement(heading, 0, 400));
+
+    animateSprings();
+  }
+
+  const scenes = [createScene1, createScene2, createScene3];
+
+  function nextScene() {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    clearScene();
+    scenes[sceneIndex % scenes.length]();
+    sceneIndex++;
+  }
+
+  nextScene();
+  setInterval(nextScene, CONFIG.sceneDuration);
+</script>
+</body>
+</html>

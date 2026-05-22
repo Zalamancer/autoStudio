@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auction House</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #f0e6d8;
+  }
+
+  .bg-pattern {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(180, 40, 40, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 50%, rgba(180, 40, 40, 0.05) 0%, transparent 50%);
+  }
+
+  .auction-header {
+    position: absolute;
+    top: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+  }
+  .auction-header .live-badge {
+    display: inline-block;
+    background: #dc2626;
+    color: white;
+    font-family: -apple-system, sans-serif;
+    font-size: 0.8vw;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    padding: 0.4vh 1.2vw;
+    border-radius: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1vh;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 0.5vw;
+    height: 0.5vw;
+    border-radius: 50%;
+    background: white;
+    margin-right: 0.4vw;
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .item-card {
+    position: absolute;
+    top: 14vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 50vw;
+    opacity: 0;
+  }
+  .item-title {
+    font-size: 2.8vw;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 1vh;
+    letter-spacing: 0.03em;
+  }
+  .item-desc {
+    font-size: 1.1vw;
+    color: #a89880;
+    line-height: 1.5;
+    font-style: italic;
+  }
+  .item-divider {
+    width: 6vw;
+    height: 2px;
+    margin: 1.5vh auto;
+    opacity: 0.4;
+  }
+
+  .bid-display {
+    position: absolute;
+    top: 36vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+  }
+  .bid-label {
+    font-family: -apple-system, sans-serif;
+    font-size: 0.9vw;
+    letter-spacing: 0.35em;
+    color: #8a7a6a;
+    text-transform: uppercase;
+    margin-bottom: 0.5vh;
+  }
+  .bid-amount {
+    font-size: 5vw;
+    font-weight: 700;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 30px rgba(220, 38, 38, 0.3);
+  }
+
+  .bid-feed {
+    position: absolute;
+    top: 56vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50vw;
+    height: 18vh;
+    overflow: hidden;
+  }
+  .bid-entry {
+    font-family: -apple-system, sans-serif;
+    font-size: 1.1vw;
+    padding: 0.6vh 0;
+    opacity: 0;
+    transform: translateX(0);
+    color: #c8b8a8;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .bid-entry .bidder {
+    font-weight: 600;
+    color: #e8d8c8;
+  }
+  .bid-entry .bid-val {
+    font-weight: 700;
+    font-size: 1.2vw;
+  }
+
+  .countdown-area {
+    position: absolute;
+    bottom: 14vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+  }
+  .countdown-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 3vw;
+    font-weight: 700;
+    color: #dc2626;
+    letter-spacing: 0.1em;
+  }
+  .countdown-label {
+    font-family: -apple-system, sans-serif;
+    font-size: 0.8vw;
+    color: #6a5a4a;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-top: 0.5vh;
+  }
+
+  .gavel-text {
+    position: absolute;
+    bottom: 6vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.5vw;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    opacity: 0;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .corner-orn {
+    position: absolute;
+    width: 4vw;
+    height: 4vw;
+    border-style: solid;
+    border-width: 0;
+    opacity: 0;
+  }
+  .corner-orn.tl { top: 2vh; left: 2vw; border-top-width: 1px; border-left-width: 1px; }
+  .corner-orn.tr { top: 2vh; right: 2vw; border-top-width: 1px; border-right-width: 1px; }
+  .corner-orn.bl { bottom: 2vh; left: 2vw; border-bottom-width: 1px; border-left-width: 1px; }
+  .corner-orn.br { bottom: 2vh; right: 2vw; border-bottom-width: 1px; border-right-width: 1px; }
+</style>
+</head>
+<body>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  itemTitle: "Rare Vintage Timepiece",
+  itemDescription: "1952 Patek Philippe Grand Complications — ref. 2499, 18K rose gold, perpetual calendar chronograph. One of only 349 known examples.",
+  startingBid: 800,
+  bids: [
+    { bidder: "Collector_17", amount: 950 },
+    { bidder: "Heritage_Art", amount: 1100 },
+    { bidder: "Bidder_42", amount: 1200 },
+    { bidder: "TimeVault", amount: 1450 },
+    { bidder: "RarityHunter", amount: 1600 },
+    { bidder: "Collector_17", amount: 1850 },
+    { bidder: "Heritage_Art", amount: 2100 }
+  ],
+  accentColor: "#dc2626",
+  bgColor: "#1a1016",
+  cycleDuration: 14
+};
+// === END EDITABLE CONFIG ===
+
+document.body.style.background = CONFIG.bgColor;
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const bidsHTML = CONFIG.bids.map((b, i) => `
+  <div class="bid-entry" data-index="${i}" style="transform: translateX(${i % 2 === 0 ? '-40px' : '40px'})">
+    <span class="bidder">${b.bidder}</span>
+    <span class="bid-val" style="color:${CONFIG.accentColor}">$${b.amount.toLocaleString()}</span>
+  </div>
+`).join('');
+
+document.body.innerHTML = `
+  <div class="bg-pattern"></div>
+  <div class="corner-orn tl" style="border-color:${CONFIG.accentColor}30"></div>
+  <div class="corner-orn tr" style="border-color:${CONFIG.accentColor}30"></div>
+  <div class="corner-orn bl" style="border-color:${CONFIG.accentColor}30"></div>
+  <div class="corner-orn br" style="border-color:${CONFIG.accentColor}30"></div>
+  <div class="auction-header">
+    <div class="live-badge"><span class="live-dot"></span> LIVE AUCTION</div>
+  </div>
+  <div class="item-card">
+    <div class="item-title">${CONFIG.itemTitle}</div>
+    <div class="item-divider" style="background:${CONFIG.accentColor}"></div>
+    <div class="item-desc">${CONFIG.itemDescription}</div>
+  </div>
+  <div class="bid-display">
+    <div class="bid-label">Current Bid</div>
+    <div class="bid-amount">$${CONFIG.startingBid.toLocaleString()}</div>
+  </div>
+  <div class="bid-feed">${bidsHTML}</div>
+  <div class="countdown-area">
+    <div class="countdown-timer">0:30</div>
+    <div class="countdown-label">Time Remaining</div>
+  </div>
+  <div class="gavel-text" style="color:${CONFIG.accentColor}"></div>
+`;
+
+const cycleDur = CONFIG.cycleDuration * 1000;
+let startTime = null;
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInCubic(t) { return t * t * t; }
+function easeOutBack(t) { const c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+function easeOutElastic(t) {
+  if (t === 0 || t === 1) return t;
+  return Math.pow(2, -10 * t) * Math.sin((t - 0.075) * (2 * Math.PI) / 0.3) + 1;
+}
+
+function animate(now) {
+  if (!startTime) startTime = now;
+  const elapsed = (now - startTime) % cycleDur;
+  const phase = elapsed / cycleDur;
+
+  // Phases: entrance(0.08), item-reveal(0.08), bidding(0.50), countdown(0.12), gavel(0.14), exit(0.08)
+  const pEntrance = 0.08;
+  const pItemReveal = 0.08;
+  const pBidding = 0.48;
+  const pCountdown = 0.12;
+  const pGavel = 0.14;
+  const pExit = 0.10;
+
+  let globalOpacity = 1;
+
+  if (phase < pEntrance) {
+    globalOpacity = easeOutCubic(phase / pEntrance);
+  } else if (phase > 1 - pExit) {
+    globalOpacity = 1 - easeInCubic((phase - (1 - pExit)) / pExit);
+  }
+
+  // Header
+  const header = $('.auction-header');
+  const headerT = Math.min(1, phase / pEntrance);
+  header.style.opacity = easeOutCubic(headerT) * globalOpacity;
+  header.style.transform = 'translateX(-50%) translateY(' + ((1 - easeOutCubic(headerT)) * -10) + 'px)';
+
+  // Corners
+  $$('.corner-orn').forEach(el => { el.style.opacity = globalOpacity * 0.5; });
+
+  // Item card
+  const itemCard = $('.item-card');
+  const itemStart = pEntrance;
+  const itemT = Math.max(0, Math.min(1, (phase - itemStart) / pItemReveal));
+  itemCard.style.opacity = easeOutCubic(itemT) * globalOpacity;
+  itemCard.style.transform = 'translateX(-50%) translateY(' + ((1 - easeOutCubic(itemT)) * 20) + 'px)';
+
+  // Bid display
+  const bidDisplay = $('.bid-display');
+  const bidStart = pEntrance + pItemReveal * 0.5;
+  const bidT = Math.max(0, Math.min(1, (phase - bidStart) / 0.06));
+  bidDisplay.style.opacity = easeOutCubic(bidT) * globalOpacity;
+  bidDisplay.style.transform = 'translateX(-50%) scale(' + (0.8 + easeOutBack(bidT) * 0.2) + ')';
+
+  // Bidding phase - reveal bids one by one
+  const biddingStart = pEntrance + pItemReveal;
+  const biddingEnd = biddingStart + pBidding;
+  const biddingProgress = Math.max(0, Math.min(1, (phase - biddingStart) / pBidding));
+  const totalBids = CONFIG.bids.length;
+
+  let currentBidAmount = CONFIG.startingBid;
+  const bidEntries = $$('.bid-entry');
+  bidEntries.forEach((entry, i) => {
+    const bidRevealAt = (i + 0.5) / totalBids;
+    const bidT = Math.max(0, Math.min(1, (biddingProgress - bidRevealAt) / (0.8 / totalBids)));
+    const fromDir = i % 2 === 0 ? -40 : 40;
+    entry.style.opacity = easeOutCubic(bidT) * globalOpacity;
+    entry.style.transform = 'translateX(' + ((1 - easeOutCubic(bidT)) * fromDir) + 'px)';
+
+    if (bidT > 0) {
+      currentBidAmount = CONFIG.bids[i].amount;
+    }
+  });
+
+  // Animate bid amount with scale pop on change
+  const bidAmount = $('.bid-amount');
+  const bidPhaseT = biddingProgress * totalBids;
+  const bidChangeT = bidPhaseT - Math.floor(bidPhaseT);
+  const popScale = bidChangeT < 0.15 ? 1 + (1 - bidChangeT / 0.15) * 0.08 : 1;
+  bidAmount.textContent = '$' + currentBidAmount.toLocaleString();
+  bidAmount.style.transform = 'scale(' + popScale + ')';
+
+  // Countdown
+  const countdownArea = $('.countdown-area');
+  const countdownStart = biddingEnd;
+  const countdownT = Math.max(0, Math.min(1, (phase - countdownStart) / pCountdown));
+  countdownArea.style.opacity = (countdownT > 0 && countdownT < 1 ? 1 : countdownT >= 1 ? Math.max(0, 1 - (phase - countdownStart - pCountdown) / 0.02) : 0) * globalOpacity;
+  countdownArea.style.transform = 'translateX(-50%) translateY(' + ((1 - easeOutCubic(Math.min(1, countdownT * 3))) * 15) + 'px)';
+
+  const countdownSeconds = Math.max(0, Math.ceil(30 * (1 - countdownT)));
+  const countdownTimer = $('.countdown-timer');
+  countdownTimer.textContent = '0:' + String(countdownSeconds).padStart(2, '0');
+  if (countdownSeconds <= 5 && countdownT > 0 && countdownT < 1) {
+    countdownTimer.style.transform = 'scale(' + (1 + Math.sin(now * 0.01) * 0.05) + ')';
+    countdownTimer.style.color = CONFIG.accentColor;
+  } else {
+    countdownTimer.style.transform = 'scale(1)';
+    countdownTimer.style.color = CONFIG.accentColor;
+  }
+
+  // Gavel sequence
+  const gavelText = $('.gavel-text');
+  const gavelStart = countdownStart + pCountdown;
+  const gavelT = Math.max(0, Math.min(1, (phase - gavelStart) / pGavel));
+
+  if (gavelT > 0) {
+    let text = '';
+    let gavelOpacity = 0;
+    if (gavelT < 0.3) {
+      text = 'GOING ONCE...';
+      gavelOpacity = easeOutElastic(gavelT / 0.3);
+    } else if (gavelT < 0.55) {
+      text = 'GOING TWICE...';
+      gavelOpacity = easeOutElastic((gavelT - 0.3) / 0.25);
+    } else {
+      text = 'SOLD! $' + CONFIG.bids[CONFIG.bids.length - 1].amount.toLocaleString();
+      const soldT = (gavelT - 0.55) / 0.45;
+      gavelOpacity = easeOutElastic(Math.min(1, soldT * 2));
+      gavelText.style.fontSize = (2.5 + soldT * 0.8) + 'vw';
+      gavelText.style.textShadow = '0 0 ' + (soldT * 30) + 'px ' + CONFIG.accentColor + '80';
+    }
+    gavelText.textContent = text;
+    gavelText.style.opacity = gavelOpacity * globalOpacity;
+    gavelText.style.transform = 'translateX(-50%) scale(' + (0.8 + gavelOpacity * 0.2) + ')';
+
+    // Hide bid and countdown during gavel
+    bidDisplay.style.opacity = Math.max(0, bidDisplay.style.opacity * (1 - gavelT));
+    countdownArea.style.opacity = 0;
+  } else {
+    gavelText.style.opacity = 0;
+  }
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+    document.body.style.background = CONFIG.bgColor;
+  }
+});
+</script>
+</body>
+</html>

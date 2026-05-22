@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Northern Lights Landscape</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background: #050510; }
+  canvas#auroraCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .center-text {
+    position: fixed; top: 45%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 3; text-align: center; color: #c0ffe8; pointer-events: none;
+  }
+  .center-text h1 {
+    font-size: 5vh; font-weight: 200; letter-spacing: 14px;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(100,255,200,0.3), 0 0 60px rgba(100,255,200,0.1);
+    animation: auroraPulse 6s ease-in-out infinite;
+  }
+  .center-text .subtitle {
+    font-size: 1.6vh; letter-spacing: 7px; opacity: 0.4;
+    margin-top: 1.5vh; text-transform: uppercase;
+    animation: auroraPulse 6s ease-in-out infinite 0.3s;
+  }
+  @keyframes auroraPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<canvas id="auroraCanvas"></canvas>
+<div class="center-text">
+  <h1 id="mainTitle">Aurora</h1>
+</div>
+
+<script>
+// ===== EDITABLE CONFIG =====
+const CONFIG = {
+  skyColor: '#050510',
+  auroraColors: ['#00ff88', '#00ddaa', '#4488ff', '#8844ff', '#00ffcc', '#66ffaa'],
+  starCount: 150,
+  mountainColor: '#0a0a1a',
+  waveSpeed: 1.0,
+  title: 'Aurora',
+};
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config);
+});
+
+document.getElementById('mainTitle').textContent = CONFIG.title;
+
+const canvas = document.getElementById('auroraCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+function hexToRgb(hex) {
+  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+}
+
+// --- Stars ---
+const stars = [];
+for (let i = 0; i < CONFIG.starCount; i++) {
+  stars.push({
+    x: Math.random(), y: Math.random() * 0.6,
+    r: Math.random() * 1.6 + 0.3,
+    twinkle: Math.random() * Math.PI * 2,
+    speed: Math.random() * 0.02 + 0.004,
+    brightness: Math.random() * 0.5 + 0.5,
+  });
+}
+
+// --- Shooting Stars ---
+class ShootingStar {
+  constructor() { this.active = false; this.timer = Math.random() * 500 + 200; }
+  tryActivate() {
+    this.timer--;
+    if (this.timer <= 0 && !this.active) {
+      this.active = true;
+      this.x = Math.random() * W * 0.8;
+      this.y = Math.random() * H * 0.3;
+      this.vx = Math.random() * 6 + 3;
+      this.vy = Math.random() * 2 + 1;
+      this.life = 1;
+      this.decay = 0.02 + Math.random() * 0.02;
+      this.length = Math.random() * 40 + 20;
+    }
+  }
+  update() {
+    if (!this.active) { this.tryActivate(); return; }
+    this.x += this.vx; this.y += this.vy;
+    this.life -= this.decay;
+    if (this.life <= 0) {
+      this.active = false;
+      this.timer = Math.random() * 600 + 300;
+    }
+  }
+  draw() {
+    if (!this.active) return;
+    const a = this.life;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(this.x - this.vx * this.length / 6, this.y - this.vy * this.length / 6);
+    const grad = ctx.createLinearGradient(
+      this.x, this.y,
+      this.x - this.vx * this.length / 6, this.y - this.vy * this.length / 6
+    );
+    grad.addColorStop(0, `rgba(255,255,255,${a})`);
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+const shootingStars = [];
+for (let i = 0; i < 3; i++) shootingStars.push(new ShootingStar());
+
+// --- Aurora Curtain ---
+class AuroraCurtain {
+  constructor(index, total) {
+    this.index = index;
+    this.yBase = H * (0.1 + index * 0.07);
+    this.amplitude = 25 + Math.random() * 45;
+    this.frequency = 0.0015 + Math.random() * 0.002;
+    this.speed = (0.0003 + Math.random() * 0.0005) * CONFIG.waveSpeed;
+    this.phase = Math.random() * Math.PI * 2;
+    this.colorIdx = index % CONFIG.auroraColors.length;
+    this.thickness = 50 + Math.random() * 90;
+    this.opacity = 0.06 + Math.random() * 0.07;
+    this.verticalWave = Math.random() * 0.0008 + 0.0002;
+  }
+  draw(t) {
+    const color = CONFIG.auroraColors[this.colorIdx % CONFIG.auroraColors.length];
+    const c = hexToRgb(color);
+    const breathe = 1 + Math.sin(t * 0.0003 + this.index * 0.7) * 0.3;
+    const currentOpacity = this.opacity * breathe;
+
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 3) {
+      const wave1 = Math.sin(x * this.frequency + t * this.speed + this.phase) * this.amplitude;
+      const wave2 = Math.sin(x * this.frequency * 0.4 + t * this.speed * 1.4 + this.index) * this.amplitude * 0.45;
+      const wave3 = Math.sin(x * this.frequency * 0.15 + t * this.verticalWave) * this.amplitude * 0.6;
+      const y = this.yBase + wave1 + wave2 + wave3;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H); ctx.closePath();
+
+    const grad = ctx.createLinearGradient(0, this.yBase - this.thickness, 0, this.yBase + this.thickness * 1.5);
+    grad.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0)`);
+    grad.addColorStop(0.2, `rgba(${c.r},${c.g},${c.b},${currentOpacity * 0.5})`);
+    grad.addColorStop(0.4, `rgba(${c.r},${c.g},${c.b},${currentOpacity})`);
+    grad.addColorStop(0.6, `rgba(${c.r},${c.g},${c.b},${currentOpacity * 0.8})`);
+    grad.addColorStop(0.8, `rgba(${c.r},${c.g},${c.b},${currentOpacity * 0.3})`);
+    grad.addColorStop(1, `rgba(${c.r},${c.g},${c.b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+}
+
+const curtains = [];
+for (let i = 0; i < 7; i++) curtains.push(new AuroraCurtain(i, 7));
+
+// --- Vertical Aurora Columns (pillars of light) ---
+class AuroraColumn {
+  constructor() {
+    this.x = Math.random() * W;
+    this.width = Math.random() * 40 + 15;
+    this.phase = Math.random() * Math.PI * 2;
+    this.speed = Math.random() * 0.0005 + 0.0002;
+    this.drift = (Math.random() - 0.5) * 0.08;
+    this.colorIdx = Math.floor(Math.random() * CONFIG.auroraColors.length);
+    this.opacity = Math.random() * 0.04 + 0.01;
+    this.height = H * (0.3 + Math.random() * 0.3);
+  }
+  draw(t) {
+    const color = CONFIG.auroraColors[this.colorIdx % CONFIG.auroraColors.length];
+    const c = hexToRgb(color);
+    const pulse = 0.5 + 0.5 * Math.sin(t * this.speed + this.phase);
+    const a = this.opacity * pulse;
+    const cx = this.x + Math.sin(t * 0.0003 + this.phase) * 20;
+    const grad = ctx.createLinearGradient(cx, 0, cx, this.height);
+    grad.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0)`);
+    grad.addColorStop(0.3, `rgba(${c.r},${c.g},${c.b},${a})`);
+    grad.addColorStop(0.6, `rgba(${c.r},${c.g},${c.b},${a * 0.7})`);
+    grad.addColorStop(1, `rgba(${c.r},${c.g},${c.b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - this.width * 0.5, 0, this.width, this.height);
+  }
+}
+
+const columns = [];
+for (let i = 0; i < 10; i++) columns.push(new AuroraColumn());
+
+// --- Mountains ---
+function drawMountains(t) {
+  const mc = hexToRgb(CONFIG.mountainColor);
+
+  // Back range (softer, lighter)
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  const backPeaks = [
+    { x: 0, y: H * 0.68 }, { x: W * 0.08, y: H * 0.62 }, { x: W * 0.18, y: H * 0.55 },
+    { x: W * 0.28, y: H * 0.60 }, { x: W * 0.38, y: H * 0.52 }, { x: W * 0.48, y: H * 0.58 },
+    { x: W * 0.58, y: H * 0.50 }, { x: W * 0.68, y: H * 0.56 }, { x: W * 0.78, y: H * 0.53 },
+    { x: W * 0.88, y: H * 0.60 }, { x: W * 0.95, y: H * 0.65 }, { x: W, y: H * 0.68 },
+  ];
+  backPeaks.forEach((p, i) => {
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else {
+      const prev = backPeaks[i - 1];
+      const cpx = (prev.x + p.x) / 2;
+      ctx.quadraticCurveTo(cpx, Math.min(prev.y, p.y) - 10, p.x, p.y);
+    }
+  });
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = `rgba(${Math.floor(mc.r*0.7)},${Math.floor(mc.g*0.7)},${Math.floor(mc.b*1.2)},0.6)`;
+  ctx.fill();
+
+  // Front range (darker, sharper)
+  ctx.beginPath();
+  const frontPeaks = [
+    { x: 0, y: H * 0.78 }, { x: W * 0.06, y: H * 0.72 }, { x: W * 0.12, y: H * 0.65 },
+    { x: W * 0.20, y: H * 0.70 }, { x: W * 0.30, y: H * 0.62 }, { x: W * 0.40, y: H * 0.72 },
+    { x: W * 0.50, y: H * 0.66 }, { x: W * 0.60, y: H * 0.70 }, { x: W * 0.70, y: H * 0.63 },
+    { x: W * 0.80, y: H * 0.68 }, { x: W * 0.90, y: H * 0.74 }, { x: W, y: H * 0.78 },
+  ];
+  frontPeaks.forEach((p, i) => {
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else {
+      const prev = frontPeaks[i - 1];
+      const cpx = (prev.x + p.x) / 2;
+      ctx.quadraticCurveTo(cpx, Math.min(prev.y, p.y) - 8, p.x, p.y);
+    }
+  });
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = `rgba(${mc.r},${mc.g},${mc.b},0.95)`;
+  ctx.fill();
+
+  // Snow caps on front peaks
+  frontPeaks.forEach((p, i) => {
+    if (i > 0 && i < frontPeaks.length - 1 && p.y < H * 0.68) {
+      ctx.beginPath();
+      ctx.moveTo(p.x - 12, p.y + 8);
+      ctx.lineTo(p.x, p.y - 2);
+      ctx.lineTo(p.x + 12, p.y + 8);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(200,220,240,0.15)';
+      ctx.fill();
+    }
+  });
+
+  // Ground/snow foreground
+  const groundGrad = ctx.createLinearGradient(0, H * 0.82, 0, H);
+  groundGrad.addColorStop(0, `rgba(${mc.r},${mc.g},${mc.b},0.9)`);
+  groundGrad.addColorStop(0.3, 'rgba(15,15,30,0.95)');
+  groundGrad.addColorStop(1, 'rgba(8,8,18,1)');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, H * 0.82, W, H * 0.18);
+
+  // Snow glints on ground
+  const snowPhase = t * 0.0005;
+  for (let i = 0; i < 12; i++) {
+    const sx = (i / 11) * W;
+    const sy = H * 0.83 + Math.sin(sx * 0.01 + snowPhase) * 3;
+    const sa = 0.03 + 0.02 * Math.sin(t * 0.001 + i * 1.5);
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 30 + Math.sin(i) * 10, 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180,200,220,${sa})`;
+    ctx.fill();
+  }
+}
+
+// --- Reflection on snow/water ---
+function drawReflection(t) {
+  const reflY = H * 0.84;
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.translate(0, reflY * 2);
+  ctx.scale(1, -1);
+  ctx.globalCompositeOperation = 'screen';
+  curtains.forEach(c => c.draw(t));
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
+}
+
+// --- Ambient Glow ---
+function drawAmbientGlow(t) {
+  const mainColor = CONFIG.auroraColors[0] || '#00ff88';
+  const c = hexToRgb(mainColor);
+  const pulse = 0.03 + 0.015 * Math.sin(t * 0.0004);
+  const glow = ctx.createRadialGradient(W * 0.5, H * 0.3, 0, W * 0.5, H * 0.3, W * 0.6);
+  glow.addColorStop(0, `rgba(${c.r},${c.g},${c.b},${pulse})`);
+  glow.addColorStop(0.5, `rgba(${c.r},${c.g},${c.b},${pulse * 0.3})`);
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// --- Main Loop ---
+function animate(t) {
+  document.getElementById('mainTitle').textContent = CONFIG.title;
+
+  // Sky
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, CONFIG.skyColor);
+  skyGrad.addColorStop(0.5, '#080820');
+  skyGrad.addColorStop(1, '#050510');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars
+  const starCount = Math.min(stars.length, CONFIG.starCount);
+  for (let i = 0; i < starCount; i++) {
+    const s = stars[i];
+    s.twinkle += s.speed;
+    const a = s.brightness * (0.3 + 0.7 * Math.abs(Math.sin(s.twinkle)));
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fill();
+    if (s.r > 1.2) {
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.r * 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,220,255,${a * 0.08})`;
+      ctx.fill();
+    }
+  }
+
+  // Shooting stars
+  shootingStars.forEach(ss => { ss.update(); ss.draw(); });
+
+  // Aurora columns behind curtains
+  ctx.globalCompositeOperation = 'screen';
+  columns.forEach(col => col.draw(t));
+
+  // Aurora curtains
+  curtains.forEach(c => c.draw(t));
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Ambient glow
+  drawAmbientGlow(t);
+
+  // Mountains
+  drawMountains(t);
+
+  // Reflection
+  drawReflection(t);
+
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

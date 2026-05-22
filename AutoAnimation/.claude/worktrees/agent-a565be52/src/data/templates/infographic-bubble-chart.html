@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Country Comparison',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  xLabel: 'GDP per Capita ($K)',
+  yLabel: 'Life Expectancy',
+  sizeLabel: 'Population (M)',
+  maxBubbleRadius: 40,
+  bubbleColors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
+  data: [
+    { x: 63, y: 78, size: 330, label: 'USA' },
+    { x: 42, y: 84, size: 126, label: 'Japan' },
+    { x: 46, y: 81, size: 83, label: 'Germany' },
+    { x: 38, y: 82, size: 67, label: 'UK' },
+    { x: 12, y: 77, size: 1400, label: 'China' },
+    { x: 2, y: 70, size: 1380, label: 'India' },
+    { x: 8, y: 76, size: 213, label: 'Brazil' },
+    { x: 52, y: 83, size: 38, label: 'Canada' },
+    { x: 55, y: 83, size: 26, label: 'Australia' },
+    { x: 31, y: 83, size: 52, label: 'South Korea' }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) { const c = 1.5; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.5 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const data = CONFIG.data;
+  const xVals = data.map(d => d.x);
+  const yVals = data.map(d => d.y);
+  const sizes = data.map(d => d.size);
+  const xMin = 0;
+  const xMax = Math.max(...xVals) * 1.15;
+  const yMin = Math.min(...yVals) * 0.95;
+  const yMax = Math.max(...yVals) * 1.05;
+  const sizeMax = Math.max(...sizes);
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.14, y: H * 0.15, w: W * 0.76, h: H * 0.65 };
+
+  // Grid
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  ctx.fillStyle = T.text;
+  const xSteps = 5, ySteps = 5;
+  for (let i = 0; i <= ySteps; i++) {
+    const y = area.y + (area.h / ySteps) * i;
+    ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+    const val = yMax - ((yMax - yMin) / ySteps) * i;
+    ctx.font = `${W * 0.014}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(val).toString(), area.x - W * 0.012, y);
+  }
+  for (let i = 0; i <= xSteps; i++) {
+    const x = area.x + (area.w / xSteps) * i;
+    ctx.beginPath(); ctx.moveTo(x, area.y); ctx.lineTo(x, area.y + area.h); ctx.stroke();
+    const val = xMin + ((xMax - xMin) / xSteps) * i;
+    ctx.font = `${W * 0.014}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(Math.round(val).toString(), x, area.y + area.h + W * 0.008);
+  }
+
+  // Axis labels
+  ctx.fillStyle = T.text; ctx.font = `${W * 0.016}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.xLabel, area.x + area.w / 2, area.y + area.h + H * 0.08);
+  ctx.save();
+  ctx.translate(W * 0.03, area.y + area.h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(CONFIG.yLabel, 0, 0);
+  ctx.restore();
+
+  // Sort by size descending (draw large behind small)
+  const sortedIdx = data.map((_, i) => i).sort((a, b) => data[b].size - data[a].size);
+
+  // Bubbles
+  for (const i of sortedIdx) {
+    const d = data[i];
+    const dotProgress = Math.min(Math.max((progress - i * 0.04) / 0.5, 0), 1);
+    if (dotProgress <= 0) continue;
+    const dotEase = easeOutBack(dotProgress);
+
+    const px = area.x + ((d.x - xMin) / (xMax - xMin)) * area.w;
+    const py = area.y + area.h - ((d.y - yMin) / (yMax - yMin)) * area.h;
+    const maxR = CONFIG.maxBubbleRadius * (W / 1000);
+    const r = Math.sqrt(d.size / sizeMax) * maxR * dotEase;
+    const color = CONFIG.bubbleColors[i % CONFIG.bubbleColors.length];
+
+    ctx.globalAlpha = 0.7 * Math.min(dotProgress * 2, 1);
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color; ctx.shadowBlur = W * 0.008;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Border
+    ctx.globalAlpha = Math.min(dotProgress * 2, 1);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = W * 0.002;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Label
+    if (dotProgress > 0.5 && r > W * 0.015) {
+      ctx.globalAlpha = Math.min((dotProgress - 0.5) * 4, 1);
+      ctx.fillStyle = T.title;
+      ctx.font = `bold ${Math.min(r * 0.5, W * 0.016)}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(d.label, px, py);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Size legend
+  ctx.fillStyle = T.text;
+  ctx.font = `${W * 0.013}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(CONFIG.sizeLabel, W * 0.7, H * 0.05);
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

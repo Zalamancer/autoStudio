@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Movie Posters Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a0a; font-family: 'Arial', sans-serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 18px; padding: 30px; }
+
+  .poster { width: 155px; opacity: 0; will-change: transform, opacity; }
+  .poster-frame { border-radius: 6px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.5); position: relative; }
+  .poster-art { width: 100%; height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 16px 12px; position: relative; }
+  .poster-art::before { content:''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.8) 100%); }
+  .poster-genre { position: absolute; top: 10px; left: 10px; font-size: 8px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.5); z-index: 1; }
+  .poster-rating { position: absolute; top: 8px; right: 10px; font-size: 12px; font-weight: 700; color: #ffd700; z-index: 1; }
+  .poster-title { font-size: 16px; font-weight: 700; color: #fff; text-align: center; z-index: 1; line-height: 1.2; margin-bottom: 4px; }
+  .poster-year { font-size: 10px; color: rgba(255,255,255,0.5); z-index: 1; letter-spacing: 2px; }
+  .poster-bottom { background: #111; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; }
+  .poster-director { font-size: 9px; color: #666; }
+  .poster-runtime { font-size: 9px; color: #444; }
+
+  @keyframes posterReveal { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 60% { transform: scale(1.02) translateY(-2px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes posterDim { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.95) translateY(-15px); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  posters: [
+    { color: '#b71c1c', title: 'RED DAWN', year: '2024', genre: 'ACTION', rating: '8.2', director: 'Dir. Smith', runtime: '2h 15m' },
+    { color: '#0d47a1', title: 'DEEP BLUE', year: '2024', genre: 'THRILLER', rating: '7.8', director: 'Dir. Chen', runtime: '1h 55m' },
+    { color: '#1b5e20', title: 'EMERALD CITY', year: '2023', genre: 'FANTASY', rating: '8.5', director: 'Dir. Park', runtime: '2h 30m' },
+    { color: '#4a148c', title: 'VOID', year: '2024', genre: 'SCI-FI', rating: '9.0', director: 'Dir. Nolan', runtime: '2h 45m' },
+    { color: '#e65100', title: 'WILDFIRE', year: '2023', genre: 'DRAMA', rating: '7.5', director: 'Dir. Lee', runtime: '1h 48m' },
+    { color: '#263238', title: 'OBSIDIAN', year: '2024', genre: 'NOIR', rating: '8.8', director: 'Dir. Finch', runtime: '2h 10m' },
+    { color: '#880e4f', title: 'CRIMSON', year: '2024', genre: 'HORROR', rating: '7.2', director: 'Dir. Wan', runtime: '1h 40m' },
+    { color: '#004d40', title: 'GENESIS', year: '2025', genre: 'SCI-FI', rating: '8.9', director: 'Dir. Denis', runtime: '2h 38m' },
+  ],
+  bgColor: '#0a0a0a',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.posters.forEach(p => {
+    const el = document.createElement('div'); el.className = 'poster';
+    const frame = document.createElement('div'); frame.className = 'poster-frame';
+    const art = document.createElement('div'); art.className = 'poster-art'; art.style.background = p.color;
+    const genre = document.createElement('div'); genre.className = 'poster-genre'; genre.textContent = p.genre;
+    const rating = document.createElement('div'); rating.className = 'poster-rating'; rating.textContent = '\u2605 ' + p.rating;
+    const title = document.createElement('div'); title.className = 'poster-title'; title.textContent = p.title;
+    const year = document.createElement('div'); year.className = 'poster-year'; year.textContent = p.year;
+    art.appendChild(genre); art.appendChild(rating); art.appendChild(title); art.appendChild(year);
+    const bottom = document.createElement('div'); bottom.className = 'poster-bottom';
+    const director = document.createElement('div'); director.className = 'poster-director'; director.textContent = p.director;
+    const runtime = document.createElement('div'); runtime.className = 'poster-runtime'; runtime.textContent = p.runtime;
+    bottom.appendChild(director); bottom.appendChild(runtime);
+    frame.appendChild(art); frame.appendChild(bottom);
+    el.appendChild(frame); stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=260, inD=480, hold=3500, outS=200, outD=400, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`posterReveal ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`posterDim ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Matrix Rain - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000000;
+    font-family: 'Courier New', monospace;
+  }
+
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* CRT scanline overlay */
+  #scanlines {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.06) 2px,
+      rgba(0, 0, 0, 0.06) 4px
+    );
+  }
+
+  /* Vignette */
+  #vignette {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 11;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 55%,
+      rgba(0, 0, 0, 0.4) 80%,
+      rgba(0, 0, 0, 0.7) 100%
+    );
+  }
+</style>
+</head>
+<body>
+<canvas id="matrix"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<script>
+const CONFIG = {
+  words: ['WAKE', 'UP', 'THE', 'MATRIX', 'HAS', 'YOU'],
+  wordColor: '#FFFFFF',
+  rainColor: '#00FF41',
+  bgColor: '#000000',
+  rainSpeed: 2,
+  rainDensity: 30,
+  formSpeed: 1500,
+  holdDuration: 2000,
+  cycleDuration: 14000,
+  fontSize: 80,
+};
+
+// --- Character sets ---
+const KATAKANA = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+const LATIN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const ALL_CHARS = KATAKANA + LATIN;
+
+function randomChar() {
+  return ALL_CHARS[Math.floor(Math.random() * ALL_CHARS.length)];
+}
+
+// --- Canvas setup ---
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', () => { resize(); initColumns(); });
+resize();
+
+// --- Rain column state ---
+const CELL_SIZE = 16;
+let columns = [];
+
+function initColumns() {
+  const colCount = Math.ceil(W / CELL_SIZE) + 1;
+  columns = [];
+  for (let i = 0; i < colCount; i++) {
+    columns.push(createColumn(i));
+  }
+}
+
+function createColumn(index) {
+  const rows = Math.ceil(H / CELL_SIZE) + 2;
+  const speed = (0.4 + Math.random() * 0.8) * CONFIG.rainSpeed;
+  const chars = [];
+  for (let r = 0; r < rows; r++) {
+    chars.push({
+      char: randomChar(),
+      brightness: Math.random() * 0.6,
+      changeTimer: Math.random() * 60,
+    });
+  }
+  return {
+    x: index * CELL_SIZE,
+    y: -(Math.random() * H),
+    speed: speed,
+    chars: chars,
+    length: 8 + Math.floor(Math.random() * 20),
+    active: Math.random() < (CONFIG.rainDensity / 40),
+    respawnTimer: Math.random() * 120,
+  };
+}
+
+initColumns();
+
+// --- Word formation system ---
+let currentWordIndex = -1;
+let wordPhase = 'idle'; // idle, forming, scramble, hold, dissolve
+let phaseTimer = 0;
+let wordStartTime = 0;
+let lockedCells = []; // cells that are forming/holding the word
+
+// Each locked cell: { col, row, targetChar, currentChar, state, brightness, scrambleCount }
+
+function getWordCells(word) {
+  // Calculate grid positions for the word centered on screen
+  // Cap fontSize relative to viewport so words fit on portrait screens
+  const cappedFontSize = Math.min(CONFIG.fontSize, W * 0.12, H * 0.1);
+  const charWidth = Math.ceil(cappedFontSize / CELL_SIZE);
+  const charHeight = Math.ceil(cappedFontSize / CELL_SIZE);
+  const totalWidth = word.length * charWidth;
+  const startCol = Math.floor((W / CELL_SIZE - totalWidth) / 2);
+  const startRow = Math.floor((H / CELL_SIZE) / 2) - Math.floor(charHeight / 2);
+  const cells = [];
+
+  for (let i = 0; i < word.length; i++) {
+    const col = startCol + i * charWidth + Math.floor(charWidth / 2);
+    const row = startRow + Math.floor(charHeight / 2);
+    cells.push({
+      col: col,
+      row: row,
+      targetChar: word[i],
+      currentChar: randomChar(),
+      state: 'waiting', // waiting, scrambling, locked, dissolving
+      brightness: 0,
+      scrambleCount: 0,
+      maxScrambles: 4 + Math.floor(Math.random() * 6),
+      delay: i * (CONFIG.formSpeed / word.length) + Math.random() * 100,
+      glowIntensity: 0,
+    });
+  }
+  return cells;
+}
+
+function startNextWord() {
+  currentWordIndex = (currentWordIndex + 1) % CONFIG.words.length;
+  const word = CONFIG.words[currentWordIndex];
+  lockedCells = getWordCells(word);
+  wordPhase = 'forming';
+  wordStartTime = performance.now();
+  phaseTimer = 0;
+}
+
+// Timing
+let lastWordCycleTime = 0;
+const wordInterval = CONFIG.cycleDuration / CONFIG.words.length;
+
+// --- Main render ---
+let lastTime = 0;
+let globalTime = 0;
+
+function render(timestamp) {
+  const dt = lastTime ? (timestamp - lastTime) : 16;
+  lastTime = timestamp;
+  globalTime += dt;
+
+  // Fade background (creates trail effect)
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.globalAlpha = 0.08;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1.0;
+
+  updateRain(dt);
+  drawRain();
+
+  updateWordPhase(timestamp, dt);
+  drawLockedCells();
+
+  requestAnimationFrame(render);
+}
+
+// --- Rain update ---
+function updateRain(dt) {
+  const step = dt * 0.06;
+  for (let c = 0; c < columns.length; c++) {
+    const col = columns[c];
+
+    if (!col.active) {
+      col.respawnTimer -= step;
+      if (col.respawnTimer <= 0) {
+        col.active = true;
+        col.y = -(Math.random() * H * 0.5);
+        col.speed = (0.4 + Math.random() * 0.8) * CONFIG.rainSpeed;
+        col.length = 8 + Math.floor(Math.random() * 20);
+      }
+      continue;
+    }
+
+    col.y += col.speed * step;
+
+    // Randomly change characters
+    for (let r = 0; r < col.chars.length; r++) {
+      col.chars[r].changeTimer -= step;
+      if (col.chars[r].changeTimer <= 0) {
+        col.chars[r].char = randomChar();
+        col.chars[r].changeTimer = 10 + Math.random() * 50;
+      }
+    }
+
+    // Reset column when it falls off screen
+    if (col.y - col.length * CELL_SIZE > H) {
+      col.active = Math.random() < (CONFIG.rainDensity / 40);
+      col.respawnTimer = 20 + Math.random() * 80;
+      col.y = -(Math.random() * H * 0.3);
+    }
+  }
+}
+
+// --- Rain draw ---
+function drawRain() {
+  ctx.font = (CELL_SIZE - 2) + 'px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let c = 0; c < columns.length; c++) {
+    const col = columns[c];
+    if (!col.active) continue;
+
+    for (let r = 0; r < col.length; r++) {
+      const yPos = col.y - r * CELL_SIZE;
+      if (yPos < -CELL_SIZE || yPos > H + CELL_SIZE) continue;
+
+      // Check if this cell is locked by a word
+      const cellCol = c;
+      const cellRow = Math.floor(yPos / CELL_SIZE);
+      if (isCellLocked(cellCol, cellRow)) continue;
+
+      const charData = col.chars[r % col.chars.length];
+
+      // Head of the stream is brightest (white-green)
+      if (r === 0) {
+        ctx.fillStyle = '#CCFFCC';
+        ctx.globalAlpha = 0.95;
+      } else {
+        // Fade from bright to dim green along the tail
+        const fadeFactor = 1 - (r / col.length);
+        const green = Math.floor(100 + 155 * fadeFactor);
+        const alpha = 0.15 + 0.7 * fadeFactor;
+        ctx.fillStyle = `rgb(0, ${green}, ${Math.floor(green * 0.25)})`;
+        ctx.globalAlpha = alpha;
+      }
+
+      ctx.fillText(charData.char, col.x + CELL_SIZE / 2, yPos + CELL_SIZE / 2);
+    }
+  }
+  ctx.globalAlpha = 1.0;
+}
+
+function isCellLocked(col, row) {
+  for (let i = 0; i < lockedCells.length; i++) {
+    const lc = lockedCells[i];
+    if (lc.col === col && lc.row === row && (lc.state === 'scrambling' || lc.state === 'locked')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// --- Word phase management ---
+function updateWordPhase(timestamp, dt) {
+  // Start the first word after a short delay
+  if (currentWordIndex === -1 && globalTime > 800) {
+    startNextWord();
+    lastWordCycleTime = timestamp;
+    return;
+  }
+
+  if (wordPhase === 'idle') {
+    // Check if it's time for next word
+    if (timestamp - lastWordCycleTime >= wordInterval) {
+      startNextWord();
+      lastWordCycleTime = timestamp;
+    }
+    return;
+  }
+
+  const elapsed = timestamp - wordStartTime;
+
+  if (wordPhase === 'forming') {
+    let allLocked = true;
+    for (let i = 0; i < lockedCells.length; i++) {
+      const cell = lockedCells[i];
+
+      if (cell.state === 'waiting') {
+        if (elapsed >= cell.delay) {
+          cell.state = 'scrambling';
+          cell.scrambleCount = 0;
+        } else {
+          allLocked = false;
+        }
+        continue;
+      }
+
+      if (cell.state === 'scrambling') {
+        cell.scrambleCount += dt * 0.02;
+        cell.brightness = Math.min(1, cell.scrambleCount / cell.maxScrambles);
+
+        // Scramble through random chars
+        if (Math.random() < 0.3) {
+          cell.currentChar = randomChar();
+        }
+
+        // Lock to target when enough scrambles
+        if (cell.scrambleCount >= cell.maxScrambles) {
+          cell.state = 'locked';
+          cell.currentChar = cell.targetChar;
+          cell.brightness = 1;
+          cell.glowIntensity = 1.5;
+        } else {
+          allLocked = false;
+        }
+        continue;
+      }
+
+      // Locked cells pulse glow
+      if (cell.state === 'locked') {
+        cell.glowIntensity = 1.0 + 0.3 * Math.sin(globalTime * 0.004 + i * 0.5);
+      }
+    }
+
+    if (allLocked) {
+      wordPhase = 'hold';
+      wordStartTime = timestamp;
+    }
+  }
+
+  if (wordPhase === 'hold') {
+    const holdElapsed = timestamp - wordStartTime;
+    // Pulsing glow during hold
+    for (let i = 0; i < lockedCells.length; i++) {
+      const cell = lockedCells[i];
+      cell.glowIntensity = 1.0 + 0.4 * Math.sin(globalTime * 0.005 + i * 0.3);
+    }
+
+    if (holdElapsed >= CONFIG.holdDuration) {
+      wordPhase = 'dissolve';
+      wordStartTime = timestamp;
+      // Stagger dissolve
+      for (let i = 0; i < lockedCells.length; i++) {
+        lockedCells[i].delay = i * 80 + Math.random() * 120;
+        lockedCells[i].state = 'locked';
+      }
+    }
+  }
+
+  if (wordPhase === 'dissolve') {
+    const dissolveElapsed = timestamp - wordStartTime;
+    let allDissolved = true;
+
+    for (let i = 0; i < lockedCells.length; i++) {
+      const cell = lockedCells[i];
+
+      if (cell.state === 'locked' && dissolveElapsed >= cell.delay) {
+        cell.state = 'dissolving';
+        cell.scrambleCount = 0;
+      }
+
+      if (cell.state === 'dissolving') {
+        cell.scrambleCount += dt * 0.025;
+        cell.brightness = Math.max(0, 1 - cell.scrambleCount / 4);
+        cell.glowIntensity = cell.brightness;
+
+        if (Math.random() < 0.4) {
+          cell.currentChar = randomChar();
+        }
+
+        if (cell.brightness <= 0) {
+          cell.state = 'done';
+        } else {
+          allDissolved = false;
+        }
+      } else if (cell.state !== 'done') {
+        allDissolved = false;
+      }
+    }
+
+    if (allDissolved) {
+      wordPhase = 'idle';
+      lockedCells = [];
+    }
+  }
+}
+
+// --- Draw locked/forming word cells ---
+function drawLockedCells() {
+  const charSize = Math.min(CONFIG.fontSize, W * 0.12, H * 0.1);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < lockedCells.length; i++) {
+    const cell = lockedCells[i];
+    if (cell.state === 'waiting' || cell.state === 'done') continue;
+
+    const x = cell.col * CELL_SIZE + CELL_SIZE / 2;
+    const y = cell.row * CELL_SIZE + CELL_SIZE / 2;
+
+    // Background dimming behind the letter
+    if (cell.state === 'locked' || cell.state === 'scrambling') {
+      ctx.fillStyle = CONFIG.bgColor;
+      ctx.globalAlpha = 0.5 * cell.brightness;
+      const pad = charSize * 0.1;
+      ctx.fillRect(
+        x - charSize * 0.35 - pad,
+        y - charSize * 0.5 - pad,
+        charSize * 0.7 + pad * 2,
+        charSize + pad * 2
+      );
+      ctx.globalAlpha = 1.0;
+    }
+
+    // Glow effect
+    if (cell.glowIntensity > 0.5) {
+      ctx.shadowColor = CONFIG.rainColor;
+      ctx.shadowBlur = 15 * cell.glowIntensity;
+    }
+
+    // Character color: blend from rain green to word white based on brightness
+    if (cell.state === 'locked') {
+      // Parse wordColor
+      ctx.fillStyle = CONFIG.wordColor;
+      ctx.globalAlpha = cell.brightness;
+      ctx.font = 'bold ' + charSize + 'px "Courier New", monospace';
+    } else if (cell.state === 'scrambling') {
+      // Transition from rain color to word color
+      const r = Math.floor(lerp(0, 255, cell.brightness));
+      const g = Math.floor(lerp(255, 255, cell.brightness));
+      const b = Math.floor(lerp(65, 255, cell.brightness));
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.globalAlpha = 0.5 + cell.brightness * 0.5;
+      const size = CELL_SIZE + (charSize - CELL_SIZE) * cell.brightness;
+      ctx.font = 'bold ' + Math.floor(size) + 'px "Courier New", monospace';
+    } else if (cell.state === 'dissolving') {
+      const r = Math.floor(lerp(255, 0, 1 - cell.brightness));
+      const g = Math.floor(lerp(255, 255, 1 - cell.brightness));
+      const b = Math.floor(lerp(255, 65, 1 - cell.brightness));
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.globalAlpha = cell.brightness;
+      const size = charSize - (charSize - CELL_SIZE) * (1 - cell.brightness);
+      ctx.font = 'bold ' + Math.floor(size) + 'px "Courier New", monospace';
+    }
+
+    ctx.fillText(cell.currentChar, x, y);
+
+    // Second pass: extra bright core for locked chars
+    if (cell.state === 'locked' && cell.glowIntensity > 1) {
+      ctx.shadowBlur = 25 * cell.glowIntensity;
+      ctx.shadowColor = CONFIG.wordColor;
+      ctx.globalAlpha = 0.3;
+      ctx.fillText(cell.currentChar, x, y);
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.globalAlpha = 1.0;
+  }
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+// --- Additional rain drops layer (foreground subtle) ---
+const fgDrops = [];
+const FG_DROP_COUNT = 60;
+
+function initFgDrops() {
+  for (let i = 0; i < FG_DROP_COUNT; i++) {
+    fgDrops.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      speed: 1.5 + Math.random() * 3,
+      char: randomChar(),
+      alpha: 0.05 + Math.random() * 0.12,
+      changeRate: 30 + Math.random() * 60,
+      timer: 0,
+    });
+  }
+}
+
+initFgDrops();
+
+// Patch into the main render to draw foreground drops
+const originalRender = render;
+
+function renderWithFg(timestamp) {
+  const dt = lastTime ? (timestamp - lastTime) : 16;
+  lastTime = timestamp;
+  globalTime += dt;
+
+  // Fade background
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.globalAlpha = 0.08;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1.0;
+
+  updateRain(dt);
+  drawRain();
+
+  updateWordPhase(timestamp, dt);
+  drawLockedCells();
+
+  // Foreground sparse drops
+  drawFgDrops(dt);
+
+  requestAnimationFrame(renderWithFg);
+}
+
+function drawFgDrops(dt) {
+  ctx.font = (CELL_SIZE + 2) + 'px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < fgDrops.length; i++) {
+    const drop = fgDrops[i];
+    drop.y += drop.speed * dt * 0.06;
+    drop.timer += dt * 0.06;
+
+    if (drop.timer >= drop.changeRate) {
+      drop.char = randomChar();
+      drop.timer = 0;
+    }
+
+    if (drop.y > H + CELL_SIZE) {
+      drop.y = -CELL_SIZE;
+      drop.x = Math.random() * W;
+    }
+
+    ctx.fillStyle = CONFIG.rainColor;
+    ctx.globalAlpha = drop.alpha;
+    ctx.fillText(drop.char, drop.x, drop.y);
+  }
+  ctx.globalAlpha = 1.0;
+}
+
+// --- Bright column flashes (occasional bright streaks) ---
+let flashColumns = [];
+
+function spawnFlash() {
+  if (flashColumns.length > 3) return;
+  flashColumns.push({
+    x: Math.floor(Math.random() * (W / CELL_SIZE)) * CELL_SIZE,
+    y: -CELL_SIZE * 4,
+    speed: 4 + Math.random() * 4,
+    length: 4 + Math.floor(Math.random() * 8),
+    chars: Array.from({ length: 12 }, () => randomChar()),
+    life: 0,
+    maxLife: 60 + Math.random() * 80,
+  });
+}
+
+// Integrate flashes into foreground render
+function renderFull(timestamp) {
+  const dt = lastTime ? (timestamp - lastTime) : 16;
+  lastTime = timestamp;
+  globalTime += dt;
+
+  // Fade background
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.globalAlpha = 0.08;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1.0;
+
+  updateRain(dt);
+  drawRain();
+
+  updateWordPhase(timestamp, dt);
+  drawLockedCells();
+
+  drawFgDrops(dt);
+  updateAndDrawFlashes(dt);
+
+  // Occasionally spawn a flash
+  if (Math.random() < 0.01) spawnFlash();
+
+  requestAnimationFrame(renderFull);
+}
+
+function updateAndDrawFlashes(dt) {
+  ctx.font = (CELL_SIZE - 1) + 'px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = flashColumns.length - 1; i >= 0; i--) {
+    const flash = flashColumns[i];
+    flash.y += flash.speed * dt * 0.06;
+    flash.life += dt * 0.06;
+
+    if (flash.life > flash.maxLife || flash.y > H + CELL_SIZE * flash.length) {
+      flashColumns.splice(i, 1);
+      continue;
+    }
+
+    for (let r = 0; r < flash.length; r++) {
+      const yPos = flash.y - r * CELL_SIZE;
+      if (yPos < -CELL_SIZE || yPos > H + CELL_SIZE) continue;
+
+      if (r === 0) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = 0.9;
+      } else {
+        const fade = 1 - r / flash.length;
+        ctx.fillStyle = `rgba(180, 255, 180, ${fade * 0.7})`;
+        ctx.globalAlpha = fade * 0.7;
+      }
+
+      // Randomly change flash chars
+      if (Math.random() < 0.15) {
+        flash.chars[r % flash.chars.length] = randomChar();
+      }
+
+      ctx.fillText(flash.chars[r % flash.chars.length], flash.x + CELL_SIZE / 2, yPos + CELL_SIZE / 2);
+    }
+  }
+  ctx.globalAlpha = 1.0;
+}
+
+// --- Boot sequence ---
+// Brief delay then start
+lastTime = 0;
+requestAnimationFrame(renderFull);
+</script>
+</body>
+</html>

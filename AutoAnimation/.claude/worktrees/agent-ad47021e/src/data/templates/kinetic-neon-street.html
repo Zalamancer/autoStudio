@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Neon Street Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    position: relative;
+    background: #0a0a0a;
+  }
+
+  /* Brick wall texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.15;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 38px,
+        rgba(255,255,255,0.08) 38px,
+        rgba(255,255,255,0.08) 40px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 78px,
+        rgba(255,255,255,0.05) 78px,
+        rgba(255,255,255,0.05) 80px
+      );
+  }
+
+  /* Subtle noise */
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.2;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 4px 14px;
+    position: relative;
+    text-shadow:
+      0 0 7px var(--glow-color, #ff00ff),
+      0 0 20px var(--glow-color, #ff00ff),
+      0 0 40px var(--glow-color, #ff00ff),
+      0 0 80px var(--glow-color, #ff00ff);
+  }
+
+  @keyframes flickerIn {
+    0% { opacity: 0; filter: brightness(0); }
+    10% { opacity: 0.8; filter: brightness(3); }
+    20% { opacity: 0.2; filter: brightness(0.5); }
+    30% { opacity: 1; filter: brightness(2); }
+    40% { opacity: 0.6; filter: brightness(1); }
+    50% { opacity: 0.9; filter: brightness(1.5); }
+    60% { opacity: 1; filter: brightness(1.2); }
+    100% { opacity: var(--final-opacity); filter: brightness(1); }
+  }
+
+  @keyframes buzzOut {
+    0% { opacity: var(--final-opacity); filter: brightness(1); }
+    20% { opacity: 1; filter: brightness(2); }
+    40% { opacity: 0.3; filter: brightness(0.5); }
+    60% { opacity: 0.8; filter: brightness(1.5); }
+    80% { opacity: 0.1; filter: brightness(3); }
+    100% { opacity: 0; filter: brightness(0); }
+  }
+
+  /* Neon wire decoration */
+  .neon-wire {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    height: 2px;
+    opacity: 0.3;
+    box-shadow: 0 0 6px var(--wire-color, #00ffff), 0 0 12px var(--wire-color, #00ffff);
+    background: var(--wire-color, #00ffff);
+  }
+
+  /* Corner glow spots */
+  .glow-spot {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.15;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['AFTER', 'DARK', 'NEON', 'CITY', 'GLOW', 'PULSE'],
+  colors: ['#ff00ff', '#00ffff', '#ffff00', '#ff00ff', '#00ff88', '#ff3366'],
+  glowColors: ['#ff00ff', '#00ffff', '#ffff00', '#ff00ff', '#00ff88', '#ff3366'],
+  bgColor: '#0a0a0a',
+  maxRotation: 6,
+  overlapAmount: 0.25,
+  cycleDuration: 9000,
+  flickerEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '2px' },
+  { family: 'Georgia', weight: '700', style: 'italic', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '0px' },
+];
+
+const fontSizes = [160, 90, 200, 70, 180, 110];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function createDecorations() {
+  // Glow spots in corners
+  const spots = [
+    { top: '0', left: '0', color: '#ff00ff', size: 300 },
+    { bottom: '0', right: '0', color: '#00ffff', size: 250 },
+    { top: '30%', right: '0', color: '#ffff00', size: 200 },
+    { bottom: '20%', left: '0', color: '#ff3366', size: 220 },
+  ];
+
+  spots.forEach(sp => {
+    const el = document.createElement('div');
+    el.className = 'glow-spot';
+    el.style.width = sp.size + 'px';
+    el.style.height = sp.size + 'px';
+    el.style.background = sp.color;
+    if (sp.top) el.style.top = sp.top;
+    if (sp.bottom) el.style.bottom = sp.bottom;
+    if (sp.left) el.style.left = sp.left;
+    if (sp.right) el.style.right = sp.right;
+    stage.appendChild(el);
+  });
+
+  // Neon wire lines
+  const wires = [
+    { top: '10%', left: '3%', width: 100, color: '#ff00ff', rot: 5 },
+    { top: '25%', right: '5%', width: 80, color: '#00ffff', rot: -8 },
+    { bottom: '15%', left: '8%', width: 120, color: '#ffff00', rot: 3 },
+    { bottom: '30%', right: '3%', width: 90, color: '#00ff88', rot: -5 },
+    { top: '55%', left: '2%', width: 70, color: '#ff3366', rot: 12 },
+    { top: '70%', right: '6%', width: 110, color: '#ff00ff', rot: -3 },
+  ];
+
+  wires.forEach(w => {
+    const el = document.createElement('div');
+    el.className = 'neon-wire';
+    el.style.setProperty('--wire-color', w.color);
+    el.style.width = w.width + 'px';
+    el.style.transform = `rotate(${w.rot}deg)`;
+    if (w.top) el.style.top = w.top;
+    if (w.bottom) el.style.bottom = w.bottom;
+    if (w.left) el.style.left = w.left;
+    if (w.right) el.style.right = w.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.72;
+  const baseTop = vh * 0.14;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block';
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.style.setProperty('--glow-color', CONFIG.glowColors[i % CONFIG.glowColors.length]);
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * Math.min(vw * 0.15, 100);
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.85 + rng() * 0.15;
+
+    el.style.transform = `rotate(${rotation}deg)`;
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.dataset.index = String(i);
+    el.dataset.rotation = String(rotation);
+    el.dataset.finalOpacity = String(finalOpacity);
+
+    stage.appendChild(el);
+    elements.push(el);
+  }
+
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const flickerStagger = 400;
+  const flickerDuration = 700;
+  const holdDuration = 2500;
+  const buzzStagger = 250;
+  const buzzDuration = 500;
+  const pauseBeforeLoop = 800;
+
+  const totalFlickerTime = (count - 1) * flickerStagger + flickerDuration;
+  const totalBuzzTime = (count - 1) * buzzStagger + buzzDuration;
+
+  let animationFrame;
+  let startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => {
+      el.style.animation = 'none';
+      el.style.opacity = '0';
+    });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalFlickerTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * flickerStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `flickerIn ${flickerDuration}ms ease-out forwards`;
+        }
+      });
+    }
+    else if (elapsed < totalFlickerTime + holdDuration) {
+      // hold
+    }
+    else if (elapsed < totalFlickerTime + holdDuration + totalBuzzTime) {
+      const buzzElapsed = elapsed - totalFlickerTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const reverseI = count - 1 - i;
+        const wordStart = reverseI * buzzStagger;
+        if (buzzElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `buzzOut ${buzzDuration}ms ease-in forwards`;
+        }
+      });
+    }
+    else if (elapsed < totalFlickerTime + holdDuration + totalBuzzTime + pauseBeforeLoop) {
+      // pause
+    }
+    else {
+      resetAll();
+      wordElements.forEach(el => {
+        delete el.dataset.stamped;
+        delete el.dataset.peeled;
+      });
+      startTime = timestamp;
+    }
+
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const newWordEls = createWordElements();
+    runAnimation(newWordEls);
+  }, 300);
+});
+</script>
+</body>
+</html>

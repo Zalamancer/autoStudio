@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google News Feed</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #1f1f1f;
+    font-family: 'Google Sans', 'Roboto', 'Arial', sans-serif;
+    color: #e8eaed;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2vh 4vw;
+    opacity: 0;
+  }
+  .gn-logo {
+    display: flex; align-items: center; gap: 1.5vw;
+    font-size: 2.2vh; font-weight: 500;
+  }
+  .gn-icon { font-size: 2.5vh; }
+  .gn-tabs {
+    display: flex; gap: 3vw;
+    padding: 0 4vw 1.5vh;
+    border-bottom: 1px solid #3c4043;
+    opacity: 0;
+  }
+  .gn-tab {
+    font-size: 1.3vh; color: #9aa0a6;
+    padding-bottom: 1vh;
+    cursor: pointer;
+  }
+  .gn-tab.active {
+    color: #8ab4f8;
+    border-bottom: 2px solid #8ab4f8;
+  }
+  .top-story-section {
+    padding: 2vh 4vw 1vh;
+    opacity: 0;
+  }
+  .section-label {
+    font-size: 1.3vh;
+    color: #9aa0a6;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.5vh;
+  }
+  .top-card {
+    background: #303134;
+    border-radius: 1.2vh;
+    overflow: hidden;
+    margin-bottom: 1.5vh;
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  .top-card-image {
+    width: 100%; height: 16vh;
+  }
+  .top-card-body {
+    padding: 1.5vh 2vw;
+  }
+  .top-card-source {
+    font-size: 1.1vh;
+    color: #9aa0a6;
+    margin-bottom: 0.5vh;
+    display: flex; align-items: center; gap: 1vw;
+  }
+  .source-dot {
+    width: 1.5vh; height: 1.5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .top-card-title {
+    font-size: 1.8vh;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 0.5vh;
+  }
+  .top-card-time {
+    font-size: 1vh;
+    color: #9aa0a6;
+  }
+  .news-list {
+    padding: 0 4vw;
+    flex: 1;
+    overflow: hidden;
+  }
+  .news-item {
+    display: flex; gap: 2.5vw;
+    padding: 1.5vh 0;
+    border-bottom: 1px solid #3c4043;
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+  .news-item-body { flex: 1; }
+  .news-item-source {
+    font-size: 1vh;
+    color: #9aa0a6;
+    display: flex; align-items: center; gap: 1vw;
+    margin-bottom: 0.5vh;
+  }
+  .news-item-title {
+    font-size: 1.5vh;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 0.5vh;
+  }
+  .news-item-time {
+    font-size: 0.9vh;
+    color: #9aa0a6;
+  }
+  .news-item-thumb {
+    width: 10vh; height: 8vh;
+    border-radius: 0.8vh;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .related-row {
+    display: flex; gap: 1vw;
+    margin-top: 0.5vh;
+  }
+  .related-chip {
+    font-size: 0.9vh;
+    color: #8ab4f8;
+    background: rgba(138,180,248,0.1);
+    padding: 0.3vh 1.5vw;
+    border-radius: 10vh;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header" id="header">
+    <div class="gn-logo"><span class="gn-icon">&#x1F4F0;</span><span id="logoText">Google News</span></div>
+    <div style="display:flex;gap:2vw;">
+      <span style="font-size:2vh;opacity:0.6;">&#x1F50D;</span>
+      <span style="font-size:2vh;opacity:0.6;">&#x2699;</span>
+    </div>
+  </div>
+
+  <div class="gn-tabs" id="tabs">
+    <div class="gn-tab active">Top Stories</div>
+    <div class="gn-tab">For You</div>
+    <div class="gn-tab">World</div>
+    <div class="gn-tab">Local</div>
+  </div>
+
+  <div class="top-story-section" id="topSection">
+    <div class="section-label">TOP STORIES</div>
+  </div>
+
+  <div class="top-card" id="topCard">
+    <div class="top-card-image" id="topImage" style="background: linear-gradient(135deg, #1a73e8, #4285f4);"></div>
+    <div class="top-card-body">
+      <div class="top-card-source"><div class="source-dot" id="topSourceDot" style="background:#ea4335;"></div><span id="topSource">Reuters</span></div>
+      <div class="top-card-title" id="topTitle">Major Technology Companies Announce New AI Safety Coalition to Establish Industry Standards</div>
+      <div class="top-card-time" id="topTime">3 hours ago</div>
+    </div>
+  </div>
+
+  <div class="news-list">
+    <div class="news-item" id="item1">
+      <div class="news-item-body">
+        <div class="news-item-source"><div class="source-dot" style="background:#34a853;"></div><span id="src1">Associated Press</span></div>
+        <div class="news-item-title" id="itemTitle1">Global Markets Rally as Central Banks Signal Policy Shift Amid Economic Recovery</div>
+        <div class="news-item-time" id="itemTime1">5 hours ago</div>
+      </div>
+      <div class="news-item-thumb" id="thumb1" style="background: linear-gradient(135deg, #34a853, #0f9d58);"></div>
+    </div>
+
+    <div class="news-item" id="item2">
+      <div class="news-item-body">
+        <div class="news-item-source"><div class="source-dot" style="background:#fbbc04;"></div><span id="src2">BBC News</span></div>
+        <div class="news-item-title" id="itemTitle2">Climate Summit Reaches Historic Agreement on Emissions Reduction Targets</div>
+        <div class="news-item-time" id="itemTime2">7 hours ago</div>
+        <div class="related-row">
+          <div class="related-chip">Climate</div>
+          <div class="related-chip">World</div>
+        </div>
+      </div>
+      <div class="news-item-thumb" id="thumb2" style="background: linear-gradient(135deg, #fbbc04, #f9a825);"></div>
+    </div>
+
+    <div class="news-item" id="item3">
+      <div class="news-item-body">
+        <div class="news-item-source"><div class="source-dot" style="background:#e8710a;"></div><span id="src3">Bloomberg</span></div>
+        <div class="news-item-title" id="itemTitle3">Startup Funding Rebounds to Record Levels Driven by AI and Cleantech Sectors</div>
+        <div class="news-item-time" id="itemTime3">12 hours ago</div>
+      </div>
+      <div class="news-item-thumb" id="thumb3" style="background: linear-gradient(135deg, #e8710a, #ff8f00);"></div>
+    </div>
+
+    <div class="news-item" id="item4">
+      <div class="news-item-body">
+        <div class="news-item-source"><div class="source-dot" style="background:#9334e6;"></div><span id="src4">The Guardian</span></div>
+        <div class="news-item-title" id="itemTitle4">Space Agency Reveals Plans for Next-Generation Deep Space Exploration Mission</div>
+        <div class="news-item-time" id="itemTime4">1 day ago</div>
+      </div>
+      <div class="news-item-thumb" id="thumb4" style="background: linear-gradient(135deg, #9334e6, #7b1fa2);"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    logoText: 'Google News',
+    topSource: 'Reuters',
+    topTitle: 'Major Technology Companies Announce New AI Safety Coalition to Establish Industry Standards',
+    topTime: '3 hours ago',
+    item1Source: 'Associated Press',
+    item1Title: 'Global Markets Rally as Central Banks Signal Policy Shift Amid Economic Recovery',
+    item1Time: '5 hours ago',
+    item2Source: 'BBC News',
+    item2Title: 'Climate Summit Reaches Historic Agreement on Emissions Reduction Targets',
+    item2Time: '7 hours ago',
+    item3Source: 'Bloomberg',
+    item3Title: 'Startup Funding Rebounds to Record Levels Driven by AI and Cleantech Sectors',
+    item3Time: '12 hours ago',
+    item4Source: 'The Guardian',
+    item4Title: 'Space Agency Reveals Plans for Next-Generation Deep Space Exploration Mission',
+    item4Time: '1 day ago',
+    bgColor: '#1f1f1f',
+    accentColor: '#8ab4f8',
+    cycleDuration: 15000
+  };
+
+  document.getElementById('logoText').textContent = CONFIG.logoText;
+  document.getElementById('topSource').textContent = CONFIG.topSource;
+  document.getElementById('topTitle').textContent = CONFIG.topTitle;
+  document.getElementById('topTime').textContent = CONFIG.topTime;
+  document.getElementById('src1').textContent = CONFIG.item1Source;
+  document.getElementById('itemTitle1').textContent = CONFIG.item1Title;
+  document.getElementById('itemTime1').textContent = CONFIG.item1Time;
+  document.getElementById('src2').textContent = CONFIG.item2Source;
+  document.getElementById('itemTitle2').textContent = CONFIG.item2Title;
+  document.getElementById('itemTime2').textContent = CONFIG.item2Time;
+  document.getElementById('src3').textContent = CONFIG.item3Source;
+  document.getElementById('itemTitle3').textContent = CONFIG.item3Title;
+  document.getElementById('itemTime3').textContent = CONFIG.item3Time;
+  document.getElementById('src4').textContent = CONFIG.item4Source;
+  document.getElementById('itemTitle4').textContent = CONFIG.item4Title;
+  document.getElementById('itemTime4').textContent = CONFIG.item4Time;
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.6s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    const all = ['header','tabs','topSection','topCard','item1','item2','item3','item4'];
+    all.forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      if (id === 'topCard') el.style.transform = 'translateY(15px)';
+      if (['item1','item2','item3','item4'].includes(id)) el.style.transform = 'translateX(-15px)';
+    });
+    void document.getElementById('header').offsetWidth;
+
+    anim(document.getElementById('header'), { opacity: '1' }, 200);
+    anim(document.getElementById('tabs'), { opacity: '1' }, 500);
+    anim(document.getElementById('topSection'), { opacity: '1' }, 800);
+    anim(document.getElementById('topCard'), { opacity: '1', transform: 'translateY(0)' }, 1200);
+    anim(document.getElementById('item1'), { opacity: '1', transform: 'translateX(0)' }, 2200);
+    anim(document.getElementById('item2'), { opacity: '1', transform: 'translateX(0)' }, 2800);
+    anim(document.getElementById('item3'), { opacity: '1', transform: 'translateX(0)' }, 3400);
+    anim(document.getElementById('item4'), { opacity: '1', transform: 'translateX(0)' }, 4000);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

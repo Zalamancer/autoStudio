@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newspaper Layout</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5f0e8;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #1a1a1a;
+  }
+  .container {
+    width: 100%;
+    height: 100%;
+    padding: 3vh 4vw;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .masthead {
+    text-align: center;
+    border-bottom: 4px double #1a1a1a;
+    padding-bottom: 1vh;
+    margin-bottom: 1.5vh;
+  }
+  .paper-name {
+    font-size: 5vh;
+    font-weight: 900;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    opacity: 0;
+  }
+  .dateline {
+    font-size: 1.5vh;
+    letter-spacing: 0.15em;
+    margin-top: 0.5vh;
+    opacity: 0;
+    font-style: italic;
+  }
+  .headline-area {
+    text-align: center;
+    margin: 2vh 0;
+    border-bottom: 2px solid #1a1a1a;
+    padding-bottom: 1.5vh;
+  }
+  .headline {
+    font-size: 4.5vh;
+    font-weight: 900;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .headline .char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .byline {
+    font-size: 1.6vh;
+    font-style: italic;
+    margin-top: 1vh;
+    opacity: 0;
+  }
+  .columns {
+    display: flex;
+    gap: 2vw;
+    flex: 1;
+    overflow: hidden;
+  }
+  .column {
+    flex: 1;
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  .column p {
+    font-size: 1.4vh;
+    line-height: 1.7;
+    text-align: justify;
+    margin-bottom: 1vh;
+    color: #333;
+  }
+  .column-rule {
+    width: 1px;
+    background: #1a1a1a;
+    opacity: 0;
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  .image-placeholder {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #d4cfc5;
+    border: 1px solid #999;
+    margin: 1vh 0;
+    opacity: 0;
+    transform: translateY(40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2vh;
+    color: #888;
+    font-style: italic;
+  }
+  .stamp {
+    position: absolute;
+    top: 25%;
+    right: 8%;
+    font-size: 5vh;
+    font-weight: 900;
+    color: #cc0000;
+    border: 0.5vh solid #cc0000;
+    padding: 0.5vh 2vh;
+    transform: rotate(-15deg) scale(0);
+    opacity: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    pointer-events: none;
+  }
+  .thin-rule {
+    width: 100%;
+    height: 1px;
+    background: #1a1a1a;
+    transform: scaleX(0);
+    transform-origin: left;
+    margin: 0.5vh 0;
+  }
+  .sub-headline {
+    font-size: 2vh;
+    font-weight: 700;
+    margin-bottom: 0.5vh;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="masthead">
+    <div class="paper-name" id="paperName">THE DAILY CHRONICLE</div>
+    <div class="dateline" id="dateline">FOUNDED 1889 &bull; MORNING EDITION &bull; VOL. CXXXVI NO. 247</div>
+  </div>
+  <div class="thin-rule" id="topRule"></div>
+  <div class="headline-area">
+    <div class="headline" id="headline"></div>
+    <div class="byline" id="byline">By Our Special Correspondent &mdash; Filed at Press Time</div>
+  </div>
+  <div class="columns" id="columns">
+    <div class="column" id="col1">
+      <div class="sub-headline">First Reports Emerge</div>
+      <p>The extraordinary events that unfolded yesterday evening have captured the attention of citizens across the nation. Witnesses described scenes of remarkable activity as crowds gathered in the town square to observe the unprecedented occurrence firsthand.</p>
+      <div class="image-placeholder">[ Photograph ]</div>
+      <p>Officials have confirmed that investigations are underway to determine the full scope and significance of the developments, which many experts are already calling a turning point in modern history.</p>
+    </div>
+    <div class="column-rule" id="rule1"></div>
+    <div class="column" id="col2">
+      <div class="sub-headline">Expert Analysis</div>
+      <p>Leading authorities in the field have weighed in with their assessments, suggesting that the implications could be far-reaching. Professor emeritus at the University noted that such events occur perhaps once in a generation.</p>
+      <p>The committee has scheduled an emergency session to review all available evidence and prepare a comprehensive report for public release by the end of the week.</p>
+      <p>Meanwhile, preparations continue throughout the district as residents brace for what many anticipate will be a period of significant change and adaptation.</p>
+    </div>
+    <div class="column-rule" id="rule2"></div>
+    <div class="column" id="col3">
+      <div class="sub-headline">Public Response</div>
+      <p>Citizens have responded with a mixture of excitement and cautious optimism. Community leaders have organized informational meetings to address questions and concerns from residents of all neighborhoods.</p>
+      <div class="image-placeholder">[ Illustration ]</div>
+      <p>Local businesses report increased activity as people seek to stay informed about the latest developments through every available channel.</p>
+    </div>
+  </div>
+  <div class="stamp" id="stamp">EXTRA EXTRA</div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    paperName: 'THE DAILY CHRONICLE',
+    headline: 'REMARKABLE DISCOVERY STUNS THE NATION',
+    byline: 'By Our Special Correspondent — Filed at Press Time',
+    dateline: 'FOUNDED 1889 \u2022 MORNING EDITION \u2022 VOL. CXXXVI NO. 247',
+    stampText: 'EXTRA EXTRA',
+    cycleDuration: 12000,
+    bgColor: '#f5f0e8',
+    textColor: '#1a1a1a',
+    accentColor: '#cc0000'
+  };
+
+  document.body.style.background = CONFIG.bgColor;
+  document.body.style.color = CONFIG.textColor;
+
+  const headlineEl = document.getElementById('headline');
+  const paperNameEl = document.getElementById('paperName');
+  const datelineEl = document.getElementById('dateline');
+  const bylineEl = document.getElementById('byline');
+  const stamp = document.getElementById('stamp');
+  const topRule = document.getElementById('topRule');
+
+  paperNameEl.textContent = CONFIG.paperName;
+  datelineEl.textContent = CONFIG.dateline;
+  bylineEl.textContent = CONFIG.byline;
+  stamp.textContent = CONFIG.stampText;
+
+  function wrapChars(text) {
+    return text.split('').map((ch, i) => {
+      if (ch === ' ') return ' ';
+      return `<span class="char" style="transition-delay:${i * 40}ms">${ch}</span>`;
+    }).join('');
+  }
+
+  headlineEl.innerHTML = wrapChars(CONFIG.headline);
+
+  function animate(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.8s cubic-bezier(0.22, 1, 0.36, 1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    const els = {
+      paperName: paperNameEl,
+      dateline: datelineEl,
+      byline: bylineEl,
+      stamp: stamp,
+      topRule: topRule,
+      col1: document.getElementById('col1'),
+      col2: document.getElementById('col2'),
+      col3: document.getElementById('col3'),
+      rule1: document.getElementById('rule1'),
+      rule2: document.getElementById('rule2'),
+    };
+
+    // Reset
+    els.paperName.style.transition = 'none';
+    els.paperName.style.opacity = '0';
+    els.dateline.style.transition = 'none';
+    els.dateline.style.opacity = '0';
+    els.byline.style.transition = 'none';
+    els.byline.style.opacity = '0';
+    els.stamp.style.transition = 'none';
+    els.stamp.style.opacity = '0';
+    els.stamp.style.transform = 'rotate(-15deg) scale(0)';
+    els.topRule.style.transition = 'none';
+    els.topRule.style.transform = 'scaleX(0)';
+    els.col1.style.transition = 'none';
+    els.col1.style.opacity = '0';
+    els.col1.style.transform = 'translateY(30px)';
+    els.col2.style.transition = 'none';
+    els.col2.style.opacity = '0';
+    els.col2.style.transform = 'translateY(30px)';
+    els.col3.style.transition = 'none';
+    els.col3.style.opacity = '0';
+    els.col3.style.transform = 'translateY(30px)';
+    els.rule1.style.transition = 'none';
+    els.rule1.style.opacity = '0';
+    els.rule1.style.transform = 'scaleY(0)';
+    els.rule2.style.transition = 'none';
+    els.rule2.style.opacity = '0';
+    els.rule2.style.transform = 'scaleY(0)';
+
+    document.querySelectorAll('.char').forEach(c => {
+      c.style.transition = 'none';
+      c.style.opacity = '0';
+      c.style.transform = 'translateY(20px)';
+    });
+
+    document.querySelectorAll('.image-placeholder').forEach(p => {
+      p.style.transition = 'none';
+      p.style.opacity = '0';
+      p.style.transform = 'translateY(40px)';
+    });
+
+    document.querySelectorAll('.sub-headline').forEach(s => {
+      s.style.transition = 'none';
+      s.style.opacity = '0';
+    });
+
+    void els.paperName.offsetWidth;
+
+    // Sequence
+    animate(els.paperName, { opacity: '1' }, 200);
+    animate(els.dateline, { opacity: '1' }, 600);
+
+    setTimeout(() => {
+      els.topRule.style.transition = 'transform 0.6s ease-out';
+      els.topRule.style.transform = 'scaleX(1)';
+    }, 800);
+
+    setTimeout(() => {
+      document.querySelectorAll('.char').forEach(c => {
+        c.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        c.style.transitionDelay = c.style.transitionDelay;
+        c.style.opacity = '1';
+        c.style.transform = 'translateY(0)';
+      });
+    }, 1200);
+
+    animate(els.byline, { opacity: '1' }, 2800);
+
+    animate(els.col1, { opacity: '1', transform: 'translateY(0)' }, 3200);
+
+    setTimeout(() => {
+      els.rule1.style.transition = 'opacity 0.5s ease, transform 0.8s ease';
+      els.rule1.style.opacity = '1';
+      els.rule1.style.transform = 'scaleY(1)';
+    }, 3400);
+
+    animate(els.col2, { opacity: '1', transform: 'translateY(0)' }, 3800);
+
+    setTimeout(() => {
+      els.rule2.style.transition = 'opacity 0.5s ease, transform 0.8s ease';
+      els.rule2.style.opacity = '1';
+      els.rule2.style.transform = 'scaleY(1)';
+    }, 4000);
+
+    animate(els.col3, { opacity: '1', transform: 'translateY(0)' }, 4400);
+
+    setTimeout(() => {
+      document.querySelectorAll('.sub-headline').forEach((s, i) => {
+        s.style.transition = 'opacity 0.5s ease';
+        s.style.transitionDelay = `${i * 200}ms`;
+        s.style.opacity = '1';
+      });
+    }, 3400);
+
+    setTimeout(() => {
+      document.querySelectorAll('.image-placeholder').forEach((p, i) => {
+        setTimeout(() => {
+          p.style.transition = 'opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+          p.style.opacity = '1';
+          p.style.transform = 'translateY(0)';
+        }, i * 300);
+      });
+    }, 5000);
+
+    setTimeout(() => {
+      els.stamp.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      els.stamp.style.opacity = '0.85';
+      els.stamp.style.transform = 'rotate(-15deg) scale(1)';
+    }, 6500);
+
+    // Fade out
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

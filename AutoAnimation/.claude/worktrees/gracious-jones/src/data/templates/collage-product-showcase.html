@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product Showcase Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #fafafa; font-family: 'Arial', sans-serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 16px; padding: 30px; }
+
+  .product { opacity: 0; will-change: transform, opacity; display: flex; align-items: center; justify-content: center; }
+  .product-card { width: 90%; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.06); }
+  .product-img { width: 100%; height: 120px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .product-shape { width: 60px; height: 60px; border-radius: 12px; transform: rotate(15deg); opacity: 0.8; }
+  .product-tag { position: absolute; top: 8px; right: 8px; font-size: 9px; padding: 2px 8px; border-radius: 8px; color: #fff; font-weight: 700; }
+  .product-body { padding: 12px 14px; }
+  .product-name { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+  .product-desc { font-size: 10px; color: #999; margin-bottom: 8px; line-height: 1.4; }
+  .product-footer { display: flex; justify-content: space-between; align-items: center; }
+  .product-price { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+  .product-stars { font-size: 10px; color: #fbbf24; }
+
+  @keyframes productUp { 0% { opacity: 0; transform: translateY(30px); } 60% { transform: translateY(-3px); } 100% { opacity: 1; transform: translateY(0); } }
+  @keynamed productDown { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(20px); } }
+  @keyframes productDown { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(20px); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  products: [
+    { bg: '#fef3c7', color: '#f59e0b', name: 'Desk Lamp', desc: 'Warm LED light', price: '$49', stars: 4.8, tag: 'NEW', tagColor: '#f59e0b' },
+    { bg: '#dbeafe', color: '#3b82f6', name: 'Wireless Buds', desc: 'Noise cancelling', price: '$129', stars: 4.9, tag: 'BEST', tagColor: '#3b82f6' },
+    { bg: '#fce7f3', color: '#ec4899', name: 'Smart Watch', desc: 'Health tracking', price: '$299', stars: 4.7, tag: '', tagColor: '' },
+    { bg: '#d1fae5', color: '#10b981', name: 'Plant Pot', desc: 'Self-watering', price: '$35', stars: 4.5, tag: 'ECO', tagColor: '#10b981' },
+    { bg: '#ede9fe', color: '#8b5cf6', name: 'Keyboard', desc: 'Mechanical RGB', price: '$89', stars: 4.6, tag: '', tagColor: '' },
+    { bg: '#fef2f2', color: '#ef4444', name: 'Backpack', desc: 'Water resistant', price: '$65', stars: 4.4, tag: 'SALE', tagColor: '#ef4444' },
+    { bg: '#ecfdf5', color: '#059669', name: 'Water Bottle', desc: 'Insulated 32oz', price: '$28', stars: 4.8, tag: '', tagColor: '' },
+    { bg: '#fff7ed', color: '#f97316', name: 'Notebook', desc: 'Leather bound', price: '$22', stars: 4.3, tag: 'NEW', tagColor: '#f97316' },
+  ],
+  bgColor: '#fafafa',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.products.forEach(p => {
+    const el = document.createElement('div'); el.className = 'product';
+    const card = document.createElement('div'); card.className = 'product-card';
+    const img = document.createElement('div'); img.className = 'product-img'; img.style.background = p.bg;
+    const shape = document.createElement('div'); shape.className = 'product-shape'; shape.style.background = p.color;
+    img.appendChild(shape);
+    if (p.tag) { const tag = document.createElement('div'); tag.className = 'product-tag'; tag.style.background = p.tagColor; tag.textContent = p.tag; img.appendChild(tag); }
+    const body = document.createElement('div'); body.className = 'product-body';
+    const name = document.createElement('div'); name.className = 'product-name'; name.textContent = p.name;
+    const desc = document.createElement('div'); desc.className = 'product-desc'; desc.textContent = p.desc;
+    const footer = document.createElement('div'); footer.className = 'product-footer';
+    const price = document.createElement('div'); price.className = 'product-price'; price.textContent = p.price;
+    const stars = document.createElement('div'); stars.className = 'product-stars'; stars.textContent = '\u2605'.repeat(Math.floor(p.stars)) + ' ' + p.stars;
+    footer.appendChild(price); footer.appendChild(stars);
+    body.appendChild(name); body.appendChild(desc); body.appendChild(footer);
+    card.appendChild(img); card.appendChild(body);
+    el.appendChild(card); stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=200, inD=400, hold=3500, outS=160, outD=350, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`productUp ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`productDown ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blueprint Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #1a3a5c; font-family: 'Courier New', monospace; }
+  body::before { content:''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.08;
+    background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 40px 40px; }
+  #stage { position: absolute; inset: 0; z-index: 1; }
+
+  .bp-item { position: absolute; opacity: 0; will-change: transform, opacity; }
+  .bp-item .inner { border: 1px solid rgba(180,210,240,0.5); padding: 10px 14px; position: relative; }
+  .bp-item.rect .inner { background: rgba(180,210,240,0.06); }
+  .bp-item.label-item .inner { border: none; color: rgba(180,210,240,0.7); font-size: 12px; text-transform: uppercase; letter-spacing: 3px; padding: 4px 0; }
+  .bp-item.dimension .inner { border: none; color: rgba(180,210,240,0.4); font-size: 10px; letter-spacing: 2px; }
+  .bp-item.dimension .inner::before { content:''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(180,210,240,0.2); }
+  .bp-item.filled .inner { background: rgba(180,210,240,0.12); border-color: rgba(180,210,240,0.7); }
+  .bp-item.circle-item .inner { border-radius: 50%; width: 100px; height: 100px; border: 1px dashed rgba(180,210,240,0.4); display: flex; align-items: center; justify-content: center; font-size: 10px; color: rgba(180,210,240,0.5); }
+  .bp-item.title-block .inner { border: 2px solid rgba(180,210,240,0.6); padding: 12px 18px; }
+  .bp-item.title-block .bp-title { font-size: 18px; font-weight: 700; color: rgba(200,220,240,0.9); letter-spacing: 4px; text-transform: uppercase; }
+  .bp-item.title-block .bp-sub { font-size: 10px; color: rgba(180,210,240,0.5); margin-top: 4px; letter-spacing: 2px; }
+
+  @keyframes drawIn { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 100% { opacity: var(--fo); clip-path: inset(0 0 0 0); } }
+  @keyframes eraseOut { 0% { opacity: var(--fo); clip-path: inset(0 0 0 0); } 100% { opacity: 0; clip-path: inset(0 0 0 100%); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  items: [
+    { type: 'title-block', title: 'PROJECT ALPHA', sub: 'REV. 03 \u2014 SHEET 1 OF 4' },
+    { type: 'rect', w: 220, h: 160 },
+    { type: 'filled', w: 150, h: 120 },
+    { type: 'label-item', text: 'SECTION A-A' },
+    { type: 'circle-item', text: 'DETAIL 1' },
+    { type: 'rect', w: 200, h: 140 },
+    { type: 'dimension', text: '2400mm', w: 180 },
+    { type: 'label-item', text: 'ELEVATION NORTH' },
+    { type: 'filled', w: 180, h: 100 },
+    { type: 'dimension', text: '1800mm', w: 140 },
+  ],
+  bgColor: '#1a3a5c',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function createItems() {
+  const els = [], n = CONFIG.items.length, vw = window.innerWidth, vh = window.innerHeight;
+  const cols = 3, rows = Math.ceil(n / cols);
+  const cellW = (vw - 80) / cols, cellH = (vh - 80) / rows;
+
+  for (let i = 0; i < n; i++) {
+    const item = CONFIG.items[i];
+    const el = document.createElement('div'); el.className = `bp-item ${item.type}`;
+    const inner = document.createElement('div'); inner.className = 'inner';
+
+    if (item.type === 'title-block') {
+      const t = document.createElement('div'); t.className = 'bp-title'; t.textContent = item.title;
+      const s = document.createElement('div'); s.className = 'bp-sub'; s.textContent = item.sub;
+      inner.appendChild(t); inner.appendChild(s);
+    } else if (item.type === 'rect' || item.type === 'filled') {
+      inner.style.width = item.w + 'px'; inner.style.height = item.h + 'px';
+    } else if (item.type === 'label-item' || item.type === 'dimension') {
+      inner.textContent = item.text;
+      if (item.w) inner.style.width = item.w + 'px';
+    } else if (item.type === 'circle-item') {
+      inner.textContent = item.text;
+    }
+
+    el.appendChild(inner);
+    const col = i % cols, row = Math.floor(i / cols);
+    const bx = 40 + col * cellW + cellW * 0.05;
+    const by = 40 + row * cellH + cellH * 0.05;
+    el.style.left = bx + 'px'; el.style.top = by + 'px';
+    el.style.setProperty('--fo', '0.9');
+
+    stage.appendChild(el); els.push(el);
+  }
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=300, inD=500, hold=3500, outS=200, outD=400, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`drawIn ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`eraseOut ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let items=createItems();runAnimation(items);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{stage.innerHTML='';items=createItems();runAnimation(items);},300);});
+</script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Chat</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  messages: [
+    { text: 'Hey! Have you seen the new product launch?', sender: 'left' },
+    { text: 'Yes! It looks incredible', sender: 'right' },
+    { text: 'The design team really outdid themselves this time', sender: 'left' },
+    { text: 'Absolutely! The animations are so smooth', sender: 'right' },
+    { text: 'We should use it for our next project', sender: 'left' },
+    { text: "I'm already on it! Let me send you the demo link", sender: 'right' },
+    { text: 'Amazing, thanks!', sender: 'left' }
+  ],
+  senderColor: '#3B82F6',
+  receiverColor: '#374151',
+  bgColor: '#111827',
+  typingDelay: 1200,
+  fontSize: 15
+};
+
+window.addEventListener('message', e => {
+  if (e.data && typeof e.data === 'object') Object.assign(CONFIG, e.data);
+});
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// State
+let currentMessageIndex = 0;
+let phase = 'typing'; // 'typing', 'revealing', 'pause', 'idle'
+let phaseTimer = 0;
+let revealedMessages = [];
+let typingDotPhase = 0;
+let scrollOffset = 0;
+let targetScrollOffset = 0;
+let lastTime = performance.now();
+
+// Timing
+const TYPING_DURATION = 1.5;
+const REVEAL_DURATION = 0.3;
+const PAUSE_BETWEEN = 0.4;
+const LOOP_PAUSE = 3.0;
+
+// Helper: measure text wrapping
+function wrapText(text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  ctx.font = `400 ${CONFIG.fontSize}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+
+  for (const word of words) {
+    const testLine = currentLine ? currentLine + ' ' + word : word;
+    const metrics = ctx.getMetrics ? null : ctx.measureText(testLine);
+    if (metrics.width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function drawRoundedRect(x, y, w, h, radii) {
+  // radii: { tl, tr, br, bl }
+  const r = typeof radii === 'number'
+    ? { tl: radii, tr: radii, br: radii, bl: radii }
+    : radii;
+  ctx.beginPath();
+  ctx.moveTo(x + r.tl, y);
+  ctx.lineTo(x + w - r.tr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+  ctx.lineTo(x + w, y + h - r.br);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+  ctx.lineTo(x + r.bl, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+  ctx.lineTo(x, y + r.tl);
+  ctx.quadraticCurveTo(x, y, x + r.tl, y);
+  ctx.closePath();
+}
+
+function getMessageBubbleHeight(text) {
+  const maxW = W * 0.55;
+  const lines = wrapText(text, maxW);
+  const lineHeight = CONFIG.fontSize * 1.45;
+  const paddingY = 12;
+  return lines.length * lineHeight + paddingY * 2;
+}
+
+function drawBubble(msg, y, alpha, slideY) {
+  const isLeft = msg.sender === 'left';
+  const maxW = W * 0.55;
+  const lines = wrapText(msg.text, maxW);
+  const lineHeight = CONFIG.fontSize * 1.45;
+  const paddingX = 16;
+  const paddingY = 12;
+
+  // Calculate bubble dimensions
+  let bubbleW = 0;
+  ctx.font = `400 ${CONFIG.fontSize}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  for (const line of lines) {
+    bubbleW = Math.max(bubbleW, ctx.measureText(line).width);
+  }
+  bubbleW += paddingX * 2;
+  const bubbleH = lines.length * lineHeight + paddingY * 2;
+
+  const marginX = W * 0.06;
+  const bx = isLeft ? marginX : W - marginX - bubbleW;
+  const by = y + slideY;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Bubble shape with iMessage-style radii
+  const radius = 18;
+  const tailRadius = 4;
+  const radii = isLeft
+    ? { tl: tailRadius, tr: radius, br: radius, bl: radius }
+    : { tl: radius, tr: tailRadius, br: radius, bl: radius };
+
+  drawRoundedRect(bx, by, bubbleW, bubbleH, radii);
+  ctx.fillStyle = isLeft ? CONFIG.receiverColor : CONFIG.senderColor;
+  ctx.fill();
+
+  // Text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `400 ${CONFIG.fontSize}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], bx + paddingX, by + paddingY + i * lineHeight);
+  }
+
+  ctx.restore();
+
+  return bubbleH;
+}
+
+function drawTypingIndicator(y, isLeft, alpha) {
+  const marginX = W * 0.06;
+  const bubbleW = 65;
+  const bubbleH = 38;
+  const bx = isLeft ? marginX : W - marginX - bubbleW;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  const radius = 18;
+  const tailRadius = 4;
+  const radii = isLeft
+    ? { tl: tailRadius, tr: radius, br: radius, bl: radius }
+    : { tl: radius, tr: tailRadius, br: radius, bl: radius };
+
+  drawRoundedRect(bx, y, bubbleW, bubbleH, radii);
+  ctx.fillStyle = isLeft ? CONFIG.receiverColor : CONFIG.senderColor;
+  ctx.fill();
+
+  // Three animated dots
+  const dotRadius = 3.5;
+  const dotGap = 10;
+  const dotsStartX = bx + bubbleW / 2 - dotGap;
+  const dotsY = y + bubbleH / 2;
+
+  for (let i = 0; i < 3; i++) {
+    const delay = i * 0.3;
+    const bounce = Math.sin(typingDotPhase * 4 - delay * Math.PI) * 0.5 + 0.5;
+    const dotY = dotsY - bounce * 5;
+    const dotAlpha = 0.4 + bounce * 0.6;
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${dotAlpha})`;
+    ctx.beginPath();
+    ctx.arc(dotsStartX + i * dotGap, dotY, dotRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawTimestamp(y, text) {
+  ctx.save();
+  ctx.font = `400 ${Math.max(10, CONFIG.fontSize * 0.7)}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, W / 2, y + 5);
+  ctx.restore();
+  return 25;
+}
+
+function drawHeader() {
+  // Status bar area
+  const headerH = H * 0.08;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(0, 0, W, headerH);
+
+  // Title
+  ctx.font = `600 ${CONFIG.fontSize * 1.1}px system-ui, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Messages', W / 2, headerH / 2);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, headerH);
+  ctx.lineTo(W, headerH);
+  ctx.stroke();
+  ctx.restore();
+
+  return headerH;
+}
+
+function getTotalMessageHeight(upToIndex) {
+  let total = 0;
+  const gap = 8;
+  for (let i = 0; i <= upToIndex && i < revealedMessages.length; i++) {
+    total += getMessageBubbleHeight(revealedMessages[i].text) + gap;
+    // Add timestamp gap for first message or group changes
+    if (i === 0) total += 30;
+  }
+  return total;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function update(dt) {
+  typingDotPhase += dt;
+
+  switch (phase) {
+    case 'typing':
+      phaseTimer += dt;
+      if (phaseTimer >= TYPING_DURATION) {
+        phase = 'revealing';
+        phaseTimer = 0;
+        revealedMessages.push(CONFIG.messages[currentMessageIndex]);
+      }
+      break;
+
+    case 'revealing':
+      phaseTimer += dt;
+      if (phaseTimer >= REVEAL_DURATION) {
+        phase = 'pause';
+        phaseTimer = 0;
+      }
+      break;
+
+    case 'pause':
+      phaseTimer += dt;
+      if (phaseTimer >= PAUSE_BETWEEN) {
+        currentMessageIndex++;
+        if (currentMessageIndex >= CONFIG.messages.length) {
+          phase = 'idle';
+          phaseTimer = 0;
+        } else {
+          phase = 'typing';
+          phaseTimer = 0;
+        }
+      }
+      break;
+
+    case 'idle':
+      phaseTimer += dt;
+      if (phaseTimer >= LOOP_PAUSE) {
+        // Reset
+        currentMessageIndex = 0;
+        revealedMessages = [];
+        phase = 'typing';
+        phaseTimer = 0;
+        scrollOffset = 0;
+        targetScrollOffset = 0;
+      }
+      break;
+  }
+
+  // Calculate scroll needed
+  const headerH = H * 0.08;
+  const contentStart = headerH + 30;
+  let totalContentH = contentStart;
+  const gap = 8;
+  for (let i = 0; i < revealedMessages.length; i++) {
+    totalContentH += getMessageBubbleHeight(revealedMessages[i].text) + gap;
+  }
+  // Add typing indicator height if typing
+  if (phase === 'typing') totalContentH += 50;
+
+  const maxVisible = H - 20;
+  if (totalContentH > maxVisible) {
+    targetScrollOffset = totalContentH - maxVisible;
+  } else {
+    targetScrollOffset = 0;
+  }
+  scrollOffset += (targetScrollOffset - scrollOffset) * Math.min(1, dt * 6);
+}
+
+function draw() {
+  // Background
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const headerH = drawHeader();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, headerH, W, H - headerH);
+  ctx.clip();
+
+  let yPos = headerH + 20 - scrollOffset;
+  const gap = 8;
+
+  // Timestamp
+  yPos += drawTimestamp(yPos, 'Today');
+  yPos += 10;
+
+  // Revealed messages
+  for (let i = 0; i < revealedMessages.length; i++) {
+    const msg = revealedMessages[i];
+    const isNewest = i === revealedMessages.length - 1;
+
+    let alpha = 1;
+    let slideY = 0;
+
+    if (isNewest && phase === 'revealing') {
+      const t = easeOutCubic(Math.min(1, phaseTimer / REVEAL_DURATION));
+      alpha = t;
+      slideY = (1 - t) * 20;
+    }
+
+    const bh = drawBubble(msg, yPos, alpha, slideY);
+    yPos += bh + gap;
+  }
+
+  // Typing indicator
+  if (phase === 'typing' && currentMessageIndex < CONFIG.messages.length) {
+    const nextMsg = CONFIG.messages[currentMessageIndex];
+    const isLeft = nextMsg.sender === 'left';
+    const typingAlpha = Math.min(1, phaseTimer * 4);
+    drawTypingIndicator(yPos, isLeft, typingAlpha);
+    yPos += 50;
+  }
+
+  ctx.restore();
+
+  // Bottom gradient fade
+  const botGrad = ctx.createLinearGradient(0, H - 30, 0, H);
+  botGrad.addColorStop(0, CONFIG.bgColor + '00');
+  botGrad.addColorStop(1, CONFIG.bgColor);
+  ctx.fillStyle = botGrad;
+  ctx.fillRect(0, H - 30, W, 30);
+
+  // Fade out at loop end
+  if (phase === 'idle' && phaseTimer > LOOP_PAUSE - 0.5) {
+    const fadeT = (phaseTimer - (LOOP_PAUSE - 0.5)) / 0.5;
+    ctx.fillStyle = CONFIG.bgColor;
+    ctx.globalAlpha = Math.min(1, fadeT);
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function animate(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

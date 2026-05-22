@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clockwork Gears</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  bgColor: '#0a0f1a',
+  gearColor: '#cc9933',
+  accentColor: '#ff6633',
+  gearSpeed: 0.02,
+  gearCount: 7,
+  cycleDuration: 12000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+let startTime = performance.now();
+let gears = [];
+let linkages = [];
+let pendulum = { angle: 0, length: 0, anchorX: 0, anchorY: 0 };
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  initGears();
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function initGears() {
+  gears = [];
+  linkages = [];
+
+  const cx = W * 0.5;
+  const cy = H * 0.42;
+  const count = Math.max(3, Math.min(12, CONFIG.gearCount));
+
+  // Central gear
+  const centralRadius = Math.min(W, H) * 0.14;
+  gears.push({
+    x: cx,
+    y: cy,
+    radius: centralRadius,
+    teeth: 24,
+    angle: 0,
+    speed: CONFIG.gearSpeed,
+    direction: 1,
+    decorative: true,
+    jewel: true,
+    jewelColor: CONFIG.accentColor
+  });
+
+  // Place satellite gears around the central one
+  const placements = [
+    { angle: -Math.PI * 0.35, radiusMult: 0.55, teeth: 14 },
+    { angle: Math.PI * 0.15, radiusMult: 0.45, teeth: 12 },
+    { angle: Math.PI * 0.65, radiusMult: 0.5, teeth: 13 },
+    { angle: -Math.PI * 0.8, radiusMult: 0.6, teeth: 16 },
+    { angle: Math.PI * 1.0, radiusMult: 0.38, teeth: 10 },
+    { angle: -Math.PI * 0.1, radiusMult: 0.42, teeth: 11 },
+    { angle: Math.PI * 0.42, radiusMult: 0.35, teeth: 9 },
+    { angle: -Math.PI * 0.55, radiusMult: 0.48, teeth: 12 },
+    { angle: Math.PI * 0.85, radiusMult: 0.32, teeth: 8 },
+    { angle: -Math.PI * 0.95, radiusMult: 0.4, teeth: 10 },
+    { angle: Math.PI * 0.25, radiusMult: 0.58, teeth: 15 }
+  ];
+
+  for (let i = 0; i < count - 1 && i < placements.length; i++) {
+    const p = placements[i];
+    const satRadius = centralRadius * p.radiusMult;
+    const dist = centralRadius + satRadius - 2; // Slight overlap for meshing
+    const gx = cx + Math.cos(p.angle) * dist;
+    const gy = cy + Math.sin(p.angle) * dist;
+
+    // Gear ratio: opposite direction, speed inversely proportional to teeth
+    const speedRatio = gears[0].teeth / p.teeth;
+
+    gears.push({
+      x: gx,
+      y: gy,
+      radius: satRadius,
+      teeth: p.teeth,
+      angle: 0,
+      speed: CONFIG.gearSpeed * speedRatio,
+      direction: -1,
+      decorative: satRadius > centralRadius * 0.4,
+      jewel: Math.random() > 0.4,
+      jewelColor: Math.random() > 0.5 ? '#cc3333' : '#3366cc'
+    });
+
+    // Linkage from center to this gear
+    if (i < 3) {
+      linkages.push({ from: 0, to: i + 1 });
+    }
+  }
+
+  // Pendulum
+  pendulum.anchorX = cx;
+  pendulum.anchorY = H * 0.68;
+  pendulum.length = H * 0.22;
+  pendulum.angle = 0;
+}
+
+function drawBackground() {
+  const bg = hexToRgb(CONFIG.bgColor);
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Blueprint grid
+  ctx.strokeStyle = `rgba(${bg.r + 25}, ${bg.g + 30}, ${bg.b + 50}, 0.15)`;
+  ctx.lineWidth = 0.5;
+
+  const gridSize = 30;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+
+  // Major grid
+  ctx.strokeStyle = `rgba(${bg.r + 35}, ${bg.g + 45}, ${bg.b + 70}, 0.12)`;
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += gridSize * 5) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize * 5) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+}
+
+function drawGear(gear, t) {
+  const { x, y, radius, teeth, angle, decorative, jewel, jewelColor } = gear;
+  const gc = hexToRgb(CONFIG.gearColor);
+  const toothHeight = radius * 0.12;
+  const toothWidth = (Math.PI * 2) / (teeth * 2);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  // Shadow
+  ctx.save();
+  ctx.translate(3, 3);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.fill();
+  ctx.restore();
+
+  // Gear body with metallic gradient
+  const bodyGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius);
+  bodyGrad.addColorStop(0, `rgb(${Math.min(255, gc.r + 80)}, ${Math.min(255, gc.g + 60)}, ${Math.min(255, gc.b + 40)})`);
+  bodyGrad.addColorStop(0.5, `rgb(${gc.r}, ${gc.g}, ${gc.b})`);
+  bodyGrad.addColorStop(1, `rgb(${Math.max(0, gc.r - 50)}, ${Math.max(0, gc.g - 40)}, ${Math.max(0, gc.b - 30)})`);
+
+  // Draw gear body with teeth
+  ctx.beginPath();
+  for (let i = 0; i < teeth; i++) {
+    const a1 = (i / teeth) * Math.PI * 2;
+    const a2 = a1 + toothWidth * 0.3;
+    const a3 = a1 + toothWidth * 0.7;
+    const a4 = a1 + toothWidth;
+    const a5 = a1 + toothWidth * 1.5;
+
+    // Outer tooth (trapezoid profile)
+    const outerR = radius + toothHeight;
+    if (i === 0) {
+      ctx.moveTo(Math.cos(a1) * radius, Math.sin(a1) * radius);
+    }
+    ctx.lineTo(Math.cos(a2) * radius, Math.sin(a2) * radius);
+    ctx.lineTo(Math.cos(a2 + toothWidth * 0.1) * outerR, Math.sin(a2 + toothWidth * 0.1) * outerR);
+    ctx.lineTo(Math.cos(a3 - toothWidth * 0.1) * outerR, Math.sin(a3 - toothWidth * 0.1) * outerR);
+    ctx.lineTo(Math.cos(a3) * radius, Math.sin(a3) * radius);
+
+    // Valley between teeth
+    ctx.lineTo(Math.cos(a4) * (radius - 2), Math.sin(a4) * (radius - 2));
+    ctx.lineTo(Math.cos(a5) * (radius - 2), Math.sin(a5) * (radius - 2));
+  }
+  ctx.closePath();
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  // Gear edge highlight
+  ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 100)}, ${Math.min(255, gc.g + 80)}, ${Math.min(255, gc.b + 60)}, 0.4)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Decorative patterns on larger gears
+  if (decorative) {
+    // Concentric rings
+    ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 40)}, ${Math.min(255, gc.g + 30)}, ${Math.min(255, gc.b + 20)}, 0.3)`;
+    ctx.lineWidth = 1;
+    for (let r = radius * 0.3; r < radius * 0.85; r += radius * 0.15) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Spoke lines
+    ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 30)}, ${Math.min(255, gc.g + 20)}, ${Math.min(255, gc.b + 10)}, 0.25)`;
+    ctx.lineWidth = 1.5;
+    const spokeCount = Math.max(4, Math.floor(teeth / 3));
+    for (let i = 0; i < spokeCount; i++) {
+      const sa = (i / spokeCount) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(sa) * radius * 0.2, Math.sin(sa) * radius * 0.2);
+      ctx.lineTo(Math.cos(sa) * radius * 0.8, Math.sin(sa) * radius * 0.8);
+      ctx.stroke();
+    }
+
+    // Cutout holes for visual interest
+    ctx.fillStyle = CONFIG.bgColor;
+    const holeCount = Math.min(6, Math.floor(teeth / 4));
+    for (let i = 0; i < holeCount; i++) {
+      const ha = (i / holeCount) * Math.PI * 2;
+      const hx = Math.cos(ha) * radius * 0.55;
+      const hy = Math.sin(ha) * radius * 0.55;
+      ctx.beginPath();
+      ctx.arc(hx, hy, radius * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      // Hole rim
+      ctx.strokeStyle = `rgba(${Math.max(0, gc.r - 30)}, ${Math.max(0, gc.g - 30)}, ${Math.max(0, gc.b - 20)}, 0.5)`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  // Center hub
+  const hubGrad = ctx.createRadialGradient(-2, -2, 1, 0, 0, radius * 0.15);
+  hubGrad.addColorStop(0, `rgb(${Math.min(255, gc.r + 60)}, ${Math.min(255, gc.g + 50)}, ${Math.min(255, gc.b + 40)})`);
+  hubGrad.addColorStop(1, `rgb(${Math.max(0, gc.r - 30)}, ${Math.max(0, gc.g - 25)}, ${Math.max(0, gc.b - 20)})`);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.15, 0, Math.PI * 2);
+  ctx.fillStyle = hubGrad;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 80)}, ${Math.min(255, gc.g + 60)}, ${Math.min(255, gc.b + 40)}, 0.5)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Center axle hole
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.04, 0, Math.PI * 2);
+  ctx.fillStyle = `rgb(${Math.max(0, gc.r - 60)}, ${Math.max(0, gc.g - 50)}, ${Math.max(0, gc.b - 40)})`;
+  ctx.fill();
+
+  // Jewel bearing
+  if (jewel) {
+    const jc = hexToRgb(jewelColor);
+    const jGrad = ctx.createRadialGradient(-1, -1, 0, 0, 0, radius * 0.06);
+    jGrad.addColorStop(0, `rgba(255, 255, 255, 0.9)`);
+    jGrad.addColorStop(0.3, `rgba(${Math.min(255, jc.r + 80)}, ${Math.min(255, jc.g + 80)}, ${Math.min(255, jc.b + 80)}, 0.8)`);
+    jGrad.addColorStop(1, `rgba(${jc.r}, ${jc.g}, ${jc.b}, 0.9)`);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.06, 0, Math.PI * 2);
+    ctx.fillStyle = jGrad;
+    ctx.fill();
+
+    // Glow
+    ctx.shadowColor = jewelColor;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.04, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${jc.r}, ${jc.g}, ${jc.b}, 0.6)`;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+function drawLinkages() {
+  const gc = hexToRgb(CONFIG.gearColor);
+
+  for (const link of linkages) {
+    const g1 = gears[link.from];
+    const g2 = gears[link.to];
+    if (!g1 || !g2) continue;
+
+    const dx = g2.x - g1.x;
+    const dy = g2.y - g1.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+
+    ctx.save();
+
+    // Rod
+    const rodWidth = 6;
+    ctx.translate(g1.x, g1.y);
+    ctx.rotate(angle);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillRect(0 + 2, -rodWidth / 2 + 2, dist, rodWidth);
+
+    // Rod body
+    const rodGrad = ctx.createLinearGradient(0, -rodWidth / 2, 0, rodWidth / 2);
+    rodGrad.addColorStop(0, `rgb(${Math.min(255, gc.r + 50)}, ${Math.min(255, gc.g + 40)}, ${Math.min(255, gc.b + 30)})`);
+    rodGrad.addColorStop(0.5, `rgb(${gc.r}, ${gc.g}, ${gc.b})`);
+    rodGrad.addColorStop(1, `rgb(${Math.max(0, gc.r - 40)}, ${Math.max(0, gc.g - 30)}, ${Math.max(0, gc.b - 20)})`);
+    ctx.fillStyle = rodGrad;
+    ctx.fillRect(0, -rodWidth / 2, dist, rodWidth);
+
+    // Rod edge
+    ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 70)}, ${Math.min(255, gc.g + 50)}, ${Math.min(255, gc.b + 30)}, 0.3)`;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(0, -rodWidth / 2, dist, rodWidth);
+
+    // Pin circles at ends
+    for (const px of [0, dist]) {
+      ctx.beginPath();
+      ctx.arc(px, 0, 4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgb(${Math.min(255, gc.r + 30)}, ${Math.min(255, gc.g + 20)}, ${Math.min(255, gc.b + 10)})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 80)}, ${Math.min(255, gc.g + 60)}, ${Math.min(255, gc.b + 40)}, 0.5)`;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
+
+function drawPendulum(t) {
+  const gc = hexToRgb(CONFIG.gearColor);
+  const ac = hexToRgb(CONFIG.accentColor);
+  const swingAngle = Math.sin(t * 0.003) * 0.4;
+  const px = pendulum.anchorX + Math.sin(swingAngle) * pendulum.length;
+  const py = pendulum.anchorY + Math.cos(swingAngle) * pendulum.length;
+
+  // Rod
+  ctx.beginPath();
+  ctx.moveTo(pendulum.anchorX, pendulum.anchorY);
+  ctx.lineTo(px, py);
+  ctx.strokeStyle = `rgb(${gc.r}, ${gc.g}, ${gc.b})`;
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Highlight on rod
+  ctx.beginPath();
+  ctx.moveTo(pendulum.anchorX + 1, pendulum.anchorY);
+  ctx.lineTo(px + 1, py);
+  ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 60)}, ${Math.min(255, gc.g + 50)}, ${Math.min(255, gc.b + 40)}, 0.3)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Bob
+  const bobRadius = Math.min(W, H) * 0.04;
+  const bobGrad = ctx.createRadialGradient(px - bobRadius * 0.3, py - bobRadius * 0.3, bobRadius * 0.1, px, py, bobRadius);
+  bobGrad.addColorStop(0, `rgb(${Math.min(255, gc.r + 70)}, ${Math.min(255, gc.g + 50)}, ${Math.min(255, gc.b + 30)})`);
+  bobGrad.addColorStop(0.7, `rgb(${gc.r}, ${gc.g}, ${gc.b})`);
+  bobGrad.addColorStop(1, `rgb(${Math.max(0, gc.r - 50)}, ${Math.max(0, gc.g - 40)}, ${Math.max(0, gc.b - 30)})`);
+
+  ctx.beginPath();
+  ctx.arc(px, py, bobRadius, 0, Math.PI * 2);
+  ctx.fillStyle = bobGrad;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${Math.min(255, gc.r + 80)}, ${Math.min(255, gc.g + 60)}, ${Math.min(255, gc.b + 40)}, 0.5)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Bob jewel
+  const jGrad = ctx.createRadialGradient(px - 1, py - 1, 0, px, py, bobRadius * 0.25);
+  jGrad.addColorStop(0, `rgba(255, 255, 255, 0.9)`);
+  jGrad.addColorStop(0.4, `rgba(${Math.min(255, ac.r + 60)}, ${Math.min(255, ac.g + 60)}, ${Math.min(255, ac.b + 60)}, 0.8)`);
+  jGrad.addColorStop(1, `rgba(${ac.r}, ${ac.g}, ${ac.b}, 0.9)`);
+  ctx.beginPath();
+  ctx.arc(px, py, bobRadius * 0.25, 0, Math.PI * 2);
+  ctx.fillStyle = jGrad;
+  ctx.fill();
+
+  // Glow
+  ctx.shadowColor = CONFIG.accentColor;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.arc(px, py, bobRadius * 0.15, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(${ac.r}, ${ac.g}, ${ac.b}, 0.5)`;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Anchor point
+  ctx.beginPath();
+  ctx.arc(pendulum.anchorX, pendulum.anchorY, 6, 0, Math.PI * 2);
+  ctx.fillStyle = `rgb(${gc.r}, ${gc.g}, ${gc.b})`;
+  ctx.fill();
+}
+
+function drawVignette() {
+  const grad = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.3, W * 0.5, H * 0.5, Math.max(W, H) * 0.7);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function draw(now) {
+  const elapsed = now - startTime;
+  const t = elapsed % CONFIG.cycleDuration;
+
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+
+  // Update gear angles
+  for (let i = 0; i < gears.length; i++) {
+    const g = gears[i];
+    g.angle += g.speed * g.direction;
+  }
+
+  // Draw linkages behind gears
+  drawLinkages();
+
+  // Draw gears (back to front: smaller first)
+  const sortedIndices = gears.map((g, i) => i).sort((a, b) => gears[a].radius - gears[b].radius);
+  for (const idx of sortedIndices) {
+    drawGear(gears[idx], t);
+  }
+
+  drawPendulum(t);
+  drawVignette();
+
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('message', (e) => {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+    initGears();
+  }
+});
+
+resize();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

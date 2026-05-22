@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cassette Tape</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #1a1410;
+    font-family: 'Courier New', monospace;
+    display: flex; align-items: center; justify-content: center;
+  }
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 2;
+  }
+  .label {
+    position: absolute; top: 28%; left: 50%; transform: translateX(-50%);
+    text-align: center; color: #ffaa44; z-index: 3;
+    text-shadow: 0 0 8px rgba(255,170,68,0.5);
+  }
+  .label .title { font-size: 2.2vmin; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0.9; }
+  .label .artist { font-size: 1.6vmin; letter-spacing: 0.2em; margin-top: 0.5vmin; opacity: 0.7; }
+  .counter {
+    position: absolute; bottom: 18%; right: 15%;
+    font-size: 2.5vmin; color: #ffaa44; z-index: 3;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 6px rgba(255,170,68,0.4);
+    opacity: 0.8;
+  }
+  .buttons {
+    position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 3vmin; z-index: 3;
+  }
+  .btn {
+    width: 4vmin; height: 4vmin; border: 1px solid #ffaa44;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.5;
+  }
+  .btn.active { opacity: 1; box-shadow: 0 0 8px rgba(255,170,68,0.4); }
+  .btn svg { width: 60%; height: 60%; fill: #ffaa44; }
+  .wood-grain {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent, transparent 2px,
+      rgba(139,105,20,0.03) 2px, rgba(139,105,20,0.03) 4px
+    );
+    z-index: 1; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="wood-grain"></div>
+<div class="label">
+  <div class="title" id="songTitle">MIDNIGHT FREQUENCIES</div>
+  <div class="artist" id="artistName">THE ANALOG SESSIONS</div>
+</div>
+<div class="counter" id="counter">0000</div>
+<div class="buttons">
+  <div class="btn"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg></div>
+  <div class="btn active"><svg viewBox="0 0 24 24"><polygon points="6,4 20,12 6,20"/></svg></div>
+  <div class="btn"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14"/></svg></div>
+</div>
+<script>
+const CONFIG = {
+  bgColor: '#1a1410',
+  accentColor: '#ffaa44',
+  cassetteColor: '#2a2220',
+  cassetteStroke: '#3d3530',
+  reelColor: '#1a1614',
+  tapeColor: '#1a0e08',
+  labelBg: '#2e2518',
+  songTitle: 'MIDNIGHT FREQUENCIES',
+  artistName: 'THE ANALOG SESSIONS',
+  reelSpeed: 0.02,
+  eqBars: 16,
+  vuNeedleSpeed: 0.04
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy, time = 0, counterVal = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2; cy = H / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+document.getElementById('songTitle').textContent = CONFIG.songTitle;
+document.getElementById('artistName').textContent = CONFIG.artistName;
+
+function drawCassetteBody() {
+  const w = W * 0.78, h = H * 0.35;
+  const x = cx - w / 2, y = cy - h / 2;
+  const r = w * 0.03;
+  ctx.fillStyle = CONFIG.cassetteColor;
+  ctx.strokeStyle = CONFIG.cassetteStroke;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Label window
+  const lw = w * 0.55, lh = h * 0.3;
+  const lx = cx - lw / 2, ly = y + h * 0.12;
+  ctx.fillStyle = CONFIG.labelBg;
+  ctx.fillRect(lx, ly, lw, lh);
+  ctx.strokeStyle = CONFIG.accentColor + '33';
+  ctx.strokeRect(lx, ly, lw, lh);
+
+  // Tape window
+  const tw = w * 0.5, th = h * 0.22;
+  const tx = cx - tw / 2, ty = y + h * 0.52;
+  ctx.fillStyle = '#0d0a08';
+  ctx.fillRect(tx, ty, tw, th);
+  ctx.strokeStyle = '#3d353044';
+  ctx.strokeRect(tx, ty, tw, th);
+
+  // Screw holes
+  const screwR = w * 0.012;
+  [[x + w * 0.06, y + h * 0.08], [x + w * 0.94, y + h * 0.08],
+   [x + w * 0.06, y + h * 0.92], [x + w * 0.94, y + h * 0.92]].forEach(([sx, sy]) => {
+    ctx.beginPath();
+    ctx.arc(sx, sy, screwR, 0, Math.PI * 2);
+    ctx.fillStyle = '#3d3530';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(sx, sy, screwR * 0.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a1614';
+    ctx.fill();
+  });
+}
+
+function drawReel(x, y, radius, angle, tapeAmount) {
+  // Tape spool
+  const tapeR = radius * (0.5 + tapeAmount * 0.48);
+  ctx.beginPath();
+  ctx.arc(x, y, tapeR, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.tapeColor;
+  ctx.fill();
+
+  // Reel hub
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.38, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.reelColor;
+  ctx.fill();
+  ctx.strokeStyle = '#3a3230';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Spokes
+  for (let i = 0; i < 3; i++) {
+    const a = angle + (i * Math.PI * 2) / 3;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * radius * 0.35, y + Math.sin(a) * radius * 0.35);
+    ctx.strokeStyle = '#4a4240';
+    ctx.lineWidth = radius * 0.08;
+    ctx.stroke();
+  }
+
+  // Center pin
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.1, 0, Math.PI * 2);
+  ctx.fillStyle = '#4a4240';
+  ctx.fill();
+
+  // Teeth on hub
+  for (let i = 0; i < 6; i++) {
+    const a = angle + (i * Math.PI * 2) / 6;
+    const d = radius * 0.15;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, radius * 0.04, 0, Math.PI * 2);
+    ctx.fillStyle = '#5a5250';
+    ctx.fill();
+  }
+}
+
+function drawTapePath(lx, ly, rx, ry, radius) {
+  ctx.beginPath();
+  ctx.moveTo(lx, ly + radius * 0.5);
+  const midY = ly + radius * 1.2;
+  ctx.quadraticCurveTo(cx, midY, rx, ry + radius * 0.5);
+  ctx.strokeStyle = CONFIG.tapeColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawEqualizer(x, y, w, h) {
+  const barW = w / (CONFIG.eqBars * 2);
+  for (let i = 0; i < CONFIG.eqBars; i++) {
+    const barH = (0.3 + 0.7 * Math.abs(Math.sin(time * 3 + i * 0.7))) * h;
+    const bx = x + i * barW * 2;
+    const gradient = ctx.createLinearGradient(bx, y + h, bx, y + h - barH);
+    gradient.addColorStop(0, CONFIG.accentColor + '99');
+    gradient.addColorStop(1, CONFIG.accentColor + '22');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(bx, y + h - barH, barW, barH);
+  }
+}
+
+function drawVUMeter(x, y, w, h, offset) {
+  // Background arc
+  ctx.save();
+  ctx.translate(x + w / 2, y + h);
+  const arcR = w * 0.4;
+
+  // Scale markings
+  for (let i = 0; i <= 10; i++) {
+    const a = Math.PI + (i / 10) * Math.PI;
+    const inner = arcR * 0.85;
+    const outer = arcR * 0.95;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+    ctx.strokeStyle = i > 7 ? '#ff4444' : CONFIG.accentColor + '66';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Needle
+  const needleAngle = Math.PI + (0.3 + 0.5 * Math.abs(Math.sin(time * CONFIG.vuNeedleSpeed * 60 + offset))) * Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(Math.cos(needleAngle) * arcR * 0.9, Math.sin(needleAngle) * arcR * 0.9);
+  ctx.strokeStyle = CONFIG.accentColor;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Pivot
+  ctx.beginPath();
+  ctx.arc(0, 0, 3, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.accentColor;
+  ctx.fill();
+  ctx.restore();
+
+  // Label
+  ctx.fillStyle = CONFIG.accentColor + '55';
+  ctx.font = `${w * 0.08}px Courier New`;
+  ctx.textAlign = 'center';
+  ctx.fillText('VU', x + w / 2, y + h * 0.6);
+}
+
+function drawNoise() {
+  ctx.globalAlpha = 0.015;
+  for (let i = 0; i < 80; i++) {
+    const nx = Math.random() * W;
+    const ny = Math.random() * H;
+    ctx.fillStyle = Math.random() > 0.5 ? '#ffaa44' : '#000';
+    ctx.fillRect(nx, ny, 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function animate() {
+  time += 0.016;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Ambient glow
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.6);
+  grd.addColorStop(0, 'rgba(255,170,68,0.04)');
+  grd.addColorStop(1, 'transparent');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, H);
+
+  drawCassetteBody();
+
+  // Reel positions
+  const reelR = W * 0.07;
+  const reelY = cy + H * 0.02;
+  const lReelX = cx - W * 0.14;
+  const rReelX = cx + W * 0.14;
+  const tapeProgress = (Math.sin(time * 0.1) + 1) / 2;
+  const angle = time * CONFIG.reelSpeed * 60;
+
+  drawTapePath(lReelX, reelY, rReelX, reelY, reelR);
+  drawReel(lReelX, reelY, reelR, angle, 0.3 + tapeProgress * 0.5);
+  drawReel(rReelX, reelY, reelR, -angle * 1.1, 0.8 - tapeProgress * 0.5);
+
+  // VU meters
+  const vuW = W * 0.15;
+  const vuH = H * 0.08;
+  drawVUMeter(cx - vuW * 1.3, cy - H * 0.28, vuW, vuH, 0);
+  drawVUMeter(cx + vuW * 0.3, cy - H * 0.28, vuW, vuH, 1.5);
+
+  // Equalizer
+  drawEqualizer(cx - W * 0.2, cy + H * 0.22, W * 0.4, H * 0.04);
+
+  // Noise
+  drawNoise();
+
+  // Counter
+  counterVal += 0.3;
+  document.getElementById('counter').textContent = String(Math.floor(counterVal) % 10000).padStart(4, '0');
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steampunk Workshop</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 100vw; height: 100vh; overflow: hidden;
+  background: var(--bg);
+  font-family: 'Georgia', serif;
+}
+canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.workshop { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
+
+/* Gears */
+.gear {
+  position: absolute;
+  border-radius: 50%;
+  border: 0.4vw solid var(--brass);
+  background: radial-gradient(circle at 40% 40%, var(--brass-light), var(--brass), var(--brass-dark));
+  box-shadow: inset 0 0 1vw rgba(0,0,0,0.5), 0 0 0.8vw rgba(205,165,80,0.3);
+}
+.gear::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 25%; height: 25%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--brass-dark);
+  border: 0.2vw solid var(--brass);
+  box-shadow: inset 0 0 0.5vw rgba(0,0,0,0.6);
+}
+.gear-tooth {
+  position: absolute;
+  background: var(--brass);
+  border-radius: 0.2vw;
+  box-shadow: 0 0 0.3vw rgba(0,0,0,0.4);
+}
+
+/* Steam Pipes */
+.pipe {
+  position: absolute;
+  background: linear-gradient(180deg, #8B7355, #6B5B3E, #8B7355);
+  border-radius: 0.5vw;
+  box-shadow: inset 0 0.3vw 0.6vw rgba(0,0,0,0.4), 0 0 0.5vw rgba(0,0,0,0.3);
+}
+.pipe-joint {
+  position: absolute;
+  background: var(--copper);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0.5vw rgba(0,0,0,0.5), 0 0 0.3vw rgba(184,115,51,0.3);
+}
+
+/* Pressure Gauge */
+.gauge {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a1510 0%, #0d0b08 100%);
+  border: 0.4vw solid var(--brass);
+  box-shadow: 0 0 1vw rgba(0,0,0,0.5), inset 0 0 1vw rgba(205,165,80,0.1);
+}
+.gauge-needle {
+  position: absolute;
+  bottom: 50%; left: 50%;
+  width: 0.2vw;
+  background: #cc3333;
+  transform-origin: bottom center;
+  border-radius: 0.1vw;
+  transition: transform 0.5s ease;
+}
+.gauge-mark {
+  position: absolute;
+  width: 0.15vw;
+  background: var(--brass);
+  transform-origin: bottom center;
+}
+.gauge-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0.8vw; height: 0.8vw;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--brass);
+  z-index: 2;
+}
+
+/* Clock */
+.clock {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #2a2218, #1a150e);
+  border: 0.5vw solid var(--brass);
+  box-shadow: 0 0 2vw rgba(205,165,80,0.2), inset 0 0 1.5vw rgba(0,0,0,0.6);
+}
+.clock-hand {
+  position: absolute;
+  bottom: 50%; left: 50%;
+  transform-origin: bottom center;
+  border-radius: 0.15vw;
+}
+.clock-roman {
+  position: absolute;
+  color: var(--brass);
+  font-size: 1.2vw;
+  font-weight: bold;
+  text-shadow: 0 0 0.3vw rgba(205,165,80,0.5);
+}
+.pendulum-arm {
+  position: absolute;
+  width: 0.2vw;
+  background: var(--brass);
+  transform-origin: top center;
+}
+.pendulum-bob {
+  position: absolute;
+  width: 2.5vw; height: 2.5vw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--brass-light), var(--brass-dark));
+  border: 0.15vw solid var(--brass);
+  box-shadow: 0 0 1vw rgba(205,165,80,0.3);
+}
+
+/* Gas Lamps */
+.lamp {
+  position: absolute;
+}
+.lamp-body {
+  position: absolute;
+  background: var(--brass-dark);
+  border-radius: 0.3vw;
+  box-shadow: 0 0 0.3vw rgba(0,0,0,0.5);
+}
+.lamp-flame {
+  position: absolute;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 50% 60%, #fff8e0, #ffcc33, #ff8800, transparent);
+  box-shadow: 0 0 2vw rgba(255,170,0,0.6), 0 0 4vw rgba(255,136,0,0.3);
+  animation: flicker 0.15s infinite alternate;
+}
+@keyframes flicker {
+  0% { opacity: 0.85; transform: scale(1) translateY(0); }
+  25% { opacity: 1; transform: scale(1.04) translateY(-0.05vw); }
+  50% { opacity: 0.9; transform: scale(0.97) translateY(0.03vw); }
+  75% { opacity: 1; transform: scale(1.02) translateY(-0.02vw); }
+  100% { opacity: 0.88; transform: scale(0.99) translateY(0.02vw); }
+}
+
+/* Conveyor Belt */
+.conveyor {
+  position: absolute;
+  background: linear-gradient(0deg, #2a2218, #1e1a12);
+  border: 0.3vw solid var(--brass-dark);
+  border-radius: 0.5vw;
+  overflow: hidden;
+}
+.conveyor-segment {
+  position: absolute;
+  top: 0; height: 100%;
+  width: 3vw;
+  border-right: 0.15vw solid var(--brass-dark);
+  background: repeating-linear-gradient(90deg, transparent, transparent 0.8vw, rgba(139,115,85,0.2) 0.8vw, rgba(139,115,85,0.2) 1vw);
+}
+.conveyor-item {
+  position: absolute;
+  border-radius: 0.3vw;
+  box-shadow: 0 0.2vw 0.5vw rgba(0,0,0,0.5);
+}
+
+/* Tesla Coil */
+.tesla-coil {
+  position: absolute;
+}
+.tesla-base {
+  position: absolute;
+  background: linear-gradient(90deg, var(--brass-dark), var(--brass), var(--brass-dark));
+  border-radius: 0.3vw;
+}
+.tesla-top {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #d4d4d4, #888, #555);
+  border: 0.2vw solid var(--brass);
+  box-shadow: 0 0 1vw rgba(100,180,255,0.3);
+}
+
+/* Oil Gauge */
+.oil-gauge {
+  position: absolute;
+  background: linear-gradient(180deg, #1a150e, #0d0b08);
+  border: 0.3vw solid var(--brass);
+  border-radius: 0.5vw;
+  overflow: hidden;
+}
+.oil-level {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(180deg, rgba(100,80,30,0.8), rgba(80,60,20,0.9));
+  transition: height 1s ease;
+}
+.oil-mark {
+  position: absolute;
+  right: 0.2vw;
+  width: 0.5vw; height: 0.1vw;
+  background: var(--brass);
+}
+
+/* Ambient Light */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,170,50,0.15), transparent 70%);
+  pointer-events: none;
+}
+
+.workshop-floor {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 15vh;
+  background: linear-gradient(180deg, #1a150e, #0f0c08);
+  border-top: 0.3vw solid var(--brass-dark);
+}
+.workshop-wall {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 15vh;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent, transparent 19.8vw,
+    rgba(139,115,85,0.1) 19.8vw, rgba(139,115,85,0.1) 20vw
+  );
+}
+</style>
+</head>
+<body>
+<div class="workshop" id="workshop">
+  <canvas id="sparkCanvas"></canvas>
+</div>
+
+<script>
+const CONFIG = {
+  bgColor: '#0d0b08',
+  brassColor: '#CDA550',
+  brassLight: '#E8C875',
+  brassDark: '#8B7340',
+  copperColor: '#B87333',
+  steamColor: 'rgba(200,190,170,0.4)',
+  gearSpeed: 1,
+  sparkIntensity: 1,
+  cycleDuration: 16000
+};
+
+document.body.style.setProperty('--bg', CONFIG.bgColor);
+document.body.style.setProperty('--brass', CONFIG.brassColor);
+document.body.style.setProperty('--brass-light', CONFIG.brassLight);
+document.body.style.setProperty('--brass-dark', CONFIG.brassDark);
+document.body.style.setProperty('--copper', CONFIG.copperColor);
+
+const workshop = document.getElementById('workshop');
+const canvas = document.getElementById('sparkCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ===== GEAR SYSTEM =====
+const gears = [];
+const gearConfigs = [
+  { x: 10, y: 20, size: 14, teeth: 16, speed: 0.3, dir: 1 },
+  { x: 21, y: 27, size: 8, teeth: 10, speed: -0.5, dir: -1 },
+  { x: 5, y: 35, size: 6, teeth: 8, speed: 0.6, dir: 1 },
+  { x: 75, y: 12, size: 12, teeth: 14, speed: -0.35, dir: -1 },
+  { x: 85, y: 20, size: 7, teeth: 9, speed: 0.55, dir: 1 },
+  { x: 68, y: 8, size: 5, teeth: 7, speed: -0.7, dir: -1 },
+  { x: 50, y: 5, size: 9, teeth: 12, speed: 0.4, dir: 1 },
+  { x: 58, y: 10, size: 6, teeth: 8, speed: -0.6, dir: -1 },
+];
+
+gearConfigs.forEach(gc => {
+  const gear = document.createElement('div');
+  gear.className = 'gear';
+  gear.style.cssText = `left:${gc.x}vw;top:${gc.y}vh;width:${gc.size}vw;height:${gc.size}vw;`;
+  // Create teeth
+  for (let i = 0; i < gc.teeth; i++) {
+    const angle = (360 / gc.teeth) * i;
+    const tooth = document.createElement('div');
+    tooth.className = 'gear-tooth';
+    const tw = gc.size * 0.12;
+    const th = gc.size * 0.18;
+    tooth.style.cssText = `width:${tw}vw;height:${th}vw;top:50%;left:50%;transform:translate(-50%,-50%) rotate(${angle}deg) translateY(-${gc.size/2}vw);`;
+    gear.appendChild(tooth);
+  }
+  workshop.appendChild(gear);
+  gears.push({ el: gear, angle: 0, speed: gc.speed * CONFIG.gearSpeed, config: gc });
+});
+
+// ===== PIPES =====
+const pipeConfigs = [
+  { x: 0, y: 45, w: 30, h: 1.5, horizontal: true },
+  { x: 28, y: 38, w: 1.5, h: 8, horizontal: false },
+  { x: 28, y: 38, w: 20, h: 1.5, horizontal: true },
+  { x: 70, y: 30, w: 25, h: 1.5, horizontal: true },
+  { x: 93, y: 30, w: 1.5, h: 25, horizontal: false },
+  { x: 70, y: 54, w: 25, h: 1.5, horizontal: true },
+  { x: 46, y: 50, w: 1.5, h: 15, horizontal: false },
+  { x: 46, y: 50, w: 12, h: 1.5, horizontal: true },
+];
+
+pipeConfigs.forEach(pc => {
+  const pipe = document.createElement('div');
+  pipe.className = 'pipe';
+  pipe.style.cssText = `left:${pc.x}vw;top:${pc.y}vh;width:${pc.w}vw;height:${pc.h}vw;`;
+  workshop.appendChild(pipe);
+});
+
+// Pipe joints
+const jointPositions = [
+  { x: 28, y: 38 }, { x: 28, y: 45 }, { x: 47, y: 38 },
+  { x: 93, y: 30 }, { x: 93, y: 54 }, { x: 70, y: 30 },
+  { x: 70, y: 54 }, { x: 46, y: 50 }, { x: 57, y: 50 },
+];
+jointPositions.forEach(jp => {
+  const joint = document.createElement('div');
+  joint.className = 'pipe-joint';
+  joint.style.cssText = `left:${jp.x - 1}vw;top:${jp.y - 0.5}vh;width:2vw;height:2vw;`;
+  workshop.appendChild(joint);
+});
+
+// ===== PRESSURE GAUGES =====
+const gaugeConfigs = [
+  { x: 32, y: 32, size: 6 },
+  { x: 80, y: 24, size: 5 },
+  { x: 56, y: 44, size: 5 },
+];
+const gaugeNeedles = [];
+
+gaugeConfigs.forEach(gc => {
+  const gauge = document.createElement('div');
+  gauge.className = 'gauge';
+  gauge.style.cssText = `left:${gc.x}vw;top:${gc.y}vh;width:${gc.size}vw;height:${gc.size}vw;`;
+
+  // Marks
+  for (let i = -4; i <= 4; i++) {
+    const mark = document.createElement('div');
+    mark.className = 'gauge-mark';
+    const angle = i * 20 - 90;
+    const len = gc.size * 0.15;
+    mark.style.cssText = `height:${len}vw;bottom:50%;left:50%;transform:translate(-50%,0) rotate(${angle}deg);`;
+    gauge.appendChild(mark);
+  }
+
+  const needle = document.createElement('div');
+  needle.className = 'gauge-needle';
+  needle.style.height = `${gc.size * 0.35}vw`;
+  needle.style.transform = 'rotate(-60deg)';
+  gauge.appendChild(needle);
+
+  const center = document.createElement('div');
+  center.className = 'gauge-center';
+  gauge.appendChild(center);
+
+  workshop.appendChild(gauge);
+  gaugeNeedles.push(needle);
+});
+
+// ===== CLOCK =====
+const clock = document.createElement('div');
+clock.className = 'clock';
+clock.style.cssText = 'left:38vw;top:10vh;width:14vw;height:14vw;';
+
+const romans = ['XII','I','II','III','IV','V','VI','VII','VIII','IX','X','XI'];
+romans.forEach((r, i) => {
+  const num = document.createElement('div');
+  num.className = 'clock-roman';
+  const angle = (i * 30) * Math.PI / 180;
+  const radius = 5;
+  const cx = 7 - 0.8;
+  const cy = 7 - 0.7;
+  num.style.left = `${cx + Math.sin(angle) * radius}vw`;
+  num.style.top = `${cy - Math.cos(angle) * radius}vw`;
+  num.textContent = r;
+  clock.appendChild(num);
+});
+
+const hourHand = document.createElement('div');
+hourHand.className = 'clock-hand';
+hourHand.style.cssText = `width:0.35vw;height:3.5vw;background:${CONFIG.brassColor};left:calc(50% - 0.175vw);`;
+clock.appendChild(hourHand);
+
+const minuteHand = document.createElement('div');
+minuteHand.className = 'clock-hand';
+minuteHand.style.cssText = `width:0.25vw;height:5vw;background:${CONFIG.brassLight};left:calc(50% - 0.125vw);`;
+clock.appendChild(minuteHand);
+
+const secondHand = document.createElement('div');
+secondHand.className = 'clock-hand';
+secondHand.style.cssText = 'width:0.12vw;height:5.5vw;background:#cc3333;left:calc(50% - 0.06vw);';
+clock.appendChild(secondHand);
+
+const clockCenter = document.createElement('div');
+clockCenter.className = 'gauge-center';
+clock.appendChild(clockCenter);
+
+workshop.appendChild(clock);
+
+// Pendulum
+const pendArm = document.createElement('div');
+pendArm.className = 'pendulum-arm';
+pendArm.style.cssText = 'left:44.9vw;top:24vh;height:12vh;';
+workshop.appendChild(pendArm);
+
+const pendBob = document.createElement('div');
+pendBob.className = 'pendulum-bob';
+pendBob.style.cssText = 'left:43.7vw;top:35vh;';
+workshop.appendChild(pendBob);
+
+// ===== GAS LAMPS =====
+const lampPositions = [
+  { x: 2, y: 8 }, { x: 30, y: 5 }, { x: 60, y: 6 }, { x: 90, y: 8 },
+];
+lampPositions.forEach(lp => {
+  const lamp = document.createElement('div');
+  lamp.className = 'lamp';
+  lamp.style.cssText = `left:${lp.x}vw;top:${lp.y}vh;`;
+
+  const body = document.createElement('div');
+  body.className = 'lamp-body';
+  body.style.cssText = 'width:1.5vw;height:3vw;left:0.5vw;top:2vw;';
+  lamp.appendChild(body);
+
+  const flame = document.createElement('div');
+  flame.className = 'lamp-flame';
+  flame.style.cssText = 'width:2.5vw;height:2.5vw;left:0;top:0;';
+  flame.style.animationDelay = `${Math.random() * 0.15}s`;
+  lamp.appendChild(flame);
+
+  const glow = document.createElement('div');
+  glow.className = 'ambient-glow';
+  glow.style.cssText = `left:-5vw;top:-5vh;width:12vw;height:12vw;`;
+  lamp.appendChild(glow);
+
+  workshop.appendChild(lamp);
+});
+
+// ===== CONVEYOR BELT =====
+const conveyor = document.createElement('div');
+conveyor.className = 'conveyor';
+conveyor.style.cssText = 'left:5vw;bottom:4vh;width:55vw;height:3vw;';
+for (let i = 0; i < 20; i++) {
+  const seg = document.createElement('div');
+  seg.className = 'conveyor-segment';
+  seg.style.left = `${i * 3}vw`;
+  conveyor.appendChild(seg);
+}
+workshop.appendChild(conveyor);
+
+// Conveyor items
+const conveyorItems = [];
+const itemTypes = [
+  { w: 2, h: 1.5, color: CONFIG.copperColor, shape: '0.3vw' },
+  { w: 1.5, h: 1.5, color: CONFIG.brassColor, shape: '50%' },
+  { w: 2.5, h: 1, color: CONFIG.brassDark, shape: '0.2vw' },
+];
+
+for (let i = 0; i < 5; i++) {
+  const type = itemTypes[i % itemTypes.length];
+  const item = document.createElement('div');
+  item.className = 'conveyor-item';
+  item.style.cssText = `width:${type.w}vw;height:${type.h}vw;background:linear-gradient(135deg,${type.color},${CONFIG.brassDark});border-radius:${type.shape};bottom:7vh;left:${5 + i * 12}vw;position:absolute;`;
+  workshop.appendChild(item);
+  conveyorItems.push({ el: item, x: 5 + i * 12 });
+}
+
+// ===== TESLA COILS =====
+const teslaConfigs = [
+  { x: 62, y: 55, h: 18 },
+  { x: 82, y: 60, h: 14 },
+];
+const teslaCoils = [];
+
+teslaConfigs.forEach(tc => {
+  const coil = document.createElement('div');
+  coil.className = 'tesla-coil';
+  coil.style.cssText = `left:${tc.x}vw;top:${tc.y}vh;`;
+
+  const base = document.createElement('div');
+  base.className = 'tesla-base';
+  base.style.cssText = `width:3vw;height:${tc.h}vh;left:0;top:0;`;
+  coil.appendChild(base);
+
+  const top = document.createElement('div');
+  top.className = 'tesla-top';
+  top.style.cssText = `width:4vw;height:4vw;left:-0.5vw;top:-2.5vw;`;
+  coil.appendChild(top);
+
+  workshop.appendChild(coil);
+  teslaCoils.push({ x: tc.x + 1.5, y: tc.y - 1, el: coil });
+});
+
+// ===== OIL GAUGES =====
+const oilConfigs = [
+  { x: 15, y: 55, w: 3, h: 12 },
+  { x: 22, y: 58, w: 2.5, h: 10 },
+];
+const oilLevels = [];
+
+oilConfigs.forEach(oc => {
+  const gauge = document.createElement('div');
+  gauge.className = 'oil-gauge';
+  gauge.style.cssText = `left:${oc.x}vw;top:${oc.y}vh;width:${oc.w}vw;height:${oc.h}vh;`;
+
+  const level = document.createElement('div');
+  level.className = 'oil-level';
+  level.style.height = '40%';
+  gauge.appendChild(level);
+
+  for (let i = 0; i < 5; i++) {
+    const mark = document.createElement('div');
+    mark.className = 'oil-mark';
+    mark.style.top = `${20 + i * 15}%`;
+    gauge.appendChild(mark);
+  }
+
+  workshop.appendChild(gauge);
+  oilLevels.push(level);
+});
+
+// ===== FLOOR AND WALL =====
+const floor = document.createElement('div');
+floor.className = 'workshop-floor';
+workshop.insertBefore(floor, workshop.firstChild);
+
+const wall = document.createElement('div');
+wall.className = 'workshop-wall';
+workshop.insertBefore(wall, workshop.firstChild);
+
+// ===== SPARK AND STEAM PARTICLES =====
+let sparks = [];
+let steamParticles = [];
+
+const steamSources = [
+  { x: 28, y: 45 }, { x: 47, y: 38 }, { x: 93, y: 42 },
+  { x: 70, y: 54 }, { x: 57, y: 50 },
+];
+
+function emitSteam() {
+  const src = steamSources[Math.floor(Math.random() * steamSources.length)];
+  const vw = window.innerWidth / 100;
+  const vh = window.innerHeight / 100;
+  for (let i = 0; i < 4; i++) {
+    steamParticles.push({
+      x: src.x * vw + (Math.random() - 0.5) * 1.5 * vw,
+      y: src.y * vh,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: -0.5 - Math.random() * 0.8,
+      size: 3 + Math.random() * 6,
+      alpha: 0.3 + Math.random() * 0.2,
+      life: 1
+    });
+  }
+}
+
+function emitSparks(x, y) {
+  const vw = window.innerWidth / 100;
+  const vh = window.innerHeight / 100;
+  const count = Math.floor(6 * CONFIG.sparkIntensity);
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 4;
+    sparks.push({
+      x: x * vw, y: y * vh,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 1,
+      size: 1 + Math.random() * 2,
+      color: Math.random() > 0.5 ? '#64b4ff' : '#aaddff'
+    });
+  }
+}
+
+// ===== ELECTRIC ARCS =====
+function drawArc(fromX, fromY, toX, toY, segments) {
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  let cx = fromX, cy = fromY;
+  const dx = (toX - fromX) / segments;
+  const dy = (toY - fromY) / segments;
+  for (let i = 1; i < segments; i++) {
+    cx = fromX + dx * i + (Math.random() - 0.5) * 20;
+    cy = fromY + dy * i + (Math.random() - 0.5) * 20;
+    ctx.lineTo(cx, cy);
+  }
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+}
+
+// ===== ANIMATION LOOP =====
+let startTime = Date.now();
+let pendulumAngle = 0;
+
+function animate() {
+  const now = Date.now();
+  const elapsed = (now - startTime) / 1000;
+  const cycleProgress = ((now - startTime) % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+
+  // Rotate gears
+  gears.forEach(g => {
+    g.angle += g.speed * CONFIG.gearSpeed;
+    g.el.style.transform = `rotate(${g.angle}deg)`;
+  });
+
+  // Clock hands
+  const secAngle = (elapsed * 6) % 360;
+  const minAngle = (elapsed * 0.1) % 360;
+  const hourAngle = (elapsed * 0.00833) % 360;
+  secondHand.style.transform = `rotate(${secAngle}deg)`;
+  minuteHand.style.transform = `rotate(${minAngle}deg)`;
+  hourHand.style.transform = `rotate(${hourAngle}deg)`;
+
+  // Pendulum
+  pendulumAngle = Math.sin(elapsed * 2.5) * 15;
+  pendArm.style.transform = `rotate(${pendulumAngle}deg)`;
+  const armLen = window.innerHeight * 0.12;
+  const bobOffsetX = Math.sin(pendulumAngle * Math.PI / 180) * armLen;
+  const bobBaseX = window.innerWidth * 0.449;
+  pendBob.style.left = `${(bobBaseX + bobOffsetX) / (window.innerWidth / 100)}vw`;
+  pendBob.style.transform = `rotate(${pendulumAngle}deg)`;
+
+  // Pressure gauges
+  gaugeNeedles.forEach((needle, i) => {
+    const pressure = -60 + Math.sin(elapsed * (0.5 + i * 0.3) + i * 2) * 40 + cycleProgress * 30;
+    needle.style.transform = `rotate(${pressure}deg)`;
+  });
+
+  // Oil levels
+  oilLevels.forEach((level, i) => {
+    const h = 30 + Math.sin(elapsed * 0.3 + i * 1.5) * 20 + cycleProgress * 15;
+    level.style.height = `${Math.min(90, h)}%`;
+  });
+
+  // Conveyor items
+  conveyorItems.forEach((item, i) => {
+    item.x += 0.04;
+    if (item.x > 60) item.x = 3;
+    item.el.style.left = `${item.x}vw`;
+  });
+
+  // Steam emission
+  if (Math.random() < 0.08 + cycleProgress * 0.06) {
+    emitSteam();
+  }
+
+  // Tesla sparks
+  if (Math.random() < 0.04 * CONFIG.sparkIntensity) {
+    teslaCoils.forEach(tc => {
+      if (Math.random() < 0.3) {
+        emitSparks(tc.x, tc.y);
+      }
+    });
+  }
+
+  // Canvas rendering
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw electric arcs
+  teslaCoils.forEach(tc => {
+    if (Math.random() < 0.15 * CONFIG.sparkIntensity) {
+      const vw = window.innerWidth / 100;
+      const vh = window.innerHeight / 100;
+      const sx = tc.x * vw;
+      const sy = tc.y * vh;
+      const angle = Math.random() * Math.PI - Math.PI / 2;
+      const len = 30 + Math.random() * 60;
+      const ex = sx + Math.cos(angle) * len;
+      const ey = sy + Math.sin(angle) * len;
+
+      ctx.strokeStyle = 'rgba(100,180,255,0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#64b4ff';
+      ctx.shadowBlur = 8;
+      drawArc(sx, sy, ex, ey, 6);
+      ctx.shadowBlur = 0;
+
+      // Thinner secondary arc
+      ctx.strokeStyle = 'rgba(170,220,255,0.4)';
+      ctx.lineWidth = 0.5;
+      drawArc(sx, sy, ex + (Math.random()-0.5)*20, ey + (Math.random()-0.5)*20, 5);
+    }
+  });
+
+  // Update and draw sparks
+  sparks = sparks.filter(s => {
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vy += 0.1;
+    s.life -= 0.025;
+    if (s.life <= 0) return false;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = s.life;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  // Update and draw steam
+  steamParticles = steamParticles.filter(s => {
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vy -= 0.01;
+    s.vx += (Math.random() - 0.5) * 0.05;
+    s.size += 0.15;
+    s.life -= 0.008;
+    if (s.life <= 0) return false;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.steamColor;
+    ctx.globalAlpha = s.life * s.alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  requestAnimationFrame(animate);
+}
+
+function runCycle() {
+  startTime = Date.now();
+  sparks = [];
+  steamParticles = [];
+  gears.forEach(g => g.angle = 0);
+  conveyorItems.forEach((item, i) => item.x = 5 + i * 12);
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+animate();
+runCycle();
+</script>
+</body>
+</html>

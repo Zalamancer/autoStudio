@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Volcano Fire</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0505; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  skyColor1: '#0a0505',
+  skyColor2: '#1a0a08',
+  skyGlow: '#3a1005',
+  volcanoColor: '#1a0e0a',
+  volcanoHighlight: '#2a1510',
+  lavaColor1: '#ff4400',
+  lavaColor2: '#ff8800',
+  lavaColor3: '#ffcc00',
+  lavaGlow: '#ff3300',
+  lavaLakeColor: '#ff5500',
+  emberCount: 250,
+  emberColor1: '#ff6600',
+  emberColor2: '#ffaa00',
+  emberColor3: '#ff3300',
+  emberSpeed: 1.0,
+  smokeCount: 40,
+  smokeColor: 'rgba(40,30,25,0.25)',
+  lavaFlowCount: 5,
+  lavaFlowSpeed: 0.6,
+  lavaBubbleRate: 0.15,
+  craterGlow: '#ff2200',
+  ashParticles: 80,
+  ashColor: 'rgba(80,60,50,0.3)'
+};
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config);
+});
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Ember particle
+class Ember {
+  constructor() { this.reset(true); }
+  reset(initial) {
+    // Embers rise from crater area
+    const craterX = W * 0.5;
+    const craterY = H * 0.35;
+    this.x = craterX + (Math.random() - 0.5) * 80;
+    this.y = initial ? craterY - Math.random() * H * 0.3 : craterY;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = -(1.5 + Math.random() * 3) * CONFIG.emberSpeed;
+    this.r = 1 + Math.random() * 3;
+    this.life = 0;
+    this.maxLife = 80 + Math.random() * 160;
+    this.gravity = 0.005 + Math.random() * 0.01;
+    this.wind = (Math.random() - 0.5) * 0.02;
+    const colors = [CONFIG.emberColor1, CONFIG.emberColor2, CONFIG.emberColor3];
+    this.color = colors[Math.floor(Math.random() * colors.length)];
+    this.flickerSpeed = 5 + Math.random() * 10;
+  }
+  update() {
+    this.life++;
+    this.vy += this.gravity;
+    this.vx += this.wind + Math.sin(time * 0.01 + this.x * 0.01) * 0.02;
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.life > this.maxLife || this.y > H + 20 || this.y < -50) this.reset(false);
+  }
+  draw() {
+    const progress = this.life / this.maxLife;
+    const alpha = progress < 0.1 ? progress / 0.1 : Math.max(0, 1 - (progress - 0.3) / 0.7);
+    const flicker = 0.5 + Math.sin(time * this.flickerSpeed * 0.1) * 0.5;
+    const r = this.r * (1 - progress * 0.5) * (0.7 + flicker * 0.3);
+
+    // Glow
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r * 4, 0, Math.PI * 2);
+    ctx.fillStyle = this.color.replace(')', `,${alpha * 0.15})`).replace('rgb', 'rgba');
+    ctx.fill();
+
+    // Core
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = alpha * flicker;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Smoke plume
+class SmokePuff {
+  constructor() { this.reset(true); }
+  reset(initial) {
+    const craterX = W * 0.5;
+    const craterY = H * 0.33;
+    this.x = craterX + (Math.random() - 0.5) * 60;
+    this.y = initial ? craterY - Math.random() * H * 0.35 : craterY;
+    this.vx = (Math.random() - 0.5) * 0.5;
+    this.vy = -(0.3 + Math.random() * 0.8);
+    this.r = 15 + Math.random() * 25;
+    this.maxR = this.r * (3 + Math.random() * 2);
+    this.life = initial ? Math.random() : 0;
+    this.maxLife = 1;
+    this.growSpeed = 0.002 + Math.random() * 0.003;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.005;
+  }
+  update() {
+    this.life += this.growSpeed;
+    this.r += (this.maxR - this.r) * 0.01;
+    this.x += this.vx + Math.sin(time * 0.005 + this.rotation) * 0.3;
+    this.y += this.vy;
+    this.rotation += this.rotSpeed;
+    if (this.life >= this.maxLife) this.reset(false);
+  }
+  draw() {
+    const alpha = Math.sin(this.life * Math.PI) * 0.2;
+    const grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+    grd.addColorStop(0, CONFIG.smokeColor.replace(/[\d.]+\)$/, alpha + ')'));
+    grd.addColorStop(0.6, CONFIG.smokeColor.replace(/[\d.]+\)$/, (alpha * 0.5) + ')'));
+    grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Lava flow
+class LavaFlow {
+  constructor(index) {
+    this.index = index;
+    const total = CONFIG.lavaFlowCount;
+    const spread = 0.3;
+    this.startX = W * (0.5 + (index / (total - 1) - 0.5) * spread);
+    this.startY = H * 0.42;
+    this.endY = H * 0.75 + Math.random() * H * 0.15;
+    this.width = 4 + Math.random() * 6;
+    this.segments = [];
+    this.buildPath();
+    this.flowOffset = Math.random() * 100;
+  }
+  buildPath() {
+    this.segments = [];
+    const steps = 20;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      this.segments.push({
+        x: this.startX + (Math.random() - 0.5) * 30 * t,
+        y: this.startY + (this.endY - this.startY) * t,
+        w: this.width * (1 - t * 0.4)
+      });
+    }
+  }
+  draw() {
+    const t = time * CONFIG.lavaFlowSpeed * 0.01 + this.flowOffset;
+
+    for (let i = 1; i < this.segments.length; i++) {
+      const s0 = this.segments[i - 1];
+      const s1 = this.segments[i];
+      const pulse = 0.6 + Math.sin(t + i * 0.3) * 0.4;
+      const alpha = 0.5 + pulse * 0.5;
+      const w = s1.w * (0.8 + pulse * 0.2);
+
+      // Glow
+      const glowGrad = ctx.createLinearGradient(s0.x, s0.y, s1.x, s1.y);
+      glowGrad.addColorStop(0, `rgba(255,68,0,${alpha * 0.15})`);
+      glowGrad.addColorStop(1, `rgba(255,136,0,${alpha * 0.1})`);
+      ctx.beginPath();
+      ctx.moveTo(s0.x - w * 3, s0.y);
+      ctx.lineTo(s1.x - w * 3, s1.y);
+      ctx.lineTo(s1.x + w * 3, s1.y);
+      ctx.lineTo(s0.x + w * 3, s0.y);
+      ctx.fillStyle = glowGrad;
+      ctx.fill();
+
+      // Core lava
+      const grad = ctx.createLinearGradient(s1.x - w, s1.y, s1.x + w, s1.y);
+      grad.addColorStop(0, CONFIG.lavaColor1);
+      grad.addColorStop(0.3, CONFIG.lavaColor2);
+      grad.addColorStop(0.5, CONFIG.lavaColor3);
+      grad.addColorStop(0.7, CONFIG.lavaColor2);
+      grad.addColorStop(1, CONFIG.lavaColor1);
+
+      ctx.beginPath();
+      ctx.moveTo(s0.x - s0.w * 0.5, s0.y);
+      ctx.lineTo(s1.x - w * 0.5, s1.y);
+      ctx.lineTo(s1.x + w * 0.5, s1.y);
+      ctx.lineTo(s0.x + s0.w * 0.5, s0.y);
+      ctx.fillStyle = grad;
+      ctx.globalAlpha = alpha;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+// Lava bubble
+class LavaBubble {
+  constructor() { this.reset(); this.active = false; }
+  reset() {
+    this.x = W * 0.5 + (Math.random() - 0.5) * 60;
+    this.y = H * 0.4;
+    this.r = 3 + Math.random() * 8;
+    this.life = 0;
+    this.maxLife = 20 + Math.random() * 30;
+    this.vy = -(1 + Math.random() * 2);
+    this.active = true;
+  }
+  update() {
+    if (!this.active) return;
+    this.life++;
+    this.y += this.vy;
+    this.r *= 1.02;
+    if (this.life > this.maxLife) this.active = false;
+  }
+  draw() {
+    if (!this.active) return;
+    const progress = this.life / this.maxLife;
+    const alpha = 1 - progress;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.strokeStyle = CONFIG.lavaColor3;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.stroke();
+    // Inner glow
+    ctx.fillStyle = CONFIG.lavaColor2;
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// Ash particles
+class AshParticle {
+  constructor() { this.reset(true); }
+  reset(initial) {
+    this.x = Math.random() * W;
+    this.y = initial ? Math.random() * H : -5;
+    this.r = 0.5 + Math.random() * 1.5;
+    this.vy = 0.2 + Math.random() * 0.5;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.wobblePhase = Math.random() * Math.PI * 2;
+    this.alpha = 0.1 + Math.random() * 0.2;
+  }
+  update() {
+    this.wobblePhase += 0.02;
+    this.x += this.vx + Math.sin(this.wobblePhase) * 0.3;
+    this.y += this.vy;
+    if (this.y > H + 10) this.reset(false);
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.ashColor;
+    ctx.globalAlpha = this.alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+const embers = Array.from({ length: CONFIG.emberCount }, () => new Ember());
+const smokePuffs = Array.from({ length: CONFIG.smokeCount }, () => new SmokePuff());
+const lavaFlows = Array.from({ length: CONFIG.lavaFlowCount }, (_, i) => new LavaFlow(i));
+const lavaBubbles = Array.from({ length: 15 }, () => new LavaBubble());
+const ashParticles = Array.from({ length: CONFIG.ashParticles }, () => new AshParticle());
+
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  grad.addColorStop(0, CONFIG.skyColor1);
+  grad.addColorStop(0.7, CONFIG.skyColor2);
+  grad.addColorStop(1, CONFIG.skyGlow);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Atmospheric glow from volcano
+  const glowGrad = ctx.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, H * 0.6);
+  const pulse = 0.8 + Math.sin(time * 0.02) * 0.2;
+  glowGrad.addColorStop(0, `rgba(255,50,0,${0.15 * pulse})`);
+  glowGrad.addColorStop(0.3, `rgba(255,30,0,${0.06 * pulse})`);
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawVolcano() {
+  // Mountain silhouette
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, H * 0.65);
+  ctx.lineTo(W * 0.15, H * 0.55);
+  ctx.lineTo(W * 0.3, H * 0.45);
+  ctx.lineTo(W * 0.42, H * 0.37);
+  // Crater dip
+  ctx.lineTo(W * 0.46, H * 0.38);
+  ctx.lineTo(W * 0.5, H * 0.40);
+  ctx.lineTo(W * 0.54, H * 0.38);
+  ctx.lineTo(W * 0.58, H * 0.37);
+  // Right side
+  ctx.lineTo(W * 0.7, H * 0.45);
+  ctx.lineTo(W * 0.85, H * 0.55);
+  ctx.lineTo(W, H * 0.65);
+  ctx.lineTo(W, H);
+  ctx.closePath();
+
+  const vGrad = ctx.createLinearGradient(0, H * 0.35, 0, H);
+  vGrad.addColorStop(0, CONFIG.volcanoHighlight);
+  vGrad.addColorStop(0.3, CONFIG.volcanoColor);
+  vGrad.addColorStop(1, '#0a0505');
+  ctx.fillStyle = vGrad;
+  ctx.fill();
+}
+
+function drawCraterGlow() {
+  const cx = W * 0.5;
+  const cy = H * 0.39;
+  const pulse = 0.7 + Math.sin(time * 0.03) * 0.3;
+
+  // Lava lake glow
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60);
+  grd.addColorStop(0, CONFIG.lavaColor3 + 'aa');
+  grd.addColorStop(0.3, CONFIG.lavaLakeColor + '66');
+  grd.addColorStop(0.6, CONFIG.craterGlow + '33');
+  grd.addColorStop(1, 'transparent');
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 50, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Crater rim highlight
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 5, 55, 22, 0, Math.PI, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255,80,20,${0.3 * pulse})`;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawLavaLake() {
+  const cx = W * 0.5;
+  const cy = H * 0.40;
+  const pulse = 0.6 + Math.sin(time * 0.04) * 0.4;
+
+  // Animated lava surface
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 40, 15, 0, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Lava colors shifting
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 + time * 0.02;
+    const r = 15 + Math.sin(angle * 2 + time * 0.05) * 8;
+    const lx = cx + Math.cos(angle) * r;
+    const ly = cy + Math.sin(angle) * r * 0.4;
+    const grd = ctx.createRadialGradient(lx, ly, 0, lx, ly, 15);
+    grd.addColorStop(0, CONFIG.lavaColor3);
+    grd.addColorStop(0.5, CONFIG.lavaColor2);
+    grd.addColorStop(1, CONFIG.lavaColor1);
+    ctx.fillStyle = grd;
+    ctx.globalAlpha = 0.4 + pulse * 0.3;
+    ctx.fillRect(lx - 15, ly - 15, 30, 30);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function animate() {
+  time++;
+  ctx.clearRect(0, 0, W, H);
+
+  drawSky();
+
+  // Smoke behind volcano
+  smokePuffs.forEach(s => { s.update(); s.draw(); });
+
+  drawVolcano();
+  drawCraterGlow();
+  drawLavaLake();
+
+  // Lava flows down the mountain
+  lavaFlows.forEach(f => f.draw());
+
+  // Lava bubbles
+  lavaBubbles.forEach(b => {
+    b.update();
+    b.draw();
+    if (!b.active && Math.random() < CONFIG.lavaBubbleRate * 0.05) b.reset();
+  });
+
+  // Embers
+  embers.forEach(e => { e.update(); e.draw(); });
+
+  // Ash falling
+  ashParticles.forEach(a => { a.update(); a.draw(); });
+
+  // Foreground heat haze (subtle)
+  const hazeAlpha = 0.02 + Math.sin(time * 0.015) * 0.01;
+  const hazeGrad = ctx.createLinearGradient(0, H * 0.6, 0, H);
+  hazeGrad.addColorStop(0, `rgba(255,100,30,${hazeAlpha})`);
+  hazeGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(0, H * 0.5, W, H * 0.5);
+
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Aggregator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #0f0f0f;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #e8e8e8;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2vh 4vw;
+    opacity: 0;
+  }
+  .app-name {
+    font-size: 2.5vh; font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .app-name .accent { color: #ff6b35; }
+  .header-right {
+    display: flex; gap: 2vw; align-items: center;
+  }
+  .notif-badge {
+    background: #ff3b30;
+    color: #fff;
+    font-size: 0.9vh;
+    font-weight: 700;
+    padding: 0.3vh 1vw;
+    border-radius: 10vh;
+  }
+  .categories {
+    display: flex; gap: 1.5vw;
+    padding: 0 4vw 1.5vh;
+    overflow: hidden;
+    opacity: 0;
+  }
+  .cat-chip {
+    padding: 0.6vh 2.5vw;
+    border-radius: 10vh;
+    font-size: 1.1vh;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #1c1c1e;
+    color: #a0a0a0;
+  }
+  .cat-chip.active { background: #ff6b35; color: #fff; }
+  .trending-section {
+    padding: 1.5vh 4vw;
+    opacity: 0;
+  }
+  .section-title {
+    font-size: 1.8vh; font-weight: 800;
+    margin-bottom: 1.5vh;
+  }
+  .trending-card {
+    display: flex;
+    background: #1c1c1e;
+    border-radius: 1.2vh;
+    overflow: hidden;
+    margin-bottom: 1.2vh;
+    height: 14vh;
+    opacity: 0;
+    transform: translateX(-15px);
+  }
+  .tc-image {
+    width: 35%;
+    flex-shrink: 0;
+  }
+  .tc-body {
+    padding: 1.2vh 2vw;
+    display: flex; flex-direction: column; justify-content: center;
+    flex: 1;
+  }
+  .tc-source {
+    font-size: 0.9vh;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3vh;
+  }
+  .tc-title {
+    font-size: 1.4vh;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 0.5vh;
+  }
+  .tc-meta {
+    font-size: 0.9vh; color: #666;
+    display: flex; align-items: center; gap: 1vw;
+  }
+  .fire-badge {
+    display: inline-flex; align-items: center; gap: 0.3vw;
+    background: rgba(255,107,53,0.15);
+    color: #ff6b35;
+    padding: 0.1vh 0.8vw;
+    border-radius: 0.3vh;
+    font-size: 0.8vh; font-weight: 700;
+  }
+  .latest-section {
+    padding: 0 4vw;
+    flex: 1;
+    opacity: 0;
+  }
+  .latest-item {
+    display: flex; gap: 2.5vw;
+    padding: 1.5vh 0;
+    border-bottom: 1px solid #1c1c1e;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .li-number {
+    font-size: 2.5vh;
+    font-weight: 900;
+    color: #333;
+    width: 4vw;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .li-body { flex: 1; }
+  .li-source {
+    font-size: 0.9vh; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3vh;
+  }
+  .li-title {
+    font-size: 1.3vh; font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 0.3vh;
+  }
+  .li-snippet {
+    font-size: 1.1vh; color: #888;
+    line-height: 1.4;
+    margin-bottom: 0.3vh;
+  }
+  .li-meta {
+    font-size: 0.8vh; color: #555;
+    display: flex; gap: 1.5vw;
+  }
+  .li-thumb {
+    width: 8vh; height: 8vh;
+    border-radius: 0.6vh;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .bottom-nav {
+    display: flex;
+    background: #1c1c1e;
+    border-top: 1px solid #2c2c2e;
+    padding: 1vh 0;
+    opacity: 0;
+  }
+  .nav-item {
+    flex: 1; text-align: center;
+    font-size: 0.9vh;
+    color: #666;
+  }
+  .nav-item.active { color: #ff6b35; }
+  .nav-icon { font-size: 2vh; margin-bottom: 0.2vh; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="app-header" id="appHeader">
+    <div class="app-name" id="appName"><span class="accent">News</span>Feed</div>
+    <div class="header-right">
+      <div class="notif-badge" id="notifBadge">12</div>
+      <span style="font-size:2.2vh;">&#x1F50D;</span>
+    </div>
+  </div>
+
+  <div class="categories" id="categories">
+    <div class="cat-chip active">All</div>
+    <div class="cat-chip">Tech</div>
+    <div class="cat-chip">Science</div>
+    <div class="cat-chip">Business</div>
+    <div class="cat-chip">World</div>
+    <div class="cat-chip">Health</div>
+  </div>
+
+  <div class="trending-section" id="trendingSection">
+    <div class="section-title">&#x1F525; Trending</div>
+  </div>
+
+  <div class="trending-card" id="trend1">
+    <div class="tc-image" id="trendImg1" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+    <div class="tc-body">
+      <div class="tc-source" id="trendSrc1" style="color: #667eea;">The Verge</div>
+      <div class="tc-title" id="trendTitle1">AI Startup Raises $2B in Largest Seed Round Ever, Plans to Revolutionize Healthcare</div>
+      <div class="tc-meta"><span id="trendTime1">45 min ago</span> <div class="fire-badge">&#x1F525; 2.4K</div></div>
+    </div>
+  </div>
+
+  <div class="trending-card" id="trend2">
+    <div class="tc-image" id="trendImg2" style="background: linear-gradient(135deg, #11998e, #38ef7d);"></div>
+    <div class="tc-body">
+      <div class="tc-source" id="trendSrc2" style="color: #38ef7d;">Reuters</div>
+      <div class="tc-title" id="trendTitle2">Global Climate Agreement Signed by 195 Nations Targets Net Zero by 2040</div>
+      <div class="tc-meta"><span id="trendTime2">1 hour ago</span> <div class="fire-badge">&#x1F525; 1.8K</div></div>
+    </div>
+  </div>
+
+  <div class="latest-section" id="latestSection">
+    <div class="section-title">Latest</div>
+  </div>
+
+  <div style="padding:0 4vw;">
+    <div class="latest-item" id="latest1">
+      <div class="li-number">01</div>
+      <div class="li-body">
+        <div class="li-source" id="latestSrc1" style="color: #1d9bf0;">TechCrunch</div>
+        <div class="li-title" id="latestTitle1">Apple Unveils Next-Gen Vision Pro with Neural Interface</div>
+        <div class="li-snippet" id="latestSnippet1">The new device promises seamless brain-computer interaction for productivity and creative workflows.</div>
+        <div class="li-meta"><span>2h ago</span><span>&#x1F4AC; 342</span></div>
+      </div>
+      <div class="li-thumb" style="background: linear-gradient(135deg, #a8edea, #fed6e3);"></div>
+    </div>
+
+    <div class="latest-item" id="latest2">
+      <div class="li-number">02</div>
+      <div class="li-body">
+        <div class="li-source" id="latestSrc2" style="color: #ff3b30;">BBC</div>
+        <div class="li-title" id="latestTitle2">Space Agency Confirms Evidence of Water on Europa's Surface</div>
+        <div class="li-snippet" id="latestSnippet2">New data from orbital sensors reveals liquid water deposits that could harbor microbial life.</div>
+        <div class="li-meta"><span>3h ago</span><span>&#x1F4AC; 891</span></div>
+      </div>
+      <div class="li-thumb" style="background: linear-gradient(135deg, #2c3e50, #3498db);"></div>
+    </div>
+
+    <div class="latest-item" id="latest3">
+      <div class="li-number">03</div>
+      <div class="li-body">
+        <div class="li-source" id="latestSrc3" style="color: #fbbc04;">Bloomberg</div>
+        <div class="li-title" id="latestTitle3">Crypto Market Cap Surpasses $5 Trillion for the First Time</div>
+        <div class="li-snippet" id="latestSnippet3">Institutional adoption and regulatory clarity drive unprecedented growth in digital assets.</div>
+        <div class="li-meta"><span>4h ago</span><span>&#x1F4AC; 567</span></div>
+      </div>
+      <div class="li-thumb" style="background: linear-gradient(135deg, #f12711, #f5af19);"></div>
+    </div>
+  </div>
+
+  <div class="bottom-nav" id="bottomNav">
+    <div class="nav-item active"><div class="nav-icon">&#x1F3E0;</div>Home</div>
+    <div class="nav-item"><div class="nav-icon">&#x1F50D;</div>Discover</div>
+    <div class="nav-item"><div class="nav-icon">&#x1F516;</div>Saved</div>
+    <div class="nav-item"><div class="nav-icon">&#x1F464;</div>Profile</div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    appName: 'NewsFeed',
+    trend1Source: 'The Verge',
+    trend1Title: 'AI Startup Raises $2B in Largest Seed Round Ever, Plans to Revolutionize Healthcare',
+    trend1Time: '45 min ago',
+    trend2Source: 'Reuters',
+    trend2Title: 'Global Climate Agreement Signed by 195 Nations Targets Net Zero by 2040',
+    trend2Time: '1 hour ago',
+    latest1Source: 'TechCrunch',
+    latest1Title: 'Apple Unveils Next-Gen Vision Pro with Neural Interface',
+    latest1Snippet: 'The new device promises seamless brain-computer interaction for productivity and creative workflows.',
+    latest2Source: 'BBC',
+    latest2Title: 'Space Agency Confirms Evidence of Water on Europa\'s Surface',
+    latest2Snippet: 'New data from orbital sensors reveals liquid water deposits that could harbor microbial life.',
+    latest3Source: 'Bloomberg',
+    latest3Title: 'Crypto Market Cap Surpasses $5 Trillion for the First Time',
+    latest3Snippet: 'Institutional adoption and regulatory clarity drive unprecedented growth in digital assets.',
+    bgColor: '#0f0f0f',
+    accentColor: '#ff6b35',
+    cycleDuration: 16000
+  };
+
+  document.getElementById('trendSrc1').textContent = CONFIG.trend1Source;
+  document.getElementById('trendTitle1').textContent = CONFIG.trend1Title;
+  document.getElementById('trendTime1').textContent = CONFIG.trend1Time;
+  document.getElementById('trendSrc2').textContent = CONFIG.trend2Source;
+  document.getElementById('trendTitle2').textContent = CONFIG.trend2Title;
+  document.getElementById('trendTime2').textContent = CONFIG.trend2Time;
+  document.getElementById('latestSrc1').textContent = CONFIG.latest1Source;
+  document.getElementById('latestTitle1').textContent = CONFIG.latest1Title;
+  document.getElementById('latestSnippet1').textContent = CONFIG.latest1Snippet;
+  document.getElementById('latestSrc2').textContent = CONFIG.latest2Source;
+  document.getElementById('latestTitle2').textContent = CONFIG.latest2Title;
+  document.getElementById('latestSnippet2').textContent = CONFIG.latest2Snippet;
+  document.getElementById('latestSrc3').textContent = CONFIG.latest3Source;
+  document.getElementById('latestTitle3').textContent = CONFIG.latest3Title;
+  document.getElementById('latestSnippet3').textContent = CONFIG.latest3Snippet;
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.6s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    ['appHeader','categories','trendingSection','trend1','trend2','latestSection','latest1','latest2','latest3','bottomNav'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      if (['trend1','trend2'].includes(id)) el.style.transform = 'translateX(-15px)';
+      if (['latest1','latest2','latest3'].includes(id)) el.style.transform = 'translateY(10px)';
+    });
+    void document.getElementById('appHeader').offsetWidth;
+
+    anim(document.getElementById('appHeader'), { opacity: '1' }, 200);
+    anim(document.getElementById('categories'), { opacity: '1' }, 500);
+    anim(document.getElementById('trendingSection'), { opacity: '1' }, 800);
+    anim(document.getElementById('trend1'), { opacity: '1', transform: 'translateX(0)' }, 1200);
+    anim(document.getElementById('trend2'), { opacity: '1', transform: 'translateX(0)' }, 1800);
+    anim(document.getElementById('latestSection'), { opacity: '1' }, 2800);
+    anim(document.getElementById('latest1'), { opacity: '1', transform: 'translateY(0)' }, 3200);
+    anim(document.getElementById('latest2'), { opacity: '1', transform: 'translateY(0)' }, 3800);
+    anim(document.getElementById('latest3'), { opacity: '1', transform: 'translateY(0)' }, 4400);
+    anim(document.getElementById('bottomNav'), { opacity: '1' }, 5000);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

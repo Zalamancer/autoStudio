@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyberpunk HUD</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; background: #0a0515; color: #00ffcc; }
+  .hud { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Background grid */
+  .grid-overlay {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,204,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,204,0.03) 1px, transparent 1px);
+    background-size: 4vw 4vw;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* Scan circle */
+  .scan-ring {
+    position: absolute; top: 50%; left: 50%; width: 28vmin; height: 28vmin;
+    transform: translate(-50%, -50%);
+    border: 2px dashed rgba(0,255,204,0.4);
+    border-radius: 50%;
+    animation: scanRotate 6s linear infinite;
+  }
+  .scan-ring-inner {
+    position: absolute; top: 50%; left: 50%; width: 20vmin; height: 20vmin;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(0,255,204,0.15);
+    border-radius: 50%;
+  }
+  .scan-ring-outer {
+    position: absolute; top: 50%; left: 50%; width: 36vmin; height: 36vmin;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(0,255,204,0.08);
+    border-radius: 50%;
+  }
+  @keyframes scanRotate { 0% { transform: translate(-50%,-50%) rotate(0deg); } 100% { transform: translate(-50%,-50%) rotate(360deg); } }
+
+  /* Sweep line inside scan */
+  .scan-sweep {
+    position: absolute; top: 50%; left: 50%; width: 14vmin; height: 2px;
+    transform-origin: left center;
+    background: linear-gradient(90deg, rgba(0,255,204,0.8), transparent);
+    animation: sweepRotate 3s linear infinite;
+  }
+  @keyframes sweepRotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  /* Crosshair */
+  .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .crosshair .h-line { position: absolute; width: 6vmin; height: 1px; background: rgba(0,255,204,0.6); top: 0; }
+  .crosshair .h-line.left { right: 2vmin; }
+  .crosshair .h-line.right { left: 2vmin; }
+  .crosshair .v-line { position: absolute; height: 6vmin; width: 1px; background: rgba(0,255,204,0.6); left: 0; }
+  .crosshair .v-line.top { bottom: 2vmin; }
+  .crosshair .v-line.bottom { top: 2vmin; }
+
+  /* Corner brackets */
+  .corner-bracket {
+    position: absolute; width: 4vw; height: 4vw;
+    border-color: rgba(0,255,204,0.3); border-style: solid; border-width: 0;
+  }
+  .corner-bracket.tl { top: 4vh; left: 3vw; border-top-width: 2px; border-left-width: 2px; }
+  .corner-bracket.tr { top: 4vh; right: 3vw; border-top-width: 2px; border-right-width: 2px; }
+  .corner-bracket.bl { bottom: 4vh; left: 3vw; border-bottom-width: 2px; border-left-width: 2px; }
+  .corner-bracket.br { bottom: 4vh; right: 3vw; border-bottom-width: 2px; border-right-width: 2px; }
+
+  /* Data panels */
+  .data-panel {
+    position: absolute; font-size: 1.4vh; letter-spacing: 1px;
+    line-height: 2.2vh; opacity: 0;
+  }
+  .data-panel.left { top: 12vh; left: 3vw; text-align: left; }
+  .data-panel.right { top: 12vh; right: 3vw; text-align: right; }
+
+  .data-label { color: rgba(0,255,204,0.4); font-size: 1.1vh; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.3vh; }
+  .data-value { color: #00ffcc; font-weight: bold; font-size: 1.6vh; margin-bottom: 1.2vh; }
+
+  /* Health/Energy bars */
+  .bar-container {
+    position: absolute; left: 3vw; bottom: 12vh; width: 25vw; opacity: 0;
+  }
+  .bar-row { margin-bottom: 1.5vh; }
+  .bar-label { font-size: 1.1vh; color: rgba(0,255,204,0.5); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.4vh; }
+  .bar-track { width: 100%; height: 1.2vh; background: rgba(0,255,204,0.08); border: 1px solid rgba(0,255,204,0.15); border-radius: 1px; position: relative; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 1px; transition: width 1.5s ease; }
+  .bar-fill.health { background: linear-gradient(90deg, #00ffcc, #00ff88); }
+  .bar-fill.energy { background: linear-gradient(90deg, #7b2ff7, #ff00ff); }
+
+  /* Mini map */
+  .minimap {
+    position: absolute; right: 3vw; bottom: 10vh; width: 16vmin; height: 16vmin;
+    border: 1px solid rgba(0,255,204,0.2); border-radius: 50%;
+    background: rgba(0,255,204,0.02); opacity: 0; overflow: hidden;
+  }
+  .minimap-dot {
+    position: absolute; border-radius: 50%; background: rgba(0,255,204,0.5);
+  }
+  .minimap-center {
+    position: absolute; top: 50%; left: 50%; width: 1.2vmin; height: 1.2vmin;
+    transform: translate(-50%, -50%); border-radius: 50%; background: #00ffcc;
+    box-shadow: 0 0 8px #00ffcc;
+  }
+  .minimap-ring {
+    position: absolute; top: 50%; left: 50%; width: 8vmin; height: 8vmin;
+    transform: translate(-50%, -50%); border: 1px solid rgba(0,255,204,0.1);
+    border-radius: 50%;
+  }
+  .minimap-crosshair-h {
+    position: absolute; top: 50%; left: 0; right: 0; height: 1px;
+    background: rgba(0,255,204,0.06);
+  }
+  .minimap-crosshair-v {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: rgba(0,255,204,0.06);
+  }
+
+  /* Alert text */
+  .alert-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) translateY(18vmin);
+    font-size: 2vh; font-weight: bold; letter-spacing: 4px; text-transform: uppercase;
+    color: #ff3366; text-shadow: 0 0 10px rgba(255,51,102,0.5);
+    opacity: 0;
+  }
+  @keyframes alertFlash { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  /* User name */
+  .user-label {
+    position: absolute; top: 5vh; left: 50%; transform: translateX(-50%);
+    font-size: 1.8vh; letter-spacing: 6px; text-transform: uppercase;
+    color: rgba(0,255,204,0.6); opacity: 0;
+  }
+
+  /* Status line */
+  .status-line {
+    position: absolute; bottom: 5vh; left: 50%; transform: translateX(-50%);
+    font-size: 1.2vh; letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(0,255,204,0.3); opacity: 0; white-space: nowrap;
+  }
+
+  /* Circuit decorations */
+  .circuit-line {
+    position: absolute; background: rgba(0,255,204,0.08); border-radius: 1px;
+  }
+  .circuit-line.h { height: 1px; }
+  .circuit-line.v { width: 1px; }
+  .circuit-node {
+    position: absolute; width: 4px; height: 4px; border-radius: 50%;
+    background: rgba(0,255,204,0.2);
+  }
+
+  /* Glow effects */
+  .center-glow {
+    position: absolute; top: 50%; left: 50%; width: 40vmin; height: 40vmin;
+    transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,204,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    animation: glowPulse 3s ease-in-out infinite;
+  }
+  @keyframes glowPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 0.5; } 50% { transform: translate(-50%,-50%) scale(1.2); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="hud">
+  <div class="grid-overlay"></div>
+  <div class="center-glow"></div>
+
+  <!-- Corner brackets -->
+  <div class="corner-bracket tl"></div>
+  <div class="corner-bracket tr"></div>
+  <div class="corner-bracket bl"></div>
+  <div class="corner-bracket br"></div>
+
+  <!-- Circuit decorations -->
+  <div id="circuits"></div>
+
+  <!-- Scan ring -->
+  <div class="scan-ring"></div>
+  <div class="scan-ring-inner"></div>
+  <div class="scan-ring-outer"></div>
+  <div class="scan-sweep"></div>
+
+  <!-- Crosshair -->
+  <div class="crosshair">
+    <div class="h-line left"></div>
+    <div class="h-line right"></div>
+    <div class="v-line top"></div>
+    <div class="v-line bottom"></div>
+  </div>
+
+  <!-- User label -->
+  <div class="user-label" id="userLabel">OPERATIVE: GHOST-7</div>
+
+  <!-- Left data panel -->
+  <div class="data-panel left" id="leftPanel">
+    <div class="data-label">THREAT LEVEL</div>
+    <div class="data-value" id="threatValue">ELEVATED</div>
+    <div class="data-label">COORDINATES</div>
+    <div class="data-value" id="coordsValue">34.0522N 118.2437W</div>
+    <div class="data-label">SYSTEM</div>
+    <div class="data-value" id="systemValue">ONLINE</div>
+  </div>
+
+  <!-- Right data panel -->
+  <div class="data-panel right" id="rightPanel">
+    <div class="data-label">SIGNAL</div>
+    <div class="data-value" id="signalValue">98.2%</div>
+    <div class="data-label">TARGETS</div>
+    <div class="data-value" id="targetsValue">3 DETECTED</div>
+    <div class="data-label">UPLINK</div>
+    <div class="data-value" id="uplinkValue">ACTIVE</div>
+  </div>
+
+  <!-- Health/Energy bars -->
+  <div class="bar-container" id="barContainer">
+    <div class="bar-row">
+      <div class="bar-label">HEALTH</div>
+      <div class="bar-track"><div class="bar-fill health" id="healthBar"></div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">ENERGY</div>
+      <div class="bar-track"><div class="bar-fill energy" id="energyBar"></div></div>
+    </div>
+  </div>
+
+  <!-- Mini map -->
+  <div class="minimap" id="minimap">
+    <div class="minimap-crosshair-h"></div>
+    <div class="minimap-crosshair-v"></div>
+    <div class="minimap-ring"></div>
+    <div class="minimap-center"></div>
+    <div id="minimapDots"></div>
+  </div>
+
+  <!-- Alert text -->
+  <div class="alert-text" id="alertText">SCANNING</div>
+
+  <!-- Status line -->
+  <div class="status-line" id="statusLine">SYS.CORE.v4.2.1 // NEURAL LINK ESTABLISHED // ENCRYPTION: AES-512</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  userName: 'GHOST-7',
+  threatLevel: 'ELEVATED',
+  healthPercent: 87,
+  energyPercent: 64,
+  coordinates: '34.0522N 118.2437W',
+  systemStatus: 'ONLINE',
+  alerts: ['SCANNING', 'ALERT', 'TARGET LOCKED', 'ANALYZING'],
+  accentColor: '#00ffcc',
+  cycleDuration: 10000,
+};
+
+// Apply CONFIG
+document.getElementById('userLabel').textContent = 'OPERATIVE: ' + CONFIG.userName;
+document.getElementById('threatValue').textContent = CONFIG.threatLevel;
+document.getElementById('coordsValue').textContent = CONFIG.coordinates;
+document.getElementById('systemValue').textContent = CONFIG.systemStatus;
+document.getElementById('healthBar').style.width = CONFIG.healthPercent + '%';
+document.getElementById('energyBar').style.width = CONFIG.energyPercent + '%';
+
+// Generate minimap dots
+const minimapDots = document.getElementById('minimapDots');
+for (let i = 0; i < 5; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'minimap-dot';
+  const angle = Math.random() * Math.PI * 2;
+  const dist = Math.random() * 35 + 10;
+  dot.style.width = dot.style.height = (Math.random() * 3 + 2) + 'px';
+  dot.style.left = (50 + Math.cos(angle) * dist) + '%';
+  dot.style.top = (50 + Math.sin(angle) * dist) + '%';
+  dot.style.transform = 'translate(-50%, -50%)';
+  minimapDots.appendChild(dot);
+}
+
+// Generate circuit decorations
+const circuitsContainer = document.getElementById('circuits');
+const circuitPositions = [
+  { x: '8vw', y: '30vh', w: '12vw', dir: 'h' },
+  { x: '80vw', y: '25vh', w: '10vw', dir: 'h' },
+  { x: '15vw', y: '65vh', w: '8vw', dir: 'h' },
+  { x: '75vw', y: '70vh', w: '14vw', dir: 'h' },
+  { x: '20vw', y: '15vh', h: '10vh', dir: 'v' },
+  { x: '82vw', y: '55vh', h: '12vh', dir: 'v' },
+];
+circuitPositions.forEach(p => {
+  const line = document.createElement('div');
+  line.className = 'circuit-line ' + p.dir;
+  line.style.left = p.x; line.style.top = p.y;
+  if (p.dir === 'h') { line.style.width = p.w; }
+  else { line.style.height = p.h; }
+  circuitsContainer.appendChild(line);
+
+  const node = document.createElement('div');
+  node.className = 'circuit-node';
+  node.style.left = p.x; node.style.top = p.y;
+  circuitsContainer.appendChild(node);
+});
+
+// Alert text cycling
+let alertIdx = 0;
+function cycleAlert() {
+  const el = document.getElementById('alertText');
+  el.textContent = CONFIG.alerts[alertIdx % CONFIG.alerts.length];
+  alertIdx++;
+}
+setInterval(cycleAlert, 2500);
+
+// Simulated data flicker
+function flickerData() {
+  const signal = (95 + Math.random() * 5).toFixed(1);
+  document.getElementById('signalValue').textContent = signal + '%';
+  const targets = Math.floor(Math.random() * 5) + 1;
+  document.getElementById('targetsValue').textContent = targets + ' DETECTED';
+}
+setInterval(flickerData, 3000);
+
+// runCycle animation
+function runCycle() {
+  const userLabel = document.getElementById('userLabel');
+  const leftPanel = document.getElementById('leftPanel');
+  const rightPanel = document.getElementById('rightPanel');
+  const barContainer = document.getElementById('barContainer');
+  const minimap = document.getElementById('minimap');
+  const alertText = document.getElementById('alertText');
+  const statusLine = document.getElementById('statusLine');
+
+  // Reset
+  userLabel.style.transition = 'none'; userLabel.style.opacity = '0';
+  leftPanel.style.transition = 'none'; leftPanel.style.opacity = '0'; leftPanel.style.transform = 'translateX(-20px)';
+  rightPanel.style.transition = 'none'; rightPanel.style.opacity = '0'; rightPanel.style.transform = 'translateX(20px)';
+  barContainer.style.transition = 'none'; barContainer.style.opacity = '0'; barContainer.style.transform = 'translateY(10px)';
+  minimap.style.transition = 'none'; minimap.style.opacity = '0'; minimap.style.transform = 'scale(0.8)';
+  alertText.style.transition = 'none'; alertText.style.opacity = '0';
+  statusLine.style.transition = 'none'; statusLine.style.opacity = '0';
+  void userLabel.offsetWidth;
+
+  // Animate in
+  setTimeout(() => {
+    userLabel.style.transition = 'opacity 0.6s ease';
+    userLabel.style.opacity = '1';
+  }, 200);
+
+  setTimeout(() => {
+    leftPanel.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    leftPanel.style.opacity = '1'; leftPanel.style.transform = 'translateX(0)';
+  }, 500);
+
+  setTimeout(() => {
+    rightPanel.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    rightPanel.style.opacity = '1'; rightPanel.style.transform = 'translateX(0)';
+  }, 700);
+
+  setTimeout(() => {
+    barContainer.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    barContainer.style.opacity = '1'; barContainer.style.transform = 'translateY(0)';
+    document.getElementById('healthBar').style.width = CONFIG.healthPercent + '%';
+    document.getElementById('energyBar').style.width = CONFIG.energyPercent + '%';
+  }, 1000);
+
+  setTimeout(() => {
+    minimap.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    minimap.style.opacity = '1'; minimap.style.transform = 'scale(1)';
+  }, 1200);
+
+  setTimeout(() => {
+    alertText.style.transition = 'opacity 0.3s ease';
+    alertText.style.opacity = '1';
+    alertText.style.animation = 'alertFlash 1s ease-in-out infinite';
+  }, 1500);
+
+  setTimeout(() => {
+    statusLine.style.transition = 'opacity 0.8s ease';
+    statusLine.style.opacity = '1';
+  }, 1800);
+
+  // Animate out
+  setTimeout(() => {
+    userLabel.style.transition = 'opacity 0.8s ease'; userLabel.style.opacity = '0';
+    leftPanel.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    leftPanel.style.opacity = '0'; leftPanel.style.transform = 'translateX(-20px)';
+    rightPanel.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    rightPanel.style.opacity = '0'; rightPanel.style.transform = 'translateX(20px)';
+    barContainer.style.transition = 'opacity 0.6s ease'; barContainer.style.opacity = '0';
+    minimap.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    minimap.style.opacity = '0'; minimap.style.transform = 'scale(0.8)';
+    alertText.style.transition = 'opacity 0.4s ease'; alertText.style.opacity = '0';
+    alertText.style.animation = 'none';
+    statusLine.style.transition = 'opacity 0.6s ease'; statusLine.style.opacity = '0';
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

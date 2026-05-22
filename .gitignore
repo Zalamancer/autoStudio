@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+build/
+out/
+coverage/
+.turbo/
+.cache/
+.vercel/
+.env*
+*.log
+.DS_Store
+# Files too big for GitHub (>100MB hard limit)
+sheets/upscaledfaces.png
+sheets/facesheet.svg
+05_Learning_Materials/Comics_and_Storytelling/ilide.info-the-comic-books-scott-mccloud-reinventing-comics-how-imagination-and-techn-pr_13913354f6185602cd7da6ecb750047b.pdf

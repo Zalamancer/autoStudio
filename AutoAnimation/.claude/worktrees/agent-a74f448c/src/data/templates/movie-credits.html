@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie Credits</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+
+  :root {
+    --bg-color: #0a0a0f;
+    --accent-color: #c8a45a;
+    --text-color: #e8e4dc;
+    --letterbox-color: #000000;
+    --title-glow: rgba(200, 164, 90, 0.4);
+  }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg-color);
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    color: var(--text-color);
+  }
+
+  /* Letterbox bars */
+  .letterbox-top,
+  .letterbox-bottom {
+    position: fixed;
+    left: 0;
+    width: 100vw;
+    height: 6vh;
+    background: var(--letterbox-color);
+    z-index: 100;
+    transition: height 0.8s ease;
+  }
+
+  .letterbox-top {
+    top: 0;
+    box-shadow: 0 0.5vh 2vh rgba(0, 0, 0, 0.8);
+  }
+
+  .letterbox-bottom {
+    bottom: 0;
+    box-shadow: 0 -0.5vh 2vh rgba(0, 0, 0, 0.8);
+  }
+
+  /* Background gradient overlay */
+  .bg-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(200, 164, 90, 0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(200, 164, 90, 0.03) 0%, transparent 50%),
+      linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 15%, transparent 85%, rgba(0,0,0,0.3) 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Film grain overlay */
+  .film-grain {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 25vw 25vh;
+    animation: grainShift 0.5s steps(4) infinite;
+  }
+
+  @keyframes grainShift {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-2%, -1%); }
+    50% { transform: translate(1%, 2%); }
+    75% { transform: translate(-1%, -2%); }
+    100% { transform: translate(2%, 1%); }
+  }
+
+  /* Sparkle / star particles */
+  .particles-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .sparkle {
+    position: absolute;
+    width: 0.3vh;
+    height: 0.3vh;
+    background: var(--accent-color);
+    border-radius: 50%;
+    opacity: 0;
+    animation: sparkleAnim var(--sparkle-dur) var(--sparkle-delay) infinite ease-in-out;
+    box-shadow:
+      0 0 0.4vh var(--accent-color),
+      0 0 1vh rgba(200, 164, 90, 0.3);
+  }
+
+  .sparkle.cross::before,
+  .sparkle.cross::after {
+    content: '';
+    position: absolute;
+    background: var(--accent-color);
+    border-radius: 0.1vh;
+    opacity: 0.6;
+  }
+
+  .sparkle.cross::before {
+    width: 1.2vh;
+    height: 0.1vh;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .sparkle.cross::after {
+    width: 0.1vh;
+    height: 1.2vh;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  @keyframes sparkleAnim {
+    0%, 100% { opacity: 0; transform: scale(0.5); }
+    20% { opacity: 0.8; transform: scale(1.2); }
+    50% { opacity: 1; transform: scale(1); }
+    80% { opacity: 0.6; transform: scale(0.8); }
+  }
+
+  /* Vignette */
+  .vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+  }
+
+  /* Credits scroll container */
+  .credits-viewport {
+    position: fixed;
+    top: 6vh;
+    left: 0;
+    width: 100vw;
+    height: 88vh;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  .credits-scroll {
+    position: absolute;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 5vw;
+    will-change: transform;
+  }
+
+  /* Fade masks for top and bottom of viewport */
+  .credits-viewport::before,
+  .credits-viewport::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 100vw;
+    height: 15vh;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .credits-viewport::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg-color) 0%, transparent 100%);
+  }
+
+  .credits-viewport::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg-color) 0%, transparent 100%);
+  }
+
+  /* Spacer before credits */
+  .credits-spacer {
+    height: 50vh;
+    flex-shrink: 0;
+  }
+
+  /* Film title block */
+  .film-title-block {
+    text-align: center;
+    margin-bottom: 8vh;
+    opacity: 0;
+    transform: translateY(2vh);
+    transition: opacity 1.2s ease, transform 1.2s ease;
+  }
+
+  .film-title-block.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .studio-line {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8vh;
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: 0.6vw;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    opacity: 0.7;
+    margin-bottom: 3vh;
+  }
+
+  .film-title {
+    font-family: 'Cinzel', serif;
+    font-size: 6vh;
+    font-weight: 700;
+    letter-spacing: 1.2vw;
+    text-transform: uppercase;
+    color: var(--text-color);
+    text-shadow:
+      0 0 2vh var(--title-glow),
+      0 0 4vh rgba(200, 164, 90, 0.15);
+    line-height: 1.2;
+    margin-bottom: 2vh;
+  }
+
+  .film-title-underline {
+    width: 12vw;
+    height: 0.15vh;
+    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+    margin: 0 auto 2vh;
+    opacity: 0.6;
+  }
+
+  .film-title-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6vh;
+    font-weight: 300;
+    letter-spacing: 0.8vw;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    opacity: 0.5;
+  }
+
+  /* Decorative divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5vw;
+    margin: 5vh 0;
+    opacity: 0;
+    transform: translateY(2vh);
+    transition: opacity 1s ease, transform 1s ease;
+  }
+
+  .divider.visible {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+
+  .divider-line {
+    width: 6vw;
+    height: 0.1vh;
+    background: linear-gradient(90deg, transparent, var(--accent-color));
+  }
+
+  .divider-line:last-child {
+    background: linear-gradient(90deg, var(--accent-color), transparent);
+  }
+
+  .divider-diamond {
+    width: 0.8vh;
+    height: 0.8vh;
+    background: var(--accent-color);
+    transform: rotate(45deg);
+    opacity: 0.8;
+  }
+
+  /* Credit section */
+  .credit-section {
+    text-align: center;
+    margin-bottom: 5vh;
+    opacity: 0;
+    transform: translateY(3vh);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+
+  .credit-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .credit-role {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6vh;
+    font-weight: 300;
+    letter-spacing: 0.6vw;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    opacity: 0.75;
+    margin-bottom: 1.2vh;
+  }
+
+  .credit-name {
+    font-family: 'Cinzel', serif;
+    font-size: 3.4vh;
+    font-weight: 400;
+    letter-spacing: 0.35vw;
+    color: var(--text-color);
+    line-height: 1.6;
+    text-shadow: 0 0 1.5vh rgba(200, 164, 90, 0.08);
+  }
+
+  /* Cast list (multi-name) */
+  .credit-section.cast-list .credit-name {
+    font-size: 2.6vh;
+    line-height: 2;
+  }
+
+  /* End spacer */
+  .credits-spacer-end {
+    height: 60vh;
+    flex-shrink: 0;
+  }
+
+  /* Master fade for intro / exit */
+  .master-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-color);
+    z-index: 200;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 1.5s ease;
+  }
+
+  .master-overlay.hidden {
+    opacity: 0;
+  }
+
+  /* Anamorphic lens flare */
+  .lens-flare {
+    position: fixed;
+    top: 50vh;
+    left: 0;
+    width: 100vw;
+    height: 0.3vh;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(200, 164, 90, 0) 20%,
+      rgba(200, 164, 90, 0.12) 40%,
+      rgba(200, 164, 90, 0.25) 50%,
+      rgba(200, 164, 90, 0.12) 60%,
+      rgba(200, 164, 90, 0) 80%,
+      transparent 100%
+    );
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+    animation: flareFloat 8s ease-in-out infinite;
+  }
+
+  @keyframes flareFloat {
+    0%, 100% { opacity: 0; top: 40vh; }
+    30% { opacity: 0.6; }
+    50% { opacity: 0.3; top: 55vh; }
+    70% { opacity: 0.5; }
+  }
+
+  /* Subtle horizontal light streaks */
+  .light-streak {
+    position: fixed;
+    height: 0.08vh;
+    background: linear-gradient(90deg, transparent, rgba(200, 164, 90, 0.15), transparent);
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  @keyframes streakDrift {
+    0% { opacity: 0; transform: translateX(-20vw); }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(20vw); }
+  }
+</style>
+</head>
+<body>
+  <!-- Master fade overlay -->
+  <div class="master-overlay" id="masterOverlay"></div>
+
+  <!-- Letterbox bars -->
+  <div class="letterbox-top"></div>
+  <div class="letterbox-bottom"></div>
+
+  <!-- Background effects -->
+  <div class="bg-overlay"></div>
+  <div class="film-grain"></div>
+  <div class="vignette"></div>
+  <div class="lens-flare"></div>
+
+  <!-- Sparkle particles -->
+  <div class="particles-container" id="particlesContainer"></div>
+
+  <!-- Light streaks -->
+  <div id="streaksContainer"></div>
+
+  <!-- Credits viewport -->
+  <div class="credits-viewport">
+    <div class="credits-scroll" id="creditsScroll">
+      <!-- Content populated by JS -->
+    </div>
+  </div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────────────
+  const CONFIG = {
+    filmTitle: "THE LAST HORIZON",
+    studioName: "Obsidian Pictures",
+    credits: [
+      { role: "Directed by", name: "Alejandro Rivera" },
+      { role: "Written by", name: "Sofia Nakamura" },
+      { role: "Produced by", name: "Marcus Chen\nElena Volkov" },
+      { role: "Executive Producer", name: "David Thornton" },
+      { role: "Starring", name: "Isabella Rossi\nJames Whitfield\nAisha Kapoor\nLucas Fernandez\nOlivia Strand" },
+      { role: "Director of Photography", name: "Henrik Johansson" },
+      { role: "Film Editing", name: "Claire Dubois" },
+      { role: "Original Score by", name: "Yuki Tanaka" },
+      { role: "Production Design", name: "Thomas Blackwell" },
+      { role: "Costume Design", name: "Priya Sharma" },
+      { role: "Sound Design", name: "Oscar Lindqvist" },
+      { role: "Visual Effects Supervisor", name: "Nathan Reeves" },
+      { role: "Casting by", name: "Diana Morales" }
+    ],
+    bgColor: "#0a0a0f",
+    accentColor: "#c8a45a",
+    textColor: "#e8e4dc",
+    cycleDuration: 14,
+    scrollSpeed: 1.0,
+    sparkleCount: 30,
+    showLensFlare: true,
+    showFilmGrain: true,
+    showStudioLine: true,
+    letterboxHeight: 6
+  };
+
+  // ─── APPLY CONFIG COLORS ─────────────────────────────────────────
+  function applyColors() {
+    const root = document.documentElement;
+    root.style.setProperty('--bg-color', CONFIG.bgColor);
+    root.style.setProperty('--accent-color', CONFIG.accentColor);
+    root.style.setProperty('--text-color', CONFIG.textColor);
+    root.style.setProperty('--title-glow', CONFIG.accentColor + '66');
+
+    document.querySelector('.master-overlay').style.background = CONFIG.bgColor;
+
+    const bars = document.querySelectorAll('.letterbox-top, .letterbox-bottom');
+    bars.forEach(bar => {
+      bar.style.height = CONFIG.letterboxHeight + 'vh';
+    });
+
+    const viewport = document.querySelector('.credits-viewport');
+    viewport.style.top = CONFIG.letterboxHeight + 'vh';
+    viewport.style.height = (100 - CONFIG.letterboxHeight * 2) + 'vh';
+
+    if (!CONFIG.showLensFlare) {
+      document.querySelector('.lens-flare').style.display = 'none';
+    }
+    if (!CONFIG.showFilmGrain) {
+      document.querySelector('.film-grain').style.display = 'none';
+    }
+  }
+
+  // ─── BUILD SPARKLE PARTICLES ──────────────────────────────────────
+  function buildParticles() {
+    const container = document.getElementById('particlesContainer');
+    container.innerHTML = '';
+
+    for (let i = 0; i < CONFIG.sparkleCount; i++) {
+      const spark = document.createElement('div');
+      const isCross = Math.random() > 0.7;
+      spark.className = 'sparkle' + (isCross ? ' cross' : '');
+      spark.style.left = (Math.random() * 100) + 'vw';
+      spark.style.top = (Math.random() * 100) + 'vh';
+      spark.style.setProperty('--sparkle-dur', (3 + Math.random() * 5) + 's');
+      spark.style.setProperty('--sparkle-delay', (Math.random() * 6) + 's');
+
+      const size = 0.15 + Math.random() * 0.35;
+      spark.style.width = size + 'vh';
+      spark.style.height = size + 'vh';
+      container.appendChild(spark);
+    }
+  }
+
+  // ─── BUILD LIGHT STREAKS ──────────────────────────────────────────
+  function buildStreaks() {
+    const container = document.getElementById('streaksContainer');
+    container.innerHTML = '';
+
+    for (let i = 0; i < 4; i++) {
+      const streak = document.createElement('div');
+      streak.className = 'light-streak';
+      streak.style.top = (20 + Math.random() * 60) + 'vh';
+      streak.style.left = '0';
+      streak.style.width = (30 + Math.random() * 40) + 'vw';
+      streak.style.animation = `streakDrift ${6 + Math.random() * 6}s ${Math.random() * 8}s infinite ease-in-out`;
+      container.appendChild(streak);
+    }
+  }
+
+  // ─── BUILD CREDITS DOM ────────────────────────────────────────────
+  function buildCredits() {
+    const scroll = document.getElementById('creditsScroll');
+    scroll.innerHTML = '';
+
+    // Top spacer
+    const spacerTop = document.createElement('div');
+    spacerTop.className = 'credits-spacer';
+    scroll.appendChild(spacerTop);
+
+    // Studio line
+    if (CONFIG.showStudioLine && CONFIG.studioName) {
+      const titleBlock = document.createElement('div');
+      titleBlock.className = 'film-title-block';
+      titleBlock.setAttribute('data-reveal', 'true');
+
+      const studioLine = document.createElement('div');
+      studioLine.className = 'studio-line';
+      studioLine.textContent = 'A ' + CONFIG.studioName + ' Production';
+      titleBlock.appendChild(studioLine);
+
+      const filmTitle = document.createElement('div');
+      filmTitle.className = 'film-title';
+      filmTitle.textContent = CONFIG.filmTitle;
+      titleBlock.appendChild(filmTitle);
+
+      const underline = document.createElement('div');
+      underline.className = 'film-title-underline';
+      titleBlock.appendChild(underline);
+
+      scroll.appendChild(titleBlock);
+    } else {
+      // Title only
+      const titleBlock = document.createElement('div');
+      titleBlock.className = 'film-title-block';
+      titleBlock.setAttribute('data-reveal', 'true');
+
+      const filmTitle = document.createElement('div');
+      filmTitle.className = 'film-title';
+      filmTitle.textContent = CONFIG.filmTitle;
+      titleBlock.appendChild(filmTitle);
+
+      const underline = document.createElement('div');
+      underline.className = 'film-title-underline';
+      titleBlock.appendChild(underline);
+
+      scroll.appendChild(titleBlock);
+    }
+
+    // Divider after title
+    appendDivider(scroll);
+
+    // Credit sections
+    CONFIG.credits.forEach((credit, idx) => {
+      const section = document.createElement('div');
+      const isCast = credit.name.split('\n').length > 3;
+      section.className = 'credit-section' + (isCast ? ' cast-list' : '');
+      section.setAttribute('data-reveal', 'true');
+
+      const roleEl = document.createElement('div');
+      roleEl.className = 'credit-role';
+      roleEl.textContent = credit.role;
+      section.appendChild(roleEl);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'credit-name';
+      nameEl.innerHTML = credit.name.split('\n').join('<br>');
+      section.appendChild(nameEl);
+
+      scroll.appendChild(section);
+
+      // Add divider every 3 credits for visual rhythm
+      if ((idx + 1) % 3 === 0 && idx < CONFIG.credits.length - 1) {
+        appendDivider(scroll);
+      }
+    });
+
+    // Bottom spacer
+    const spacerBottom = document.createElement('div');
+    spacerBottom.className = 'credits-spacer-end';
+    scroll.appendChild(spacerBottom);
+  }
+
+  function appendDivider(parent) {
+    const divider = document.createElement('div');
+    divider.className = 'divider';
+    divider.setAttribute('data-reveal', 'true');
+
+    const line1 = document.createElement('div');
+    line1.className = 'divider-line';
+    const diamond = document.createElement('div');
+    diamond.className = 'divider-diamond';
+    const line2 = document.createElement('div');
+    line2.className = 'divider-line';
+
+    divider.appendChild(line1);
+    divider.appendChild(diamond);
+    divider.appendChild(line2);
+    parent.appendChild(divider);
+  }
+
+  // ─── ANIMATION STATE ─────────────────────────────────────────────
+  let cycleStart = 0;
+  let scrollOffset = 0;
+  let totalScrollHeight = 0;
+  let viewportHeight = 0;
+  let animFrame = null;
+
+  // ─── REVEAL CHECK ─────────────────────────────────────────────────
+  function checkReveals() {
+    const elements = document.querySelectorAll('[data-reveal]');
+    const vpTop = -scrollOffset;
+    const vpBottom = vpTop + viewportHeight;
+
+    elements.forEach(el => {
+      const elTop = el.offsetTop;
+      const elMid = elTop + el.offsetHeight * 0.3;
+
+      if (elMid > vpTop + viewportHeight * 0.1 && elMid < vpBottom - viewportHeight * 0.05) {
+        el.classList.add('visible');
+      } else {
+        el.classList.remove('visible');
+      }
+    });
+  }
+
+  // ─── MAIN LOOP ───────────────────────────────────────────────────
+  function animate(timestamp) {
+    if (!cycleStart) cycleStart = timestamp;
+
+    const elapsed = (timestamp - cycleStart) / 1000;
+    const cycleDur = CONFIG.cycleDuration;
+    const cycleProgress = (elapsed % cycleDur) / cycleDur;
+
+    const overlay = document.getElementById('masterOverlay');
+    const scroll = document.getElementById('creditsScroll');
+
+    // Phase timing
+    const introEnd = 0.08;       // 8% intro fade-in
+    const scrollStart = 0.08;
+    const scrollEnd = 0.85;      // scrolling phase
+    const exitStart = 0.88;      // fade out begins
+    const exitEnd = 0.96;        // fully black
+    // 0.96 -> 1.0 is reset gap
+
+    // Intro fade
+    if (cycleProgress < introEnd) {
+      const introP = cycleProgress / introEnd;
+      overlay.style.opacity = 1 - introP;
+    } else if (cycleProgress < exitStart) {
+      overlay.style.opacity = 0;
+    } else if (cycleProgress < exitEnd) {
+      const exitP = (cycleProgress - exitStart) / (exitEnd - exitStart);
+      overlay.style.opacity = exitP;
+    } else {
+      overlay.style.opacity = 1;
+    }
+
+    // Scrolling
+    viewportHeight = document.querySelector('.credits-viewport').offsetHeight;
+    totalScrollHeight = scroll.scrollHeight;
+    const maxScroll = totalScrollHeight - viewportHeight * 0.5;
+
+    if (cycleProgress >= scrollStart && cycleProgress <= scrollEnd) {
+      const scrollP = (cycleProgress - scrollStart) / (scrollEnd - scrollStart);
+      // Ease-in-out cubic for smoother movement
+      const eased = scrollP < 0.5
+        ? 4 * scrollP * scrollP * scrollP
+        : 1 - Math.pow(-2 * scrollP + 2, 3) / 2;
+      scrollOffset = -(eased * maxScroll * CONFIG.scrollSpeed);
+    } else if (cycleProgress > exitEnd) {
+      // Reset for next cycle
+      scrollOffset = 0;
+      // Remove all visible classes for clean restart
+      document.querySelectorAll('.visible').forEach(el => el.classList.remove('visible'));
+    }
+
+    scroll.style.transform = `translateY(${scrollOffset}px)`;
+
+    checkReveals();
+
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  // ─── POSTMESSAGE BRIDGE ──────────────────────────────────────────
+  window.addEventListener('message', function(e) {
+    if (e.data && typeof e.data === 'object') {
+      let needRebuild = false;
+      let needRecolor = false;
+
+      Object.keys(e.data).forEach(key => {
+        if (key in CONFIG) {
+          CONFIG[key] = e.data[key];
+
+          if (key === 'filmTitle' || key === 'credits' || key === 'studioName' || key === 'showStudioLine') {
+            needRebuild = true;
+          }
+          if (key === 'bgColor' || key === 'accentColor' || key === 'textColor' || key === 'letterboxHeight') {
+            needRecolor = true;
+          }
+          if (key === 'sparkleCount') {
+            buildParticles();
+          }
+        }
+      });
+
+      if (needRecolor) applyColors();
+      if (needRebuild) buildCredits();
+    }
+  });
+
+  // ─── INIT ─────────────────────────────────────────────────────────
+  function init() {
+    applyColors();
+    buildParticles();
+    buildStreaks();
+    buildCredits();
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Concert Flyer Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #0d0d0d;
+  }
+
+  /* Halftone dot pattern */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.08;
+    background-image: radial-gradient(circle, #fff 1px, transparent 1px);
+    background-size: 8px 8px;
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.25;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 4px 12px;
+    position: relative;
+  }
+
+  /* Star burst behind word */
+  .word-block.star-burst .word-inner::before {
+    content: '\u2605';
+    position: absolute;
+    left: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 28px;
+    color: #FFD700;
+    opacity: 0.6;
+  }
+
+  /* Double border effect */
+  .word-block.double-border .word-inner {
+    border: 4px double currentColor;
+    padding: 8px 16px;
+  }
+
+  /* Diagonal stripe bg */
+  .word-block.stripe-bg .word-inner {
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgba(255,215,0,0.15) 4px,
+      rgba(255,215,0,0.15) 8px
+    );
+    padding: 6px 14px;
+  }
+
+  @keyframes slamDown {
+    0% { opacity: 0; transform: var(--slam-start); }
+    35% { opacity: 1; transform: var(--slam-mid); }
+    55% { transform: var(--slam-bounce); }
+    75% { transform: var(--slam-settle); }
+    100% { opacity: var(--final-opacity); transform: var(--slam-end); }
+  }
+
+  @keyframes shredOff {
+    0% { opacity: var(--final-opacity); transform: var(--slam-end); clip-path: inset(0); }
+    30% { clip-path: inset(0 0 0 30%); }
+    60% { opacity: 0.4; clip-path: inset(0 0 0 60%); transform: var(--shred-mid); }
+    100% { opacity: 0; clip-path: inset(0 0 0 100%); transform: var(--shred-end); }
+  }
+
+  /* Star decorations */
+  .deco-star {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    color: #FFD700;
+    opacity: 0.15;
+    font-size: 40px;
+    line-height: 1;
+  }
+
+  /* Zigzag border */
+  .zigzag-border {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.1;
+  }
+
+  .zigzag-border svg { display: block; }
+
+  /* Band name lines */
+  .band-line {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    height: 3px;
+    background: #FFD700;
+    opacity: 0.12;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['LIVE', 'TONIGHT', 'LOUD', 'FAST', 'WILD', 'FREE'],
+  colors: ['#FFD700', '#ffffff', '#ff4444', '#FFD700', '#ffffff', '#ff4444'],
+  bgColor: '#0d0d0d',
+  maxRotation: 10,
+  overlapAmount: 0.22,
+  cycleDuration: 8500,
+  slamEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Georgia', weight: '700', style: 'italic', transform: 'uppercase', letterSpacing: '2px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '0px' },
+];
+
+const fontSizes = [170, 80, 140, 95, 200, 85];
+const wordStyles = ['star-burst', '', 'double-border', 'stripe-bg', '', 'star-burst'];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  const stars = [
+    { top: '5%', left: '8%' }, { top: '12%', right: '12%' },
+    { bottom: '8%', right: '10%' }, { bottom: '15%', left: '6%' },
+    { top: '40%', left: '2%' }, { top: '60%', right: '3%' },
+    { top: '75%', left: '90%' }, { bottom: '35%', left: '4%' },
+  ];
+  stars.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'deco-star';
+    el.textContent = '\u2605';
+    el.style.fontSize = (24 + Math.random() * 30) + 'px';
+    Object.keys(s).forEach(k => el.style[k] = s[k]);
+    stage.appendChild(el);
+  });
+
+  const lines = [
+    { top: '18%', left: '5%', width: 80 },
+    { bottom: '22%', right: '4%', width: 100 },
+    { top: '50%', left: '88%', width: 60 },
+  ];
+  lines.forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'band-line';
+    el.style.width = l.width + 'px';
+    if (l.top) el.style.top = l.top;
+    if (l.bottom) el.style.bottom = l.bottom;
+    if (l.left) el.style.left = l.left;
+    if (l.right) el.style.right = l.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.72;
+  const baseTop = vh * 0.14;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyles[i % wordStyles.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * Math.min(vw * 0.15, 100);
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.88 + rng() * 0.12;
+
+    el.style.setProperty('--slam-start', `translate(0, -${vh}px) rotate(${rotation + 15}deg) scale(1.3)`);
+    el.style.setProperty('--slam-mid', `translate(0, 8px) rotate(${rotation - 2}deg) scale(0.95)`);
+    el.style.setProperty('--slam-bounce', `translate(0, -5px) rotate(${rotation + 1}deg) scale(1.02)`);
+    el.style.setProperty('--slam-settle', `translate(0, 2px) rotate(${rotation}deg) scale(0.99)`);
+    el.style.setProperty('--slam-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    const shredDir = rng() > 0.5 ? 1 : -1;
+    el.style.setProperty('--shred-mid', `translate(${shredDir * 50}px, -10px) rotate(${rotation + shredDir * 5}deg)`);
+    el.style.setProperty('--shred-end', `translate(${shredDir * 200}px, -40px) rotate(${rotation + shredDir * 15}deg)`);
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const slamStagger = 300;
+  const slamDuration = 550;
+  const holdDuration = 2000;
+  const shredStagger = 180;
+  const shredDuration = 500;
+  const pauseBeforeLoop = 700;
+
+  const totalSlamTime = (count - 1) * slamStagger + slamDuration;
+  const totalShredTime = (count - 1) * shredStagger + shredDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalSlamTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * slamStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `slamDown ${slamDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalSlamTime + holdDuration) {
+    } else if (elapsed < totalSlamTime + holdDuration + totalShredTime) {
+      const shredElapsed = elapsed - totalSlamTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const wordStart = i * shredStagger;
+        if (shredElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `shredOff ${shredDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalSlamTime + holdDuration + totalShredTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

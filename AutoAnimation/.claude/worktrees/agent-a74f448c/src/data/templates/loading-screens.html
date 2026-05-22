@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading Screens</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; }
+.loader { display: flex; flex-direction: column; align-items: center; gap: 3vh; opacity: 0; transition: opacity 0.5s; position: absolute; }
+.loader.active { opacity: 1; }
+
+/* Spinner */
+.spinner { width: 10vh; height: 10vh; border-radius: 50%; border: 0.5vh solid rgba(255,255,255,0.1); position: relative; }
+.spinner::after { content: ''; position: absolute; inset: -0.5vh; border-radius: 50%; border: 0.5vh solid transparent; border-top-color: var(--accent); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Progress bar */
+.progress-wrap { width: 40vw; }
+.progress-label { font-size: 1.4vh; color: rgba(255,255,255,0.5); margin-bottom: 1vh; text-align: center; }
+.progress-outer { width: 100%; height: 0.8vh; background: rgba(255,255,255,0.1); border-radius: 0.4vh; overflow: hidden; }
+.progress-inner { height: 100%; border-radius: 0.4vh; width: 0%; transition: width 0.3s; }
+.progress-pct { font-size: 4vh; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; margin-top: 1vh; text-align: center; }
+
+/* Dots */
+.dots { display: flex; gap: 1.5vh; }
+.dot { width: 2vh; height: 2vh; border-radius: 50%; animation: dotBounce 1.4s ease-in-out infinite; }
+.dot:nth-child(2) { animation-delay: 0.16s; }
+.dot:nth-child(3) { animation-delay: 0.32s; }
+@keyframes dotBounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
+
+/* Orbit */
+.orbit { width: 10vh; height: 10vh; position: relative; }
+.orbit-ring { position: absolute; inset: 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; }
+.orbit-dot { width: 1.5vh; height: 1.5vh; border-radius: 50%; position: absolute; top: 0; left: 50%; transform: translateX(-50%); animation: orbitSpin 2s linear infinite; transform-origin: 50% 5vh; }
+.orbit-dot:nth-child(2) { animation-delay: 0.67s; }
+.orbit-dot:nth-child(3) { animation-delay: 1.33s; }
+@keyframes orbitSpin { to { transform: translateX(-50%) rotate(360deg); } }
+
+.load-text { font-size: 1.8vh; color: rgba(255,255,255,0.6); letter-spacing: 0.15em; text-transform: uppercase; }
+.load-tip { font-size: 1.3vh; color: rgba(255,255,255,0.3); font-style: italic; max-width: 40vw; text-align: center; }
+</style>
+</head>
+<body id="body">
+<!-- Loader 1: Spinner -->
+<div class="loader" id="l1">
+  <div class="spinner" id="spinner1"></div>
+  <div class="load-text" id="text1">Loading</div>
+  <div class="load-tip" id="tip1">Preparing your experience...</div>
+</div>
+<!-- Loader 2: Progress bar -->
+<div class="loader" id="l2">
+  <div class="progress-pct" id="pct2">0%</div>
+  <div class="progress-wrap"><div class="progress-label" id="label2">Downloading assets</div><div class="progress-outer"><div class="progress-inner" id="bar2"></div></div></div>
+  <div class="load-tip" id="tip2">This may take a moment</div>
+</div>
+<!-- Loader 3: Bouncing dots -->
+<div class="loader" id="l3">
+  <div class="dots" id="dots3"></div>
+  <div class="load-text" id="text3">Processing</div>
+  <div class="load-tip" id="tip3">Crunching the numbers...</div>
+</div>
+<!-- Loader 4: Orbit -->
+<div class="loader" id="l4">
+  <div class="orbit"><div class="orbit-ring"></div><div class="orbit-dot" id="od1"></div><div class="orbit-dot" id="od2"></div><div class="orbit-dot" id="od3"></div></div>
+  <div class="load-text" id="text4">Syncing</div>
+  <div class="load-tip" id="tip4">Almost there...</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#0f0f1a',
+  accentColor: '#6366f1',
+  loaders: [
+    { text: 'Loading', tip: 'Preparing your experience...' },
+    { text: 'Downloading', tip: 'Fetching latest assets...' },
+    { text: 'Processing', tip: 'Crunching the numbers...' },
+    { text: 'Syncing', tip: 'Almost there...' }
+  ],
+  cycleDuration: 12000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+
+// Set accent colors
+document.getElementById('spinner1').style.setProperty('--accent', CONFIG.accentColor);
+document.getElementById('bar2').style.background = CONFIG.accentColor;
+var dots3 = document.getElementById('dots3');
+for (var d = 0; d < 3; d++) { var dot = document.createElement('div'); dot.className = 'dot'; dot.style.background = CONFIG.accentColor; dots3.appendChild(dot); }
+['od1','od2','od3'].forEach(function(id){ document.getElementById(id).style.background = CONFIG.accentColor; });
+
+var loaderEls = [document.getElementById('l1'), document.getElementById('l2'), document.getElementById('l3'), document.getElementById('l4')];
+var currentLoader = -1;
+var progressVal = 0;
+var progressInterval = null;
+
+function showLoader(idx) {
+  loaderEls.forEach(function(el, i) { el.classList.toggle('active', i === idx); });
+  if (idx === 1) {
+    progressVal = 0;
+    document.getElementById('pct2').textContent = '0%';
+    document.getElementById('bar2').style.width = '0%';
+    if (progressInterval) clearInterval(progressInterval);
+    progressInterval = setInterval(function() {
+      progressVal += 1 + Math.random()*2;
+      if (progressVal > 100) progressVal = 100;
+      document.getElementById('pct2').textContent = Math.floor(progressVal) + '%';
+      document.getElementById('bar2').style.width = progressVal + '%';
+      if (progressVal >= 100 && progressInterval) clearInterval(progressInterval);
+    }, 50);
+  }
+}
+
+function cycle() {
+  currentLoader = (currentLoader + 1) % 4;
+  showLoader(currentLoader);
+}
+
+cycle();
+setInterval(cycle, CONFIG.cycleDuration / 4);
+</script>
+</body>
+</html>

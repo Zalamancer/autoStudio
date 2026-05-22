@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>E-Commerce Product Card</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+  body{background:#f0f2f5;display:flex;align-items:center;justify-content:center;}
+
+  .card{
+    width:54vw;max-width:480px;
+    background:#ffffff;
+    border-radius:2.4vw;
+    overflow:hidden;
+    box-shadow:0 0.6vh 3vh rgba(0,0,0,0.08),0 0.2vh 0.8vh rgba(0,0,0,0.04);
+    opacity:0;transform:translateY(6vh) scale(0.95);
+  }
+  .card.visible{
+    animation:cardIn 0.7s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+  @keyframes cardIn{to{opacity:1;transform:translateY(0) scale(1);}}
+
+  /* Product image area */
+  .image-area{
+    width:100%;height:36vh;
+    position:relative;overflow:hidden;
+  }
+  .product-image{
+    width:100%;height:100%;
+    display:flex;align-items:center;justify-content:center;
+    transform:scale(1);transition:transform 3s cubic-bezier(0.22,1,0.36,1);
+  }
+  .product-image.zoom{transform:scale(1.08);}
+  .product-placeholder{
+    width:18vh;height:18vh;
+    border-radius:2vh;
+    display:flex;align-items:center;justify-content:center;
+    font-size:6vh;color:#fff;
+    filter:drop-shadow(0 1vh 3vh rgba(0,0,0,0.15));
+  }
+
+  /* Sale badge */
+  .sale-badge{
+    position:absolute;top:2vh;left:2vw;
+    padding:0.6vh 1.4vw;
+    border-radius:0.8vh;
+    font-size:1.3vh;font-weight:800;color:#fff;
+    letter-spacing:0.06em;
+    opacity:0;transform:scale(0.5) rotate(-5deg);
+    transition:opacity 0.4s,transform 0.4s cubic-bezier(0.22,1,0.36,1);
+  }
+  .sale-badge.visible{opacity:1;transform:scale(1) rotate(-3deg);}
+
+  /* Wishlist */
+  .wishlist-btn{
+    position:absolute;top:2vh;right:2vw;
+    width:4vh;height:4vh;
+    background:#fff;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0.2vh 1vh rgba(0,0,0,0.1);
+    font-size:2vh;color:#e2e8f0;
+    transition:color 0.3s;
+  }
+  .wishlist-btn.liked{color:#ef4444;}
+
+  /* Card body */
+  .card-body{padding:2.5vh 2.5vw 3vh;}
+
+  .brand{
+    font-size:1.2vh;color:#94a3b8;font-weight:600;text-transform:uppercase;
+    letter-spacing:0.12em;margin-bottom:0.5vh;
+    opacity:0;transform:translateY(1vh);
+    transition:opacity 0.4s,transform 0.4s;
+  }
+  .brand.visible{opacity:1;transform:translateY(0);}
+
+  .product-name{
+    font-size:2.4vh;font-weight:800;color:#1e293b;line-height:1.3;
+    margin-bottom:1vh;
+    opacity:0;transform:translateY(1vh);
+    transition:opacity 0.4s,transform 0.4s;
+  }
+  .product-name.visible{opacity:1;transform:translateY(0);}
+
+  /* Rating */
+  .rating-row{
+    display:flex;align-items:center;gap:0.8vw;
+    margin-bottom:1.5vh;
+    opacity:0;transition:opacity 0.4s;
+  }
+  .rating-row.visible{opacity:1;}
+  .stars{display:flex;gap:0.3vw;}
+  .star{
+    font-size:1.8vh;color:#e2e8f0;
+    transition:color 0.2s;
+  }
+  .star.filled{color:#f59e0b;}
+  .review-count{font-size:1.2vh;color:#94a3b8;font-weight:500;}
+
+  /* Price */
+  .price-row{
+    display:flex;align-items:baseline;gap:1vw;
+    margin-bottom:2vh;
+    opacity:0;transform:translateX(-1vw);
+    transition:opacity 0.4s,transform 0.4s;
+  }
+  .price-row.visible{opacity:1;transform:translateX(0);}
+  .price-current{font-size:3vh;font-weight:800;color:#1e293b;}
+  .price-original{
+    font-size:1.8vh;color:#cbd5e1;
+    text-decoration:line-through;font-weight:500;
+  }
+  .discount-pct{
+    font-size:1.2vh;font-weight:700;
+    padding:0.3vh 0.8vw;border-radius:0.5vh;
+  }
+
+  /* Color options */
+  .options-section{margin-bottom:1.8vh;}
+  .option-label{font-size:1.1vh;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.8vh;}
+  .color-dots{
+    display:flex;gap:0.8vw;
+    opacity:0;transition:opacity 0.4s;
+  }
+  .color-dots.visible{opacity:1;}
+  .color-dot{
+    width:2.8vh;height:2.8vh;
+    border-radius:50%;
+    border:2px solid transparent;
+    transition:border-color 0.2s,transform 0.2s;
+    cursor:pointer;
+  }
+  .color-dot.selected{border-color:#1e293b;transform:scale(1.1);}
+
+  /* Size options */
+  .size-options{
+    display:flex;gap:0.6vw;
+    margin-top:1.2vh;
+    opacity:0;transition:opacity 0.4s;
+  }
+  .size-options.visible{opacity:1;}
+  .size-btn{
+    padding:0.6vh 1.2vw;
+    border:1.5px solid #e2e8f0;
+    border-radius:0.8vh;
+    font-size:1.2vh;font-weight:600;color:#64748b;
+    background:transparent;
+    transition:border-color 0.2s,color 0.2s,background 0.2s;
+    cursor:pointer;
+  }
+  .size-btn.selected{
+    border-color:#1e293b;color:#1e293b;background:rgba(30,41,59,0.05);
+  }
+
+  /* Add to Cart */
+  .cart-section{margin-top:2vh;}
+  .add-to-cart{
+    width:100%;
+    padding:1.6vh 0;
+    border:none;border-radius:1.2vh;
+    font-size:1.6vh;font-weight:700;color:#fff;
+    cursor:pointer;
+    position:relative;overflow:hidden;
+    transition:transform 0.2s,box-shadow 0.2s;
+  }
+  .add-to-cart:hover{transform:translateY(-0.2vh);box-shadow:0 0.4vh 2vh rgba(0,0,0,0.15);}
+  .add-to-cart.clicked{
+    animation:cartClick 0.5s ease;
+  }
+  @keyframes cartClick{
+    0%{transform:scale(1);}
+    30%{transform:scale(0.95);}
+    60%{transform:scale(1.02);}
+    100%{transform:scale(1);}
+  }
+  .btn-text{transition:opacity 0.3s;}
+  .btn-check{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;gap:0.6vw;
+    font-size:1.6vh;font-weight:700;color:#fff;
+    opacity:0;transition:opacity 0.3s;
+  }
+  .btn-check.visible{opacity:1;}
+  .btn-text.hidden{opacity:0;}
+
+  .checkmark{
+    width:2vh;height:2vh;
+    border-radius:50%;
+    background:rgba(255,255,255,0.25);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.2vh;color:#fff;font-weight:800;
+  }
+
+  /* Fade out */
+  .card.fade-out{
+    animation:cardOut 0.8s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+  @keyframes cardOut{to{opacity:0;transform:translateY(-4vh) scale(0.97);}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="image-area" id="imageArea">
+    <div class="product-image" id="productImage">
+      <div class="product-placeholder" id="productPlaceholder"></div>
+    </div>
+    <div class="sale-badge" id="saleBadge"></div>
+    <div class="wishlist-btn" id="wishlistBtn">&#9825;</div>
+  </div>
+  <div class="card-body">
+    <div class="brand" id="brand"></div>
+    <div class="product-name" id="productName"></div>
+    <div class="rating-row" id="ratingRow">
+      <div class="stars" id="stars"></div>
+      <div class="review-count" id="reviewCount"></div>
+    </div>
+    <div class="price-row" id="priceRow">
+      <div class="price-current" id="priceCurrent"></div>
+      <div class="price-original" id="priceOriginal"></div>
+      <div class="discount-pct" id="discountPct"></div>
+    </div>
+    <div class="options-section">
+      <div class="option-label">Color</div>
+      <div class="color-dots" id="colorDots"></div>
+    </div>
+    <div class="options-section">
+      <div class="option-label">Size</div>
+      <div class="size-options" id="sizeOptions"></div>
+    </div>
+    <div class="cart-section">
+      <button class="add-to-cart" id="addToCart">
+        <span class="btn-text" id="btnText">Add to Cart</span>
+        <div class="btn-check" id="btnCheck">
+          <div class="checkmark">&#10003;</div>
+          <span>Added!</span>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONFIG = {
+  brand: "LUMINA",
+  productName: "Premium Wireless Headphones",
+  rating: 4.5,
+  reviewCount: "2,847 reviews",
+  priceCurrent: "$89.99",
+  priceOriginal: "$149.99",
+  discountPercent: "40% OFF",
+  badgeText: "SALE",
+  badgeColor: "#ef4444",
+  colors: ["#1e293b", "#6366f1", "#f59e0b", "#ec4899"],
+  colorNames: ["Midnight", "Indigo", "Amber", "Rose"],
+  sizes: ["S", "M", "L", "XL"],
+  selectedColor: 0,
+  selectedSize: 1,
+  accentColor: "#6366f1",
+  productGradient: ["#6366f1", "#8b5cf6"],
+  productEmoji: "",
+  bgColor: "#f0f2f5",
+  cycleDuration: 13000
+};
+
+const card = document.getElementById('card');
+const imageArea = document.getElementById('imageArea');
+const productImage = document.getElementById('productImage');
+const productPlaceholder = document.getElementById('productPlaceholder');
+const saleBadge = document.getElementById('saleBadge');
+const brandEl = document.getElementById('brand');
+const productNameEl = document.getElementById('productName');
+const ratingRow = document.getElementById('ratingRow');
+const starsEl = document.getElementById('stars');
+const reviewCountEl = document.getElementById('reviewCount');
+const priceRow = document.getElementById('priceRow');
+const priceCurrent = document.getElementById('priceCurrent');
+const priceOriginal = document.getElementById('priceOriginal');
+const discountPct = document.getElementById('discountPct');
+const colorDots = document.getElementById('colorDots');
+const sizeOptions = document.getElementById('sizeOptions');
+const addToCart = document.getElementById('addToCart');
+const btnText = document.getElementById('btnText');
+const btnCheck = document.getElementById('btnCheck');
+const wishlistBtn = document.getElementById('wishlistBtn');
+
+function applyConfig() {
+  document.body.style.background = CONFIG.bgColor;
+  brandEl.textContent = CONFIG.brand;
+  productNameEl.textContent = CONFIG.productName;
+  reviewCountEl.textContent = CONFIG.reviewCount;
+  priceCurrent.textContent = CONFIG.priceCurrent;
+  priceOriginal.textContent = CONFIG.priceOriginal;
+  discountPct.textContent = CONFIG.discountPercent;
+  discountPct.style.background = CONFIG.badgeColor + '18';
+  discountPct.style.color = CONFIG.badgeColor;
+  saleBadge.textContent = CONFIG.badgeText;
+  saleBadge.style.background = CONFIG.badgeColor;
+
+  imageArea.style.background = 'linear-gradient(135deg,' + CONFIG.productGradient[0] + '22,' + CONFIG.productGradient[1] + '22)';
+  productPlaceholder.style.background = 'linear-gradient(135deg,' + CONFIG.productGradient[0] + ',' + CONFIG.productGradient[1] + ')';
+  productPlaceholder.textContent = CONFIG.productEmoji || '🎧';
+
+  addToCart.style.background = 'linear-gradient(135deg,' + CONFIG.accentColor + ',' + CONFIG.accentColor + 'dd)';
+
+  // Stars
+  starsEl.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const star = document.createElement('span');
+    star.className = 'star';
+    star.textContent = '★';
+    star.dataset.index = i;
+    starsEl.appendChild(star);
+  }
+
+  // Color dots
+  colorDots.innerHTML = '';
+  CONFIG.colors.forEach((color, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'color-dot' + (i === CONFIG.selectedColor ? ' selected' : '');
+    dot.style.background = color;
+    colorDots.appendChild(dot);
+  });
+
+  // Size options
+  sizeOptions.innerHTML = '';
+  CONFIG.sizes.forEach((size, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'size-btn' + (i === CONFIG.selectedSize ? ' selected' : '');
+    btn.textContent = size;
+    sizeOptions.appendChild(btn);
+  });
+}
+
+function fillStars(count) {
+  const stars = starsEl.querySelectorAll('.star');
+  stars.forEach((star, i) => {
+    setTimeout(() => {
+      if (i < Math.floor(count)) {
+        star.classList.add('filled');
+      } else if (i < count) {
+        star.style.background = 'linear-gradient(90deg, #f59e0b ' + ((count % 1) * 100) + '%, #e2e8f0 ' + ((count % 1) * 100) + '%)';
+        star.style.webkitBackgroundClip = 'text';
+        star.style.webkitTextFillColor = 'transparent';
+        star.style.backgroundClip = 'text';
+      }
+    }, i * 120);
+  });
+}
+
+let cycleTimer;
+
+function runCycle() {
+  card.classList.remove('visible', 'fade-out');
+  productImage.classList.remove('zoom');
+  saleBadge.classList.remove('visible');
+  brandEl.classList.remove('visible');
+  productNameEl.classList.remove('visible');
+  ratingRow.classList.remove('visible');
+  priceRow.classList.remove('visible');
+  colorDots.classList.remove('visible');
+  sizeOptions.classList.remove('visible');
+  btnText.classList.remove('hidden');
+  btnCheck.classList.remove('visible');
+  addToCart.classList.remove('clicked');
+  wishlistBtn.classList.remove('liked');
+  wishlistBtn.innerHTML = '&#9825;';
+
+  // Reset stars
+  starsEl.querySelectorAll('.star').forEach(s => {
+    s.classList.remove('filled');
+    s.style.background = '';
+    s.style.webkitBackgroundClip = '';
+    s.style.webkitTextFillColor = '';
+    s.style.backgroundClip = '';
+  });
+
+  void card.offsetWidth;
+  let t = 0;
+
+  // Card slides up
+  setTimeout(() => { card.classList.add('visible'); }, t);
+  t += 600;
+
+  // Image zoom
+  setTimeout(() => { productImage.classList.add('zoom'); }, t);
+  t += 400;
+
+  // Badge pops
+  setTimeout(() => { saleBadge.classList.add('visible'); }, t);
+  t += 400;
+
+  // Brand
+  setTimeout(() => { brandEl.classList.add('visible'); }, t);
+  t += 250;
+
+  // Product name
+  setTimeout(() => { productNameEl.classList.add('visible'); }, t);
+  t += 400;
+
+  // Rating + stars fill
+  setTimeout(() => {
+    ratingRow.classList.add('visible');
+    fillStars(CONFIG.rating);
+  }, t);
+  t += 600;
+
+  // Price
+  setTimeout(() => { priceRow.classList.add('visible'); }, t);
+  t += 500;
+
+  // Colors
+  setTimeout(() => { colorDots.classList.add('visible'); }, t);
+  t += 400;
+
+  // Sizes
+  setTimeout(() => { sizeOptions.classList.add('visible'); }, t);
+  t += 600;
+
+  // Wishlist like
+  setTimeout(() => {
+    wishlistBtn.classList.add('liked');
+    wishlistBtn.innerHTML = '&#9829;';
+  }, t);
+  t += 600;
+
+  // Add to cart click
+  setTimeout(() => {
+    addToCart.classList.add('clicked');
+    setTimeout(() => {
+      btnText.classList.add('hidden');
+      btnCheck.classList.add('visible');
+    }, 300);
+  }, t);
+  t += 2500;
+
+  // Fade out
+  setTimeout(() => {
+    card.classList.add('fade-out');
+  }, t);
+  t += 1000;
+
+  cycleTimer = setTimeout(runCycle, t);
+}
+
+applyConfig();
+
+window.addEventListener('message', function(e) {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+    applyConfig();
+  }
+});
+
+runCycle();
+</script>
+</body>
+</html>

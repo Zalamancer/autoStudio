@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scatter Plot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Height vs Weight',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  xLabel: 'Height (cm)',
+  yLabel: 'Weight (kg)',
+  dotSize: 6,
+  showGrid: true,
+  categoryColors: { Male: '#3B82F6', Female: '#EC4899' },
+  data: [
+    { x: 175, y: 78, category: 'Male' },
+    { x: 168, y: 62, category: 'Female' },
+    { x: 182, y: 85, category: 'Male' },
+    { x: 160, y: 55, category: 'Female' },
+    { x: 178, y: 82, category: 'Male' },
+    { x: 165, y: 58, category: 'Female' },
+    { x: 170, y: 70, category: 'Male' },
+    { x: 172, y: 65, category: 'Female' },
+    { x: 185, y: 90, category: 'Male' },
+    { x: 158, y: 52, category: 'Female' },
+    { x: 176, y: 76, category: 'Male' },
+    { x: 163, y: 60, category: 'Female' },
+    { x: 180, y: 88, category: 'Male' },
+    { x: 167, y: 63, category: 'Female' },
+    { x: 174, y: 74, category: 'Male' },
+    { x: 155, y: 50, category: 'Female' },
+    { x: 188, y: 95, category: 'Male' },
+    { x: 170, y: 67, category: 'Female' },
+    { x: 177, y: 80, category: 'Male' },
+    { x: 162, y: 57, category: 'Female' }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) { const c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); }
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const data = CONFIG.data;
+  const xVals = data.map(d => d.x);
+  const yVals = data.map(d => d.y);
+  const xMin = Math.min(...xVals) * 0.95;
+  const xMax = Math.max(...xVals) * 1.05;
+  const yMin = Math.min(...yVals) * 0.9;
+  const yMax = Math.max(...yVals) * 1.1;
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.14, y: H * 0.15, w: W * 0.76, h: H * 0.65 };
+
+  // Grid
+  if (CONFIG.showGrid) {
+    ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+    ctx.fillStyle = T.text;
+    const xSteps = 5, ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+      const y = area.y + (area.h / ySteps) * i;
+      ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+      const val = yMax - ((yMax - yMin) / ySteps) * i;
+      ctx.font = `${W * 0.014}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(Math.round(val).toString(), area.x - W * 0.012, y);
+    }
+    for (let i = 0; i <= xSteps; i++) {
+      const x = area.x + (area.w / xSteps) * i;
+      ctx.beginPath(); ctx.moveTo(x, area.y); ctx.lineTo(x, area.y + area.h); ctx.stroke();
+      const val = xMin + ((xMax - xMin) / xSteps) * i;
+      ctx.font = `${W * 0.014}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(Math.round(val).toString(), x, area.y + area.h + W * 0.008);
+    }
+  }
+
+  // Axis labels
+  ctx.fillStyle = T.text; ctx.font = `${W * 0.016}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.xLabel, area.x + area.w / 2, area.y + area.h + H * 0.08);
+  ctx.save();
+  ctx.translate(W * 0.03, area.y + area.h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(CONFIG.yLabel, 0, 0);
+  ctx.restore();
+
+  // Dots
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const dotProgress = Math.min(Math.max((progress - i * 0.03) / 0.4, 0), 1);
+    const dotEase = easeOutBack(dotProgress);
+    if (dotProgress <= 0) continue;
+
+    const px = area.x + ((d.x - xMin) / (xMax - xMin)) * area.w;
+    const py = area.y + area.h - ((d.y - yMin) / (yMax - yMin)) * area.h;
+    const r = CONFIG.dotSize * (W / 1000) * dotEase;
+    const color = CONFIG.categoryColors[d.category] || '#3B82F6';
+
+    ctx.globalAlpha = Math.min(dotProgress * 2, 1);
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color; ctx.shadowBlur = W * 0.006;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+
+  // Legend
+  const cats = Object.keys(CONFIG.categoryColors);
+  if (cats.length > 0) {
+    const legendY = H * 0.05;
+    const dotR = W * 0.006;
+    ctx.font = `${W * 0.015}px system-ui`;
+    let lx = W * 0.75;
+    for (const cat of cats) {
+      ctx.beginPath(); ctx.arc(lx, legendY + W * 0.01, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.categoryColors[cat]; ctx.fill();
+      lx += dotR + W * 0.008;
+      ctx.fillStyle = T.text; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(cat, lx, legendY + W * 0.01);
+      lx += ctx.measureText(cat).width + W * 0.025;
+    }
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

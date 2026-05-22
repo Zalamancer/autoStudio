@@ -1,0 +1,131 @@
+import type { OneClickApp } from '@/types/oneClickApp'
+
+export const adsApps: OneClickApp[] = [
+  {
+    id: 'click-to-ad',
+    name: 'Click to Ad',
+    description: 'Generate product ad from description',
+    category: 'ads',
+    icon: 'Megaphone',
+    color: 'text-orange-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create a short-form product advertisement video for:',
+      aspectRatio: '9:16',
+      duration: 15,
+      enableMusic: true,
+      enableCaptions: true,
+      enableMotionGraphics: true,
+    },
+    inputFields: [
+      { id: 'product', label: 'Product Name', type: 'text', placeholder: 'Product name...', required: true },
+      {
+        id: 'style',
+        label: 'Ad Style',
+        type: 'select',
+        options: [
+          { label: 'Modern Minimal', value: 'modern' },
+          { label: 'Bold & Energetic', value: 'bold' },
+          { label: 'Luxury', value: 'luxury' },
+          { label: 'Fun & Playful', value: 'playful' },
+        ],
+        default: 'modern',
+      },
+    ],
+    tags: ['ad', 'product', 'commercial'],
+  },
+  {
+    id: 'billboard',
+    name: 'Billboard',
+    description: 'Create billboard mockup animation',
+    category: 'ads',
+    icon: 'Monitor',
+    color: 'text-orange-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create an animated billboard mockup showcasing:',
+      aspectRatio: '16:9',
+      enableMusic: true,
+      enableMotionGraphics: true,
+    },
+    inputFields: [
+      { id: 'creative', label: 'Ad Creative', type: 'textarea', placeholder: 'Describe the billboard content...', required: true },
+      {
+        id: 'location',
+        label: 'Location',
+        type: 'select',
+        options: [
+          { label: 'City Street', value: 'city' },
+          { label: 'Highway', value: 'highway' },
+          { label: 'Times Square', value: 'times-square' },
+          { label: 'Stadium', value: 'stadium' },
+        ],
+        default: 'city',
+      },
+    ],
+    tags: ['billboard', 'mockup', 'outdoor'],
+  },
+  {
+    id: 'truck-ad',
+    name: 'Truck Ad',
+    description: 'Moving truck ad animation',
+    category: 'ads',
+    icon: 'Truck',
+    color: 'text-orange-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create a moving truck advertisement animation with:',
+      aspectRatio: '9:16',
+      enableMusic: true,
+    },
+    inputFields: [
+      { id: 'creative', label: 'Ad Creative', type: 'textarea', placeholder: 'Describe the ad creative...', required: true },
+    ],
+    tags: ['truck', 'mobile-ad', 'outdoor'],
+  },
+  {
+    id: 'bullet-time',
+    name: 'Bullet Time',
+    description: 'Matrix-style multi-angle freeze',
+    category: 'ads',
+    icon: 'RotateCcw',
+    color: 'text-orange-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create a bullet-time Matrix-style freeze-frame rotation for:',
+      aspectRatio: '9:16',
+      enableMusic: true,
+      cameraPreset: 'bullet-time',
+    },
+    inputFields: [
+      { id: 'scene', label: 'Scene Description', type: 'textarea', placeholder: 'Describe the action scene...', required: true },
+    ],
+    tags: ['bullet-time', 'matrix', 'freeze-frame'],
+  },
+  {
+    id: 'packshot',
+    name: 'Packshot',
+    description: 'Product packaging animation',
+    category: 'ads',
+    icon: 'Package',
+    color: 'text-orange-400',
+    orchestratorConfig: {
+      defaultPrompt: 'Create a premium product packshot animation for:',
+      aspectRatio: '1:1',
+      enableMusic: true,
+      enableMotionGraphics: true,
+    },
+    inputFields: [
+      { id: 'product', label: 'Product Description', type: 'textarea', placeholder: 'Describe the product...', required: true },
+      {
+        id: 'background',
+        label: 'Background',
+        type: 'select',
+        options: [
+          { label: 'White Studio', value: 'white-studio' },
+          { label: 'Gradient', value: 'gradient' },
+          { label: 'Lifestyle', value: 'lifestyle' },
+          { label: 'Dark Premium', value: 'dark-premium' },
+        ],
+        default: 'white-studio',
+      },
+    ],
+    tags: ['packshot', 'product', 'packaging'],
+  },
+]

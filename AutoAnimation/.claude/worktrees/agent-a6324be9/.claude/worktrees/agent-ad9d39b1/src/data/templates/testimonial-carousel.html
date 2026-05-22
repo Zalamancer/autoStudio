@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testimonial Carousel</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background: #0a0e1a; }
+
+  .testimonial-wrapper {
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle dot pattern */
+  .bg-pattern {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 3vw 3vw;
+    pointer-events: none;
+  }
+
+  .bg-accent-glow {
+    position: absolute;
+    width: 50vw; height: 50vw;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.05;
+    pointer-events: none;
+    transition: background 1s;
+  }
+  .glow-top { top: -20vw; right: -10vw; }
+  .glow-bottom { bottom: -20vw; left: -10vw; }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 4vh;
+    z-index: 2;
+    opacity: 0;
+    transform: translateY(-15px);
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .section-header.visible { opacity: 1; transform: translateY(0); }
+  .section-header h2 {
+    font-size: 3vh;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.8vh;
+  }
+  .section-header p {
+    font-size: 1.4vh;
+    color: #667;
+  }
+
+  .carousel-stage {
+    position: relative;
+    width: 70vw;
+    max-width: 60vh;
+    height: 38vh;
+    z-index: 2;
+  }
+
+  .testimonial-card {
+    position: absolute;
+    width: 100%;
+    background: rgba(20, 28, 50, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(100, 120, 180, 0.1);
+    border-radius: 2.5vh;
+    padding: 4vh 3.5vw 3vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    opacity: 0;
+    transform: translateX(40px) scale(0.95);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+  .testimonial-card.active {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+  }
+  .testimonial-card.exit {
+    opacity: 0;
+    transform: translateX(-40px) scale(0.95);
+  }
+
+  .quote-icon {
+    font-size: 4vh;
+    color: var(--accent);
+    opacity: 0.3;
+    margin-bottom: 1.5vh;
+    font-family: Georgia, serif;
+    line-height: 1;
+  }
+
+  .avatar {
+    width: 7vh;
+    height: 7vh;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.8vh;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 2vh;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  .avatar::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    opacity: 0.3;
+  }
+
+  .quote-text {
+    font-size: 1.7vh;
+    line-height: 1.6;
+    color: #c0c8d8;
+    margin-bottom: 2vh;
+    max-width: 55vw;
+    font-style: italic;
+  }
+
+  .stars {
+    display: flex;
+    gap: 0.4vw;
+    margin-bottom: 1.5vh;
+  }
+  .star {
+    font-size: 1.8vh;
+    color: #333;
+    transition: color 0.3s;
+  }
+  .star.filled { color: #fbbf24; text-shadow: 0 0 6px rgba(251,191,36,0.3); }
+
+  .customer-name {
+    font-size: 1.6vh;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.3vh;
+  }
+  .customer-company {
+    font-size: 1.2vh;
+    color: #667;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .dots-nav {
+    display: flex;
+    gap: 1vw;
+    margin-top: 3vh;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.5s 0.3s;
+  }
+  .dots-nav.visible { opacity: 1; }
+  .dot {
+    width: 1vh;
+    height: 1vh;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    transition: background 0.4s, transform 0.3s, width 0.3s;
+  }
+  .dot.active {
+    background: var(--accent);
+    width: 3vh;
+    border-radius: 0.5vh;
+  }
+
+  .counter-badge {
+    position: absolute;
+    top: 3vh;
+    right: 3vw;
+    font-size: 1.2vh;
+    color: #556;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .counter-badge.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="testimonial-wrapper">
+  <div class="bg-pattern"></div>
+  <div class="bg-accent-glow glow-top" id="glowTop"></div>
+  <div class="bg-accent-glow glow-bottom" id="glowBottom"></div>
+
+  <div class="section-header" id="header">
+    <h2>What Our Customers Say</h2>
+    <p>Trusted by thousands of companies worldwide</p>
+  </div>
+
+  <div class="carousel-stage" id="stage"></div>
+
+  <div class="dots-nav" id="dotsNav"></div>
+  <div class="counter-badge" id="counter"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  testimonials: [
+    {
+      name: 'Sarah Chen',
+      company: 'TechFlow Inc.',
+      quote: 'This platform completely transformed our workflow. We shipped features 3x faster and our team morale skyrocketed.',
+      rating: 5,
+      avatarColor: '#7b5cfa'
+    },
+    {
+      name: 'Marcus Johnson',
+      company: 'DesignLab Studio',
+      quote: 'The most intuitive tool I have ever used. Our design-to-development handoff went from days to hours.',
+      rating: 5,
+      avatarColor: '#00c9a7'
+    },
+    {
+      name: 'Emily Rodriguez',
+      company: 'ScaleUp Ventures',
+      quote: 'We evaluated dozens of solutions. Nothing comes close to the polish and performance we found here.',
+      rating: 4,
+      avatarColor: '#ff6b6b'
+    },
+    {
+      name: 'David Kim',
+      company: 'CloudNine Systems',
+      quote: 'Enterprise-grade reliability with startup-level simplicity. Our entire engineering org adopted it within a week.',
+      rating: 5,
+      avatarColor: '#4ecdc4'
+    }
+  ],
+  bgColor: '#0a0e1a',
+  accentColor: '#7b5cfa',
+  cycleDuration: 14000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+document.getElementById('glowTop').style.background = CONFIG.accentColor;
+document.getElementById('glowBottom').style.background = CONFIG.accentColor;
+
+const stage = document.getElementById('stage');
+const dotsNav = document.getElementById('dotsNav');
+const counter = document.getElementById('counter');
+let currentIndex = 0;
+let cardEls = [];
+let dotEls = [];
+
+function buildCards() {
+  stage.innerHTML = '';
+  dotsNav.innerHTML = '';
+  cardEls = [];
+  dotEls = [];
+
+  CONFIG.testimonials.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'testimonial-card';
+    const initial = t.name.charAt(0);
+    const starsHTML = Array.from({ length: 5 }, (_, si) =>
+      `<div class="star ${si < t.rating ? 'filled' : ''}">&#9733;</div>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="quote-icon">&ldquo;</div>
+      <div class="avatar" style="background: linear-gradient(135deg, ${t.avatarColor}, ${adjustColor(t.avatarColor, -30)})">${initial}</div>
+      <div class="quote-text">${t.quote}</div>
+      <div class="stars">${starsHTML}</div>
+      <div class="customer-name">${t.name}</div>
+      <div class="customer-company">${t.company}</div>
+    `;
+    stage.appendChild(card);
+    cardEls.push(card);
+
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dotsNav.appendChild(dot);
+    dotEls.push(dot);
+  });
+}
+
+function adjustColor(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, ((num >> 16) & 0xff) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + amount));
+  return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+}
+
+function showCard(index) {
+  cardEls.forEach((card, i) => {
+    card.classList.remove('active', 'exit');
+    if (i === index) {
+      card.classList.add('active');
+      // Animate stars sequentially
+      const stars = card.querySelectorAll('.star.filled');
+      stars.forEach((s, si) => {
+        s.style.opacity = '0';
+        s.style.transform = 'scale(0)';
+        setTimeout(() => {
+          s.style.transition = 'opacity 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          s.style.opacity = '1';
+          s.style.transform = 'scale(1)';
+        }, 600 + si * 100);
+      });
+    }
+  });
+
+  dotEls.forEach((dot, i) => {
+    dot.classList.toggle('active', i === index);
+  });
+
+  counter.textContent = `${index + 1} / ${CONFIG.testimonials.length}`;
+}
+
+function exitCard(index) {
+  if (cardEls[index]) {
+    cardEls[index].classList.remove('active');
+    cardEls[index].classList.add('exit');
+  }
+}
+
+function showUI() {
+  document.getElementById('header').classList.add('visible');
+  dotsNav.classList.add('visible');
+  counter.classList.add('visible');
+}
+
+function hideUI() {
+  document.getElementById('header').classList.remove('visible');
+  dotsNav.classList.remove('visible');
+  counter.classList.remove('visible');
+}
+
+let slideTimer;
+let cycleTimer;
+
+function startSlideshow() {
+  currentIndex = 0;
+  showCard(currentIndex);
+
+  const slideInterval = (CONFIG.cycleDuration - 2000) / CONFIG.testimonials.length;
+  let slideCount = 0;
+
+  slideTimer = setInterval(() => {
+    slideCount++;
+    if (slideCount >= CONFIG.testimonials.length) {
+      clearInterval(slideTimer);
+      return;
+    }
+    exitCard(currentIndex);
+    currentIndex = slideCount;
+    setTimeout(() => showCard(currentIndex), 300);
+  }, slideInterval);
+}
+
+function runCycle() {
+  buildCards();
+  showUI();
+  setTimeout(startSlideshow, 400);
+
+  cycleTimer = setTimeout(() => {
+    exitCard(currentIndex);
+    hideUI();
+    clearInterval(slideTimer);
+    setTimeout(runCycle, 800);
+  }, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Review</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+.bg-glow { position: absolute; width: 40vw; height: 40vw; border-radius: 50%; filter: blur(100px); opacity: 0.06; top: 20%; left: 30%; background: #fbbf24; pointer-events: none; }
+.review-card { width: 70vw; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 2.5vh; padding: 4vh 4vw; display: flex; gap: 4vw; opacity: 0; transform: translateY(20px); transition: all 0.8s cubic-bezier(0.22,1,0.36,1); }
+.review-card.visible { opacity: 1; transform: translateY(0); }
+.product-side { width: 30%; display: flex; flex-direction: column; align-items: center; gap: 2vh; }
+.product-img { width: 100%; aspect-ratio: 1; border-radius: 1.5vh; display: flex; align-items: center; justify-content: center; font-size: 6vh; }
+.product-name { font-size: 2.2vh; font-weight: 800; color: #fff; text-align: center; }
+.product-price { font-size: 1.6vh; color: rgba(255,255,255,0.4); }
+.verified { display: flex; align-items: center; gap: 0.5vw; font-size: 1.1vh; color: #10b981; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); padding: 0.4vh 1vw; border-radius: 1vh; opacity: 0; transition: opacity 0.5s; }
+.verified.visible { opacity: 1; }
+.review-side { flex: 1; }
+.stars-row { display: flex; gap: 0.5vw; margin-bottom: 1.5vh; }
+.star { font-size: 2.8vh; color: rgba(255,255,255,0.1); transition: color 0.3s; }
+.star.filled { color: #fbbf24; }
+.review-text { font-size: 1.7vh; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 2.5vh; min-height: 8vh; }
+.review-text .typed { color: rgba(255,255,255,0.8); }
+.pros-cons { display: flex; gap: 3vw; margin-bottom: 2vh; }
+.pc-section { flex: 1; }
+.pc-title { font-size: 1.2vh; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1vh; }
+.pc-title.pros { color: #10b981; }
+.pc-title.cons { color: #ef4444; }
+.pc-item { font-size: 1.3vh; color: rgba(255,255,255,0.5); padding: 0.5vh 0; display: flex; align-items: center; gap: 0.5vw; opacity: 0; transform: translateX(-8px); transition: all 0.4s; }
+.pc-item.visible { opacity: 1; transform: translateX(0); }
+.pc-icon { font-size: 1.1vh; }
+.reviewer { display: flex; align-items: center; gap: 1vw; margin-top: 2vh; opacity: 0; transition: opacity 0.5s; }
+.reviewer.visible { opacity: 1; }
+.reviewer-avatar { width: 4vh; height: 4vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6vh; font-weight: 700; color: #fff; }
+.reviewer-name { font-size: 1.4vh; font-weight: 600; color: rgba(255,255,255,0.7); }
+.reviewer-date { font-size: 1.1vh; color: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="bg-glow"></div>
+  <div class="review-card" id="card">
+    <div class="product-side">
+      <div class="product-img" id="productImg">📱</div>
+      <div class="product-name" id="productName">AirPods Pro 3</div>
+      <div class="product-price" id="productPrice">$249.00</div>
+      <div class="verified" id="verified">✓ Verified Purchase</div>
+    </div>
+    <div class="review-side">
+      <div class="stars-row" id="stars"></div>
+      <div class="review-text" id="reviewText"></div>
+      <div class="pros-cons">
+        <div class="pc-section"><div class="pc-title pros">Pros</div><div id="pros"></div></div>
+        <div class="pc-section"><div class="pc-title cons">Cons</div><div id="cons"></div></div>
+      </div>
+      <div class="reviewer" id="reviewer">
+        <div class="reviewer-avatar" id="reviewerAvatar">JD</div>
+        <div><div class="reviewer-name" id="reviewerName">John Doe</div><div class="reviewer-date">February 2026</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  productName: 'AirPods Pro 3',
+  productPrice: '$249.00',
+  productEmoji: '🎧',
+  productColor: 'linear-gradient(135deg, #1e293b, #334155)',
+  rating: 4.5,
+  reviewText: 'These are hands down the best earbuds I\'ve ever owned. The noise cancellation is incredible — it completely blocks out office chatter and airplane noise. Sound quality is rich and detailed with punchy bass. Battery life easily lasts through a full workday.',
+  reviewerName: 'Sarah Mitchell',
+  reviewerInitials: 'SM',
+  reviewerColor: '#8b5cf6',
+  pros: ['Best-in-class ANC', 'Excellent sound quality', 'All-day battery life', 'Comfortable fit'],
+  cons: ['Premium price point', 'No lossless Bluetooth'],
+  cycleDuration: 14000,
+  bgColor: '#111118',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('productName').textContent = CONFIG.productName;
+document.getElementById('productPrice').textContent = CONFIG.productPrice;
+document.getElementById('productImg').textContent = CONFIG.productEmoji;
+document.getElementById('productImg').style.background = CONFIG.productColor;
+document.getElementById('reviewerName').textContent = CONFIG.reviewerName;
+document.getElementById('reviewerAvatar').textContent = CONFIG.reviewerInitials;
+document.getElementById('reviewerAvatar').style.background = CONFIG.reviewerColor;
+
+var starsEl = document.getElementById('stars');
+for (var i = 1; i <= 5; i++) {
+  var star = document.createElement('div');
+  star.className = 'star';
+  star.id = 'star-' + i;
+  star.textContent = '★';
+  starsEl.appendChild(star);
+}
+
+var prosEl = document.getElementById('pros');
+CONFIG.pros.forEach(function(p) {
+  var el = document.createElement('div');
+  el.className = 'pc-item';
+  el.innerHTML = '<span class="pc-icon" style="color:#10b981">✓</span>' + p;
+  prosEl.appendChild(el);
+});
+
+var consEl = document.getElementById('cons');
+CONFIG.cons.forEach(function(c) {
+  var el = document.createElement('div');
+  el.className = 'pc-item';
+  el.innerHTML = '<span class="pc-icon" style="color:#ef4444">✕</span>' + c;
+  consEl.appendChild(el);
+});
+
+function runCycle() {
+  var card = document.getElementById('card');
+  var verified = document.getElementById('verified');
+  var reviewer = document.getElementById('reviewer');
+  var reviewText = document.getElementById('reviewText');
+  var allStars = document.querySelectorAll('.star');
+  var proItems = document.querySelectorAll('#pros .pc-item');
+  var conItems = document.querySelectorAll('#cons .pc-item');
+
+  card.classList.remove('visible');
+  verified.classList.remove('visible');
+  reviewer.classList.remove('visible');
+  reviewText.innerHTML = '';
+  allStars.forEach(function(s) { s.classList.remove('filled'); });
+  proItems.forEach(function(p) { p.classList.remove('visible'); });
+  conItems.forEach(function(c) { c.classList.remove('visible'); });
+
+  setTimeout(function() { card.classList.add('visible'); }, 300);
+
+  allStars.forEach(function(s, i) {
+    setTimeout(function() {
+      if (i + 1 <= Math.round(CONFIG.rating)) s.classList.add('filled');
+    }, 800 + i * 150);
+  });
+
+  // Typewriter effect for review
+  var chars = CONFIG.reviewText.split('');
+  var typedIdx = 0;
+  setTimeout(function() {
+    var typeInterval = setInterval(function() {
+      if (typedIdx >= chars.length) { clearInterval(typeInterval); return; }
+      typedIdx++;
+      reviewText.textContent = CONFIG.reviewText.substring(0, typedIdx);
+    }, 25);
+  }, 1500);
+
+  proItems.forEach(function(p, i) { setTimeout(function() { p.classList.add('visible'); }, 4000 + i * 250); });
+  conItems.forEach(function(c, i) { setTimeout(function() { c.classList.add('visible'); }, 4200 + i * 250); });
+  setTimeout(function() { verified.classList.add('visible'); }, 5000);
+  setTimeout(function() { reviewer.classList.add('visible'); }, 5500);
+
+  setTimeout(function() {
+    card.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

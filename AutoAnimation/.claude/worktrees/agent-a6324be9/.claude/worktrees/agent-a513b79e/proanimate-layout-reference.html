@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProAnimate Layout Reference</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --accent-blue: #4a7eff;
+      --input-bg: #2a2a2a;
+      --toggle-off: #3a3a3a;
+      --slider-thumb: #5a5a5a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #18181b; color: #fafafa; overflow: hidden;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #18181b; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    /* Checkerboard pattern */
+    .checkerboard {
+      background-image:
+        linear-gradient(45deg, #2a2a2a 25%, transparent 25%),
+        linear-gradient(-45deg, #2a2a2a 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #2a2a2a 75%),
+        linear-gradient(-45deg, transparent 75%, #2a2a2a 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      background-color: #1a1a1a;
+    }
+
+    /* Hide native range input but keep it functional */
+    input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 0; height: 0; }
+    input[type="range"]::-moz-range-thumb { width: 0; height: 0; border: none; background: transparent; }
+    input[type="range"]:focus { outline: none; }
+
+    /* Select dropdown arrow color fix */
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px !important; }
+  </style>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // ── SVG Icon base ───────────────────────────────────────────────────
+    const svgBase = { xmlns:"http://www.w3.org/2000/svg", fill:"none", stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round", viewBox:"0 0 24 24" };
+    function Icon({ children, size = 18, className = "" }) {
+      return <svg {...svgBase} width={size} height={size} className={className}>{children}</svg>;
+    }
+
+    // ── Icons ───────────────────────────────────────────────────────────
+    const Icons = {
+      Type: ({size,className}) => <Icon size={size} className={className}><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></Icon>,
+      AlignLeft: ({size,className}) => <Icon size={size} className={className}><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></Icon>,
+      AlignCenter: ({size,className}) => <Icon size={size} className={className}><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></Icon>,
+      AlignRight: ({size,className}) => <Icon size={size} className={className}><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></Icon>,
+      AlignJustify: ({size,className}) => <Icon size={size} className={className}><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></Icon>,
+      ArrowUp: ({size,className}) => <Icon size={size} className={className}><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></Icon>,
+      ArrowDown: ({size,className}) => <Icon size={size} className={className}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></Icon>,
+      Minus: ({size,className}) => <Icon size={size} className={className}><line x1="5" y1="12" x2="19" y2="12"/></Icon>,
+      Play: ({size,className}) => <Icon size={size} className={className}><polygon points="5 3 19 12 5 21 5 3"/></Icon>,
+      SkipBack: ({size,className}) => <Icon size={size} className={className}><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></Icon>,
+      SkipForward: ({size,className}) => <Icon size={size} className={className}><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></Icon>,
+      Undo2: ({size,className}) => <Icon size={size} className={className}><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 015.5 5.5v0a5.5 5.5 0 01-5.5 5.5H11"/></Icon>,
+      Redo2: ({size,className}) => <Icon size={size} className={className}><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 004 14.5v0A5.5 5.5 0 009.5 20H13"/></Icon>,
+      ZoomIn: ({size,className}) => <Icon size={size} className={className}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></Icon>,
+      ZoomOut: ({size,className}) => <Icon size={size} className={className}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></Icon>,
+      Volume2: ({size,className}) => <Icon size={size} className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></Icon>,
+      Circle: ({size,className}) => <Icon size={size} className={className}><circle cx="12" cy="12" r="10"/></Icon>,
+      Plus: ({size,className}) => <Icon size={size} className={className}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>,
+      Eye: ({size,className}) => <Icon size={size} className={className}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></Icon>,
+      Lock: ({size,className}) => <Icon size={size} className={className}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></Icon>,
+      GripVertical: ({size,className}) => <Icon size={size} className={className}><circle cx="9" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="19" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="19" r="1" fill="currentColor" stroke="none"/></Icon>,
+      Copy: ({size,className}) => <Icon size={size} className={className}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></Icon>,
+      Trash2: ({size,className}) => <Icon size={size} className={className}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></Icon>,
+      // Left panel header icon
+      Box: ({size,className}) => <Icon size={size} className={className}><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></Icon>,
+    };
+
+    // ── Icon Button ─────────────────────────────────────────────────────
+    const btnVariants = {
+      solid: { default: 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300', active: 'bg-green-500 text-white hover:bg-green-600', disabled: 'bg-zinc-900 text-zinc-600 cursor-not-allowed' },
+      ghost: { default: 'bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300', active: 'bg-green-500/20 text-green-500', disabled: 'text-zinc-600 cursor-not-allowed' },
+    };
+    const btnSizes = { sm: { cls: 'h-8 w-8', icon: 16 }, md: { cls: 'h-10 w-10', icon: 20 } };
+
+    function IconButton({ icon, variant = 'solid', state = 'default', size = 'md', tooltip, onClick, disabled }) {
+      const eff = disabled ? 'disabled' : state;
+      const s = btnSizes[size];
+      const Ic = Icons[icon];
+      return (
+        <button type="button" disabled={disabled} title={tooltip} onClick={onClick}
+          className={`inline-flex items-center justify-center rounded-lg transition-all duration-150 focus:outline-none ${btnVariants[variant][eff]} ${s.cls}`}>
+          {Ic && <Ic size={s.icon} />}
+        </button>
+      );
+    }
+
+    // ── RPSlider (exact match) ──────────────────────────────────────────
+    function RPSlider({ label, value, onChange, min, max, step, precision = 0 }) {
+      const display = precision > 0 ? value.toFixed(precision) : String(Math.round(value));
+      const pct = ((value - min) / (max - min)) * 100;
+      return (
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-gray-400 text-sm w-20 shrink-0">{label}</span>
+          <div className="flex items-center gap-2 flex-1">
+            <div className="bg-[#2a2a2a] text-white text-sm px-3 py-2 rounded-lg min-w-[48px] text-center">
+              {display}
+            </div>
+            <div className="flex-1 relative h-8 bg-[#2a2a2a] rounded-lg overflow-hidden">
+              <input type="range" min={min} max={max} step={step} value={value}
+                onChange={(e) => onChange(parseFloat(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+              <div className="absolute top-1/2 h-5 bg-[#5a5a5a] rounded-md transition-all"
+                style={{ left: `${pct}%`, width: '20px', transform: 'translate(-50%, -50%)' }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Toggle Switch ───────────────────────────────────────────────────
+    function ToggleSwitch({ label, value, onChange }) {
+      return (
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-gray-400 text-sm w-20 shrink-0">{label}</span>
+          <button onClick={() => onChange(!value)}
+            className={`relative w-10 h-6 rounded-full transition-colors ${value ? 'bg-[#4a7eff]' : 'bg-[#3a3a3a]'}`}>
+            <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${value ? 'translate-x-4' : ''}`} />
+          </button>
+        </div>
+      );
+    }
+
+    // ── Constants ────────────────────────────────────────────────────────
+    const RP_FONTS = [
+      'Inter','Roboto','Poppins','Montserrat','Open Sans','Lato','Raleway','Nunito',
+      'Ubuntu','PT Sans','Oswald','Comfortaa','Fredoka','Playfair Display','Merriweather',
+      'Abril Fatface','Space Mono','Bebas Neue','Archivo Black','Alfa Slab One',
+      'Bangers','Righteous','Permanent Marker','Pacifico','Dancing Script','Caveat',
+    ];
+    const RP_WEIGHTS = [
+      { value: 'normal', label: 'Regular' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'semibold', label: 'Semibold' },
+      { value: 'bold', label: 'Bold' },
+      { value: 'black', label: 'Black' },
+    ];
+    const RP_COLORS = ['#ffffff','#f87171','#fb923c','#facc15','#4ade80','#38bdf8','#a78bfa','#f472b6','#000000','#71717a'];
+
+    // ── Right Panel: Text Properties ────────────────────────────────────
+    function TextPropertiesPanel() {
+      const [content, setContent] = useState('Name\nTitle or Role');
+      const [fontSize, setFontSize] = useState(128);
+      const [lineHeight, setLineHeight] = useState(1.3);
+      const [spacing, setSpacing] = useState(0.0);
+      const [fontFamily, setFontFamily] = useState('Roboto');
+      const [fontWeight, setFontWeight] = useState('bold');
+      const [align, setAlign] = useState('left');
+      const [verticalAlign, setVerticalAlign] = useState('bottom');
+      const [textCase, setTextCase] = useState('none');
+      const [color, setColor] = useState('#ffffff');
+      const [opacity, setOpacity] = useState(100);
+      const [shadow, setShadow] = useState(false);
+      const [background, setBackground] = useState(true);
+      const [bgOpacity, setBgOpacity] = useState(75);
+
+      return (
+        <aside className="w-[280px] flex flex-col bg-zinc-800 border-l border-zinc-700/50">
+          {/* Header */}
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-700/50">
+            <Icons.Type size={16} className="text-amber-400" />
+            <span className="text-sm font-medium text-amber-400">Text</span>
+            <span className="text-[10px] text-zinc-600">Properties</span>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* ── Text Section ── */}
+            <div className="p-4 border-b border-white/5">
+              <h2 className="text-white text-base font-semibold mb-4">Text</h2>
+
+              {/* Content */}
+              <div className="mb-3">
+                <span className="text-gray-400 text-sm mb-1 block">Content</span>
+                <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={3}
+                  className="w-full bg-[#2a2a2a] text-white text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-[#4a7eff]" />
+              </div>
+
+              <RPSlider label="Font Size" value={fontSize} onChange={setFontSize} min={8} max={400} step={1} />
+              <RPSlider label="Line Height" value={lineHeight} onChange={setLineHeight} min={0.5} max={3} step={0.1} precision={1} />
+              <RPSlider label="Spacing" value={spacing} onChange={setSpacing} min={-5} max={20} step={0.5} precision={1} />
+
+              {/* Font Family */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-gray-400 text-sm w-20 shrink-0">Font</span>
+                <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
+                  className="flex-1 bg-[#2a2a2a] text-white text-sm px-3 py-2 rounded-lg border-none focus:outline-none focus:ring-1 focus:ring-[#4a7eff] cursor-pointer appearance-none"
+                  style={{ fontFamily: `"${fontFamily}", sans-serif` }}>
+                  {RP_FONTS.map(f => <option key={f} value={f} style={{ fontFamily: `"${f}", sans-serif` }}>{f}</option>)}
+                </select>
+              </div>
+
+              {/* Font Weight */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-gray-400 text-sm w-20 shrink-0">Weight</span>
+                <select value={fontWeight} onChange={(e) => setFontWeight(e.target.value)}
+                  className="flex-1 bg-[#2a2a2a] text-white text-sm px-3 py-2 rounded-lg border-none focus:outline-none focus:ring-1 focus:ring-[#4a7eff] cursor-pointer appearance-none">
+                  {RP_WEIGHTS.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+                </select>
+              </div>
+
+              {/* Horizontal Alignment */}
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-gray-400 text-sm w-20 shrink-0">Align</span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'left', icon: 'AlignLeft' },
+                    { value: 'center', icon: 'AlignCenter' },
+                    { value: 'right', icon: 'AlignRight' },
+                    { value: 'justify', icon: 'AlignJustify' },
+                  ].map(opt => {
+                    const Ic = Icons[opt.icon];
+                    return (
+                      <button key={opt.value} onClick={() => setAlign(opt.value)}
+                        className={`w-9 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                          align === opt.value ? 'bg-[#4a7eff] text-white' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'
+                        }`}>
+                        <Ic size={16} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Vertical Alignment */}
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-gray-400 text-sm w-20 shrink-0">Vertical</span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'top', icon: 'ArrowUp' },
+                    { value: 'middle', icon: 'Minus' },
+                    { value: 'bottom', icon: 'ArrowDown' },
+                  ].map(opt => {
+                    const Ic = Icons[opt.icon];
+                    return (
+                      <button key={opt.value} onClick={() => setVerticalAlign(opt.value)}
+                        className={`w-9 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                          verticalAlign === opt.value ? 'bg-[#4a7eff] text-white' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'
+                        }`}>
+                        <Ic size={16} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Text Case */}
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 text-sm w-20 shrink-0">Case</span>
+                <div className="flex gap-1">
+                  {[
+                    { value: 'none', label: 'Aa' },
+                    { value: 'uppercase', label: 'AA' },
+                    { value: 'lowercase', label: 'aa' },
+                  ].map(opt => (
+                    <button key={opt.value} onClick={() => setTextCase(opt.value)}
+                      className={`w-9 h-8 rounded-lg flex items-center justify-center transition-colors text-xs font-medium ${
+                        textCase === opt.value ? 'bg-[#4a7eff] text-white' : 'bg-[#2a2a2a] text-gray-400 hover:text-white'
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Style Section ── */}
+            <div className="p-4 border-b border-white/5">
+              <h2 className="text-white text-base font-semibold mb-4">Style</h2>
+
+              {/* Color Swatches */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-gray-400 text-sm w-20 shrink-0">Color</span>
+                <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                  {RP_COLORS.map(c => (
+                    <button key={c} onClick={() => setColor(c)}
+                      className={`w-6 h-6 rounded-md border-2 transition-all ${
+                        color === c ? 'border-[#4a7eff] scale-110' : 'border-transparent hover:border-white/30'
+                      }`}
+                      style={{ backgroundColor: c }} />
+                  ))}
+                  <label className="relative w-6 h-6 rounded-md border border-[#3a3a3a] cursor-pointer overflow-hidden shrink-0">
+                    <div className="absolute inset-0" style={{ backgroundColor: color }} />
+                    <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
+                      className="absolute inset-0 opacity-0 cursor-pointer" />
+                  </label>
+                </div>
+              </div>
+
+              <RPSlider label="Opacity" value={opacity} onChange={setOpacity} min={0} max={100} step={1} />
+              <ToggleSwitch label="Shadow" value={shadow} onChange={setShadow} />
+              <ToggleSwitch label="Background" value={background} onChange={setBackground} />
+              {background && (
+                <RPSlider label="BG Opacity" value={bgOpacity} onChange={setBgOpacity} min={0} max={100} step={5} />
+              )}
+            </div>
+
+            {/* ── Actions ── */}
+            <div className="p-4">
+              <div className="flex gap-2">
+                <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#2a2a2a] text-white text-sm rounded-lg hover:bg-[#3a3a3a] transition-colors">
+                  <Icons.Copy size={14} /> Duplicate
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-600/10 text-red-400 text-sm rounded-lg hover:bg-red-600/20 transition-colors">
+                  <Icons.Trash2 size={14} /> Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      );
+    }
+
+    // ── Left Panel: Rig Editor ───────────────────────────────────────
+    function LeftPanel() {
+      return (
+        <aside className="w-[340px] flex flex-col bg-zinc-800 border-r border-zinc-700/50">
+          {/* PanelLayout header — matches "Transitions", "Animations", "Characters" style */}
+          <div className="px-4 pt-4 pb-3 border-b border-white/5 flex-none">
+            <div className="flex items-center gap-2">
+              <Icons.Box size={16} className="text-green-400" />
+              <span className="text-sm font-semibold text-white">Rig Editor</span>
+            </div>
+          </div>
+          {/* Empty scrollable body — placeholder for future rig editor content */}
+          <div className="flex-1 overflow-y-auto p-4" />
+        </aside>
+      );
+    }
+
+    // ── Checkerboard Canvas ─────────────────────────────────────────────
+    function CheckerboardCanvas() {
+      return <div className="flex-1 checkerboard" />;
+    }
+
+    // ── Timeline ────────────────────────────────────────────────────────
+    function TimelineComponent() {
+      const fps = 30;
+      const zoom = 1;
+      const pixelsPerFrame = (100 * zoom) / fps;
+      const totalFrames = 900; // 30s
+      const totalWidth = totalFrames * pixelsPerFrame;
+
+      // Sample tracks matching the screenshot
+      const draggableTracks = [
+        {
+          id: 'text-1', label: 'Name Title or Role',
+          colors: { bg: 'rgba(249,115,22,0.30)', text: '#fb923c', border: 'rgba(249,115,22,0.6)' },
+          startFrame: 0, endFrame: 900, type: 'draggable',
+        },
+      ];
+
+      const customTracks = [
+        { id: 'video-1', name: 'Video 1', typeColor: 'bg-blue-500', clipColor: 'bg-blue-500/40', startFrame: 0, endFrame: 0 },
+        { id: 'character', name: 'Character', typeColor: 'bg-green-500', clipColor: 'bg-green-500/40', startFrame: 0, endFrame: 0 },
+      ];
+
+      // Time ruler ticks
+      const ticks = useMemo(() => {
+        const res = [];
+        for (let s = 0; s <= 30; s += 2) {
+          res.push({ frame: s * fps, major: true, label: s === 0 ? '0' : `${s}s` });
+        }
+        for (let s = 1; s <= 30; s += 2) {
+          res.push({ frame: s * fps, major: false, label: '' });
+        }
+        return res.sort((a, b) => a.frame - b.frame);
+      }, []);
+
+      // Playhead at ~0s
+      const playheadPos = 0 * pixelsPerFrame;
+
+      return (
+        <div className="h-[256px] flex flex-col bg-zinc-800 border-t border-zinc-700">
+          {/* Timeline Header */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-700/50 bg-zinc-800 shrink-0">
+            <div className="flex items-center gap-2">
+              <IconButton icon="Undo2" variant="ghost" size="sm" tooltip="Undo" />
+              <IconButton icon="Redo2" variant="ghost" size="sm" tooltip="Redo" disabled />
+              <div className="w-px h-5 bg-zinc-700 mx-1" />
+              <button className="w-7 h-7 flex items-center justify-center rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 transition-colors" title="Record">
+                <Icons.Circle size={14} />
+              </button>
+              <div className="w-px h-5 bg-zinc-700 mx-1" />
+              <IconButton icon="SkipBack" variant="ghost" size="sm" tooltip="Restart" />
+              <IconButton icon="Play" variant="solid" size="sm" tooltip="Play" />
+              <IconButton icon="SkipForward" variant="ghost" size="sm" tooltip="Skip to end" />
+              <div className="ml-1 px-2 py-1 bg-zinc-900 rounded text-xs font-mono text-zinc-400">
+                00:00:00 / 00:30:00
+              </div>
+              <div className="w-px h-5 bg-zinc-700 mx-1" />
+              <IconButton icon="Volume2" variant="ghost" size="sm" tooltip="Mute" />
+            </div>
+            <div className="flex items-center gap-1">
+              <IconButton icon="ZoomOut" variant="ghost" size="sm" tooltip="Zoom out" />
+              <span className="text-xs text-zinc-500 w-12 text-center">100%</span>
+              <IconButton icon="ZoomIn" variant="ghost" size="sm" tooltip="Zoom in" />
+            </div>
+          </div>
+
+          {/* Timeline Content */}
+          <div className="flex-1 overflow-auto relative">
+            {/* Playhead — spans full height, sticky at top */}
+            <div className="sticky top-0 z-20 pointer-events-none" style={{ height: 0 }}>
+              <div className="absolute top-0 pointer-events-auto cursor-col-resize"
+                style={{ left: 160 + playheadPos, height: 40 + draggableTracks.length * 28 + customTracks.length * 60 + 40 }}>
+                <div className="absolute top-0 left-0 -translate-x-1/2 w-3 h-4 bg-green-500 rounded-b-sm"
+                  style={{ clipPath: 'polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)' }} />
+                <div className="absolute top-4 left-0 -translate-x-1/2 w-0.5 bg-green-500"
+                  style={{ height: 40 + draggableTracks.length * 28 + customTracks.length * 60 + 20 }} />
+              </div>
+            </div>
+
+            <div className="relative" style={{ minWidth: totalWidth + 160 }}>
+              {/* Time Ruler */}
+              <div className="sticky top-0 z-10 flex">
+                <div className="w-40 flex-shrink-0 bg-zinc-800 border-r border-zinc-700/50 border-b border-zinc-700 sticky left-0 z-10 h-10" />
+                <div className="h-10 bg-zinc-900 relative select-none" style={{ width: totalWidth }}>
+                  {/* Labels */}
+                  <div className="absolute top-1 left-0 right-0">
+                    {ticks.filter(t => t.major).map(({ frame, label }) => (
+                      <span key={`lbl-${frame}`} className="absolute text-xs text-zinc-400 font-normal whitespace-nowrap"
+                        style={{ left: frame * pixelsPerFrame, transform: frame === 0 ? 'none' : 'translateX(-50%)' }}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  {/* Ticks */}
+                  <div className="absolute bottom-0 left-0 right-0">
+                    {ticks.map(({ frame, major }) => (
+                      <div key={`tick-${frame}`} className="absolute bottom-0" style={{ left: frame * pixelsPerFrame }}>
+                        <div className={`w-px ${major ? 'h-3 bg-zinc-500' : 'h-2 bg-zinc-700'}`} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Draggable Tracks (DraggableTimelineRow style) */}
+              {draggableTracks.map(track => {
+                const left = track.startFrame * pixelsPerFrame;
+                const width = (track.endFrame - track.startFrame) * pixelsPerFrame;
+                return (
+                  <div key={track.id} className="flex border-b border-zinc-700/50 cursor-pointer" style={{ height: 28 }}>
+                    <div className="w-40 flex-shrink-0 flex items-center gap-1 px-2 bg-zinc-800 border-r border-zinc-700/50 sticky left-0 z-10">
+                      <div className="w-2 h-2 rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: track.colors.text }} />
+                      <span className="text-[10px] truncate select-none text-white font-medium">{track.label}</span>
+                    </div>
+                    <div className="flex-1 relative bg-zinc-900/30">
+                      <div className="absolute top-0.5 bottom-0.5 rounded-sm overflow-hidden select-none"
+                        style={{ left, width: Math.max(width, 8), backgroundColor: track.colors.bg, borderLeft: `2px solid ${track.colors.border}` }}>
+                        {width > 50 && (
+                          <span className="absolute inset-0 flex items-center px-2.5 text-[9px] font-medium truncate leading-none"
+                            style={{ color: track.colors.text }}>
+                            {track.label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Custom Tracks (Track.tsx style with grip, eye, lock) */}
+              {customTracks.map(track => (
+                <div key={track.id} className="flex border-b border-zinc-700/50" style={{ height: 60 }}>
+                  <div className="w-40 flex-shrink-0 flex items-center gap-1 px-1 bg-zinc-800 border-r border-zinc-700/50 sticky left-0 z-10">
+                    <div className="p-0.5 text-zinc-600 hover:text-zinc-400 cursor-grab flex-shrink-0">
+                      <Icons.GripVertical size={14} />
+                    </div>
+                    <div className={`w-2 self-stretch rounded-sm ${track.typeColor}`} />
+                    <span className="flex-1 text-xs text-zinc-300 truncate">{track.name}</span>
+                    <button className="p-1 text-zinc-500 hover:text-zinc-300 transition-colors">
+                      <Icons.Eye size={14} />
+                    </button>
+                    <button className="p-1 text-zinc-500 hover:text-zinc-300 transition-colors">
+                      <Icons.Lock size={14} />
+                    </button>
+                  </div>
+                  <div className="flex-1 relative bg-zinc-900/50" />
+                </div>
+              ))}
+
+              {/* Add Track */}
+              <button className="flex items-center gap-2 w-40 px-4 py-2 text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50 transition-colors sticky left-0 bg-zinc-800">
+                <Icons.Plus size={16} />
+                <span className="text-xs">Add Track</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Main Layout ─────────────────────────────────────────────────────
+    function EditorLayout() {
+      return (
+        <div className="h-screen w-screen flex flex-col bg-zinc-900 overflow-hidden">
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel: Rig Editor */}
+            <LeftPanel />
+            {/* Center: Checkerboard + Timeline */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <CheckerboardCanvas />
+              <TimelineComponent />
+            </div>
+            {/* Right Panel: Text Properties */}
+            <TextPropertiesPanel />
+          </div>
+        </div>
+      );
+    }
+
+    // ── Mount ───────────────────────────────────────────────────────────
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<EditorLayout />);
+  </script>
+</body>
+</html>

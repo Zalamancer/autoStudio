@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Progress Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background: #0b0f1a; color: #e0e6f0; }
+
+  .dashboard {
+    width: 100%; height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 2.5vh 3vw;
+    gap: 2vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 4vw 4vh;
+    pointer-events: none;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    opacity: 0;
+    transform: translateY(-15px);
+    transition: opacity 0.6s, transform 0.6s;
+    z-index: 2;
+  }
+  .header.visible { opacity: 1; transform: translateY(0); }
+
+  .project-title {
+    font-size: 2.5vh;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+  .header-badge {
+    display: flex;
+    align-items: center;
+    gap: 1vw;
+  }
+  .status-pill {
+    padding: 0.5vh 1.5vw;
+    border-radius: 2vh;
+    font-size: 1.1vh;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .status-active {
+    background: rgba(0, 200, 120, 0.12);
+    color: #00c878;
+    border: 1px solid rgba(0, 200, 120, 0.2);
+  }
+  .sprint-label {
+    font-size: 1.2vh;
+    color: #667;
+    font-weight: 600;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 2vw;
+    z-index: 2;
+  }
+
+  .panel {
+    background: rgba(16, 22, 40, 0.8);
+    border: 1px solid rgba(100, 120, 180, 0.1);
+    border-radius: 1.5vh;
+    padding: 2vh 2vw;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+    position: relative;
+  }
+  .panel.visible { opacity: 1; transform: translateY(0); }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--panel-accent, var(--accent)), transparent);
+    opacity: 0.4;
+  }
+
+  .panel-title {
+    font-size: 1.3vh;
+    font-weight: 700;
+    color: #667;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1.5vh;
+  }
+
+  /* Circular Gauges */
+  .gauges-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5vw;
+    justify-content: center;
+    align-items: center;
+    height: calc(100% - 3vh);
+  }
+
+  .gauge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5vh;
+  }
+
+  .gauge-ring {
+    position: relative;
+    width: 8vh;
+    height: 8vh;
+  }
+  .gauge-ring svg {
+    width: 100%; height: 100%;
+    transform: rotate(-90deg);
+  }
+  .gauge-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 3;
+  }
+  .gauge-fill {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 0 188.5;
+    transition: stroke-dasharray 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .gauge-value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8vh;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .gauge-label {
+    font-size: 1vh;
+    color: #8892a4;
+    font-weight: 600;
+    text-align: center;
+    max-width: 10vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Task Bars */
+  .tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2vh;
+    height: calc(100% - 3vh);
+    justify-content: center;
+  }
+  .task-item {
+    opacity: 0;
+    transform: translateX(-15px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .task-item.visible { opacity: 1; transform: translateX(0); }
+
+  .task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5vh;
+  }
+  .task-name {
+    font-size: 1.2vh;
+    font-weight: 600;
+    color: #c0c8d8;
+  }
+  .task-pct {
+    font-size: 1.1vh;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .task-bar-bg {
+    width: 100%;
+    height: 0.6vh;
+    background: rgba(255,255,255,0.06);
+    border-radius: 0.3vh;
+    overflow: hidden;
+  }
+  .task-bar-fill {
+    height: 100%;
+    border-radius: 0.3vh;
+    width: 0%;
+    transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Activity Feed */
+  .activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+    height: calc(100% - 3vh);
+    overflow: hidden;
+  }
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 1vw;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .activity-item.visible { opacity: 1; transform: translateY(0); }
+
+  .activity-avatar {
+    width: 3vh; height: 3vh;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2vh;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .activity-text {
+    font-size: 1.1vh;
+    color: #8892a4;
+    line-height: 1.4;
+  }
+  .activity-text strong { color: #c0c8d8; }
+  .activity-time {
+    font-size: 0.9vh;
+    color: #445;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* Burndown Chart */
+  .burndown-area {
+    width: 100%;
+    height: calc(100% - 3vh);
+    position: relative;
+  }
+  .burndown-area canvas { width: 100%; height: 100%; }
+
+  .burndown-legend {
+    position: absolute;
+    top: 0; right: 0;
+    display: flex;
+    gap: 1.5vw;
+    font-size: 0.9vh;
+    color: #667;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4vw; }
+  .legend-swatch { width: 1.5vh; height: 0.3vh; border-radius: 0.15vh; }
+
+  /* Bottom Stats Bar */
+  .bottom-bar {
+    display: flex;
+    gap: 3vw;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .bottom-bar.visible { opacity: 1; }
+
+  .stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    padding: 0.8vh 1.5vw;
+    background: rgba(16, 22, 40, 0.6);
+    border: 1px solid rgba(100, 120, 180, 0.08);
+    border-radius: 1vh;
+    font-size: 1.1vh;
+  }
+  .stat-value {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+  }
+  .stat-label { color: #667; }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <div class="bg-grid"></div>
+
+  <div class="header" id="header">
+    <div class="project-title" id="projectTitle"></div>
+    <div class="header-badge">
+      <div class="status-pill status-active">Active</div>
+      <div class="sprint-label">Sprint 14 &middot; Day 8 of 14</div>
+    </div>
+  </div>
+
+  <div class="main-grid" id="mainGrid">
+    <div class="panel" id="gaugesPanel">
+      <div class="panel-title">Key Metrics</div>
+      <div class="gauges-grid" id="gaugesGrid"></div>
+    </div>
+    <div class="panel" id="tasksPanel">
+      <div class="panel-title">Task Progress</div>
+      <div class="tasks-list" id="tasksList"></div>
+    </div>
+    <div class="panel" id="activityPanel">
+      <div class="panel-title">Team Activity</div>
+      <div class="activity-feed" id="activityFeed"></div>
+    </div>
+    <div class="panel" id="burndownPanel">
+      <div class="panel-title">Sprint Burndown</div>
+      <div class="burndown-area">
+        <canvas id="burndownCanvas"></canvas>
+        <div class="burndown-legend">
+          <div class="legend-item"><div class="legend-swatch" style="background:var(--accent)"></div> Actual</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#445"></div> Ideal</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar" id="bottomBar"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  projectName: 'Aurora Platform v2.0',
+  metrics: [
+    { label: 'Completion', value: 73, max: 100, color: '#7b5cfa' },
+    { label: 'Tests Pass', value: 142, max: 168, color: '#00c878' },
+    { label: 'Code Review', value: 28, max: 35, color: '#00b4d8' },
+    { label: 'Bugs Fixed', value: 19, max: 24, color: '#ff6b6b' }
+  ],
+  tasks: [
+    { name: 'API Integration', progress: 92 },
+    { name: 'UI Components', progress: 78 },
+    { name: 'Database Migration', progress: 65 },
+    { name: 'Testing Suite', progress: 84 },
+    { name: 'Documentation', progress: 45 }
+  ],
+  activities: [
+    { name: 'Sarah C.', action: 'merged PR #247', time: '2m ago', color: '#7b5cfa' },
+    { name: 'Alex M.', action: 'completed code review', time: '8m ago', color: '#00c878' },
+    { name: 'Jordan L.', action: 'fixed bug #189', time: '15m ago', color: '#ff6b6b' },
+    { name: 'Taylor R.', action: 'deployed to staging', time: '22m ago', color: '#00b4d8' },
+    { name: 'Morgan K.', action: 'updated test suite', time: '31m ago', color: '#fbbf24' }
+  ],
+  bgColor: '#0b0f1a',
+  accentColor: '#7b5cfa',
+  cycleDuration: 14000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+document.getElementById('projectTitle').textContent = CONFIG.projectName;
+
+// Build gauges
+function buildGauges() {
+  const grid = document.getElementById('gaugesGrid');
+  grid.innerHTML = '';
+  CONFIG.metrics.forEach(function(m, i) {
+    var pct = Math.round((m.value / m.max) * 100);
+    var circumference = 2 * Math.PI * 30;
+
+    var item = document.createElement('div');
+    item.className = 'gauge-item';
+    item.innerHTML =
+      '<div class="gauge-ring">' +
+        '<svg viewBox="0 0 70 70">' +
+          '<circle class="gauge-bg" cx="35" cy="35" r="30"/>' +
+          '<circle class="gauge-fill" cx="35" cy="35" r="30"' +
+            ' stroke="' + m.color + '"' +
+            ' data-pct="' + pct + '"' +
+            ' style="stroke-dasharray: 0 ' + circumference + '"/>' +
+        '</svg>' +
+        '<div class="gauge-value" data-target="' + pct + '" style="color:' + m.color + '">0%</div>' +
+      '</div>' +
+      '<div class="gauge-label">' + m.label + '</div>';
+    grid.appendChild(item);
+  });
+}
+
+// Build tasks
+function buildTasks() {
+  var list = document.getElementById('tasksList');
+  list.innerHTML = '';
+  CONFIG.tasks.forEach(function(t, i) {
+    var item = document.createElement('div');
+    item.className = 'task-item';
+    var hue = 220 + i * 30;
+    var color = 'hsl(' + hue + ', 70%, 60%)';
+    item.innerHTML =
+      '<div class="task-header">' +
+        '<span class="task-name">' + t.name + '</span>' +
+        '<span class="task-pct" style="color:' + color + '" data-target="' + t.progress + '">0%</span>' +
+      '</div>' +
+      '<div class="task-bar-bg">' +
+        '<div class="task-bar-fill" data-progress="' + t.progress + '" style="background: linear-gradient(90deg, ' + color + ', ' + color + '88)"></div>' +
+      '</div>';
+    list.appendChild(item);
+  });
+}
+
+// Build activity feed
+function buildActivity() {
+  var feed = document.getElementById('activityFeed');
+  feed.innerHTML = '';
+  CONFIG.activities.forEach(function(a, i) {
+    var item = document.createElement('div');
+    item.className = 'activity-item';
+    item.innerHTML =
+      '<div class="activity-avatar" style="background:' + a.color + '">' + a.name.charAt(0) + '</div>' +
+      '<div class="activity-text"><strong>' + a.name + '</strong> ' + a.action + '</div>' +
+      '<div class="activity-time">' + a.time + '</div>';
+    feed.appendChild(item);
+  });
+}
+
+// Burndown chart
+function drawBurndown(progress) {
+  var canvas = document.getElementById('burndownCanvas');
+  var rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * 2;
+  canvas.height = rect.height * 2;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  var w = rect.width;
+  var h = rect.height;
+  var pad = { top: 20, right: 10, bottom: 20, left: 30 };
+
+  ctx.clearRect(0, 0, w, h);
+
+  var plotW = w - pad.left - pad.right;
+  var plotH = h - pad.top - pad.bottom;
+  var days = 14;
+  var totalPoints = 120;
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for (var i = 0; i <= 4; i++) {
+    var y = pad.top + (plotH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + plotW, y);
+    ctx.stroke();
+  }
+
+  // Y-axis labels
+  ctx.fillStyle = '#445';
+  ctx.font = Math.max(8, h * 0.06) + 'px system-ui';
+  ctx.textAlign = 'right';
+  for (var i = 0; i <= 4; i++) {
+    var val = totalPoints - (totalPoints / 4) * i;
+    var y = pad.top + (plotH / 4) * i;
+    ctx.fillText(Math.round(val), pad.left - 5, y + 3);
+  }
+
+  // Ideal line
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top);
+  ctx.lineTo(pad.left + plotW, pad.top + plotH);
+  ctx.strokeStyle = '#334';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Actual burndown data
+  var actualData = [120, 115, 108, 102, 95, 85, 78, 72, 62, 55, 48, 40, 30, 18];
+  var drawDays = Math.floor(progress * days);
+
+  if (drawDays < 1) return;
+
+  // Area fill
+  var gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+  gradient.addColorStop(0, CONFIG.accentColor + '25');
+  gradient.addColorStop(1, CONFIG.accentColor + '02');
+
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top + plotH);
+  for (var i = 0; i <= Math.min(drawDays, actualData.length - 1); i++) {
+    var x = pad.left + (i / (days - 1)) * plotW;
+    var y = pad.top + (1 - actualData[i] / totalPoints) * plotH;
+    ctx.lineTo(x, y);
+  }
+  var lastX = pad.left + (Math.min(drawDays, actualData.length - 1) / (days - 1)) * plotW;
+  ctx.lineTo(lastX, pad.top + plotH);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  for (var i = 0; i <= Math.min(drawDays, actualData.length - 1); i++) {
+    var x = pad.left + (i / (days - 1)) * plotW;
+    var y = pad.top + (1 - actualData[i] / totalPoints) * plotH;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = CONFIG.accentColor;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Data points
+  for (var i = 0; i <= Math.min(drawDays, actualData.length - 1); i++) {
+    var x = pad.left + (i / (days - 1)) * plotW;
+    var y = pad.top + (1 - actualData[i] / totalPoints) * plotH;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.accentColor;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+}
+
+// Build bottom stats
+function buildBottomBar() {
+  var bar = document.getElementById('bottomBar');
+  var totalTasks = CONFIG.tasks.length;
+  var avgProgress = Math.round(CONFIG.tasks.reduce(function(s, t) { return s + t.progress; }, 0) / totalTasks);
+  var totalMetricPct = Math.round(CONFIG.metrics.reduce(function(s, m) { return s + (m.value / m.max) * 100; }, 0) / CONFIG.metrics.length);
+
+  bar.innerHTML =
+    '<div class="stat-chip"><span class="stat-value">' + totalTasks + '</span><span class="stat-label">Tasks</span></div>' +
+    '<div class="stat-chip"><span class="stat-value">' + avgProgress + '%</span><span class="stat-label">Avg Progress</span></div>' +
+    '<div class="stat-chip"><span class="stat-value">' + totalMetricPct + '%</span><span class="stat-label">Overall Health</span></div>' +
+    '<div class="stat-chip"><span class="stat-value">' + CONFIG.activities.length + '</span><span class="stat-label">Recent Actions</span></div>';
+}
+
+// Animation helpers
+function animateGauges() {
+  var circumference = 2 * Math.PI * 30;
+  document.querySelectorAll('.gauge-fill').forEach(function(el, i) {
+    var pct = parseInt(el.dataset.pct);
+    setTimeout(function() {
+      el.style.strokeDasharray = (pct / 100) * circumference + ' ' + circumference;
+    }, 200 + i * 150);
+  });
+
+  document.querySelectorAll('.gauge-value').forEach(function(el, i) {
+    var target = parseInt(el.dataset.target);
+    var start = performance.now();
+    var delay = 200 + i * 150;
+    function step(now) {
+      var progress = Math.min((now - start - delay) / 1200, 1);
+      if (progress < 0) { requestAnimationFrame(step); return; }
+      var ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(ease * target) + '%';
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function animateTasks() {
+  document.querySelectorAll('.task-item').forEach(function(el, i) {
+    setTimeout(function() {
+      el.classList.add('visible');
+      var fill = el.querySelector('.task-bar-fill');
+      var pct = el.querySelector('.task-pct');
+      var target = parseInt(fill.dataset.progress);
+      fill.style.width = target + '%';
+
+      var start = performance.now();
+      function step(now) {
+        var progress = Math.min((now - start) / 1000, 1);
+        var ease = 1 - Math.pow(1 - progress, 3);
+        pct.textContent = Math.round(ease * target) + '%';
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }, 300 + i * 120);
+  });
+}
+
+function animateActivity() {
+  document.querySelectorAll('.activity-item').forEach(function(el, i) {
+    setTimeout(function() { el.classList.add('visible'); }, 400 + i * 120);
+  });
+}
+
+var burndownProgress = 0;
+var burndownAnim;
+
+function animateBurndown() {
+  var start = performance.now();
+  var duration = 3000;
+  function step(now) {
+    burndownProgress = Math.min((now - start) / duration, 1);
+    var ease = 1 - Math.pow(1 - burndownProgress, 2);
+    drawBurndown(ease);
+    if (burndownProgress < 1) burndownAnim = requestAnimationFrame(step);
+  }
+  burndownAnim = requestAnimationFrame(step);
+}
+
+function showPanels() {
+  var panels = document.querySelectorAll('.panel');
+  panels.forEach(function(p, i) {
+    setTimeout(function() { p.classList.add('visible'); }, 300 + i * 150);
+  });
+}
+
+function hidePanels() {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('visible'); });
+  document.querySelectorAll('.task-item').forEach(function(t) { t.classList.remove('visible'); });
+  document.querySelectorAll('.activity-item').forEach(function(a) { a.classList.remove('visible'); });
+}
+
+function runCycle() {
+  buildGauges();
+  buildTasks();
+  buildActivity();
+  buildBottomBar();
+
+  var header = document.getElementById('header');
+  var bottomBar = document.getElementById('bottomBar');
+
+  setTimeout(function() { header.classList.add('visible'); }, 200);
+  setTimeout(showPanels, 400);
+  setTimeout(animateGauges, 800);
+  setTimeout(animateTasks, 1000);
+  setTimeout(animateActivity, 1200);
+  setTimeout(animateBurndown, 1000);
+  setTimeout(function() { bottomBar.classList.add('visible'); }, 1500);
+
+  setTimeout(function() {
+    header.classList.remove('visible');
+    bottomBar.classList.remove('visible');
+    hidePanels();
+    cancelAnimationFrame(burndownAnim);
+
+    setTimeout(runCycle, 800);
+  }, CONFIG.cycleDuration);
+}
+
+runCycle();
+window.addEventListener('resize', function() {
+  if (burndownProgress >= 1) drawBurndown(1);
+});
+</script>
+</body>
+</html>

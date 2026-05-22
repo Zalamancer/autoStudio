@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stencil Spray Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #555555;
+  }
+
+  /* Concrete wall texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse at 20% 30%, rgba(100,100,100,0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(80,80,80,0.2) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(70,70,70,0.15) 0%, transparent 70%);
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 4px 10px;
+    position: relative;
+    /* Stencil cut-out rough edge effect via text-shadow */
+    text-shadow:
+      1px 1px 0 rgba(0,0,0,0.3),
+      -1px -1px 0 rgba(0,0,0,0.1),
+      2px 0 2px rgba(0,0,0,0.15);
+  }
+
+  /* Spray overspray haze */
+  .word-block.spray-haze .word-inner::before {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    z-index: -1;
+    border-radius: 50%;
+    background: var(--spray-color, rgba(255,255,255,0.08));
+    filter: blur(20px);
+  }
+
+  /* Drip effect */
+  .word-block.drip .word-inner::after {
+    content: '';
+    position: absolute;
+    bottom: -18px;
+    left: 30%;
+    width: 4px;
+    height: 18px;
+    background: currentColor;
+    opacity: 0.6;
+    border-radius: 0 0 2px 2px;
+  }
+
+  /* Stencil box */
+  .word-block.stencil-box .word-inner {
+    border: 3px solid currentColor;
+    padding: 8px 16px;
+    background: rgba(0,0,0,0.2);
+  }
+
+  @keyframes sprayOn {
+    0% { opacity: 0; filter: blur(12px) brightness(1.5); transform: var(--spray-start); }
+    30% { opacity: 0.6; filter: blur(4px) brightness(1.2); }
+    60% { opacity: 0.9; filter: blur(1px) brightness(1.05); transform: var(--spray-mid); }
+    100% { opacity: var(--final-opacity); filter: blur(0) brightness(1); transform: var(--spray-end); }
+  }
+
+  @keyframes fadeWash {
+    0% { opacity: var(--final-opacity); filter: blur(0) brightness(1); }
+    40% { opacity: 0.6; filter: blur(2px) brightness(0.8); }
+    100% { opacity: 0; filter: blur(8px) brightness(0.5); transform: var(--spray-end) scale(1.02); }
+  }
+
+  /* Spray splatter dots */
+  .splatter-dot {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    border-radius: 50%;
+    opacity: 0.2;
+  }
+
+  /* Crack lines on wall */
+  .wall-crack {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    background: rgba(0,0,0,0.15);
+    transform-origin: left center;
+  }
+
+  /* Arrow spray */
+  .spray-arrow {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    font-size: 40px;
+    opacity: 0.12;
+    filter: blur(1px);
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['BREAK', 'FREE', 'SPEAK', 'LOUD', 'STAND', 'TALL'],
+  colors: ['#ffffff', '#ff3333', '#ffffff', '#00cc44', '#ffffff', '#ffdd00'],
+  sprayColors: ['rgba(255,255,255,0.06)', 'rgba(255,50,50,0.08)', 'rgba(255,255,255,0.06)', 'rgba(0,200,70,0.07)', 'rgba(255,255,255,0.06)', 'rgba(255,220,0,0.08)'],
+  bgColor: '#555555',
+  maxRotation: 7,
+  overlapAmount: 0.22,
+  cycleDuration: 9000,
+  sprayEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '12px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '2px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+];
+
+const fontSizes = [160, 100, 140, 85, 180, 95];
+const wordStyles = ['spray-haze', 'drip', 'stencil-box', 'spray-haze', 'drip', 'stencil-box'];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  // Splatter dots
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'splatter-dot';
+    const size = 3 + Math.random() * 8;
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.left = Math.random() * 100 + '%';
+    el.style.top = Math.random() * 100 + '%';
+    const colors = ['#ffffff', '#ff3333', '#00cc44', '#ffdd00'];
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    stage.appendChild(el);
+  }
+
+  // Wall cracks
+  const cracks = [
+    { top: '25%', left: '5%', width: 80, height: 1, rot: 15 },
+    { top: '60%', right: '8%', width: 60, height: 1, rot: -20 },
+    { bottom: '30%', left: '70%', width: 100, height: 1, rot: 5 },
+  ];
+  cracks.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'wall-crack';
+    el.style.width = c.width + 'px';
+    el.style.height = c.height + 'px';
+    el.style.transform = `rotate(${c.rot}deg)`;
+    if (c.top) el.style.top = c.top;
+    if (c.bottom) el.style.bottom = c.bottom;
+    if (c.left) el.style.left = c.left;
+    if (c.right) el.style.right = c.right;
+    stage.appendChild(el);
+  });
+
+  // Spray arrows
+  const arrows = [
+    { top: '15%', left: '4%', char: '\u2192', color: '#ffffff' },
+    { bottom: '12%', right: '5%', char: '\u2190', color: '#ff3333' },
+  ];
+  arrows.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'spray-arrow';
+    el.textContent = a.char;
+    el.style.color = a.color;
+    if (a.top) el.style.top = a.top;
+    if (a.bottom) el.style.bottom = a.bottom;
+    if (a.left) el.style.left = a.left;
+    if (a.right) el.style.right = a.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.70;
+  const baseTop = vh * 0.15;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyles[i % wordStyles.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.style.setProperty('--spray-color', CONFIG.sprayColors[i % CONFIG.sprayColors.length]);
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * Math.min(vw * 0.15, 100);
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.85 + rng() * 0.15;
+
+    el.style.setProperty('--spray-start', `translate(0, 0) rotate(${rotation}deg) scale(1.05)`);
+    el.style.setProperty('--spray-mid', `translate(0, 0) rotate(${rotation}deg) scale(1.01)`);
+    el.style.setProperty('--spray-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const sprayStagger = 400;
+  const sprayDuration = 600;
+  const holdDuration = 2200;
+  const washStagger = 200;
+  const washDuration = 550;
+  const pauseBeforeLoop = 800;
+
+  const totalSprayTime = (count - 1) * sprayStagger + sprayDuration;
+  const totalWashTime = (count - 1) * washStagger + washDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalSprayTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * sprayStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `sprayOn ${sprayDuration}ms ease-out forwards`;
+        }
+      });
+    } else if (elapsed < totalSprayTime + holdDuration) {
+    } else if (elapsed < totalSprayTime + holdDuration + totalWashTime) {
+      const washElapsed = elapsed - totalSprayTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const reverseI = count - 1 - i;
+        const wordStart = reverseI * washStagger;
+        if (washElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `fadeWash ${washDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalSprayTime + holdDuration + totalWashTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

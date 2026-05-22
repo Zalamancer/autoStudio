@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sankey Diagram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'User Flow',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  nodeColors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
+  flowOpacity: 0.35,
+  links: [
+    { source: 'Homepage', target: 'Products', weight: 500 },
+    { source: 'Homepage', target: 'Blog', weight: 300 },
+    { source: 'Homepage', target: 'About', weight: 150 },
+    { source: 'Products', target: 'Cart', weight: 250 },
+    { source: 'Products', target: 'Exit', weight: 250 },
+    { source: 'Blog', target: 'Products', weight: 100 },
+    { source: 'Blog', target: 'Exit', weight: 200 },
+    { source: 'About', target: 'Products', weight: 80 },
+    { source: 'About', target: 'Exit', weight: 70 },
+    { source: 'Cart', target: 'Checkout', weight: 180 },
+    { source: 'Cart', target: 'Exit', weight: 70 },
+    { source: 'Checkout', target: 'Purchase', weight: 150 },
+    { source: 'Checkout', target: 'Exit', weight: 30 }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function buildGraph() {
+  const links = CONFIG.links;
+  const nodeNames = new Set();
+  for (const l of links) { nodeNames.add(l.source); nodeNames.add(l.target); }
+
+  // Compute node columns via topological ordering
+  const nodes = {};
+  for (const name of nodeNames) {
+    nodes[name] = { name, col: 0, totalIn: 0, totalOut: 0, y: 0, h: 0, inOffset: 0, outOffset: 0 };
+  }
+
+  // Compute outgoing/incoming totals
+  for (const l of links) {
+    nodes[l.source].totalOut += l.weight;
+    nodes[l.target].totalIn += l.weight;
+  }
+
+  // Assign columns: sources before targets
+  let changed = true;
+  let iter = 0;
+  while (changed && iter < 20) {
+    changed = false; iter++;
+    for (const l of links) {
+      if (nodes[l.target].col <= nodes[l.source].col) {
+        nodes[l.target].col = nodes[l.source].col + 1;
+        changed = true;
+      }
+    }
+  }
+
+  // Get columns
+  const maxCol = Math.max(...Object.values(nodes).map(n => n.col));
+  const columns = [];
+  for (let c = 0; c <= maxCol; c++) {
+    columns.push(Object.values(nodes).filter(n => n.col === c));
+  }
+
+  return { nodes, columns, maxCol };
+}
+
+function layoutNodes(columns, area) {
+  const maxCol = columns.length - 1;
+  const nodeWidth = area.w * 0.04;
+  const totalWeight = Math.max(...columns.map(col =>
+    col.reduce((s, n) => s + Math.max(n.totalIn, n.totalOut, 1), 0)
+  ));
+
+  for (let c = 0; c <= maxCol; c++) {
+    const col = columns[c];
+    const colX = area.x + (c / Math.max(maxCol, 1)) * (area.w - nodeWidth);
+    const colTotal = col.reduce((s, n) => s + Math.max(n.totalIn, n.totalOut, 1), 0);
+    const gap = area.h * 0.03;
+    const availH = area.h - gap * (col.length - 1);
+    let y = area.y;
+
+    for (const node of col) {
+      const nodeVal = Math.max(node.totalIn, node.totalOut, 1);
+      const h = (nodeVal / totalWeight) * availH;
+      node.x = colX;
+      node.y = y;
+      node.h = h;
+      node.w = nodeWidth;
+      node.inOffset = 0;
+      node.outOffset = 0;
+      y += h + gap;
+    }
+  }
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.5 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.1, y: H * 0.16, w: W * 0.8, h: H * 0.72 };
+  const { nodes, columns, maxCol } = buildGraph();
+  layoutNodes(columns, area);
+
+  // Phase 1: Nodes appear (0-40%)
+  const nodeProgress = Math.min(progress / 0.4, 1);
+  const nodeEase = easeOutCubic(nodeProgress);
+
+  // Phase 2: Flows animate (30-100%)
+  const flowProgress = Math.min(Math.max((progress - 0.3) / 0.7, 0), 1);
+  const flowEase = easeOutCubic(flowProgress);
+
+  // Draw flows first (behind nodes)
+  if (flowEase > 0) {
+    for (let li = 0; li < CONFIG.links.length; li++) {
+      const l = CONFIG.links[li];
+      const src = nodes[l.source];
+      const tgt = nodes[l.target];
+      if (!src || !tgt) continue;
+
+      const linkDelay = li * 0.03;
+      const linkProgress = Math.min(Math.max((flowProgress - linkDelay) / 0.4, 0), 1);
+      if (linkProgress <= 0) continue;
+      const linkEase = easeOutCubic(linkProgress);
+
+      const srcVal = Math.max(src.totalIn, src.totalOut, 1);
+      const tgtVal = Math.max(tgt.totalIn, tgt.totalOut, 1);
+      const srcH = (l.weight / srcVal) * src.h;
+      const tgtH = (l.weight / tgtVal) * tgt.h;
+
+      const x0 = src.x + src.w;
+      const y0 = src.y + src.outOffset;
+      const x1 = tgt.x;
+      const y1 = tgt.y + tgt.inOffset;
+
+      src.outOffset += srcH;
+      tgt.inOffset += tgtH;
+
+      const ci = Object.keys(nodes).indexOf(l.source);
+      const color = CONFIG.nodeColors[ci % CONFIG.nodeColors.length];
+
+      // Bezier flow
+      ctx.globalAlpha = CONFIG.flowOpacity * linkEase;
+      ctx.fillStyle = color;
+      const cpx = (x0 + x1) / 2;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.bezierCurveTo(cpx, y0, cpx, y1, x1, y1);
+      ctx.lineTo(x1, y1 + tgtH);
+      ctx.bezierCurveTo(cpx, y1 + tgtH, cpx, y0 + srcH, x0, y0 + srcH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Draw nodes
+  const allNodes = Object.values(nodes);
+  for (let i = 0; i < allNodes.length; i++) {
+    const n = allNodes[i];
+    const ci = i % CONFIG.nodeColors.length;
+    const color = CONFIG.nodeColors[ci];
+    const nDelay = i * 0.05;
+    const nProgress = Math.min(Math.max((nodeProgress - nDelay) / 0.5, 0), 1);
+    const nEase = easeOutCubic(nProgress);
+    if (nEase <= 0) continue;
+
+    const drawH = n.h * nEase;
+    const drawY = n.y + (n.h - drawH) / 2;
+
+    ctx.fillStyle = color;
+    ctx.shadowColor = color; ctx.shadowBlur = W * 0.006;
+    ctx.fillRect(n.x, drawY, n.w, drawH);
+    ctx.shadowBlur = 0;
+
+    // Node label
+    if (nEase > 0.5) {
+      ctx.globalAlpha = (nEase - 0.5) * 2;
+      ctx.fillStyle = T.title;
+      const fontSize = Math.min(W * 0.016, n.h * 0.35);
+      ctx.font = `bold ${fontSize}px system-ui`;
+      const isLeft = n.col <= maxCol / 2;
+      ctx.textAlign = isLeft ? 'right' : 'left';
+      ctx.textBaseline = 'middle';
+      const lx = isLeft ? n.x - W * 0.012 : n.x + n.w + W * 0.012;
+      ctx.fillText(n.name, lx, n.y + n.h / 2);
+
+      // Value
+      const val = Math.max(n.totalIn, n.totalOut);
+      ctx.fillStyle = T.text;
+      ctx.font = `${fontSize * 0.75}px system-ui`;
+      ctx.fillText(val.toString(), lx, n.y + n.h / 2 + fontSize * 0.9);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Reset offsets for next frame
+  for (const n of allNodes) { n.inOffset = 0; n.outOffset = 0; }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

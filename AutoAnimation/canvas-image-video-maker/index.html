@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canvas Image Video Maker</title>
+  <link rel="stylesheet" href="styles.css?v=17" />
+  <!-- Importmap so app.js can `await import('three')` lazily for FBX characters
+       without bloating page load when no 3D character is in use. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Canvas Image Video Maker</h1>
+    <div class="spacer"></div>
+    <input id="apiKey" type="password" placeholder="Pixabay API key" autocomplete="off" />
+    <input id="geminiKey" type="password" placeholder="Gemini API key" autocomplete="off" />
+    <button id="playBtn" type="button">Play</button>
+    <button id="exportBtn" type="button">Export Video</button>
+  </header>
+
+  <main class="app">
+    <aside class="library">
+      <div class="panel-head tabs">
+        <button class="tab-btn active" type="button" data-tab="library">Library</button>
+        <button class="tab-btn" type="button" data-tab="characters">Characters</button>
+      </div>
+
+      <div class="tab-pane" data-tab="library">
+        <div class="search-block">
+          <div class="search-row">
+            <input id="storyInput" type="text" placeholder="Describe your video..." />
+            <button id="generateBtn" type="button" class="vo-btn">Generate</button>
+          </div>
+          <label class="news-toggle">
+            <input type="checkbox" id="useNewsCheckbox" />
+            <span>Auto-research news (Google Search + screenshots + auto-highlight)</span>
+          </label>
+          <div id="styleNote" class="style-note" hidden></div>
+          <div id="voStatus" class="vo-status" hidden></div>
+          <div id="articleStatus" class="article-status" hidden></div>
+        </div>
+        <div id="library" class="library-grid"></div>
+        <div id="libraryHint" class="hint">
+          Type a concept and hit <b>Generate</b>. Plans the storyboard,
+          fills it with images, writes captions, and adds an ElevenLabs
+          voiceover - all synced automatically. Tick
+          <b>Auto-research news</b> to swap stock images for real article
+          screenshots with auto-highlighted quotes.
+        </div>
+      </div>
+
+      <div class="tab-pane" data-tab="characters" hidden>
+        <div class="char-controls">
+          <button id="addCharacterBtn" type="button" class="vo-btn">+ Character</button>
+          <input id="characterFileInput" type="file" accept="image/*,.fbx" multiple hidden />
+          <input id="animationFileInput" type="file" accept="image/*,.fbx" multiple hidden />
+          <div id="charStatus" class="char-status" hidden></div>
+        </div>
+        <div id="charactersList" class="characters-list"></div>
+        <div id="charactersHint" class="hint">
+          Click <b>+ Character</b>, name it, and pick image frames OR an FBX file.
+          For images, each file becomes one animation frame. For an FBX, every
+          AnimationClip in the file becomes a selectable animation. Toggle
+          <b>Show in video</b> to overlay the character - it auto-switches to a
+          <i>talk</i> animation while the voiceover plays.
+        </div>
+      </div>
+    </aside>
+
+    <section class="stage">
+      <div class="canvas-wrap">
+        <canvas id="canvas" width="1080" height="1920"></canvas>
+      </div>
+      <div class="transport">
+        <label>
+          Resolution (9:16)
+          <select id="resolution">
+            <option value="1080x1920" selected>1080 x 1920</option>
+            <option value="720x1280">720 x 1280</option>
+          </select>
+        </label>
+        <label>
+          Background
+          <input id="bgColor" type="color" value="#000000" />
+        </label>
+        <label>
+          FPS
+          <select id="fps">
+            <option value="24">24</option>
+            <option value="30" selected>30</option>
+            <option value="60">60</option>
+          </select>
+        </label>
+        <label class="checkbox-label">
+          <input id="captionsToggle" type="checkbox" checked />
+          Captions
+        </label>
+        <span id="timeLabel">0.0 / 0.0 s</span>
+      </div>
+    </section>
+
+    <aside class="timeline">
+      <div class="panel-head">
+        <h2>Clips</h2>
+        <span id="totalLabel" class="muted">0.0 s</span>
+      </div>
+      <ul id="clips"></ul>
+      <div id="clipsHint" class="hint">Click an image from the library to add it to the timeline.</div>
+    </aside>
+  </main>
+
+  <script src="keys.local.js?v=17" onerror="void 0"></script>
+  <script src="app.js?v=17"></script>
+</body>
+</html>

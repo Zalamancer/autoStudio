@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth Terrain Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Source+Sans+3:wght@300;400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0e17;
+    color: #e0e8f0;
+    font-family: 'Source Sans 3', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(10,14,23,0.95) 0%, rgba(10,14,23,0.6) 70%, transparent 100%);
+    pointer-events: none;
+  }
+
+  #header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #4fc3f7, #81d4fa, #b3e5fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  #header .coords {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: #4fc3f7;
+    letter-spacing: 2px;
+    opacity: 0.7;
+  }
+
+  #map-container {
+    width: 100vw;
+    height: 100vh;
+    cursor: grab;
+  }
+  #map-container:active { cursor: grabbing; }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .country {
+    stroke: rgba(30, 70, 90, 0.35);
+    stroke-width: 0.4px;
+    transition: fill 0.4s ease, stroke 0.3s, stroke-width 0.3s, filter 0.4s ease;
+    cursor: pointer;
+  }
+
+  .country:hover {
+    stroke: #4fc3f7;
+    stroke-width: 1.2px;
+    filter: brightness(1.3) drop-shadow(0 0 6px rgba(79,195,247,0.4));
+  }
+
+  .country.highlighted {
+    stroke-width: 2px;
+    filter: brightness(1.5) drop-shadow(0 0 12px var(--highlight-color, rgba(79,195,247,0.6)));
+  }
+
+  .graticule {
+    fill: none;
+    stroke: rgba(79,195,247,0.06);
+    stroke-width: 0.4px;
+  }
+
+  .sphere {
+    fill: #0b1a2e;
+  }
+
+  /* Connection lines between countries */
+  .connection-line {
+    fill: none;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  .connection-line-glow {
+    fill: none;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  /* Animated dot on connection line */
+  .connection-dot {
+    pointer-events: none;
+  }
+
+  /* Country label */
+  .country-label {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    fill: #b3e5fc;
+    text-anchor: middle;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .country-label.visible {
+    opacity: 1;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+
+  #tooltip.visible { opacity: 1; }
+
+  #tooltip .tooltip-inner {
+    background: rgba(8, 18, 35, 0.92);
+    border: 1px solid rgba(79,195,247,0.35);
+    border-radius: 6px;
+    padding: 8px 16px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 12px rgba(79,195,247,0.15);
+  }
+
+  #tooltip .country-name {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #b3e5fc;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* Controls */
+  #controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ctrl-btn {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(79,195,247,0.25);
+    background: rgba(8,18,35,0.85);
+    color: #81d4fa;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover {
+    background: rgba(79,195,247,0.15);
+    border-color: #4fc3f7;
+    box-shadow: 0 0 10px rgba(79,195,247,0.2);
+  }
+
+  /* Legend */
+  #legend {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 100;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 18px;
+    background: rgba(8,18,35,0.85);
+    border: 1px solid rgba(79,195,247,0.15);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(180,210,230,0.6);
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+  }
+
+  /* Loading screen */
+  #loading {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: #0a0e17;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    transition: opacity 0.6s ease;
+  }
+  #loading.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #loading h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    letter-spacing: 6px;
+    color: #4fc3f7;
+    text-transform: uppercase;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(79,195,247,0.15);
+    border-top-color: #4fc3f7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <h2>Rendering Terrain</h2>
+</div>
+
+<div id="header">
+  <h1 id="mapTitle">Earth Terrain</h1>
+  <div class="coords" id="coordsDisplay">LAT 0.00° · LON 0.00°</div>
+</div>
+
+<div id="tooltip">
+  <div class="tooltip-inner">
+    <div class="country-name" id="tooltipName"></div>
+  </div>
+</div>
+
+<div id="controls">
+  <button class="ctrl-btn" id="zoomIn" title="Zoom In">+</button>
+  <button class="ctrl-btn" id="zoomOut" title="Zoom Out">−</button>
+  <button class="ctrl-btn" id="resetBtn" title="Reset View">⟲</button>
+</div>
+
+<div id="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#1a3a2a"></div>Forest</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#c4a24e"></div>Arid</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e8dcc4"></div>Desert</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#2a5a3a"></div>Tropical</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#8b9e7a"></div>Temperate</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#d8d8e8"></div>Ice/Snow</div>
+</div>
+
+<div id="map-container">
+  <svg id="mapSvg"></svg>
+</div>
+
+<script>
+// ─── CONFIG (AI-editable fields) ───
+var CONFIG = {
+  // Title
+  title: 'Earth Terrain',
+  showTitle: true,
+  showCoords: true,
+  showLegend: true,
+  showControls: true,
+
+  // Colors
+  oceanColor: '#0b1a2e',
+  highlightColor: '#4fc3f7',
+  highlightGlowColor: 'rgba(79,195,247,0.6)',
+  connectionLineColor: '#f4d03f',
+  connectionDotColor: '#ffffff',
+  labelColor: '#b3e5fc',
+
+  // Camera / Zoom
+  zoomDuration: 1200,
+  zoomLevel: 4,
+  defaultZoomLevel: 1,
+
+  // ── Frame-synced animation commands ──
+  // Each command is: { frame, action, params }
+  // Actions: "zoomToCountry", "highlightCountry", "clearHighlights", "resetView",
+  //          "drawConnection", "clearConnections", "showLabel", "hideLabel"
+  // Set by orchestrator or manually:
+  commands: [],
+
+  // ── Frame timing (set by orchestrator) ──
+  // -1 means not frame-synced (interactive mode)
+  frameSyncEnabled: -1,
+};
+
+// ─── State ───
+var worldData = null;
+var countriesGeoJSON = null;
+var countryPaths = null;
+var activeHighlights = {};   // { countryName: { color, glowColor } }
+var activeConnections = [];  // [{ from, to, color, dotColor, progress }]
+var activeLabels = {};       // { countryName: true }
+var commandIndex = 0;        // current position in commands array
+var frameSyncActive = false;
+var parentFrame = 0;
+var parentFps = 30;
+var lastProcessedFrame = -1;
+
+// Country centroid cache
+var countryCentroids = {};
+
+// ─── Terrain Color System ───
+function getTerrainColor(feature) {
+  var name = feature.properties.name || '';
+  var centroid = d3.geoCentroid(feature);
+  var lon = centroid[0];
+  var lat = centroid[1];
+  var absLat = Math.abs(lat);
+
+  var deserts = ['Libya','Egypt','Saudi Arabia','Iraq','Syria','Jordan','Yemen','Oman','Qatar','United Arab Emirates','Kuwait','Bahrain','Algeria','Tunisia','Chad','Niger','Mali','Mauritania','W. Sahara','Western Sahara','Namibia','Turkmenistan','Uzbekistan'];
+  var tropical = ['Brazil','Colombia','Venezuela','Peru','Ecuador','Guyana','Suriname','Fr. Guiana','Congo','Dem. Rep. Congo','Cameroon','Gabon','Eq. Guinea','Central African Rep.','Rep. Congo','Uganda','Rwanda','Burundi','Papua New Guinea','Indonesia','Malaysia','Philippines','Myanmar','Thailand','Laos','Cambodia','Vietnam','Sri Lanka','Bangladesh','Singapore','Brunei','East Timor','Solomon Islands','Fiji','Costa Rica','Panama','Honduras','Nicaragua','Guatemala','Belize','Cuba','Jamaica','Haiti','Dominican Rep.','Trinidad and Tobago','Madagascar'];
+  var arctic = ['Greenland','Iceland','Svalbard'];
+  var tundra = ['Russia','Canada','Norway','Sweden','Finland'];
+  var arid = ['Iran','Afghanistan','Pakistan','Mongolia','Somalia','Eritrea','Djibouti','Sudan','S. Sudan','South Sudan','Ethiopia','Kenya','Tanzania','Botswana','Zimbabwe','Zambia','Mozambique','Angola','Australia','Mexico'];
+
+  if (deserts.includes(name)) {
+    var h = hashStr(name);
+    return d3.interpolateRgb('#e2d2a8','#d4ba78')(h % 100 / 100);
+  }
+  if (tropical.includes(name)) {
+    var h = hashStr(name);
+    return d3.interpolateRgb('#1a5c30','#2d7a42')(h % 100 / 100);
+  }
+  if (arctic.includes(name)) {
+    return d3.interpolateRgb('#c8d0e0','#e0e4f0')(hashStr(name) % 100 / 100);
+  }
+  if (arid.includes(name)) {
+    var h = hashStr(name);
+    return d3.interpolateRgb('#9e8a5a','#c4a24e')(h % 100 / 100);
+  }
+
+  if (absLat > 66) {
+    return d3.interpolateRgb('#b8c0d4','#d0d4e4')(hashStr(name) % 100 / 100);
+  }
+  if (absLat > 50) {
+    var h = hashStr(name);
+    if (tundra.includes(name)) {
+      return d3.interpolateRgb('#3a6a3a','#5a8a5a')(h % 100 / 100);
+    }
+    return d3.interpolateRgb('#4a7a4a','#6a9a6a')(h % 100 / 100);
+  }
+  if (absLat > 35) {
+    return d3.interpolateRgb('#5a8a50','#8b9e7a')(hashStr(name) % 100 / 100);
+  }
+  if (absLat > 23) {
+    return d3.interpolateRgb('#7a9a50','#a8b060')(hashStr(name) % 100 / 100);
+  }
+  return d3.interpolateRgb('#1e5a2e','#348a44')(hashStr(name) % 100 / 100);
+}
+
+function hashStr(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+// ─── Map Setup ───
+var width = window.innerWidth;
+var height = window.innerHeight;
+
+var svg = d3.select('#mapSvg')
+  .attr('viewBox', '0 0 ' + width + ' ' + height)
+  .attr('preserveAspectRatio', 'xMidYMid meet');
+
+var projection = d3.geoNaturalEarth1()
+  .scale(width / 5.8)
+  .translate([width / 2, height / 2]);
+
+var path = d3.geoPath(projection);
+
+var g = svg.append('g');
+
+// Ocean background
+g.append('path')
+  .datum({ type: 'Sphere' })
+  .attr('class', 'sphere')
+  .attr('d', path);
+
+// Ocean gradient
+var defs = svg.append('defs');
+
+// Glow filter for highlights
+var glowFilter = defs.append('filter')
+  .attr('id', 'countryGlow')
+  .attr('x', '-50%').attr('y', '-50%')
+  .attr('width', '200%').attr('height', '200%');
+glowFilter.append('feGaussianBlur')
+  .attr('in', 'SourceGraphic')
+  .attr('stdDeviation', '3')
+  .attr('result', 'blur');
+glowFilter.append('feComposite')
+  .attr('in', 'SourceGraphic')
+  .attr('in2', 'blur')
+  .attr('operator', 'over');
+
+var oceanGrad = defs.append('radialGradient')
+  .attr('id', 'oceanGrad')
+  .attr('cx', '50%').attr('cy', '45%').attr('r', '60%');
+oceanGrad.append('stop').attr('offset', '0%').attr('stop-color', '#0f2844');
+oceanGrad.append('stop').attr('offset', '50%').attr('stop-color', '#0b1a2e');
+oceanGrad.append('stop').attr('offset', '100%').attr('stop-color', '#060e1a');
+
+g.append('path')
+  .datum({ type: 'Sphere' })
+  .attr('d', path)
+  .attr('fill', 'url(#oceanGrad)');
+
+// Graticule
+var graticule = d3.geoGraticule().step([15, 15]);
+g.append('path')
+  .datum(graticule())
+  .attr('class', 'graticule')
+  .attr('d', path);
+
+// Connection lines layer (below labels, above countries)
+var connectionsGroup = g.append('g').attr('class', 'connections-layer');
+
+// Labels layer
+var labelsGroup = g.append('g').attr('class', 'labels-layer');
+
+// Zoom behavior
+var zoom = d3.zoom()
+  .scaleExtent([1, 12])
+  .on('zoom', function(event) {
+    g.attr('transform', event.transform);
+  });
+
+svg.call(zoom);
+
+// Tooltip
+var tooltip = document.getElementById('tooltip');
+var tooltipName = document.getElementById('tooltipName');
+var coordsDisplay = document.getElementById('coordsDisplay');
+
+// ─── Country Name Aliases (for matching) ───
+var COUNTRY_ALIASES = {
+  'usa': 'United States of America',
+  'united states': 'United States of America',
+  'us': 'United States of America',
+  'america': 'United States of America',
+  'uk': 'United Kingdom',
+  'britain': 'United Kingdom',
+  'great britain': 'United Kingdom',
+  'england': 'United Kingdom',
+  'russia': 'Russia',
+  'china': 'China',
+  'denmark': 'Denmark',
+  'greenland': 'Greenland',
+  'canada': 'Canada',
+  'norway': 'Norway',
+  'sweden': 'Sweden',
+  'finland': 'Finland',
+  'iceland': 'Iceland',
+  'france': 'France',
+  'germany': 'Germany',
+  'japan': 'Japan',
+  'south korea': 'South Korea',
+  'north korea': 'North Korea',
+  'india': 'India',
+  'brazil': 'Brazil',
+  'australia': 'Australia',
+  'mexico': 'Mexico',
+  'iran': 'Iran',
+  'iraq': 'Iraq',
+  'saudi arabia': 'Saudi Arabia',
+  'turkey': 'Turkey',
+  'egypt': 'Egypt',
+  'south africa': 'South Africa',
+  'nigeria': 'Nigeria',
+  'ukraine': 'Ukraine',
+  'poland': 'Poland',
+  'italy': 'Italy',
+  'spain': 'Spain',
+  'taiwan': 'Taiwan',
+  'israel': 'Israel',
+  'pakistan': 'Pakistan',
+  'afghanistan': 'Afghanistan',
+  'indonesia': 'Indonesia',
+  'argentina': 'Argentina',
+  'chile': 'Chile',
+  'colombia': 'Colombia',
+  'venezuela': 'Venezuela',
+  'peru': 'Peru',
+  'new zealand': 'New Zealand',
+};
+
+function resolveCountryName(input) {
+  if (!input) return input;
+  var lower = input.toLowerCase().trim();
+  if (COUNTRY_ALIASES[lower]) return COUNTRY_ALIASES[lower];
+  // Try to find in actual data
+  if (countriesGeoJSON) {
+    for (var i = 0; i < countriesGeoJSON.features.length; i++) {
+      var name = countriesGeoJSON.features[i].properties.name;
+      if (name && name.toLowerCase() === lower) return name;
+    }
+  }
+  return input; // Return as-is
+}
+
+function getCountryCentroid(name) {
+  var resolved = resolveCountryName(name);
+  if (countryCentroids[resolved]) return countryCentroids[resolved];
+  if (!countriesGeoJSON) return null;
+  for (var i = 0; i < countriesGeoJSON.features.length; i++) {
+    var feature = countriesGeoJSON.features[i];
+    if (feature.properties.name === resolved) {
+      var c = d3.geoCentroid(feature);
+      countryCentroids[resolved] = c;
+      return c;
+    }
+  }
+  return null;
+}
+
+// ─── Command Execution ───
+
+function executeCommand(cmd) {
+  var action = cmd.action;
+  var params = cmd.params || {};
+
+  switch (action) {
+    case 'zoomToCountry':
+      zoomToCountry(params.country, params.zoomLevel, params.duration);
+      break;
+    case 'highlightCountry':
+      highlightCountry(params.country, params.color, params.glowColor);
+      break;
+    case 'clearHighlights':
+      clearHighlights();
+      break;
+    case 'resetView':
+      resetView(params.duration);
+      break;
+    case 'drawConnection':
+      drawConnection(params.from, params.to, params.color, params.dotColor, params.animate);
+      break;
+    case 'clearConnections':
+      clearConnections();
+      break;
+    case 'showLabel':
+      showLabel(params.country);
+      break;
+    case 'hideLabel':
+      hideLabel(params.country);
+      break;
+    case 'hideUI':
+      hideUI(params.elements);
+      break;
+    case 'showUI':
+      showUI(params.elements);
+      break;
+  }
+}
+
+function zoomToCountry(name, zoomLevel, duration) {
+  var resolved = resolveCountryName(name);
+  var centroid = getCountryCentroid(resolved);
+  if (!centroid) return;
+
+  var zl = zoomLevel || CONFIG.zoomLevel || 4;
+  var dur = duration || CONFIG.zoomDuration || 1200;
+  var projected = projection(centroid);
+  if (!projected) return;
+
+  var transform = d3.zoomIdentity
+    .translate(width / 2, height / 2)
+    .scale(zl)
+    .translate(-projected[0], -projected[1]);
+
+  svg.transition()
+    .duration(dur)
+    .ease(d3.easeCubicInOut)
+    .call(zoom.transform, transform);
+}
+
+function highlightCountry(name, color, glowColor) {
+  var resolved = resolveCountryName(name);
+  var hColor = color || CONFIG.highlightColor;
+  var gColor = glowColor || CONFIG.highlightGlowColor;
+
+  activeHighlights[resolved] = { color: hColor, glowColor: gColor };
+
+  if (!countryPaths) return;
+  countryPaths
+    .filter(function(d) { return d.properties.name === resolved; })
+    .classed('highlighted', true)
+    .style('stroke', hColor)
+    .style('stroke-width', '2px')
+    .style('--highlight-color', gColor)
+    .style('filter', 'brightness(1.5) drop-shadow(0 0 12px ' + gColor + ')');
+}
+
+function clearHighlights() {
+  activeHighlights = {};
+  if (!countryPaths) return;
+  countryPaths
+    .classed('highlighted', false)
+    .style('stroke', null)
+    .style('stroke-width', null)
+    .style('filter', null);
+}
+
+function resetView(duration) {
+  var dur = duration || 800;
+  svg.transition()
+    .duration(dur)
+    .ease(d3.easeCubicInOut)
+    .call(zoom.transform, d3.zoomIdentity);
+}
+
+function drawConnection(from, to, color, dotColor, animate) {
+  var fromResolved = resolveCountryName(from);
+  var toResolved = resolveCountryName(to);
+  var fromCentroid = getCountryCentroid(fromResolved);
+  var toCentroid = getCountryCentroid(toResolved);
+  if (!fromCentroid || !toCentroid) return;
+
+  var lineColor = color || CONFIG.connectionLineColor;
+  var dColor = dotColor || CONFIG.connectionDotColor;
+
+  var fromProj = projection(fromCentroid);
+  var toProj = projection(toCentroid);
+  if (!fromProj || !toProj) return;
+
+  // Create curved path (great circle arc approximation)
+  var midX = (fromProj[0] + toProj[0]) / 2;
+  var midY = (fromProj[1] + toProj[1]) / 2;
+  var dx = toProj[0] - fromProj[0];
+  var dy = toProj[1] - fromProj[1];
+  var dist = Math.sqrt(dx * dx + dy * dy);
+  var curvature = dist * 0.25;
+  // Perpendicular offset for curve
+  var nx = -dy / dist * curvature;
+  var ny = dx / dist * curvature;
+  var ctrlX = midX + nx;
+  var ctrlY = midY + ny;
+
+  var pathData = 'M' + fromProj[0] + ',' + fromProj[1]
+    + ' Q' + ctrlX + ',' + ctrlY
+    + ' ' + toProj[0] + ',' + toProj[1];
+
+  // Glow line (wider, blurred)
+  connectionsGroup.append('path')
+    .attr('class', 'connection-line-glow')
+    .attr('d', pathData)
+    .attr('stroke', lineColor)
+    .attr('stroke-width', 4)
+    .attr('opacity', 0.3)
+    .style('filter', 'blur(3px)');
+
+  // Main line
+  var mainLine = connectionsGroup.append('path')
+    .attr('class', 'connection-line')
+    .attr('d', pathData)
+    .attr('stroke', lineColor)
+    .attr('stroke-width', 1.5)
+    .attr('opacity', 0);
+
+  // Animate line drawing
+  var totalLength = mainLine.node().getTotalLength();
+  mainLine
+    .attr('stroke-dasharray', totalLength)
+    .attr('stroke-dashoffset', totalLength)
+    .attr('opacity', 1)
+    .transition()
+    .duration(animate !== false ? 1500 : 0)
+    .ease(d3.easeCubicInOut)
+    .attr('stroke-dashoffset', 0);
+
+  // Animated dot traveling along the path
+  if (animate !== false) {
+    var dot = connectionsGroup.append('circle')
+      .attr('class', 'connection-dot')
+      .attr('r', 3)
+      .attr('fill', dColor)
+      .attr('opacity', 0);
+
+    // Start dot after line is partially drawn
+    setTimeout(function() {
+      dot.attr('opacity', 1);
+      animateDot(dot, mainLine.node(), 2500);
+    }, 800);
+  }
+
+  activeConnections.push({ from: fromResolved, to: toResolved, color: lineColor });
+}
+
+function animateDot(dot, pathNode, duration) {
+  var totalLength = pathNode.getTotalLength();
+  var startTime = null;
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    var progress = Math.min((timestamp - startTime) / duration, 1);
+    var eased = d3.easeCubicInOut(progress);
+    var point = pathNode.getPointAtLength(eased * totalLength);
+    dot.attr('cx', point.x).attr('cy', point.y);
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      // Loop
+      startTime = null;
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function clearConnections() {
+  connectionsGroup.selectAll('*').remove();
+  activeConnections = [];
+}
+
+function showLabel(name) {
+  var resolved = resolveCountryName(name);
+  var centroid = getCountryCentroid(resolved);
+  if (!centroid) return;
+
+  activeLabels[resolved] = true;
+
+  var proj = projection(centroid);
+  if (!proj) return;
+
+  // Remove existing label for this country
+  labelsGroup.selectAll('.country-label').filter(function() {
+    return this.dataset.country === resolved;
+  }).remove();
+
+  labelsGroup.append('text')
+    .attr('class', 'country-label')
+    .attr('data-country', resolved)
+    .attr('x', proj[0])
+    .attr('y', proj[1] - 12)
+    .attr('fill', CONFIG.labelColor)
+    .text(resolved)
+    .transition()
+    .duration(300)
+    .style('opacity', 1);
+}
+
+function hideLabel(name) {
+  var resolved = resolveCountryName(name);
+  delete activeLabels[resolved];
+
+  labelsGroup.selectAll('.country-label').filter(function() {
+    return this.dataset.country === resolved;
+  })
+  .transition()
+  .duration(300)
+  .style('opacity', 0)
+  .remove();
+}
+
+function hideUI(elements) {
+  if (!elements) elements = ['header', 'controls', 'legend'];
+  elements.forEach(function(el) {
+    var elem = document.getElementById(el);
+    if (elem) elem.style.display = 'none';
+  });
+}
+
+function showUI(elements) {
+  if (!elements) elements = ['header', 'controls', 'legend'];
+  elements.forEach(function(el) {
+    var elem = document.getElementById(el);
+    if (elem) elem.style.display = '';
+  });
+}
+
+// ─── Load World Data ───
+var worldUrl = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+
+d3.json(worldUrl).then(function(world) {
+  worldData = world;
+  countriesGeoJSON = topojson.feature(world, world.objects.countries);
+
+  // Cache centroids
+  countriesGeoJSON.features.forEach(function(f) {
+    if (f.properties.name) {
+      countryCentroids[f.properties.name] = d3.geoCentroid(f);
+    }
+  });
+
+  // Draw countries
+  countryPaths = g.selectAll('.country')
+    .data(countriesGeoJSON.features)
+    .enter()
+    .append('path')
+    .attr('class', 'country')
+    .attr('d', path)
+    .attr('fill', function(d) { return getTerrainColor(d); })
+    .on('mousemove', function(event, d) {
+      var name = d.properties.name || 'Unknown Territory';
+      tooltipName.textContent = name;
+      tooltip.classList.add('visible');
+      tooltip.style.left = (event.clientX + 16) + 'px';
+      tooltip.style.top = (event.clientY - 10) + 'px';
+
+      var coords = projection.invert(d3.pointer(event, svg.node()));
+      if (coords) {
+        var latDir = coords[1] >= 0 ? 'N' : 'S';
+        var lonDir = coords[0] >= 0 ? 'E' : 'W';
+        coordsDisplay.textContent = 'LAT ' + Math.abs(coords[1]).toFixed(2) + '\u00B0 ' + latDir + ' \u00B7 LON ' + Math.abs(coords[0]).toFixed(2) + '\u00B0 ' + lonDir;
+      }
+    })
+    .on('mouseleave', function() {
+      tooltip.classList.remove('visible');
+    });
+
+  // Draw borders
+  g.append('path')
+    .datum(topojson.mesh(world, world.objects.countries, function(a, b) { return a !== b; }))
+    .attr('fill', 'none')
+    .attr('stroke', 'rgba(30,80,100,0.3)')
+    .attr('stroke-width', 0.5)
+    .attr('d', path);
+
+  // Hide loading
+  setTimeout(function() {
+    document.getElementById('loading').classList.add('hidden');
+  }, 400);
+
+  // Apply initial title from CONFIG
+  if (CONFIG.title) {
+    document.getElementById('mapTitle').textContent = CONFIG.title;
+  }
+
+  // Process any pre-loaded commands (from CONFIG_BULK_UPDATE before data loaded)
+  if (CONFIG.commands && CONFIG.commands.length > 0 && !frameSyncActive) {
+    // In non-frame-synced mode, execute all commands immediately
+    CONFIG.commands.forEach(function(cmd) { executeCommand(cmd); });
+  }
+});
+
+// ─── Frame Sync Handler ───
+window.__onFrameUpdate = function(frame, playing, fps, total) {
+  frameSyncActive = true;
+  parentFrame = frame;
+  parentFps = fps || 30;
+
+  if (!CONFIG.commands || CONFIG.commands.length === 0) return;
+  if (!countriesGeoJSON) return;
+
+  // Process commands up to current frame
+  for (var i = 0; i < CONFIG.commands.length; i++) {
+    var cmd = CONFIG.commands[i];
+    var cmdFrame = cmd.frame;
+    if (cmdFrame === undefined || cmdFrame === null) continue;
+
+    // Execute commands that should have fired by now
+    if (cmdFrame <= frame && cmdFrame > lastProcessedFrame) {
+      executeCommand(cmd);
+    }
+  }
+
+  lastProcessedFrame = frame;
+
+  // If rewinding (frame < lastProcessedFrame), reset and replay
+  if (frame < lastProcessedFrame) {
+    lastProcessedFrame = -1;
+    clearHighlights();
+    clearConnections();
+    labelsGroup.selectAll('*').remove();
+    activeLabels = {};
+    // Reset view instantly
+    svg.call(zoom.transform, d3.zoomIdentity);
+    // Re-process from beginning
+    for (var i = 0; i < CONFIG.commands.length; i++) {
+      var cmd = CONFIG.commands[i];
+      if (cmd.frame !== undefined && cmd.frame <= frame) {
+        executeCommand(cmd);
+        lastProcessedFrame = cmd.frame;
+      }
+    }
+  }
+};
+
+// ─── Controls ───
+document.getElementById('zoomIn').addEventListener('click', function() {
+  svg.transition().duration(300).call(zoom.scaleBy, 1.5);
+});
+document.getElementById('zoomOut').addEventListener('click', function() {
+  svg.transition().duration(300).call(zoom.scaleBy, 0.67);
+});
+document.getElementById('resetBtn').addEventListener('click', function() {
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+});
+
+// Track mouse for ocean coordinate display
+svg.on('mousemove', function(event) {
+  var coords = projection.invert(d3.pointer(event));
+  if (coords && !isNaN(coords[0]) && !isNaN(coords[1])) {
+    var latDir = coords[1] >= 0 ? 'N' : 'S';
+    var lonDir = coords[0] >= 0 ? 'E' : 'W';
+    coordsDisplay.textContent = 'LAT ' + Math.abs(coords[1]).toFixed(2) + '\u00B0 ' + latDir + ' \u00B7 LON ' + Math.abs(coords[0]).toFixed(2) + '\u00B0 ' + lonDir;
+  }
+});
+
+// Resize
+window.addEventListener('resize', function() {
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  svg.attr('viewBox', '0 0 ' + w + ' ' + h);
+  width = w;
+  height = h;
+});
+
+// Apply CONFIG changes from UI
+document.getElementById('mapTitle').textContent = CONFIG.title;
+if (!CONFIG.showTitle) document.getElementById('header').style.display = 'none';
+if (!CONFIG.showCoords) document.getElementById('coordsDisplay').style.display = 'none';
+if (!CONFIG.showLegend) document.getElementById('legend').style.display = 'none';
+if (!CONFIG.showControls) document.getElementById('controls').style.display = 'none';
+</script>
+</body>
+</html>

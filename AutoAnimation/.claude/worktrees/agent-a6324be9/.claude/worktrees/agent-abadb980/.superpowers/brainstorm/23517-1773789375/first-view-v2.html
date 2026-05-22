@@ -1,0 +1,362 @@
+<style>
+  .panel-mock {
+    width: 280px;
+    background: #1a1a1a;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    margin: 0 auto;
+  }
+  .panel-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-header-icon { color: #4a7eff; font-size: 14px; }
+  .panel-header-title { color: #e0e0e0; font-size: 13px; font-weight: 600; }
+  .panel-body { padding: 10px 14px; }
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    margin-bottom: 8px;
+  }
+  .toggle-label { color: #ccc; font-size: 12px; }
+  .toggle-switch {
+    width: 34px; height: 18px;
+    background: #4a7eff;
+    border-radius: 9px;
+    position: relative;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; right: 2px;
+  }
+  .section-label {
+    font-size: 10px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 12px 0 6px;
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+  .chip {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .chip-active {
+    background: rgba(74,126,255,0.12);
+    border-color: rgba(74,126,255,0.3);
+    color: #4a7eff;
+  }
+  .chip-inactive {
+    background: #252525;
+    color: #888;
+  }
+  .preset-item {
+    padding: 8px 10px;
+    background: #222;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .preset-name { font-size: 11px; color: #ddd; font-weight: 500; }
+  .preset-desc { font-size: 9px; color: #666; margin-top: 2px; }
+  .preset-badge {
+    font-size: 8px;
+    color: #555;
+    background: #2a2a2a;
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+  .collapsed-row {
+    padding: 8px 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #555;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .collapsed-row:hover { color: #999; }
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .tab-active {
+    color: #4a7eff;
+    border-bottom: 2px solid #4a7eff;
+  }
+  .tab-inactive { color: #555; }
+  .genre-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .genre-card {
+    min-width: 80px;
+    padding: 8px 10px;
+    background: #222;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.04);
+    flex-shrink: 0;
+  }
+  .genre-name { font-size: 10px; color: #ddd; font-weight: 500; }
+  .genre-desc { font-size: 8px; color: #666; margin-top: 2px; }
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #252525;
+    border-radius: 8px;
+    padding: 7px 10px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .search-icon { color: #555; font-size: 12px; }
+  .search-text { color: #555; font-size: 11px; }
+  .filter-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .filter-pill {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    cursor: pointer;
+  }
+  .footer-btn {
+    margin-top: 10px;
+    padding: 8px;
+    background: rgba(74,126,255,0.08);
+    border: 1px solid rgba(74,126,255,0.2);
+    border-radius: 8px;
+    text-align: center;
+    color: #4a7eff;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .options { display: flex; flex-direction: column; gap: 24px; }
+  .option { align-items: flex-start; }
+  .option .content { width: 100%; }
+</style>
+
+<h2>What should Cinema Studio look like at first glance?</h2>
+<p class="subtitle">Primary action = pick a preset. Everything else is secondary.</p>
+
+<div class="options">
+  <!-- Option A -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Presets First, Settings Collapsed</h3>
+      <p>Quick presets as chips, Cinema list with tabs. Genre, Camera, Optical all collapsed.</p>
+      <div class="panel-mock" style="margin-top: 12px;">
+        <div class="panel-header">
+          <span class="panel-header-icon">🎬</span>
+          <span class="panel-header-title">Cinema Studio</span>
+        </div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Virtual Camera</span>
+            <div class="toggle-switch"></div>
+          </div>
+
+          <div class="section-label">Quick Moves</div>
+          <div class="chip-row">
+            <div class="chip chip-active">Zoom In</div>
+            <div class="chip chip-inactive">Pan Left</div>
+            <div class="chip chip-inactive">Ken Burns</div>
+            <div class="chip chip-inactive">Zoom Out</div>
+            <div class="chip chip-inactive">Pan Right</div>
+          </div>
+
+          <div class="section-label">Cinema Presets</div>
+          <div class="filter-row">
+            <div class="filter-pill chip-active">All</div>
+            <div class="filter-pill chip-inactive">Establishing</div>
+            <div class="filter-pill chip-inactive">Dialogue</div>
+            <div class="filter-pill chip-inactive">Action</div>
+            <div class="filter-pill chip-inactive">Emotion</div>
+          </div>
+          <div class="preset-item">
+            <div class="preset-name">Wide Establishing</div>
+            <div class="preset-desc">Classic wide shot with slow zoom in</div>
+          </div>
+          <div class="preset-item">
+            <div class="preset-name">Aerial Descend</div>
+            <div class="preset-desc">High angle descending reveal</div>
+          </div>
+          <div class="preset-item">
+            <div class="preset-name">Medium Close-Up</div>
+            <div class="preset-desc">Standard dialogue framing</div>
+          </div>
+
+          <div class="collapsed-row">
+            <span>▸ Genre Auto-Motion</span>
+          </div>
+          <div class="collapsed-row">
+            <span>▸ Camera &amp; Lens</span>
+          </div>
+          <div class="collapsed-row">
+            <span>▸ Optical Controls</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Two-Tab Split (Presets | Camera)</h3>
+      <p>Top tabs separate browsing from settings. All three preset groups on one tab, all sliders on the other.</p>
+      <div class="panel-mock" style="margin-top: 12px;">
+        <div class="panel-header">
+          <span class="panel-header-icon">🎬</span>
+          <span class="panel-header-title">Cinema Studio</span>
+        </div>
+        <div class="tab-bar">
+          <div class="tab-item tab-active">Presets</div>
+          <div class="tab-item tab-inactive">Camera</div>
+        </div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Virtual Camera</span>
+            <div class="toggle-switch"></div>
+          </div>
+
+          <div class="section-label">Quick Moves</div>
+          <div class="chip-row" style="margin-bottom: 10px;">
+            <div class="chip chip-active">Zoom In</div>
+            <div class="chip chip-inactive">Pan Left</div>
+            <div class="chip chip-inactive">Ken Burns</div>
+          </div>
+
+          <div class="section-label">Genre Feel</div>
+          <div class="genre-scroll" style="margin-bottom: 10px;">
+            <div class="genre-card">
+              <div class="genre-name">Action</div>
+              <div class="genre-desc">Shaky, fast</div>
+            </div>
+            <div class="genre-card">
+              <div class="genre-name">Horror</div>
+              <div class="genre-desc">Slow creep</div>
+            </div>
+            <div class="genre-card">
+              <div class="genre-name">Romance</div>
+              <div class="genre-desc">Soft, warm</div>
+            </div>
+            <div class="genre-card">
+              <div class="genre-name">Comedy</div>
+              <div class="genre-desc">Steady, whip</div>
+            </div>
+          </div>
+
+          <div class="section-label">Cinema Shots</div>
+          <div class="filter-row">
+            <div class="filter-pill chip-active">All</div>
+            <div class="filter-pill chip-inactive">Dialogue</div>
+            <div class="filter-pill chip-inactive">Action</div>
+            <div class="filter-pill chip-inactive">Emotion</div>
+          </div>
+          <div class="preset-item">
+            <div class="preset-name">Wide Establishing</div>
+            <div class="preset-desc">Classic wide shot</div>
+          </div>
+          <div class="preset-item">
+            <div class="preset-name">Medium Close-Up</div>
+            <div class="preset-desc">Standard dialogue framing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Smart Search + Unified List</h3>
+      <p>One search bar for everything. All presets in a flat list with type badges. Simplest first glance.</p>
+      <div class="panel-mock" style="margin-top: 12px;">
+        <div class="panel-header">
+          <span class="panel-header-icon">🎬</span>
+          <span class="panel-header-title">Cinema Studio</span>
+        </div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <span class="toggle-label">Virtual Camera</span>
+            <div class="toggle-switch"></div>
+          </div>
+
+          <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <span class="search-text">Search all presets...</span>
+          </div>
+
+          <div class="filter-row">
+            <div class="filter-pill chip-active">All</div>
+            <div class="filter-pill chip-inactive">Quick</div>
+            <div class="filter-pill chip-inactive">Genre</div>
+            <div class="filter-pill chip-inactive">Establishing</div>
+            <div class="filter-pill chip-inactive">Dialogue</div>
+            <div class="filter-pill chip-inactive">Action</div>
+          </div>
+
+          <div class="preset-item" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="preset-name">Slow Zoom In</div>
+            </div>
+            <div class="preset-badge">Quick</div>
+          </div>
+          <div class="preset-item" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="preset-name">Horror</div>
+              <div class="preset-desc">Slow creep, sudden snap</div>
+            </div>
+            <div class="preset-badge">Genre</div>
+          </div>
+          <div class="preset-item" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="preset-name">Wide Establishing</div>
+              <div class="preset-desc">Classic wide shot</div>
+            </div>
+            <div class="preset-badge">Establishing</div>
+          </div>
+          <div class="preset-item" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="preset-name">Medium Close-Up</div>
+              <div class="preset-desc">Standard dialogue framing</div>
+            </div>
+            <div class="preset-badge">Dialogue</div>
+          </div>
+
+          <div class="collapsed-row">
+            <span>⚙ Camera Settings</span>
+            <span>▸</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

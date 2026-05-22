@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro TV</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #111111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+  }
+  .room {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 60%, #1a1a2e 0%, #0a0a0f 70%);
+  }
+  .glow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .tv-frame {
+    position: relative;
+    width: 78vw;
+    height: 56vh;
+    background: linear-gradient(145deg, #3a3a3a, #1a1a1a);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+    z-index: 2;
+  }
+  .tv-bezel {
+    width: 100%;
+    height: 100%;
+    background: #111;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 40% / 8%;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.12) 0px,
+      rgba(0,0,0,0.12) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 3;
+  }
+  .glass-reflection {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      rgba(255,255,255,0.06) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(255,255,255,0.02) 100%
+    );
+    border-radius: 40% / 8%;
+    z-index: 4;
+  }
+  .channel-num {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 28px;
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-shadow: 0 0 8px #0f0;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .tv-knobs {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+  }
+  .knob {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #666, #222);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .tv-stand {
+    position: absolute;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40%;
+    height: 8px;
+    background: linear-gradient(145deg, #333, #1a1a1a);
+    border-radius: 0 0 8px 8px;
+  }
+  .no-signal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 6px;
+    z-index: 5;
+    opacity: 0;
+    text-shadow: 0 0 10px rgba(255,255,255,0.5);
+  }
+</style>
+</head>
+<body>
+<div class="room"></div>
+<canvas id="glow" class="glow"></canvas>
+<div class="tv-frame">
+  <div class="tv-bezel">
+    <div class="screen">
+      <canvas id="screen"></canvas>
+      <div class="scanlines"></div>
+      <div class="glass-reflection"></div>
+      <div class="channel-num" id="channelNum">CH 03</div>
+      <div class="no-signal" id="noSignal">NO SIGNAL</div>
+    </div>
+  </div>
+  <div class="tv-knobs">
+    <div class="knob"></div>
+    <div class="knob"></div>
+  </div>
+  <div class="tv-stand"></div>
+</div>
+
+<script>
+  const CONFIG = {
+    bgColor: '#111111',
+    channelSwitchInterval: 4000,
+    staticIntensity: 0.7,
+    scanLineOpacity: 0.12,
+    glowColor: 'rgba(100,180,255,0.15)',
+    glowIntensity: 0.4,
+    vhsTrackingChance: 0.003,
+    colorBarColors: ['#fff','#ff0','#00ffff','#0f0','#f0f','#f00','#00f'],
+    noSignalDuration: 1500,
+    channelNumbers: [3, 7, 13, 22, 56]
+  };
+
+  const screenCanvas = document.getElementById('screen');
+  const glowCanvas = document.getElementById('glow');
+  const sCtx = screenCanvas.getContext('2d');
+  const gCtx = glowCanvas.getContext('2d');
+  const channelNumEl = document.getElementById('channelNum');
+  const noSignalEl = document.getElementById('noSignal');
+
+  let W, H, GW, GH;
+  function resize() {
+    const rect = screenCanvas.getBoundingClientRect();
+    W = screenCanvas.width = Math.floor(rect.width);
+    H = screenCanvas.height = Math.floor(rect.height);
+    GW = glowCanvas.width = window.innerWidth;
+    GH = glowCanvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let frame = 0;
+  let phase = 'colorbars'; // colorbars, switching, static, nosignal
+  let phaseTimer = 0;
+  let channelIdx = 0;
+  let switchY = 0;
+  let vhsOffset = 0;
+  let vhsActive = false;
+  let vhsTimer = 0;
+
+  const phases = ['colorbars', 'switching', 'static', 'nosignal', 'switching', 'colorbars'];
+  let phaseIdx = 0;
+  const phaseDurations = [3000, 400, 2000, 1800, 400, 3000];
+
+  function drawColorBars() {
+    const barW = W / CONFIG.colorBarColors.length;
+    CONFIG.colorBarColors.forEach((color, i) => {
+      sCtx.fillStyle = color;
+      sCtx.fillRect(i * barW, 0, barW + 1, H * 0.75);
+    });
+    // Bottom section: darker bars
+    const darkColors = ['#00f','#000','#f0f','#000','#00ffff','#000','#fff'];
+    const dBarW = W / darkColors.length;
+    darkColors.forEach((color, i) => {
+      sCtx.fillStyle = color;
+      sCtx.fillRect(i * dBarW, H * 0.75, dBarW + 1, H * 0.25);
+    });
+    // VHS timestamp
+    sCtx.fillStyle = 'rgba(0,0,0,0.6)';
+    sCtx.fillRect(W * 0.05, H * 0.88, W * 0.35, 22);
+    sCtx.fillStyle = '#fff';
+    sCtx.font = '14px Courier New';
+    const d = new Date();
+    const ts = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+    sCtx.fillText('REC ' + ts, W * 0.07, H * 0.88 + 16);
+  }
+
+  function drawStatic() {
+    const imageData = sCtx.createImageData(W, H);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const v = Math.random() * 255 * CONFIG.staticIntensity;
+      data[i] = data[i + 1] = data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+    sCtx.putImageData(imageData, 0, 0);
+  }
+
+  function drawChannelSwitch() {
+    // Horizontal distortion bands
+    sCtx.fillStyle = '#000';
+    sCtx.fillRect(0, 0, W, H);
+    for (let y = 0; y < H; y++) {
+      if (Math.random() < 0.4) {
+        const offset = (Math.random() - 0.5) * W * 0.5;
+        const brightness = Math.random() * 100;
+        sCtx.fillStyle = `rgb(${brightness},${brightness},${brightness})`;
+        sCtx.fillRect(offset, y, W, 1 + Math.random() * 3);
+      }
+    }
+    // Rolling bar
+    switchY = (switchY + 12) % H;
+    sCtx.fillStyle = 'rgba(255,255,255,0.15)';
+    sCtx.fillRect(0, switchY, W, 40);
+    // Color fringing
+    sCtx.globalCompositeOperation = 'lighter';
+    sCtx.fillStyle = 'rgba(255,0,0,0.1)';
+    sCtx.fillRect(Math.random() * 10, 0, W, H);
+    sCtx.fillStyle = 'rgba(0,0,255,0.1)';
+    sCtx.fillRect(-Math.random() * 10, 0, W, H);
+    sCtx.globalCompositeOperation = 'source-over';
+  }
+
+  function drawNoSignal() {
+    sCtx.fillStyle = '#0a0a1a';
+    sCtx.fillRect(0, 0, W, H);
+    // Subtle static underneath
+    for (let i = 0; i < 2000; i++) {
+      const x = Math.random() * W;
+      const y = Math.random() * H;
+      const b = Math.random() * 30;
+      sCtx.fillStyle = `rgba(${b},${b},${b + 10},0.5)`;
+      sCtx.fillRect(x, y, 1, 1);
+    }
+    noSignalEl.style.opacity = Math.sin(frame * 0.08) > -0.3 ? '1' : '0';
+  }
+
+  function applyVHSTracking() {
+    if (Math.random() < CONFIG.vhsTrackingChance || vhsActive) {
+      if (!vhsActive) {
+        vhsActive = true;
+        vhsTimer = 20 + Math.random() * 40;
+        vhsOffset = (Math.random() - 0.5) * 30;
+      }
+      vhsTimer--;
+      if (vhsTimer <= 0) vhsActive = false;
+      // Shift a band of the image
+      const bandY = Math.floor(Math.random() * H);
+      const bandH = 5 + Math.floor(Math.random() * 20);
+      const imgData = sCtx.getImageData(0, bandY, W, Math.min(bandH, H - bandY));
+      sCtx.putImageData(imgData, vhsOffset, bandY);
+      // White noise line at band edges
+      sCtx.fillStyle = 'rgba(255,255,255,0.3)';
+      sCtx.fillRect(0, bandY, W, 1);
+      sCtx.fillRect(0, bandY + bandH, W, 1);
+    }
+  }
+
+  function drawGlow() {
+    gCtx.clearRect(0, 0, GW, GH);
+    if (phase === 'nosignal') return;
+    const intensity = phase === 'static' ? 0.08 : CONFIG.glowIntensity;
+    // Screen glow on walls
+    const grad = gCtx.createRadialGradient(GW * 0.5, GH * 0.5, 0, GW * 0.5, GH * 0.5, GW * 0.6);
+    let glowR = 100, glowG = 180, glowB = 255;
+    if (phase === 'colorbars') { glowR = 150; glowG = 200; glowB = 200; }
+    if (phase === 'static') { glowR = 150; glowG = 150; glowB = 150; }
+    grad.addColorStop(0, `rgba(${glowR},${glowG},${glowB},${intensity * (0.8 + Math.sin(frame * 0.05) * 0.2)})`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    gCtx.fillStyle = grad;
+    gCtx.fillRect(0, 0, GW, GH);
+  }
+
+  function showChannel() {
+    channelIdx = (channelIdx + 1) % CONFIG.channelNumbers.length;
+    channelNumEl.textContent = 'CH ' + CONFIG.channelNumbers[channelIdx].toString().padStart(2, '0');
+    channelNumEl.style.opacity = '1';
+    setTimeout(() => { channelNumEl.style.opacity = '0'; }, 2000);
+  }
+
+  let lastTime = 0;
+  let elapsed = 0;
+
+  function animate(time) {
+    const dt = time - lastTime;
+    lastTime = time;
+    frame++;
+    phaseTimer += dt;
+
+    if (phaseTimer >= phaseDurations[phaseIdx]) {
+      phaseTimer = 0;
+      phaseIdx = (phaseIdx + 1) % phases.length;
+      phase = phases[phaseIdx];
+      noSignalEl.style.opacity = '0';
+      if (phase === 'switching') showChannel();
+    }
+
+    sCtx.clearRect(0, 0, W, H);
+
+    switch (phase) {
+      case 'colorbars': drawColorBars(); break;
+      case 'switching': drawChannelSwitch(); break;
+      case 'static': drawStatic(); break;
+      case 'nosignal': drawNoSignal(); break;
+    }
+
+    if (phase !== 'switching') applyVHSTracking();
+
+    // CRT curvature vignette
+    const vgrad = sCtx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.7);
+    vgrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vgrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+    sCtx.fillStyle = vgrad;
+    sCtx.fillRect(0, 0, W, H);
+
+    // Chromatic aberration on edges
+    sCtx.globalCompositeOperation = 'lighter';
+    sCtx.fillStyle = 'rgba(255,0,0,0.02)';
+    sCtx.fillRect(2, 0, W, H);
+    sCtx.fillStyle = 'rgba(0,0,255,0.02)';
+    sCtx.fillRect(-2, 0, W, H);
+    sCtx.globalCompositeOperation = 'source-over';
+
+    drawGlow();
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>

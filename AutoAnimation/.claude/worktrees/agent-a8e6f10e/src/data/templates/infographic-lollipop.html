@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lollipop Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Top Programming Languages',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  dotColor: '#3B82F6',
+  lineColor: '#334155',
+  showValues: true,
+  sortDescending: true,
+  dotSize: 8,
+  data: [
+    { category: 'JavaScript', value: 65 },
+    { category: 'Python', value: 58 },
+    { category: 'TypeScript', value: 42 },
+    { category: 'Java', value: 35 },
+    { category: 'C#', value: 28 },
+    { category: 'Go', value: 22 },
+    { category: 'Rust', value: 18 },
+    { category: 'Swift', value: 14 },
+    { category: 'Kotlin', value: 12 },
+    { category: 'Ruby', value: 10 }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function formatValue(v) {
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return v.toString();
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const sorted = CONFIG.sortDescending
+    ? [...CONFIG.data].sort((a, b) => b.value - a.value)
+    : CONFIG.data;
+  const n = sorted.length;
+  const maxVal = Math.max(...sorted.map(d => d.value)) * 1.15;
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.22, y: H * 0.14, w: W * 0.68, h: H * 0.78 };
+  const rowH = area.h / n;
+
+  // Grid lines
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  const steps = 5;
+  ctx.fillStyle = T.text;
+  ctx.font = `${W * 0.014}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let i = 0; i <= steps; i++) {
+    const x = area.x + (area.w / steps) * i;
+    ctx.beginPath(); ctx.moveTo(x, area.y); ctx.lineTo(x, area.y + area.h); ctx.stroke();
+    ctx.fillText(formatValue((maxVal / steps) * i), x, area.y + area.h + W * 0.008);
+  }
+
+  // Lollipops
+  for (let i = 0; i < n; i++) {
+    const d = sorted[i];
+    const itemEase = easeOutCubic(Math.min(Math.max((progress - i * 0.05) / (1 - n * 0.03), 0), 1));
+    const cy = area.y + rowH * i + rowH / 2;
+    const lineEnd = area.x + (d.value / maxVal) * area.w * itemEase;
+    const dotR = CONFIG.dotSize * (W / 1000) * itemEase;
+
+    // Category label
+    ctx.fillStyle = T.text;
+    ctx.font = `${W * 0.018}px system-ui`;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(d.category, area.x - W * 0.015, cy);
+
+    // Line
+    ctx.strokeStyle = CONFIG.lineColor;
+    ctx.lineWidth = W * 0.003;
+    ctx.beginPath(); ctx.moveTo(area.x, cy); ctx.lineTo(lineEnd, cy); ctx.stroke();
+
+    // Dot
+    ctx.beginPath(); ctx.arc(lineEnd, cy, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.dotColor;
+    ctx.shadowColor = CONFIG.dotColor; ctx.shadowBlur = W * 0.008;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Value
+    if (CONFIG.showValues && itemEase > 0.3) {
+      ctx.fillStyle = T.title;
+      ctx.font = `bold ${W * 0.015}px system-ui`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(formatValue(d.value), lineEnd + dotR + W * 0.01, cy);
+    }
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

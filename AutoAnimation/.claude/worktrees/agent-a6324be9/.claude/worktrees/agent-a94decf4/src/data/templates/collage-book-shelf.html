@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Book Shelf Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #2c1810; font-family: 'Georgia', serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 30px; }
+
+  .shelf-row { display: flex; gap: 6px; align-items: flex-end; position: relative; padding-bottom: 10px; }
+  .shelf-row::after { content:''; position: absolute; bottom: 0; left: -10px; right: -10px; height: 6px; background: linear-gradient(180deg, #5d3a1a, #3e2310); border-radius: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  .book { opacity: 0; will-change: transform, opacity; cursor: default; }
+  .book-spine { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 4px; border-radius: 2px; box-shadow: inset -2px 0 4px rgba(0,0,0,0.2), 2px 2px 6px rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+  .book-spine::before { content:''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: rgba(255,255,255,0.1); }
+  .book-title { writing-mode: vertical-rl; text-orientation: mixed; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 1px; text-transform: uppercase; }
+  .book-author { writing-mode: vertical-rl; text-orientation: mixed; font-size: 8px; color: rgba(255,255,255,0.5); margin-top: 8px; }
+
+  @keyframes bookIn { 0% { opacity: 0; transform: translateY(30px); } 60% { transform: translateY(-2px); } 100% { opacity: 1; transform: translateY(0); } }
+  @keyframes bookOut { 0% { opacity: 1; transform: translateY(0) rotate(0); } 100% { opacity: 0; transform: translateY(-20px) rotate(-5deg); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  shelves: [
+    [
+      { color: '#8b0000', title: 'The Odyssey', author: 'Homer', w: 30, h: 160 },
+      { color: '#1a237e', title: 'Cosmos', author: 'Sagan', w: 35, h: 170 },
+      { color: '#2e7d32', title: 'Walden', author: 'Thoreau', w: 28, h: 150 },
+      { color: '#f57f17', title: 'Dune', author: 'Herbert', w: 40, h: 175 },
+      { color: '#4a148c', title: '1984', author: 'Orwell', w: 32, h: 155 },
+      { color: '#00695c', title: 'Sapiens', author: 'Harari', w: 38, h: 168 },
+    ],
+    [
+      { color: '#bf360c', title: 'Meditations', author: 'Aurelius', w: 26, h: 145 },
+      { color: '#283593', title: 'Deep Work', author: 'Newport', w: 34, h: 162 },
+      { color: '#558b2f', title: 'Hamlet', author: 'Shakespeare', w: 30, h: 155 },
+      { color: '#e65100', title: 'The Art of War', author: 'Sun Tzu', w: 24, h: 140 },
+      { color: '#6a1b9a', title: 'Neuromancer', author: 'Gibson', w: 36, h: 170 },
+      { color: '#004d40', title: 'Atomic Habits', author: 'Clear', w: 33, h: 158 },
+    ],
+  ],
+  bgColor: '#2c1810',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const allEls = [];
+  CONFIG.shelves.forEach(shelf => {
+    const row = document.createElement('div'); row.className = 'shelf-row';
+    shelf.forEach(b => {
+      const el = document.createElement('div'); el.className = 'book';
+      const spine = document.createElement('div'); spine.className = 'book-spine';
+      spine.style.background = b.color; spine.style.width = b.w + 'px'; spine.style.height = b.h + 'px';
+      const title = document.createElement('div'); title.className = 'book-title'; title.textContent = b.title;
+      const author = document.createElement('div'); author.className = 'book-author'; author.textContent = b.author;
+      spine.appendChild(title); spine.appendChild(author);
+      el.appendChild(spine); row.appendChild(el); allEls.push(el);
+    });
+    stage.appendChild(row);
+  });
+  return allEls;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=150, inD=400, hold=3500, outS=120, outD=350, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`bookIn ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`bookOut ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

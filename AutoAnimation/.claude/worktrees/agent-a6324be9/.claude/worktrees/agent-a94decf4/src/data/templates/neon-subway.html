@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Subway Station</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a12; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  stationName: 'SHIBUYA STATION',
+  trainColor: '#cc3300',
+  neonColors: ['#ff0088', '#00ffcc', '#ffcc00'],
+  nextTrainText: 'NEXT TRAIN: 2 MIN',
+  cycleDuration: 14000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Perspective vanishing point
+function vp() { return { x: W * 0.5, y: H * 0.38 }; }
+
+// Ease functions
+function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Parse hex color
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+// Neon sign data
+const neonSigns = [
+  { text: '出口', x: 0.2, y: 0.32, size: 0.035, colorIdx: 0, flickerSpeed: 3.7, flickerOffset: 0 },
+  { text: 'EXIT', x: 0.2, y: 0.37, size: 0.02, colorIdx: 0, flickerSpeed: 3.7, flickerOffset: 0.1 },
+  { text: 'BAR', x: 0.78, y: 0.30, size: 0.03, colorIdx: 1, flickerSpeed: 2.1, flickerOffset: 1.5 },
+  { text: '改札', x: 0.75, y: 0.35, size: 0.025, colorIdx: 2, flickerSpeed: 4.3, flickerOffset: 3.0 },
+  { text: 'ラーメン', x: 0.15, y: 0.26, size: 0.022, colorIdx: 2, flickerSpeed: 1.8, flickerOffset: 2.2 },
+  { text: 'HOTEL', x: 0.82, y: 0.25, size: 0.02, colorIdx: 0, flickerSpeed: 5.1, flickerOffset: 0.8 }
+];
+
+// Passenger silhouettes
+const passengers = [];
+for (let i = 0; i < 8; i++) {
+  passengers.push({
+    x: 0.15 + Math.random() * 0.7,
+    height: 0.08 + Math.random() * 0.04,
+    width: 0.015 + Math.random() * 0.01,
+    sway: Math.random() * Math.PI * 2,
+    swaySpeed: 0.3 + Math.random() * 0.5
+  });
+}
+
+// Fluorescent light flicker
+const fluorescentLights = [];
+for (let i = 0; i < 6; i++) {
+  fluorescentLights.push({
+    x: 0.18 + i * 0.12,
+    flickerPhase: Math.random() * Math.PI * 2,
+    flickerFreq: 8 + Math.random() * 15,
+    baseIntensity: 0.6 + Math.random() * 0.3
+  });
+}
+
+// Rain drops on floor for wet reflections
+const rainDrops = [];
+for (let i = 0; i < 40; i++) {
+  rainDrops.push({
+    x: Math.random(),
+    y: 0.7 + Math.random() * 0.25,
+    radius: 1 + Math.random() * 2,
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.5 + Math.random() * 2
+  });
+}
+
+function drawTunnel(t) {
+  const v = vp();
+  const phase = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+
+  // Dark background gradient
+  const bgGrad = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, W * 0.8);
+  bgGrad.addColorStop(0, '#1a1a2e');
+  bgGrad.addColorStop(0.5, '#0f0f1a');
+  bgGrad.addColorStop(1, '#050510');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Tunnel walls - left
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.15);
+  ctx.lineTo(v.x - W * 0.02, v.y - H * 0.02);
+  ctx.lineTo(v.x - W * 0.02, v.y + H * 0.02);
+  ctx.lineTo(0, H * 0.85);
+  ctx.closePath();
+  const leftWall = ctx.createLinearGradient(0, 0, v.x, 0);
+  leftWall.addColorStop(0, '#1a1a2e');
+  leftWall.addColorStop(1, '#0a0a15');
+  ctx.fillStyle = leftWall;
+  ctx.fill();
+
+  // Tunnel walls - right
+  ctx.beginPath();
+  ctx.moveTo(W, H * 0.15);
+  ctx.lineTo(v.x + W * 0.02, v.y - H * 0.02);
+  ctx.lineTo(v.x + W * 0.02, v.y + H * 0.02);
+  ctx.lineTo(W, H * 0.85);
+  ctx.closePath();
+  const rightWall = ctx.createLinearGradient(W, 0, v.x, 0);
+  rightWall.addColorStop(0, '#1a1a2e');
+  rightWall.addColorStop(1, '#0a0a15');
+  ctx.fillStyle = rightWall;
+  ctx.fill();
+
+  // Ceiling
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.15);
+  ctx.lineTo(v.x - W * 0.02, v.y - H * 0.02);
+  ctx.lineTo(v.x + W * 0.02, v.y - H * 0.02);
+  ctx.lineTo(W, H * 0.15);
+  ctx.closePath();
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fill();
+
+  // Perspective lines on walls
+  ctx.strokeStyle = 'rgba(40, 40, 80, 0.3)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const yOff = H * 0.15 + (H * 0.7) * (i / 11);
+    // Left wall lines
+    ctx.beginPath();
+    const lx = lerp(0, v.x - W * 0.02, 0);
+    const ly = lerp(yOff, v.y, 0);
+    ctx.moveTo(0, yOff);
+    ctx.lineTo(v.x - W * 0.02, lerp(v.y - H * 0.02, v.y + H * 0.02, i / 11));
+    ctx.stroke();
+    // Right wall lines
+    ctx.beginPath();
+    ctx.moveTo(W, yOff);
+    ctx.lineTo(v.x + W * 0.02, lerp(v.y - H * 0.02, v.y + H * 0.02, i / 11));
+    ctx.stroke();
+  }
+
+  // Converging track lines on floor
+  ctx.strokeStyle = 'rgba(60, 60, 100, 0.4)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const xOff = W * 0.1 + (W * 0.8) * (i / 4);
+    ctx.beginPath();
+    ctx.moveTo(xOff, H);
+    ctx.lineTo(v.x, v.y + H * 0.02);
+    ctx.stroke();
+  }
+
+  // Floor cross ties
+  for (let d = 0; d < 15; d++) {
+    const depth = d / 15;
+    const perspective = Math.pow(depth, 1.5);
+    const yPos = lerp(H, v.y + H * 0.02, perspective);
+    const halfW = lerp(W * 0.5, W * 0.01, perspective);
+    ctx.strokeStyle = `rgba(50, 50, 80, ${0.3 * (1 - perspective)})`;
+    ctx.lineWidth = lerp(2, 0.5, perspective);
+    ctx.beginPath();
+    ctx.moveTo(v.x - halfW, yPos);
+    ctx.lineTo(v.x + halfW, yPos);
+    ctx.stroke();
+  }
+}
+
+function drawPlatform(t) {
+  const v = vp();
+
+  // Platform surface
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.65);
+  ctx.lineTo(W * 0.35, H * 0.65);
+  ctx.lineTo(v.x - W * 0.05, v.y + H * 0.1);
+  ctx.lineTo(0, v.y + H * 0.1);
+  ctx.closePath();
+  ctx.fillStyle = '#1a1a28';
+  ctx.fill();
+
+  // Right platform
+  ctx.beginPath();
+  ctx.moveTo(W, H * 0.65);
+  ctx.lineTo(W * 0.65, H * 0.65);
+  ctx.lineTo(v.x + W * 0.05, v.y + H * 0.1);
+  ctx.lineTo(W, v.y + H * 0.1);
+  ctx.closePath();
+  ctx.fillStyle = '#1a1a28';
+  ctx.fill();
+
+  // Yellow safety line - left platform
+  ctx.strokeStyle = '#ccaa00';
+  ctx.lineWidth = H * 0.008;
+  ctx.setLineDash([H * 0.02, H * 0.01]);
+  ctx.beginPath();
+  ctx.moveTo(W * 0.35, H * 0.65);
+  ctx.lineTo(v.x - W * 0.05, v.y + H * 0.1);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Yellow safety line - right platform
+  ctx.beginPath();
+  ctx.moveTo(W * 0.65, H * 0.65);
+  ctx.lineTo(v.x + W * 0.05, v.y + H * 0.1);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Safety line glow
+  ctx.shadowColor = '#ccaa00';
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = 'rgba(204, 170, 0, 0.3)';
+  ctx.lineWidth = H * 0.02;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.35, H * 0.65);
+  ctx.lineTo(v.x - W * 0.05, v.y + H * 0.1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W * 0.65, H * 0.65);
+  ctx.lineTo(v.x + W * 0.05, v.y + H * 0.1);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawFluorescentLights(t) {
+  const v = vp();
+  const timeSec = t / 1000;
+
+  for (const light of fluorescentLights) {
+    const flicker = Math.sin(timeSec * light.flickerFreq + light.flickerPhase);
+    const hardFlicker = flicker > 0.3 ? 1 : (flicker > -0.8 ? 0.7 : 0.15);
+    const intensity = light.baseIntensity * hardFlicker;
+
+    const depth = light.x;
+    const perspective = Math.pow(depth, 0.8);
+    const xPos = lerp(W * light.x, v.x, perspective * 0.3);
+    const yPos = lerp(H * 0.16, v.y - H * 0.01, perspective * 0.3);
+    const lightW = lerp(W * 0.06, W * 0.01, perspective * 0.3);
+    const lightH = H * 0.005;
+
+    // Light tube
+    ctx.fillStyle = `rgba(200, 210, 255, ${intensity})`;
+    ctx.fillRect(xPos - lightW / 2, yPos, lightW, lightH);
+
+    // Glow
+    ctx.shadowColor = `rgba(180, 200, 255, ${intensity * 0.8})`;
+    ctx.shadowBlur = 30 * intensity;
+    ctx.fillRect(xPos - lightW / 2, yPos, lightW, lightH);
+    ctx.shadowBlur = 0;
+
+    // Light cone
+    const coneGrad = ctx.createRadialGradient(xPos, yPos + lightH, 0, xPos, yPos + lightH, H * 0.15);
+    coneGrad.addColorStop(0, `rgba(180, 200, 255, ${0.06 * intensity})`);
+    coneGrad.addColorStop(1, 'rgba(180, 200, 255, 0)');
+    ctx.fillStyle = coneGrad;
+    ctx.fillRect(xPos - H * 0.15, yPos, H * 0.3, H * 0.15);
+  }
+}
+
+function drawNeonSigns(t) {
+  const timeSec = t / 1000;
+
+  for (const sign of neonSigns) {
+    const color = CONFIG.neonColors[sign.colorIdx % CONFIG.neonColors.length];
+    const rgb = hexToRgb(color);
+
+    // Flicker effect
+    const flicker1 = Math.sin(timeSec * sign.flickerSpeed + sign.flickerOffset);
+    const flicker2 = Math.sin(timeSec * sign.flickerSpeed * 2.7 + sign.flickerOffset + 1.3);
+    let intensity = 0.7 + 0.3 * flicker1;
+    // Occasional full flicker off
+    if (flicker2 > 0.92) intensity *= 0.1;
+    else if (flicker2 > 0.85) intensity *= 0.4;
+
+    const fontSize = Math.round(H * sign.size);
+    ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+    ctx.textAlign = 'center';
+
+    const x = W * sign.x;
+    const y = H * sign.y;
+
+    // Outer glow
+    ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.8 * intensity})`;
+    ctx.shadowBlur = 25 * intensity;
+    ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity})`;
+    ctx.fillText(sign.text, x, y);
+
+    // Inner bright core
+    ctx.shadowBlur = 8 * intensity;
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * intensity})`;
+    ctx.fillText(sign.text, x, y);
+
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawWetFloorReflections(t) {
+  const timeSec = t / 1000;
+
+  // General wet sheen
+  const sheenGrad = ctx.createLinearGradient(0, H * 0.65, 0, H);
+  sheenGrad.addColorStop(0, 'rgba(100, 120, 180, 0.04)');
+  sheenGrad.addColorStop(0.5, 'rgba(80, 100, 160, 0.06)');
+  sheenGrad.addColorStop(1, 'rgba(60, 80, 140, 0.03)');
+  ctx.fillStyle = sheenGrad;
+  ctx.fillRect(0, H * 0.65, W, H * 0.35);
+
+  // Neon reflections on floor
+  for (const sign of neonSigns) {
+    const color = CONFIG.neonColors[sign.colorIdx % CONFIG.neonColors.length];
+    const rgb = hexToRgb(color);
+    const flicker = 0.7 + 0.3 * Math.sin(timeSec * sign.flickerSpeed + sign.flickerOffset);
+
+    const reflX = W * sign.x;
+    const reflY = H * 0.72 + (H * sign.y - H * 0.3) * 0.4;
+    const reflW = W * 0.08;
+    const reflH = H * 0.06;
+
+    const reflGrad = ctx.createRadialGradient(reflX, reflY, 0, reflX, reflY, reflW);
+    reflGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.08 * flicker})`);
+    reflGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+    ctx.fillStyle = reflGrad;
+    ctx.fillRect(reflX - reflW, reflY - reflH / 2, reflW * 2, reflH);
+  }
+
+  // Ripple effects
+  for (const drop of rainDrops) {
+    const ripple = (Math.sin(timeSec * drop.speed + drop.phase) + 1) / 2;
+    const alpha = 0.03 * (1 - ripple);
+    ctx.strokeStyle = `rgba(150, 170, 220, ${alpha})`;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.arc(W * drop.x, H * drop.y, drop.radius + ripple * 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function drawPassengers(t) {
+  const timeSec = t / 1000;
+
+  for (const p of passengers) {
+    const sway = Math.sin(timeSec * p.swaySpeed + p.sway) * W * 0.003;
+    const x = W * p.x + sway;
+    const baseY = H * 0.64;
+    const h = H * p.height;
+    const w = W * p.width;
+
+    // Shadow silhouette
+    ctx.fillStyle = 'rgba(5, 5, 15, 0.9)';
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(x, baseY - h * 0.4, w * 0.8, h * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Head
+    ctx.beginPath();
+    ctx.arc(x, baseY - h * 0.85, w * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Legs
+    ctx.fillRect(x - w * 0.4, baseY - h * 0.15, w * 0.3, h * 0.15);
+    ctx.fillRect(x + w * 0.1, baseY - h * 0.15, w * 0.3, h * 0.15);
+  }
+}
+
+function drawDigitalBoard(t) {
+  const timeSec = t / 1000;
+  const phase = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+
+  const boardX = W * 0.7;
+  const boardY = H * 0.18;
+  const boardW = W * 0.2;
+  const boardH = H * 0.12;
+
+  // Board background
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(boardX, boardY, boardW, boardH);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boardX, boardY, boardW, boardH);
+
+  // Station name
+  const nameSize = Math.round(H * 0.018);
+  ctx.font = `bold ${nameSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ff6600';
+  ctx.fillText(CONFIG.stationName, boardX + boardW * 0.05, boardY + boardH * 0.3);
+
+  // Next train text - scrolling dots animation
+  const dotPhase = Math.floor(timeSec * 2) % 4;
+  const dots = '.'.repeat(dotPhase);
+  const trainSize = Math.round(H * 0.015);
+  ctx.font = `${trainSize}px 'Courier New', monospace`;
+  ctx.fillStyle = '#00ff88';
+
+  // Simulate countdown
+  const cyclePhase = phase;
+  let displayText = CONFIG.nextTrainText;
+  if (cyclePhase > 0.85) {
+    displayText = 'TRAIN ARRIVING' + dots;
+    ctx.fillStyle = '#ff3333';
+  } else if (cyclePhase > 0.6) {
+    displayText = 'NEXT TRAIN: 1 MIN';
+    ctx.fillStyle = '#ffcc00';
+  }
+
+  ctx.fillText(displayText, boardX + boardW * 0.05, boardY + boardH * 0.6);
+
+  // Time display
+  const timeSize = Math.round(H * 0.013);
+  ctx.font = `${timeSize}px 'Courier New', monospace`;
+  ctx.fillStyle = '#888';
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+  const blink = Math.sin(timeSec * 4) > 0 ? ':' : ' ';
+  ctx.fillText(timeStr.replace(':', blink), boardX + boardW * 0.05, boardY + boardH * 0.85);
+
+  // Scan line effect
+  const scanY = boardY + (timeSec * 30 % boardH);
+  ctx.fillStyle = 'rgba(100, 255, 100, 0.03)';
+  ctx.fillRect(boardX, scanY, boardW, 2);
+}
+
+function drawTrain(t) {
+  const phase = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+  const v = vp();
+  const rgb = hexToRgb(CONFIG.trainColor);
+
+  // Train cycle: 0-0.3 waiting, 0.3-0.5 approaching, 0.5-0.6 stopping, 0.6-0.85 at station, 0.85-1.0 departing
+  let trainProgress = 0;
+  let trainAlpha = 0;
+  let headlightIntensity = 0;
+  let motionBlur = 0;
+  let trainScale = 0;
+
+  if (phase < 0.3) {
+    // No train
+    trainAlpha = 0;
+  } else if (phase < 0.5) {
+    // Approaching - headlights growing
+    const p = (phase - 0.3) / 0.2;
+    headlightIntensity = easeInOut(p);
+    trainAlpha = p * 0.3;
+    trainScale = p * 0.3;
+  } else if (phase < 0.6) {
+    // Arriving with motion blur
+    const p = (phase - 0.5) / 0.1;
+    headlightIntensity = 1 - p * 0.7;
+    trainAlpha = 0.3 + p * 0.7;
+    motionBlur = (1 - p) * 30;
+    trainScale = 0.3 + p * 0.7;
+  } else if (phase < 0.85) {
+    // Stopped at station
+    trainAlpha = 1;
+    trainScale = 1;
+    headlightIntensity = 0.2;
+  } else {
+    // Departing
+    const p = (phase - 0.85) / 0.15;
+    trainAlpha = 1 - easeInOut(p);
+    trainScale = 1;
+    motionBlur = easeInOut(p) * 40;
+    headlightIntensity = 0.2 * (1 - p);
+  }
+
+  if (trainAlpha <= 0) return;
+
+  // Headlights from tunnel
+  if (headlightIntensity > 0) {
+    const hlGrad = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, W * 0.4 * headlightIntensity);
+    hlGrad.addColorStop(0, `rgba(255, 250, 220, ${0.5 * headlightIntensity})`);
+    hlGrad.addColorStop(0.3, `rgba(255, 240, 200, ${0.2 * headlightIntensity})`);
+    hlGrad.addColorStop(1, 'rgba(255, 240, 200, 0)');
+    ctx.fillStyle = hlGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Train body
+  ctx.save();
+  if (motionBlur > 0) {
+    ctx.filter = `blur(${motionBlur}px)`;
+  }
+
+  const trainW = W * 0.28 * trainScale;
+  const trainH = H * 0.22 * trainScale;
+  const trainX = v.x - trainW / 2;
+  const trainY = v.y - trainH * 0.3;
+
+  // Train carriage
+  ctx.globalAlpha = trainAlpha;
+  ctx.fillStyle = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+  // Rounded rect
+  const radius = trainH * 0.1;
+  ctx.beginPath();
+  ctx.moveTo(trainX + radius, trainY);
+  ctx.lineTo(trainX + trainW - radius, trainY);
+  ctx.quadraticCurveTo(trainX + trainW, trainY, trainX + trainW, trainY + radius);
+  ctx.lineTo(trainX + trainW, trainY + trainH - radius);
+  ctx.quadraticCurveTo(trainX + trainW, trainY + trainH, trainX + trainW - radius, trainY + trainH);
+  ctx.lineTo(trainX + radius, trainY + trainH);
+  ctx.quadraticCurveTo(trainX, trainY + trainH, trainX, trainY + trainH - radius);
+  ctx.lineTo(trainX, trainY + radius);
+  ctx.quadraticCurveTo(trainX, trainY, trainX + radius, trainY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Windows
+  const windowCount = 6;
+  const windowPad = trainW * 0.06;
+  const windowW = (trainW - windowPad * 2) / windowCount - windowPad * 0.5;
+  const windowH = trainH * 0.35;
+  const windowY = trainY + trainH * 0.2;
+
+  for (let i = 0; i < windowCount; i++) {
+    const wx = trainX + windowPad + i * (windowW + windowPad * 0.5);
+    // Window glow
+    ctx.fillStyle = `rgba(200, 220, 255, ${0.7 * trainAlpha})`;
+    ctx.fillRect(wx, windowY, windowW, windowH);
+    // Window frame
+    ctx.strokeStyle = `rgba(${Math.min(255, rgb.r + 40)}, ${Math.min(255, rgb.g + 40)}, ${Math.min(255, rgb.b + 40)}, ${trainAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(wx, windowY, windowW, windowH);
+  }
+
+  // Stripe along body
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * trainAlpha})`;
+  ctx.fillRect(trainX, trainY + trainH * 0.7, trainW, trainH * 0.04);
+
+  // Door line
+  ctx.strokeStyle = `rgba(0, 0, 0, ${0.3 * trainAlpha})`;
+  ctx.lineWidth = 2;
+  const doorX = trainX + trainW * 0.48;
+  ctx.beginPath();
+  ctx.moveTo(doorX, trainY + trainH * 0.15);
+  ctx.lineTo(doorX, trainY + trainH * 0.95);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(doorX + trainW * 0.04, trainY + trainH * 0.15);
+  ctx.lineTo(doorX + trainW * 0.04, trainY + trainH * 0.95);
+  ctx.stroke();
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawStationNameSign(t) {
+  const timeSec = t / 1000;
+
+  const signW = W * 0.22;
+  const signH = H * 0.06;
+  const signX = W * 0.5 - signW / 2;
+  const signY = H * 0.12;
+
+  // Sign background
+  ctx.fillStyle = '#111122';
+  ctx.fillRect(signX, signY, signW, signH);
+
+  // Border
+  ctx.strokeStyle = '#444466';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(signX, signY, signW, signH);
+
+  // Station name
+  const fontSize = Math.round(H * 0.025);
+  ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Glow
+  ctx.shadowColor = CONFIG.neonColors[0];
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(CONFIG.stationName, signX + signW / 2, signY + signH / 2);
+  ctx.shadowBlur = 0;
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawAmbientParticles(t) {
+  const timeSec = t / 1000;
+
+  // Dust particles
+  for (let i = 0; i < 25; i++) {
+    const seed = i * 137.5;
+    const px = (Math.sin(seed + timeSec * 0.1) * 0.5 + 0.5) * W;
+    const py = (Math.cos(seed * 0.7 + timeSec * 0.15) * 0.5 + 0.5) * H * 0.7;
+    const alpha = 0.1 + 0.1 * Math.sin(timeSec * 0.5 + seed);
+    const size = 1 + Math.sin(seed) * 0.5;
+
+    ctx.fillStyle = `rgba(180, 190, 220, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawVignette() {
+  // Dark vignette
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.75);
+  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawFrame(t) {
+  ctx.clearRect(0, 0, W, H);
+
+  drawTunnel(t);
+  drawPlatform(t);
+  drawFluorescentLights(t);
+  drawWetFloorReflections(t);
+  drawPassengers(t);
+  drawNeonSigns(t);
+  drawDigitalBoard(t);
+  drawStationNameSign(t);
+  drawTrain(t);
+  drawAmbientParticles(t);
+  drawVignette();
+}
+
+let startTime = null;
+function animate(timestamp) {
+  if (!startTime) startTime = timestamp;
+  const t = timestamp - startTime;
+  drawFrame(t);
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE' && e.data.config) {
+    Object.assign(CONFIG, e.data.config);
+  }
+});
+</script>
+</body>
+</html>

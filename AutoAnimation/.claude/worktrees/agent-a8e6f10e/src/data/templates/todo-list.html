@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo List</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .scene {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle background pattern */
+  .bg-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 2.5vw 2.5vw;
+  }
+
+  .card {
+    width: 80vw;
+    max-height: 88vh;
+    border-radius: 2.5vh;
+    overflow: hidden;
+    position: relative;
+    opacity: 0;
+    transform: translateY(4vh) scale(0.96);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 2vh 6vh rgba(0,0,0,0.12), 0 0.5vh 1.5vh rgba(0,0,0,0.08);
+  }
+  .card.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .card.exit {
+    opacity: 0;
+    transform: translateY(-4vh) scale(0.96);
+  }
+
+  /* Progress bar at very top */
+  .progress-track {
+    width: 100%;
+    height: 0.6vh;
+    background: rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 0 0.3vh 0.3vh 0;
+    transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Card header */
+  .card-header {
+    padding: 2.5vh 3vw 2vh 3vw;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(-1vh);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .card-header.visible { opacity: 1; transform: translateY(0); }
+
+  .header-left { display: flex; flex-direction: column; gap: 0.4vh; }
+  .list-name {
+    font-size: 2.8vh;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #1a1a2e;
+  }
+  .list-date {
+    font-size: 1.3vh;
+    color: #94a3b8;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .counter-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    padding: 0.8vh 1.5vw;
+    border-radius: 2vh;
+    font-size: 1.3vh;
+    font-weight: 700;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.5s, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .counter-badge.visible { opacity: 1; transform: scale(1); }
+  .counter-num {
+    font-size: 1.6vh;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tasks container */
+  .tasks {
+    padding: 0 3vw 2.5vh 3vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1vh;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+    padding: 1.6vh 2vw;
+    background: rgba(0,0,0,0.02);
+    border-radius: 1.2vh;
+    opacity: 0;
+    transform: translateX(-3vw);
+    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1), transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s;
+    position: relative;
+  }
+  .task-item.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .task-item.checked-bg {
+    background: rgba(0,0,0,0.01);
+  }
+
+  /* Priority dot */
+  .priority-dot {
+    width: 1vh;
+    height: 1vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .priority-high { background: #ef4444; box-shadow: 0 0 0.6vh rgba(239,68,68,0.4); }
+  .priority-medium { background: #f59e0b; box-shadow: 0 0 0.6vh rgba(245,158,11,0.3); }
+  .priority-low { background: #22c55e; box-shadow: 0 0 0.6vh rgba(34,197,94,0.3); }
+
+  /* Checkbox */
+  .checkbox {
+    width: 2.4vh;
+    height: 2.4vh;
+    border-radius: 0.6vh;
+    border: 2px solid #cbd5e1;
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.3s, background 0.3s;
+    cursor: default;
+  }
+  .checkbox.checked {
+    border-color: transparent;
+  }
+  .checkbox .check-svg {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.3s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .checkbox.checked .check-svg {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Task text */
+  .task-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3vh;
+    min-width: 0;
+  }
+  .task-text {
+    font-size: 1.6vh;
+    font-weight: 600;
+    color: #1e293b;
+    position: relative;
+    display: inline-block;
+    transition: color 0.4s;
+  }
+  .task-text.struck { color: #94a3b8; }
+  .task-text .strike-line {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 2px;
+    background: #94a3b8;
+    width: 0%;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .task-text.struck .strike-line { width: 100%; }
+
+  /* Category tag */
+  .category-tag {
+    display: inline-block;
+    padding: 0.2vh 0.8vw;
+    border-radius: 0.6vh;
+    font-size: 1vh;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    width: fit-content;
+  }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="bg-dots"></div>
+  <div class="card" id="card">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="card-header" id="cardHeader">
+      <div class="header-left">
+        <div class="list-name" id="listName"></div>
+        <div class="list-date" id="listDate"></div>
+      </div>
+      <div class="counter-badge" id="counterBadge">
+        <span class="counter-num" id="counterNum">0</span>
+        <span id="counterLabel">of 0 completed</span>
+      </div>
+    </div>
+    <div class="tasks" id="tasksContainer"></div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    listName: 'Sprint Tasks',
+    date: 'February 20, 2026',
+    bgColor: '#f1f5f9',
+    cardBg: '#ffffff',
+    accentColor: '#6366f1',
+    cycleDuration: 14000,
+    tasks: [
+      { text: 'Design new landing page mockup', priority: 'high', category: 'Design', completed: true },
+      { text: 'Review pull request #247', priority: 'medium', category: 'Code Review', completed: true },
+      { text: 'Update API documentation', priority: 'low', category: 'Docs', completed: true },
+      { text: 'Fix authentication bug on mobile', priority: 'high', category: 'Bug Fix', completed: false },
+      { text: 'Set up CI/CD pipeline', priority: 'medium', category: 'DevOps', completed: false },
+      { text: 'Write unit tests for payment module', priority: 'high', category: 'Testing', completed: false },
+      { text: 'Optimize database queries', priority: 'medium', category: '', completed: false },
+      { text: 'Prepare sprint retrospective notes', priority: 'low', category: '', completed: false }
+    ]
+  };
+
+  // --- DOM Refs ---
+  const scene = document.getElementById('scene');
+  const card = document.getElementById('card');
+  const progressFill = document.getElementById('progressFill');
+  const cardHeader = document.getElementById('cardHeader');
+  const listNameEl = document.getElementById('listName');
+  const listDateEl = document.getElementById('listDate');
+  const counterBadge = document.getElementById('counterBadge');
+  const counterNum = document.getElementById('counterNum');
+  const counterLabel = document.getElementById('counterLabel');
+  const tasksContainer = document.getElementById('tasksContainer');
+
+  // --- Color helpers ---
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return { r, g, b };
+  }
+
+  function getCategoryColor(category) {
+    if (!category) return null;
+    const cats = {
+      'Design': { bg: '#ede9fe', text: '#7c3aed' },
+      'Code Review': { bg: '#dbeafe', text: '#2563eb' },
+      'Docs': { bg: '#d1fae5', text: '#059669' },
+      'Bug Fix': { bg: '#fee2e2', text: '#dc2626' },
+      'DevOps': { bg: '#fef3c7', text: '#d97706' },
+      'Testing': { bg: '#e0e7ff', text: '#4338ca' }
+    };
+    if (cats[category]) return cats[category];
+    // Generate a consistent color from the string
+    let hash = 0;
+    for (let i = 0; i < category.length; i++) hash = category.charCodeAt(i) + ((hash << 5) - hash);
+    const hue = Math.abs(hash) % 360;
+    return { bg: `hsl(${hue}, 60%, 92%)`, text: `hsl(${hue}, 70%, 35%)` };
+  }
+
+  // --- Apply config colors ---
+  function applyColors() {
+    scene.style.background = CONFIG.bgColor;
+    card.style.background = CONFIG.cardBg;
+    progressFill.style.background = CONFIG.accentColor;
+    counterBadge.style.background = CONFIG.accentColor;
+  }
+
+  // --- Build task list ---
+  function buildTasks() {
+    tasksContainer.innerHTML = '';
+    listNameEl.textContent = CONFIG.listName;
+    listDateEl.textContent = CONFIG.date;
+
+    const accent = CONFIG.accentColor;
+
+    CONFIG.tasks.forEach((task, i) => {
+      const item = document.createElement('div');
+      item.className = 'task-item';
+      item.dataset.index = i;
+
+      const priorityClass = task.priority === 'high' ? 'priority-high' :
+                            task.priority === 'medium' ? 'priority-medium' : 'priority-low';
+
+      let categoryHTML = '';
+      if (task.category) {
+        const catColor = getCategoryColor(task.category);
+        categoryHTML = `<span class="category-tag" style="background:${catColor.bg};color:${catColor.text};">${task.category}</span>`;
+      }
+
+      item.innerHTML = `
+        <div class="priority-dot ${priorityClass}"></div>
+        <div class="checkbox" data-idx="${i}">
+          <svg class="check-svg" viewBox="0 0 24 24" fill="none">
+            <rect width="24" height="24" rx="6" fill="${accent}"/>
+            <path d="M7 12.5L10.5 16L17 8.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="task-content">
+          <span class="task-text">${task.text}<span class="strike-line"></span></span>
+          ${categoryHTML}
+        </div>
+      `;
+      tasksContainer.appendChild(item);
+    });
+  }
+
+  // --- Animation state ---
+  let cycleTimer = null;
+  let animTimers = [];
+
+  function clearTimers() {
+    if (cycleTimer) clearTimeout(cycleTimer);
+    animTimers.forEach(t => clearTimeout(t));
+    animTimers = [];
+  }
+
+  function scheduleTimer(fn, delay) {
+    const t = setTimeout(fn, delay);
+    animTimers.push(t);
+    return t;
+  }
+
+  // --- Counter animation ---
+  function animateCounter(target, total, duration) {
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const current = Math.round(ease * target);
+      counterNum.textContent = current;
+      counterLabel.textContent = `of ${total} completed`;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // --- Progress bar animation ---
+  function animateProgress(targetPct) {
+    progressFill.style.width = targetPct + '%';
+  }
+
+  // --- Run one cycle ---
+  function runCycle() {
+    clearTimers();
+    applyColors();
+    buildTasks();
+
+    const items = tasksContainer.querySelectorAll('.task-item');
+    const totalTasks = CONFIG.tasks.length;
+    const completedTasks = CONFIG.tasks.filter(t => t.completed).length;
+
+    // Reset states
+    card.classList.remove('visible', 'exit');
+    cardHeader.classList.remove('visible');
+    counterBadge.classList.remove('visible');
+    progressFill.style.width = '0%';
+    progressFill.style.transition = 'none';
+    counterNum.textContent = '0';
+
+    // Phase 1: Card enters (0ms)
+    scheduleTimer(() => {
+      card.classList.add('visible');
+    }, 100);
+
+    // Phase 2: Header enters (400ms)
+    scheduleTimer(() => {
+      cardHeader.classList.add('visible');
+    }, 500);
+
+    // Phase 3: Counter badge enters (700ms)
+    scheduleTimer(() => {
+      counterBadge.classList.add('visible');
+    }, 800);
+
+    // Phase 4: Tasks slide in one by one (starting at 900ms)
+    const taskEntryStart = 1000;
+    const taskEntryStagger = 200;
+
+    items.forEach((item, i) => {
+      scheduleTimer(() => {
+        item.classList.add('visible');
+      }, taskEntryStart + i * taskEntryStagger);
+    });
+
+    // Phase 5: After all tasks are visible, start checking off completed ones
+    const allTasksInTime = taskEntryStart + items.length * taskEntryStagger + 300;
+    const checkStagger = 400;
+
+    let checkedSoFar = 0;
+
+    CONFIG.tasks.forEach((task, i) => {
+      if (task.completed) {
+        const delay = allTasksInTime + checkedSoFar * checkStagger;
+        checkedSoFar++;
+        const currentChecked = checkedSoFar;
+
+        scheduleTimer(() => {
+          const item = items[i];
+          if (!item) return;
+
+          // Animate checkbox
+          const checkbox = item.querySelector('.checkbox');
+          checkbox.classList.add('checked');
+
+          // Animate strikethrough
+          const taskText = item.querySelector('.task-text');
+          scheduleTimer(() => {
+            taskText.classList.add('struck');
+            item.classList.add('checked-bg');
+          }, 150);
+
+          // Animate progress bar and counter
+          progressFill.style.transition = 'width 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+          animateProgress((currentChecked / totalTasks) * 100);
+          animateCounter(currentChecked, totalTasks, 500);
+        }, delay);
+      }
+    });
+
+    // Phase 6: Hold for a moment after all checks done
+    const allCheckedTime = allTasksInTime + completedTasks * checkStagger + 800;
+
+    // Phase 7: Exit animation
+    const exitStart = Math.max(allCheckedTime + 2500, CONFIG.cycleDuration - 1500);
+
+    scheduleTimer(() => {
+      // Fade out tasks in reverse
+      const reversedItems = Array.from(items).reverse();
+      reversedItems.forEach((item, i) => {
+        scheduleTimer(() => {
+          item.style.opacity = '0';
+          item.style.transform = 'translateX(3vw)';
+        }, i * 60);
+      });
+
+      // Card exit
+      scheduleTimer(() => {
+        card.classList.remove('visible');
+        card.classList.add('exit');
+      }, items.length * 60 + 200);
+
+      // Start next cycle
+      scheduleTimer(() => {
+        card.classList.remove('exit');
+        // Reset item styles
+        items.forEach(item => {
+          item.classList.remove('visible', 'checked-bg');
+          item.style.opacity = '';
+          item.style.transform = '';
+          const cb = item.querySelector('.checkbox');
+          if (cb) cb.classList.remove('checked');
+          const tt = item.querySelector('.task-text');
+          if (tt) tt.classList.remove('struck');
+        });
+        runCycle();
+      }, items.length * 60 + 1200);
+    }, exitStart);
+  }
+
+  // --- PostMessage bridge for live CONFIG updates ---
+  window.addEventListener('message', (e) => {
+    if (e.data && typeof e.data === 'object') {
+      if (e.data.type === 'CONFIG_UPDATE' && e.data.payload) {
+        Object.assign(CONFIG, e.data.payload);
+        clearTimers();
+        runCycle();
+      }
+    }
+  });
+
+  // --- Start ---
+  runCycle();
+</script>
+</body>
+</html>

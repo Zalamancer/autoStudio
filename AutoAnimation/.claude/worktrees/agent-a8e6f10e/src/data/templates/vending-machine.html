@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vending Machine</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; font-family: 'Courier New', monospace; }
+.machine { width: 45vh; height: 82vh; background: linear-gradient(180deg, #cc2222, #991111); border-radius: 2vh; padding: 2vh; position: relative; border: 3px solid #881111; box-shadow: 0 4vh 8vh rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.1); }
+.brand { text-align: center; font-size: 3vh; font-weight: 900; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.3); letter-spacing: 0.15em; margin-bottom: 1.5vh; }
+.display-window { background: #111; border-radius: 1vh; padding: 1.5vh; margin-bottom: 1.5vh; height: 52vh; position: relative; overflow: hidden; border: 2px solid #333; }
+.shelves { display: flex; flex-direction: column; gap: 0.5vh; height: 100%; }
+.shelf { display: flex; gap: 0.8vh; flex: 1; padding: 0.5vh; border-bottom: 2px solid #333; align-items: flex-end; }
+.item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 3vh; transition: all 0.3s; position: relative; }
+.item.selected { transform: scale(1.1); }
+.item.dispensing { animation: dropItem 0.8s ease-in forwards; }
+@keyframes dropItem { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(30vh); opacity: 0; } }
+.item-price { font-size: 1vh; color: #0f0; margin-top: 0.3vh; }
+.item-code { font-size: 0.9vh; color: #888; }
+.led-display { background: #001100; border-radius: 0.5vh; padding: 1vh 1.5vh; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1vh; border: 1px solid #003300; }
+.led-text { font-size: 2vh; color: #0f0; font-family: 'Courier New', monospace; text-shadow: 0 0 8px #0f0; letter-spacing: 0.1em; }
+.led-price { font-size: 1.8vh; color: #ff0; text-shadow: 0 0 8px #ff0; }
+.controls { display: flex; gap: 1vh; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5vh; flex: 1; }
+.key { background: #ddd; border-radius: 0.5vh; display: flex; align-items: center; justify-content: center; font-size: 1.5vh; font-weight: 700; color: #333; height: 3.5vh; }
+.coin-slot { width: 4vh; height: 100%; background: #222; border-radius: 0.5vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5vh; border: 1px solid #444; }
+.coin-slit { width: 2vh; height: 0.4vh; background: #000; border-radius: 0.2vh; border: 1px solid #555; }
+.coin-label { font-size: 0.8vh; color: #666; writing-mode: vertical-rl; letter-spacing: 0.1em; }
+.dispense-tray { background: #222; border-radius: 0 0 1vh 1vh; height: 3vh; margin-top: 1vh; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 1vh; color: #555; }
+.falling-item { position: absolute; font-size: 4vh; opacity: 0; animation: fall 1s ease-in forwards; z-index: 5; }
+@keyframes fall { 0% { opacity: 1; transform: translateY(0) rotate(0deg); } 100% { opacity: 0; transform: translateY(25vh) rotate(45deg); } }
+</style>
+</head>
+<body>
+<div class="machine" id="machine">
+  <div class="brand" id="brand">SNACK-O-MAT</div>
+  <div class="display-window" id="displayWindow">
+    <div class="shelves" id="shelves"></div>
+  </div>
+  <div class="led-display">
+    <div class="led-text" id="ledText">INSERT COIN</div>
+    <div class="led-price" id="ledPrice">$0.00</div>
+  </div>
+  <div class="controls">
+    <div class="keypad" id="keypad"></div>
+    <div class="coin-slot"><div class="coin-label">COINS</div><div class="coin-slit"></div><div class="coin-slit"></div></div>
+  </div>
+  <div class="dispense-tray">&#9660; COLLECT ITEM &#9660;</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  brandName: 'SNACK-O-MAT',
+  items: [
+    ['\uD83C\uDF6B','$1.50','A1'], ['\uD83C\uDF6A','$1.25','A2'], ['\uD83C\uDF7F','$2.00','A3'], ['\uD83E\uDD64','$1.75','A4'],
+    ['\uD83C\uDF4E','$1.00','B1'], ['\uD83C\uDF6C','$0.75','B2'], ['\uD83E\uDDC3','$2.50','B3'], ['\uD83C\uDF69','$1.50','B4'],
+    ['\uD83C\uDF70','$3.00','C1'], ['\uD83C\uDF63','$2.75','C2'], ['\uD83E\uDDC1','$1.25','C3'], ['\uD83C\uDF4C','$0.50','C4']
+  ],
+  bgColor: '#1a1a2e',
+  machineColor: '#cc2222',
+  cycleDuration: 5000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.getElementById('brand').textContent = CONFIG.brandName;
+
+var shelvesEl = document.getElementById('shelves');
+var rows = 3, cols = 4;
+for (var r = 0; r < rows; r++) {
+  var shelf = document.createElement('div'); shelf.className = 'shelf';
+  for (var c = 0; c < cols; c++) {
+    var idx = r*cols + c;
+    var item = CONFIG.items[idx] || ['\u2753','$0','?'];
+    var div = document.createElement('div'); div.className = 'item'; div.id = 'item'+idx;
+    div.innerHTML = '<div>'+item[0]+'</div><div class="item-price">'+item[1]+'</div><div class="item-code">'+item[2]+'</div>';
+    shelf.appendChild(div);
+  }
+  shelvesEl.appendChild(shelf);
+}
+
+var keypadEl = document.getElementById('keypad');
+['A','B','C','1','2','3','4','OK','CLR'].forEach(function(k) {
+  var key = document.createElement('div'); key.className = 'key'; key.textContent = k;
+  keypadEl.appendChild(key);
+});
+
+function vendItem() {
+  var idx = Math.floor(Math.random()*CONFIG.items.length);
+  var item = CONFIG.items[idx];
+  var el = document.getElementById('item'+idx);
+
+  document.getElementById('ledText').textContent = 'SELECT: ' + item[2];
+  document.getElementById('ledPrice').textContent = item[1];
+
+  setTimeout(function() {
+    document.getElementById('ledText').textContent = 'VENDING...';
+    el.classList.add('selected');
+  }, 1000);
+
+  setTimeout(function() {
+    el.classList.remove('selected');
+    // Create falling item
+    var falling = document.createElement('div');
+    falling.className = 'falling-item';
+    falling.textContent = item[0];
+    falling.style.left = el.getBoundingClientRect().left - document.getElementById('displayWindow').getBoundingClientRect().left + 'px';
+    falling.style.top = el.getBoundingClientRect().top - document.getElementById('displayWindow').getBoundingClientRect().top + 'px';
+    document.getElementById('displayWindow').appendChild(falling);
+    setTimeout(function(){ falling.remove(); }, 1000);
+  }, 2000);
+
+  setTimeout(function() {
+    document.getElementById('ledText').textContent = 'ENJOY!';
+    document.getElementById('ledPrice').textContent = '$0.00';
+  }, 3000);
+
+  setTimeout(function() {
+    document.getElementById('ledText').textContent = 'INSERT COIN';
+  }, 4500);
+}
+
+setInterval(vendItem, CONFIG.cycleDuration);
+setTimeout(vendItem, 500);
+</script>
+</body>
+</html>

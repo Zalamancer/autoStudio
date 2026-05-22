@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Startup Pitch</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.glow { position: absolute; width: 50vw; height: 50vw; border-radius: 50%; filter: blur(120px); pointer-events: none; }
+.glow1 { top: -20vw; right: -10vw; background: rgba(99,102,241,0.12); }
+.glow2 { bottom: -20vw; left: -10vw; background: rgba(236,72,153,0.08); }
+.round-badge { font-size: 1.1vh; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 0.6vh 1.5vw; border-radius: 2vh; margin-bottom: 2vh; opacity: 0; transition: opacity 0.5s; }
+.round-badge.visible { opacity: 1; }
+.company-name { font-size: 6vh; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #818cf8, #e879f9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 1vh; opacity: 0; transform: translateY(20px); transition: all 0.8s cubic-bezier(0.22,1,0.36,1); }
+.company-name.visible { opacity: 1; transform: translateY(0); }
+.tagline { font-size: 2vh; color: rgba(255,255,255,0.5); margin-bottom: 5vh; opacity: 0; transition: opacity 0.6s; }
+.tagline.visible { opacity: 1; }
+.metrics-row { display: flex; gap: 4vw; margin-bottom: 5vh; }
+.metric { text-align: center; opacity: 0; transform: translateY(15px); transition: all 0.6s cubic-bezier(0.22,1,0.36,1); }
+.metric.visible { opacity: 1; transform: translateY(0); }
+.metric-value { font-size: 4vh; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.metric-label { font-size: 1.2vh; color: rgba(255,255,255,0.3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.5vh; }
+.investors { display: flex; gap: 3vw; align-items: center; opacity: 0; transition: opacity 0.6s; }
+.investors.visible { opacity: 1; }
+.investor { width: 5vh; height: 5vh; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.8vh; font-weight: 700; color: rgba(255,255,255,0.4); }
+.investors-label { font-size: 1.2vh; color: rgba(255,255,255,0.25); margin-left: 1vw; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="glow glow1"></div>
+  <div class="glow glow2"></div>
+  <div class="round-badge" id="badge">SERIES A · $12M RAISED</div>
+  <div class="company-name" id="companyName">NexaFlow</div>
+  <div class="tagline" id="tagline">AI-powered workflow automation for modern teams</div>
+  <div class="metrics-row" id="metricsRow"></div>
+  <div class="investors" id="investors"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  companyName: 'NexaFlow',
+  tagline: 'AI-powered workflow automation for modern teams',
+  roundBadge: 'SERIES A · $12M RAISED',
+  metrics: [
+    { value: '10K+', label: 'Active Users' },
+    { value: '$2.4M', label: 'ARR' },
+    { value: '340%', label: 'YoY Growth' },
+    { value: '96%', label: 'Retention' },
+  ],
+  investorInitials: ['YC', 'a16z', 'SV', 'GV'],
+  investorsLabel: 'Backed by top-tier investors',
+  cycleDuration: 12000,
+  bgColor: '#0a0a14',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('companyName').textContent = CONFIG.companyName;
+document.getElementById('tagline').textContent = CONFIG.tagline;
+document.getElementById('badge').textContent = CONFIG.roundBadge;
+
+var metricsRow = document.getElementById('metricsRow');
+CONFIG.metrics.forEach(function(m) {
+  var el = document.createElement('div');
+  el.className = 'metric';
+  el.innerHTML = '<div class="metric-value">' + m.value + '</div><div class="metric-label">' + m.label + '</div>';
+  metricsRow.appendChild(el);
+});
+
+var investorsEl = document.getElementById('investors');
+CONFIG.investorInitials.forEach(function(init) {
+  var el = document.createElement('div');
+  el.className = 'investor';
+  el.textContent = init;
+  investorsEl.appendChild(el);
+});
+var label = document.createElement('div');
+label.className = 'investors-label';
+label.textContent = CONFIG.investorsLabel;
+investorsEl.appendChild(label);
+
+function animateCounter(el, target) {
+  var isPercent = target.includes('%');
+  var isPrefix = target.startsWith('$');
+  var isSuffix = target.includes('+') || target.includes('K') || target.includes('M');
+  var numStr = target.replace(/[^0-9.]/g, '');
+  var num = parseFloat(numStr);
+  var suffix = target.replace(/[0-9.$]/g, '');
+  var prefix = isPrefix ? '$' : '';
+  var steps = 30;
+  var step = 0;
+  var interval = setInterval(function() {
+    step++;
+    var progress = step / steps;
+    var current = (num * progress).toFixed(num % 1 !== 0 ? 1 : 0);
+    el.textContent = prefix + current + suffix;
+    if (step >= steps) { clearInterval(interval); el.textContent = target; }
+  }, 30);
+}
+
+function runCycle() {
+  var badge = document.getElementById('badge');
+  var companyName = document.getElementById('companyName');
+  var tagline = document.getElementById('tagline');
+  var metrics = document.querySelectorAll('.metric');
+  var investors = document.getElementById('investors');
+
+  [badge, companyName, tagline].forEach(function(el) { el.classList.remove('visible'); });
+  metrics.forEach(function(m) { m.classList.remove('visible'); });
+  investors.classList.remove('visible');
+
+  setTimeout(function() { badge.classList.add('visible'); }, 300);
+  setTimeout(function() { companyName.classList.add('visible'); }, 600);
+  setTimeout(function() { tagline.classList.add('visible'); }, 1000);
+  metrics.forEach(function(m, i) {
+    setTimeout(function() {
+      m.classList.add('visible');
+      animateCounter(m.querySelector('.metric-value'), CONFIG.metrics[i].value);
+    }, 1800 + i * 250);
+  });
+  setTimeout(function() { investors.classList.add('visible'); }, 3500);
+
+  setTimeout(function() {
+    [badge, companyName, tagline].forEach(function(el) { el.classList.remove('visible'); });
+    metrics.forEach(function(m) { m.classList.remove('visible'); });
+    investors.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

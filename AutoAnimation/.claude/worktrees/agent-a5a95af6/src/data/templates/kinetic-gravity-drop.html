@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gravity Drop - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Impact, 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  }
+  #stage {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    perspective: 1200px;
+  }
+  .word {
+    position: absolute;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    will-change: transform, opacity, text-shadow;
+    opacity: 0;
+  }
+  .dust-particle {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform, opacity;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+  }
+  #floor-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    transform-origin: center bottom;
+    transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="floor-container"></div>
+</div>
+
+<script>
+const CONFIG = {
+  words: ['RISE', 'ABOVE', 'THE', 'NOISE', 'STAY', 'FOCUSED'],
+  colors: ['#FF6B35', '#FFFFFF', '#A8A8A8', '#FF6B35', '#FFFFFF', '#FFE066'],
+  bgColor: '#1A1A2E',
+  gravity: 0.8,
+  bounceDecay: 0.6,
+  dropStagger: 400,
+  cycleDuration: 9000,
+  fontSizes: [120, 80, 50, 140, 60, 100],
+};
+
+// ── State ──────────────────────────────────────────────────────────
+const stage = document.getElementById('stage');
+const floorContainer = document.getElementById('floor-container');
+const wordElements = [];
+const wordPhysics = [];
+const dustParticles = [];
+let animFrameId = null;
+let cycleTimer = null;
+let stageW = window.innerWidth;
+let stageH = window.innerHeight;
+
+const FLOOR_Y = stageH * 0.78;
+const MAX_BOUNCES = 3;
+
+// ── Utility ────────────────────────────────────────────────────────
+function lerp(a, b, t) { return a + (b - a) * t; }
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function easeOutQuad(t) { return t * (2 - t); }
+function easeInQuad(t) { return t * t; }
+
+// ── Dust Particle System ───────────────────────────────────────────
+function spawnDust(x, y, color, intensity) {
+  const count = Math.floor(6 + intensity * 8);
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'dust-particle';
+    const size = rand(2, 6 + intensity * 3);
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.background = color;
+    el.style.opacity = '0';
+    floorContainer.appendChild(el);
+
+    dustParticles.push({
+      el,
+      x: x + rand(-40, 40),
+      y: y,
+      vx: rand(-3, 3) * (1 + intensity),
+      vy: rand(-4, -1) * (1 + intensity),
+      life: 0,
+      maxLife: rand(20, 45),
+      size,
+      gravity: 0.12,
+    });
+  }
+}
+
+function updateDust() {
+  for (let i = dustParticles.length - 1; i >= 0; i--) {
+    const p = dustParticles[i];
+    p.life++;
+    p.vy += p.gravity;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.96;
+
+    const progress = p.life / p.maxLife;
+    const alpha = progress < 0.2
+      ? easeOutQuad(progress / 0.2) * 0.7
+      : (1 - easeInQuad((progress - 0.2) / 0.8)) * 0.7;
+
+    p.el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    p.el.style.opacity = Math.max(0, alpha);
+
+    if (p.life >= p.maxLife) {
+      p.el.remove();
+      dustParticles.splice(i, 1);
+    }
+  }
+}
+
+// ── Word Physics Object ────────────────────────────────────────────
+function createWordPhysics(index) {
+  const fontSize = Math.min(CONFIG.fontSizes[index] || 80, stageW * 0.2, stageH * 0.1);
+  const el = wordElements[index];
+  const elWidth = el.offsetWidth;
+  const totalWords = CONFIG.words.length;
+
+  // Distribute words horizontally with some spacing
+  const sectionWidth = stageW / totalWords;
+  const targetX = sectionWidth * index + (sectionWidth - elWidth) / 2;
+
+  // Target Y is the floor minus the word height
+  const targetY = FLOOR_Y - fontSize * 0.9;
+
+  return {
+    index,
+    el,
+    x: targetX,
+    y: -fontSize - rand(20, 120),
+    targetY,
+    vy: 0,
+    vx: 0,
+    gravity: CONFIG.gravity * (0.85 + (fontSize / 140) * 0.3),
+    bounceDecay: CONFIG.bounceDecay,
+    bounces: 0,
+    settled: false,
+    dropped: false,
+    dropTime: 0,
+    fontSize,
+    color: CONFIG.colors[index] || '#FFFFFF',
+    rotation: 0,
+    rotationVel: 0,
+    squashX: 1,
+    squashY: 1,
+    squashVel: 0,
+    shadowBlur: 0,
+    shadowY: 0,
+  };
+}
+
+// ── Build Word Elements ────────────────────────────────────────────
+function buildWords() {
+  // Clear previous
+  wordElements.length = 0;
+  wordPhysics.length = 0;
+  floorContainer.innerHTML = '';
+
+  CONFIG.words.forEach((word, i) => {
+    const el = document.createElement('div');
+    el.className = 'word';
+    el.textContent = word;
+    el.style.fontSize = Math.min(CONFIG.fontSizes[i] || 80, stageW * 0.2, stageH * 0.1) + 'px';
+    el.style.color = CONFIG.colors[i] || '#FFFFFF';
+    el.style.lineHeight = '1';
+    floorContainer.appendChild(el);
+    wordElements.push(el);
+  });
+}
+
+// ── Initialize Physics ─────────────────────────────────────────────
+function initPhysics() {
+  wordPhysics.length = 0;
+  CONFIG.words.forEach((_, i) => {
+    wordPhysics.push(createWordPhysics(i));
+  });
+}
+
+// ── Render Single Word ─────────────────────────────────────────────
+function renderWord(wp) {
+  if (!wp.dropped) {
+    wp.el.style.opacity = '0';
+    return;
+  }
+
+  // Shadow grows as word falls (simulating height perspective)
+  const distanceFromFloor = Math.max(0, wp.targetY - wp.y);
+  const normalizedDist = clamp(distanceFromFloor / (stageH * 0.7), 0, 1);
+  wp.shadowBlur = lerp(25, 2, normalizedDist);
+  wp.shadowY = lerp(20, 4, normalizedDist);
+  const shadowAlpha = lerp(0.5, 0.15, normalizedDist);
+
+  // Scale grows slightly as word approaches (perspective)
+  const perspScale = lerp(1, 0.85, normalizedDist);
+
+  wp.el.style.opacity = '1';
+  wp.el.style.transform =
+    `translate(${wp.x}px, ${wp.y}px)` +
+    ` rotate(${wp.rotation}deg)` +
+    ` scale(${wp.squashX * perspScale}, ${wp.squashY * perspScale})`;
+  wp.el.style.textShadow =
+    `0 ${wp.shadowY}px ${wp.shadowBlur}px rgba(0,0,0,${shadowAlpha}),` +
+    `0 0 ${wp.shadowBlur * 0.4}px rgba(0,0,0,${shadowAlpha * 0.5})`;
+}
+
+// ── Physics Step ───────────────────────────────────────────────────
+function physicsStep(wp) {
+  if (!wp.dropped || wp.settled) return;
+
+  // Apply gravity
+  wp.vy += wp.gravity;
+  wp.y += wp.vy;
+
+  // Slight wobble rotation during fall
+  if (wp.bounces === 0) {
+    wp.rotationVel = Math.sin(wp.y * 0.02) * 0.3;
+    wp.rotation += wp.rotationVel;
+  }
+
+  // Squash & stretch recovery
+  wp.squashX = lerp(wp.squashX, 1, 0.15);
+  wp.squashY = lerp(wp.squashY, 1, 0.15);
+
+  // Collision with floor
+  if (wp.y >= wp.targetY) {
+    wp.y = wp.targetY;
+    wp.bounces++;
+
+    const impactSpeed = Math.abs(wp.vy);
+    const impactIntensity = clamp(impactSpeed / 20, 0.1, 1);
+
+    // Squash on impact
+    const squashAmount = 0.15 + impactIntensity * 0.25;
+    wp.squashY = 1 - squashAmount;
+    wp.squashX = 1 + squashAmount * 0.6;
+
+    // Spawn dust on impact
+    const dustX = wp.x + (wp.el.offsetWidth / 2);
+    const dustY = FLOOR_Y;
+    spawnDust(dustX, dustY, wp.color, impactIntensity * 0.6);
+
+    // Slight random horizontal drift on bounce
+    wp.vx = rand(-1.5, 1.5) * impactIntensity;
+
+    // Reduce rotation on bounce
+    wp.rotation *= 0.3;
+    wp.rotationVel *= 0.2;
+
+    if (wp.bounces >= MAX_BOUNCES) {
+      // Settle
+      wp.vy = 0;
+      wp.vx = 0;
+      wp.settled = true;
+      wp.rotation = 0;
+    } else {
+      // Bounce up with decay
+      const decayFactor = Math.pow(wp.bounceDecay, wp.bounces);
+      wp.vy = -impactSpeed * decayFactor;
+
+      // Add slight rotation on bounce
+      wp.rotationVel = rand(-2, 2) * decayFactor;
+    }
+  }
+
+  // Apply horizontal velocity (friction)
+  wp.x += wp.vx;
+  wp.vx *= 0.92;
+
+  // Rotation during bounce arcs
+  if (!wp.settled && wp.bounces > 0) {
+    wp.rotation += wp.rotationVel;
+    wp.rotationVel *= 0.97;
+  }
+}
+
+// ── Floor Tilt & Slide Off ─────────────────────────────────────────
+let tilting = false;
+let slidePhase = false;
+let slideStartTime = 0;
+const SLIDE_DURATION = 1800;
+
+function startTilt() {
+  tilting = true;
+  slidePhase = true;
+  slideStartTime = performance.now();
+
+  // Apply CSS tilt to the floor container
+  floorContainer.style.transition = 'transform 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
+  floorContainer.style.transformOrigin = 'center bottom';
+  floorContainer.style.transform = 'perspective(1200px) rotateX(8deg) rotateZ(12deg)';
+
+  // Unsettled the words so they slide
+  wordPhysics.forEach(wp => {
+    wp.settled = false;
+  });
+}
+
+function updateSlide(now) {
+  if (!slidePhase) return;
+
+  const elapsed = now - slideStartTime;
+  const progress = clamp(elapsed / SLIDE_DURATION, 0, 1);
+
+  // Accelerating slide to the right and down
+  const slideAccel = easeInQuad(progress);
+
+  wordPhysics.forEach((wp, i) => {
+    // Stagger the slide slightly per word
+    const wordProgress = clamp((progress - i * 0.03) * 1.2, 0, 1);
+    const wordAccel = easeInQuad(wordProgress);
+
+    wp.x += (3 + i * 0.8) * wordAccel;
+    wp.y += (1.5 + i * 0.3) * wordAccel;
+    wp.rotation += (0.5 + i * 0.15) * wordAccel;
+
+    // Fade out as they slide off
+    const fadeProgress = clamp((wordProgress - 0.3) / 0.7, 0, 1);
+    wp.el.style.opacity = String(1 - easeInQuad(fadeProgress));
+  });
+
+  if (progress >= 1) {
+    slidePhase = false;
+  }
+}
+
+// ── Main Animation Loop ────────────────────────────────────────────
+let loopStartTime = 0;
+let dropsTriggered = 0;
+let allSettled = false;
+let settledTime = 0;
+const SETTLE_WAIT = 1200;
+
+function animate(now) {
+  animFrameId = requestAnimationFrame(animate);
+
+  if (loopStartTime === 0) loopStartTime = now;
+  const elapsed = now - loopStartTime;
+
+  // Stagger drops
+  const expectedDrops = Math.min(
+    CONFIG.words.length,
+    Math.floor(elapsed / CONFIG.dropStagger) + 1
+  );
+
+  while (dropsTriggered < expectedDrops) {
+    wordPhysics[dropsTriggered].dropped = true;
+    dropsTriggered++;
+  }
+
+  // Physics + render for each word
+  if (!slidePhase) {
+    wordPhysics.forEach(wp => {
+      physicsStep(wp);
+      renderWord(wp);
+    });
+  } else {
+    updateSlide(now);
+    wordPhysics.forEach(wp => renderWord(wp));
+  }
+
+  // Update dust
+  updateDust();
+
+  // Check if all settled
+  if (!allSettled && !tilting) {
+    const nowSettled = wordPhysics.every(wp => wp.settled);
+    if (nowSettled) {
+      if (settledTime === 0) {
+        settledTime = now;
+      } else if (now - settledTime > SETTLE_WAIT) {
+        allSettled = true;
+        startTilt();
+      }
+    }
+  }
+}
+
+// ── Cycle Management ───────────────────────────────────────────────
+function resetCycle() {
+  if (animFrameId) cancelAnimationFrame(animFrameId);
+
+  // Clear dust
+  dustParticles.forEach(p => p.el.remove());
+  dustParticles.length = 0;
+
+  // Reset floor container
+  floorContainer.style.transition = 'none';
+  floorContainer.style.transform = 'none';
+
+  // Force reflow
+  void floorContainer.offsetHeight;
+
+  // Rebuild
+  tilting = false;
+  slidePhase = false;
+  allSettled = false;
+  settledTime = 0;
+  loopStartTime = 0;
+  dropsTriggered = 0;
+
+  buildWords();
+  createFloorLine();
+  initPhysics();
+  animFrameId = requestAnimationFrame(animate);
+}
+
+function startCycleLoop() {
+  resetCycle();
+  cycleTimer = setInterval(resetCycle, CONFIG.cycleDuration);
+}
+
+// ── Initialization ─────────────────────────────────────────────────
+function init() {
+  document.body.style.background = CONFIG.bgColor;
+  stage.style.background = CONFIG.bgColor;
+
+  window.addEventListener('resize', () => {
+    stageW = window.innerWidth;
+    stageH = window.innerHeight;
+  });
+
+  startCycleLoop();
+}
+
+// ── Background Ambient Particles ───────────────────────────────────
+const ambientParticles = [];
+const AMBIENT_COUNT = 25;
+
+function initAmbient() {
+  const container = document.getElementById('stage');
+
+  for (let i = 0; i < AMBIENT_COUNT; i++) {
+    const el = document.createElement('div');
+    el.style.position = 'absolute';
+    el.style.borderRadius = '50%';
+    el.style.pointerEvents = 'none';
+    el.style.willChange = 'transform, opacity';
+    const size = rand(1, 3);
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.background = 'rgba(255,255,255,0.15)';
+    container.appendChild(el);
+
+    ambientParticles.push({
+      el,
+      x: rand(0, stageW),
+      y: rand(0, stageH),
+      vx: rand(-0.15, 0.15),
+      vy: rand(-0.3, -0.05),
+      baseAlpha: rand(0.05, 0.2),
+      phase: rand(0, Math.PI * 2),
+      speed: rand(0.01, 0.03),
+    });
+  }
+
+  function animateAmbient() {
+    requestAnimationFrame(animateAmbient);
+    const time = performance.now() * 0.001;
+
+    ambientParticles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // Wrap around
+      if (p.y < -10) { p.y = stageH + 10; p.x = rand(0, stageW); }
+      if (p.x < -10) p.x = stageW + 10;
+      if (p.x > stageW + 10) p.x = -10;
+
+      const flicker = Math.sin(time * 2 + p.phase) * 0.5 + 0.5;
+      const alpha = p.baseAlpha * (0.5 + flicker * 0.5);
+
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+      p.el.style.opacity = String(alpha);
+    });
+  }
+
+  animateAmbient();
+}
+
+// ── Floor Line Indicator ───────────────────────────────────────────
+function createFloorLine() {
+  const line = document.createElement('div');
+  line.style.position = 'absolute';
+  line.style.left = '5%';
+  line.style.width = '90%';
+  line.style.top = FLOOR_Y + 'px';
+  line.style.height = '1px';
+  line.style.background = 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0.06) 80%, transparent 100%)';
+  line.style.pointerEvents = 'none';
+  floorContainer.appendChild(line);
+}
+
+// ── Boot ───────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  initAmbient();
+});
+</script>
+</body>
+</html>

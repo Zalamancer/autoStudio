@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Street Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    position: relative;
+  }
+
+  /* Aged paper texture overlay */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(139,119,90,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139,119,90,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(139,119,90,0.05) 0%, transparent 50%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.008) 2px,
+        rgba(0,0,0,0.008) 4px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.005) 3px,
+        rgba(0,0,0,0.005) 6px
+      );
+  }
+
+  /* Grain noise texture */
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.3;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    transition: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 2px 10px;
+    position: relative;
+  }
+
+  /* Highlight background for words with bgColor */
+  .word-block .word-bg {
+    position: absolute;
+    inset: -2px -6px;
+    z-index: -1;
+    transform: skewX(-2deg);
+  }
+
+  /* Underline decoration */
+  .word-block.deco-underline .word-inner {
+    text-decoration: underline;
+    text-decoration-thickness: 4px;
+    text-underline-offset: 6px;
+  }
+
+  /* Strikethrough decoration */
+  .word-block.deco-strike .word-inner {
+    text-decoration: line-through;
+    text-decoration-thickness: 5px;
+  }
+
+  /* Stamp animation */
+  @keyframes stampIn {
+    0% {
+      opacity: 0;
+      transform: var(--stamp-start);
+    }
+    50% {
+      opacity: 1;
+      transform: var(--stamp-mid);
+    }
+    70% {
+      transform: var(--stamp-bounce);
+    }
+    100% {
+      opacity: var(--final-opacity);
+      transform: var(--stamp-end);
+    }
+  }
+
+  /* Peel off animation */
+  @keyframes peelOff {
+    0% {
+      opacity: var(--final-opacity);
+      transform: var(--stamp-end);
+    }
+    40% {
+      opacity: 0.7;
+      transform: var(--peel-mid);
+    }
+    100% {
+      opacity: 0;
+      transform: var(--peel-end);
+    }
+  }
+
+  /* --- Decorative elements: tape, dots, brackets --- */
+  .tape-strip {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.45;
+  }
+
+  .tape-strip::before {
+    content: '';
+    display: block;
+    background: rgba(200, 190, 160, 0.6);
+    border: 1px solid rgba(180, 170, 140, 0.3);
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.05);
+  }
+
+  .tape-strip.tape-h::before {
+    width: 120px;
+    height: 28px;
+  }
+
+  .tape-strip.tape-v::before {
+    width: 28px;
+    height: 100px;
+  }
+
+  .tape-strip.tape-diag::before {
+    width: 90px;
+    height: 24px;
+    transform: rotate(-25deg);
+  }
+
+  .deco-dot {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    opacity: 0.2;
+  }
+
+  .deco-line {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.15;
+  }
+
+  .deco-line::before {
+    content: '';
+    display: block;
+    background: #1a1a1a;
+  }
+
+  .deco-line.line-h::before {
+    width: 60px;
+    height: 2px;
+  }
+
+  .deco-line.line-v::before {
+    width: 2px;
+    height: 50px;
+  }
+
+  .deco-bracket {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    font-family: 'Courier New', monospace;
+    font-size: 80px;
+    color: #1a1a1a;
+    opacity: 0.1;
+    line-height: 1;
+    user-select: none;
+  }
+
+  /* Edge stain marks */
+  .edge-stain {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 50%;
+    opacity: 0.04;
+    background: #8B7B5E;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['HUSTLE', 'HARDER', 'STAY', 'HUMBLE', 'DREAM', 'BIGGER'],
+  colors: ['#1a1a1a', '#CC0000', '#1a1a1a', '#005DAA', '#1a1a1a', '#CC0000'],
+  bgColors: ['transparent', '#FFD700', 'transparent', 'transparent', '#00FF88', 'transparent'],
+  bgColor: '#F5F0E8',
+  maxRotation: 8,
+  overlapAmount: 0.3,
+  cycleDuration: 8000,
+  stampEffect: true,
+};
+// =========================================
+
+// Apply background
+document.body.style.backgroundColor = CONFIG.bgColor;
+
+const stage = document.getElementById('poster-stage');
+
+// Font style presets for chaotic mixed typography
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Georgia', weight: '700', style: 'italic', transform: 'lowercase', letterSpacing: '2px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Courier New', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '0px' },
+  { family: 'Georgia', weight: '400', style: 'italic', transform: 'none', letterSpacing: '1px' },
+];
+
+// Font size range: wild variation
+const fontSizes = [140, 80, 180, 60, 200, 100];
+
+// Decoration types for emphasis
+const decoTypes = ['none', 'underline', 'none', 'strike', 'none', 'underline'];
+
+// Pseudo-random with seed for reproducibility within a cycle
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+// Create decorative elements (tape, dots, lines, brackets, stains)
+function createDecorations() {
+  // Tape strips
+  const tapePositions = [
+    { cls: 'tape-h', top: '8%', left: '5%', rot: 3 },
+    { cls: 'tape-diag', top: '15%', right: '8%', rot: -10 },
+    { cls: 'tape-v', bottom: '12%', left: '10%', rot: 5 },
+    { cls: 'tape-h', bottom: '18%', right: '6%', rot: -4 },
+    { cls: 'tape-diag', top: '60%', left: '3%', rot: 15 },
+  ];
+
+  tapePositions.forEach(tp => {
+    const el = document.createElement('div');
+    el.className = `tape-strip ${tp.cls}`;
+    if (tp.top) el.style.top = tp.top;
+    if (tp.bottom) el.style.bottom = tp.bottom;
+    if (tp.left) el.style.left = tp.left;
+    if (tp.right) el.style.right = tp.right;
+    el.style.transform = `rotate(${tp.rot}deg)`;
+    stage.appendChild(el);
+  });
+
+  // Dots
+  const dotPositions = [
+    { top: '5%', left: '15%' }, { top: '12%', right: '20%' },
+    { bottom: '8%', left: '25%' }, { bottom: '15%', right: '15%' },
+    { top: '45%', left: '4%' }, { top: '55%', right: '5%' },
+    { top: '30%', left: '92%' }, { bottom: '30%', left: '7%' },
+  ];
+
+  dotPositions.forEach(dp => {
+    const el = document.createElement('div');
+    el.className = 'deco-dot';
+    Object.assign(el.style, dp);
+    el.style.width = (6 + Math.random() * 8) + 'px';
+    el.style.height = el.style.width;
+    stage.appendChild(el);
+  });
+
+  // Lines
+  const lineData = [
+    { cls: 'line-h', top: '22%', left: '2%' },
+    { cls: 'line-v', top: '10%', right: '4%' },
+    { cls: 'line-h', bottom: '25%', right: '3%' },
+    { cls: 'line-v', bottom: '5%', left: '20%' },
+    { cls: 'line-h', top: '70%', left: '88%' },
+  ];
+
+  lineData.forEach(ld => {
+    const el = document.createElement('div');
+    el.className = `deco-line ${ld.cls}`;
+    if (ld.top) el.style.top = ld.top;
+    if (ld.bottom) el.style.bottom = ld.bottom;
+    if (ld.left) el.style.left = ld.left;
+    if (ld.right) el.style.right = ld.right;
+    stage.appendChild(el);
+  });
+
+  // Brackets
+  const bracketData = [
+    { char: '[', top: '6%', left: '1%' },
+    { char: ']', bottom: '6%', right: '1%' },
+    { char: '{', top: '40%', right: '2%' },
+    { char: '}', bottom: '35%', left: '2%' },
+  ];
+
+  bracketData.forEach(bd => {
+    const el = document.createElement('div');
+    el.className = 'deco-bracket';
+    el.textContent = bd.char;
+    if (bd.top) el.style.top = bd.top;
+    if (bd.bottom) el.style.bottom = bd.bottom;
+    if (bd.left) el.style.left = bd.left;
+    if (bd.right) el.style.right = bd.right;
+    stage.appendChild(el);
+  });
+
+  // Edge stains (coffee ring / water damage effects)
+  const stainData = [
+    { top: '-5%', left: '-3%', size: 200 },
+    { bottom: '-4%', right: '-5%', size: 250 },
+    { top: '30%', left: '-6%', size: 180 },
+    { bottom: '20%', right: '-4%', size: 160 },
+  ];
+
+  stainData.forEach(sd => {
+    const el = document.createElement('div');
+    el.className = 'edge-stain';
+    el.style.width = sd.size + 'px';
+    el.style.height = sd.size + 'px';
+    if (sd.top) el.style.top = sd.top;
+    if (sd.bottom) el.style.bottom = sd.bottom;
+    if (sd.left) el.style.left = sd.left;
+    if (sd.right) el.style.right = sd.right;
+    stage.appendChild(el);
+  });
+}
+
+// Build word elements
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Calculate vertical stacking positions with overlap
+  const totalHeight = vh * 0.75;
+  const baseTop = vh * 0.12;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+
+    const el = document.createElement('div');
+    el.className = 'word-block';
+
+    // Apply decorations
+    if (decoTypes[i % decoTypes.length] === 'underline') {
+      el.classList.add('deco-underline');
+    } else if (decoTypes[i % decoTypes.length] === 'strike') {
+      el.classList.add('deco-strike');
+    }
+
+    // Font preset cycling with variation
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    // Create inner word span
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+
+    // Add highlight background if specified
+    const bgColor = CONFIG.bgColors[i % CONFIG.bgColors.length];
+    if (bgColor && bgColor !== 'transparent') {
+      const bg = document.createElement('span');
+      bg.className = 'word-bg';
+      bg.style.backgroundColor = bgColor;
+      // Slight random skew on highlight box
+      const skew = -4 + rng() * 8;
+      bg.style.transform = `skewX(${skew}deg)`;
+      inner.appendChild(bg);
+    }
+
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    // Position: stacked vertically with overlap, slight horizontal offset
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * Math.min(vw * 0.15, 100);
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    // Rotation: intentional messiness
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.85 + rng() * 0.15;
+
+    // Store animation parameters as CSS custom properties
+    const startScale = 1.3 + rng() * 0.4;
+    const startRot = rotation + (rng() - 0.5) * 20;
+    const bounceRot = rotation + (rng() > 0.5 ? 1.5 : -1.5);
+    const bounceScale = 0.97;
+
+    // Peel off direction
+    const peelX = (rng() - 0.5) * 400;
+    const peelY = -200 - rng() * 300;
+    const peelRot = rotation + (rng() > 0.5 ? 30 : -30);
+
+    el.style.setProperty('--stamp-start', `translate(0, -20px) scale(${startScale}) rotate(${startRot}deg)`);
+    el.style.setProperty('--stamp-mid', `translate(0, 3px) scale(0.98) rotate(${rotation}deg)`);
+    el.style.setProperty('--stamp-bounce', `translate(0, -2px) scale(${bounceScale}) rotate(${bounceRot}deg)`);
+    el.style.setProperty('--stamp-end', `translate(0, 0) scale(1) rotate(${rotation}deg)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.style.setProperty('--peel-mid', `translate(${peelX * 0.3}px, ${peelY * 0.3}px) scale(1.05) rotate(${(rotation + peelRot) / 2}deg)`);
+    el.style.setProperty('--peel-end', `translate(${peelX}px, ${peelY}px) scale(0.7) rotate(${peelRot}deg)`);
+
+    el.dataset.index = String(i);
+    el.dataset.rotation = String(rotation);
+    el.dataset.finalOpacity = String(finalOpacity);
+
+    stage.appendChild(el);
+    elements.push(el);
+  }
+
+  return elements;
+}
+
+// Animation controller
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const stampStagger = 350; // ms between each word stamp
+  const stampDuration = 500; // ms for each stamp animation
+  const holdDuration = 2000; // ms to hold after all stamped
+  const peelStagger = 200; // ms between each peel
+  const peelDuration = 600; // ms for each peel animation
+  const pauseBeforeLoop = 800; // ms pause before restarting
+
+  const totalStampTime = (count - 1) * stampStagger + stampDuration;
+  const totalPeelTime = (count - 1) * peelStagger + peelDuration;
+
+  let animationFrame;
+  let startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => {
+      el.style.animation = 'none';
+      el.style.opacity = '0';
+    });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    // Phase 1: Stamp in
+    if (elapsed < totalStampTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * stampStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `stampIn ${stampDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    }
+    // Phase 2: Hold
+    else if (elapsed < totalStampTime + holdDuration) {
+      // Just hold - do nothing
+    }
+    // Phase 3: Peel off
+    else if (elapsed < totalStampTime + holdDuration + totalPeelTime) {
+      const peelElapsed = elapsed - totalStampTime - holdDuration;
+      // Peel off in reverse order (last word first) for visual variety
+      wordElements.forEach((el, i) => {
+        const reverseI = count - 1 - i;
+        const wordStart = reverseI * peelStagger;
+        if (peelElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `peelOff ${peelDuration}ms cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards`;
+        }
+      });
+    }
+    // Phase 4: Pause then loop
+    else if (elapsed < totalStampTime + holdDuration + totalPeelTime + pauseBeforeLoop) {
+      // Pause
+    }
+    else {
+      // Reset and loop
+      resetAll();
+      wordElements.forEach(el => {
+        delete el.dataset.stamped;
+        delete el.dataset.peeled;
+      });
+      startTime = timestamp;
+    }
+
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+
+  return function stop() {
+    cancelAnimationFrame(animationFrame);
+  };
+}
+
+// Torn paper edge overlays
+function createTornEdges() {
+  // Top torn edge
+  const topEdge = document.createElement('div');
+  topEdge.style.cssText = `
+    position: absolute; top: -2px; left: 0; right: 0; height: 12px; z-index: 4;
+    pointer-events: none; overflow: hidden;
+  `;
+  const topSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  topSvg.setAttribute('width', '100%');
+  topSvg.setAttribute('height', '12');
+  topSvg.setAttribute('preserveAspectRatio', 'none');
+  topSvg.setAttribute('viewBox', '0 0 1000 12');
+  let topPath = 'M0,0 L1000,0 L1000,12 ';
+  for (let x = 1000; x >= 0; x -= 8) {
+    topPath += `L${x},${4 + Math.random() * 7} `;
+  }
+  topPath += 'Z';
+  const topP = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  topP.setAttribute('d', topPath);
+  topP.setAttribute('fill', CONFIG.bgColor);
+  topSvg.appendChild(topP);
+  topEdge.appendChild(topSvg);
+  stage.appendChild(topEdge);
+
+  // Bottom torn edge
+  const botEdge = document.createElement('div');
+  botEdge.style.cssText = `
+    position: absolute; bottom: -2px; left: 0; right: 0; height: 14px; z-index: 4;
+    pointer-events: none; overflow: hidden;
+  `;
+  const botSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  botSvg.setAttribute('width', '100%');
+  botSvg.setAttribute('height', '14');
+  botSvg.setAttribute('preserveAspectRatio', 'none');
+  botSvg.setAttribute('viewBox', '0 0 1000 14');
+  let botPath = 'M0,14 L1000,14 L1000,0 ';
+  for (let x = 1000; x >= 0; x -= 7) {
+    botPath += `L${x},${3 + Math.random() * 9} `;
+  }
+  botPath += 'L0,0 Z';
+  const botP = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  botP.setAttribute('d', botPath);
+  botP.setAttribute('fill', CONFIG.bgColor);
+  botSvg.appendChild(botP);
+  botEdge.appendChild(botSvg);
+  stage.appendChild(botEdge);
+}
+
+// Initialize
+createDecorations();
+createTornEdges();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+// Handle resize: rebuild
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    createTornEdges();
+    const newWordEls = createWordElements();
+    runAnimation(newWordEls);
+  }, 300);
+});
+</script>
+</body>
+</html>

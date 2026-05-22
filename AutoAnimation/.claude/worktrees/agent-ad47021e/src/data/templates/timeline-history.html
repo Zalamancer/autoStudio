@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historical Timeline Motion Graphics</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0C0F1A;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  bgColor: '#0C0F1A',
+  lineColor: 'rgba(80, 140, 220, 0.6)',
+  lineGlow: 'rgba(60, 120, 255, 0.2)',
+  markerColor: '#4488DD',
+  cardBg: 'rgba(20, 30, 60, 0.85)',
+  cardBorder: 'rgba(80, 140, 220, 0.5)',
+  cardHighlight: 'rgba(100, 180, 255, 0.8)',
+  textColor: '#C0D0E8',
+  yearColor: '#88BBFF',
+  accentColor: '#00CCFF',
+  scrollSpeed: 40,
+  events: [
+    { year: 3000, era: 'Ancient', title: 'Egyptian Pyramids', desc: 'Giza pyramid complex built', color: '#D4A03C' },
+    { year: 2560, era: 'Ancient', title: 'Great Pyramid', desc: 'Largest pyramid completed', color: '#D4A03C' },
+    { year: 776,  era: 'Classical', title: 'First Olympics', desc: 'Ancient Greece athletic games', color: '#44AACC' },
+    { year: 509,  era: 'Classical', title: 'Roman Republic', desc: 'Republic of Rome founded', color: '#CC4444' },
+    { year: 221,  era: 'Classical', title: 'Qin Dynasty', desc: 'China unified under Qin', color: '#DDAA33' },
+    { year: -44,  era: 'Classical', title: 'Caesar Falls', desc: 'Julius Caesar assassinated', color: '#CC4444' },
+    { year: -476, era: 'Medieval', title: 'Rome Falls', desc: 'Western Roman Empire ends', color: '#886644' },
+    { year: -800, era: 'Medieval', title: 'Charlemagne', desc: 'Crowned Holy Roman Emperor', color: '#886644' },
+    { year: -1066,era: 'Medieval', title: 'Norman Conquest', desc: 'William conquers England', color: '#668844' },
+    { year: -1215,era: 'Medieval', title: 'Magna Carta', desc: 'Foundation of law signed', color: '#668844' },
+    { year: -1440,era: 'Renaissance', title: 'Printing Press', desc: 'Gutenberg revolution begins', color: '#CC8844' },
+    { year: -1492,era: 'Renaissance', title: 'Columbus Sails', desc: 'Reaches the Americas', color: '#44AACC' },
+    { year: -1687,era: 'Enlightenment', title: 'Newton\'s Laws', desc: 'Principia Mathematica', color: '#AABB44' },
+    { year: -1776,era: 'Modern', title: 'US Independence', desc: 'Declaration signed', color: '#4466CC' },
+    { year: -1789,era: 'Modern', title: 'French Revolution', desc: 'Bastille stormed', color: '#CC4466' },
+    { year: -1859,era: 'Modern', title: 'Origin of Species', desc: 'Darwin publishes theory', color: '#44AA66' },
+    { year: -1903,era: 'Modern', title: 'First Flight', desc: 'Wright brothers fly', color: '#AAAACC' },
+    { year: -1945,era: 'Modern', title: 'WWII Ends', desc: 'World War II concludes', color: '#888888' },
+    { year: -1969,era: 'Modern', title: 'Moon Landing', desc: 'Apollo 11 touches down', color: '#CCCCEE' },
+    { year: -1989,era: 'Modern', title: 'Berlin Wall Falls', desc: 'Cold War era ends', color: '#CCAA44' },
+    { year: -2000,era: 'Digital', title: 'New Millennium', desc: 'Digital age accelerates', color: '#44CCFF' },
+    { year: -2023,era: 'Digital', title: 'AI Revolution', desc: 'Large language models emerge', color: '#AA66FF' }
+  ],
+  eras: [
+    { name: 'Ancient',       color: 'rgba(180, 140, 50, 0.06)' },
+    { name: 'Classical',     color: 'rgba(60, 150, 180, 0.06)' },
+    { name: 'Medieval',      color: 'rgba(100, 80, 50, 0.06)' },
+    { name: 'Renaissance',   color: 'rgba(180, 120, 60, 0.06)' },
+    { name: 'Enlightenment', color: 'rgba(150, 160, 60, 0.06)' },
+    { name: 'Modern',        color: 'rgba(60, 80, 160, 0.06)' },
+    { name: 'Digital',       color: 'rgba(60, 180, 220, 0.06)' }
+  ]
+};
+// =========================================
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const CARD_W = 180;
+const CARD_H = 70;
+const TIMELINE_Y_RATIO = 0.55;
+const EVENT_SPACING = 220;
+
+function getScrollOffset() {
+  const totalWidth = CONFIG.events.length * EVENT_SPACING + W;
+  return (time * CONFIG.scrollSpeed) % totalWidth;
+}
+
+function drawBackground() {
+  // Gradient background
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0C0F1A');
+  grad.addColorStop(0.5, '#101830');
+  grad.addColorStop(1, '#0C0F1A');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(40, 60, 100, 0.08)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+}
+
+function drawEraBands(scrollOff) {
+  let lastEra = '';
+  let eraStart = 0;
+  CONFIG.events.forEach((evt, i) => {
+    const x = W + i * EVENT_SPACING - scrollOff;
+    if (evt.era !== lastEra) {
+      if (lastEra) {
+        const eraConf = CONFIG.eras.find(e => e.name === lastEra);
+        if (eraConf) {
+          ctx.fillStyle = eraConf.color;
+          ctx.fillRect(eraStart, 0, x - eraStart, H);
+        }
+      }
+      lastEra = evt.era;
+      eraStart = x;
+
+      // Era label
+      if (x > -100 && x < W + 100) {
+        ctx.font = 'bold 11px Courier New';
+        ctx.fillStyle = 'rgba(120, 160, 200, 0.2)';
+        ctx.textAlign = 'left';
+        ctx.fillText(evt.era.toUpperCase(), x + 10, 30);
+      }
+    }
+  });
+}
+
+function drawTimelineLine(scrollOff) {
+  const y = H * TIMELINE_Y_RATIO;
+
+  // Glow
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(W, y);
+  ctx.strokeStyle = CONFIG.lineGlow;
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // Main line
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(W, y);
+  ctx.strokeStyle = CONFIG.lineColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Arrow at right
+  ctx.beginPath();
+  ctx.moveTo(W - 20, y - 8);
+  ctx.lineTo(W - 4, y);
+  ctx.lineTo(W - 20, y + 8);
+  ctx.strokeStyle = CONFIG.lineColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawProgressBar(scrollOff) {
+  const totalWidth = CONFIG.events.length * EVENT_SPACING;
+  const progress = (scrollOff % (totalWidth + W)) / (totalWidth + W);
+
+  ctx.fillStyle = 'rgba(40, 60, 100, 0.3)';
+  ctx.fillRect(20, H - 16, W - 40, 4);
+
+  ctx.fillStyle = CONFIG.accentColor;
+  ctx.fillRect(20, H - 16, (W - 40) * progress, 4);
+
+  // Progress dot
+  const dotX = 20 + (W - 40) * progress;
+  ctx.beginPath();
+  ctx.arc(dotX, H - 14, 4, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.accentColor;
+  ctx.fill();
+}
+
+function drawYearCounter(scrollOff) {
+  // Find nearest visible event
+  let nearestEvt = CONFIG.events[0];
+  let nearestDist = Infinity;
+  CONFIG.events.forEach((evt, i) => {
+    const x = W / 2 + i * EVENT_SPACING - scrollOff;
+    const dist = Math.abs(x - W / 2);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestEvt = evt;
+    }
+  });
+
+  const displayYear = nearestEvt.year > 0 ? `${nearestEvt.year} BCE` : `${Math.abs(nearestEvt.year)} CE`;
+
+  ctx.font = 'bold 28px Courier New';
+  ctx.fillStyle = 'rgba(100, 180, 255, 0.15)';
+  ctx.textAlign = 'center';
+  ctx.fillText(displayYear, W / 2, H * TIMELINE_Y_RATIO - 120);
+}
+
+function drawEvents(scrollOff) {
+  const y = H * TIMELINE_Y_RATIO;
+
+  CONFIG.events.forEach((evt, i) => {
+    const x = W + i * EVENT_SPACING - scrollOff;
+    if (x < -CARD_W - 50 || x > W + CARD_W + 50) return;
+
+    const isAbove = i % 2 === 0;
+    const cardY = isAbove ? y - CARD_H - 50 : y + 50;
+
+    // Visibility / entrance animation
+    const distFromCenter = Math.abs(x - W / 2);
+    const visibility = Math.max(0, 1 - distFromCenter / (W * 0.55));
+    const popScale = Math.min(1, visibility * 2);
+
+    if (visibility < 0.01) return;
+
+    ctx.globalAlpha = visibility;
+
+    // Vertical connector line
+    ctx.beginPath();
+    ctx.setLineDash([3, 4]);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, cardY + (isAbove ? CARD_H : 0));
+    ctx.strokeStyle = evt.color + '80';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Timeline marker dot
+    ctx.beginPath();
+    ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = evt.color;
+    ctx.fill();
+
+    // Pulse ring
+    const pulse = Math.sin(time * 3 + i) * 0.5 + 0.5;
+    ctx.beginPath();
+    ctx.arc(x, y, 6 + pulse * 6, 0, Math.PI * 2);
+    ctx.strokeStyle = evt.color + '40';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Year label on timeline
+    ctx.font = '9px Courier New';
+    ctx.fillStyle = CONFIG.yearColor;
+    ctx.textAlign = 'center';
+    const yearStr = evt.year > 0 ? `${evt.year} BCE` : `${Math.abs(evt.year)}`;
+    ctx.fillText(yearStr, x, isAbove ? y + 18 : y - 10);
+
+    // Card
+    ctx.save();
+    ctx.translate(x - CARD_W / 2, cardY);
+    ctx.scale(popScale, popScale);
+
+    // Card background
+    ctx.fillStyle = CONFIG.cardBg;
+    ctx.strokeStyle = CONFIG.cardBorder;
+    ctx.lineWidth = 1;
+    roundRect(ctx, 0, 0, CARD_W, CARD_H, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Left accent bar
+    ctx.fillStyle = evt.color;
+    ctx.fillRect(0, 8, 3, CARD_H - 16);
+
+    // Card title
+    ctx.font = 'bold 12px Courier New';
+    ctx.fillStyle = '#E8F0FF';
+    ctx.textAlign = 'left';
+    ctx.fillText(evt.title, 12, 22);
+
+    // Card description
+    ctx.font = '9px Courier New';
+    ctx.fillStyle = CONFIG.textColor;
+    ctx.fillText(evt.desc, 12, 40);
+
+    // Card era tag
+    ctx.font = '8px Courier New';
+    ctx.fillStyle = evt.color + 'AA';
+    ctx.fillText(evt.era.toUpperCase(), 12, 56);
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  });
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+}
+
+function drawFloatingParticles() {
+  for (let i = 0; i < 20; i++) {
+    const px = (Math.sin(time * 0.15 + i * 3.7) * 0.5 + 0.5) * W;
+    const py = (Math.cos(time * 0.1 + i * 2.3) * 0.5 + 0.5) * H;
+    const alpha = Math.sin(time * 0.5 + i * 1.1) * 0.08 + 0.08;
+    ctx.beginPath();
+    ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(100, 160, 255, ${Math.max(0, alpha)})`;
+    ctx.fill();
+  }
+}
+
+function draw() {
+  drawBackground();
+
+  const scrollOff = getScrollOffset();
+
+  drawEraBands(scrollOff);
+  drawFloatingParticles();
+  drawTimelineLine(scrollOff);
+  drawYearCounter(scrollOff);
+  drawEvents(scrollOff);
+  drawProgressBar(scrollOff);
+
+  // Title
+  ctx.font = '10px Courier New';
+  ctx.fillStyle = 'rgba(100, 140, 200, 0.4)';
+  ctx.textAlign = 'left';
+  ctx.fillText('HISTORICAL TIMELINE', 20, 20);
+
+  time += 1 / 60;
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>

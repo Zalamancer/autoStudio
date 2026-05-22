@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie End Credits Roll</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', 'Times New Roman', 'Palatino Linotype', serif;
+    color: #e8e0d4;
+  }
+  canvas { display: block; position: absolute; top: 0; left: 0; z-index: 0; }
+  .credits-container {
+    position: absolute;
+    top: 8vh; bottom: 8vh;
+    left: 0; right: 0;
+    overflow: hidden;
+    z-index: 2;
+  }
+  .credits-scroll {
+    position: absolute;
+    width: 65%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+  .letterbox {
+    position: absolute;
+    left: 0; right: 0;
+    background: #000;
+    z-index: 9;
+  }
+  .letterbox-top { top: 0; height: 8vh; }
+  .letterbox-bottom { bottom: 0; height: 8vh; }
+  .film-grain {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+  }
+  .grain-inner {
+    width: 200%; height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grainShift 0.5s steps(4) infinite;
+  }
+  @keyframes grainShift {
+    0% { transform: translate(0,0); }
+    25% { transform: translate(-5%,-5%); }
+    50% { transform: translate(3%,-8%); }
+    75% { transform: translate(-8%,2%); }
+    100% { transform: translate(0,0); }
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+  .starfield {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .sf-star {
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .ambient-glow {
+    position: fixed;
+    width: 40vw; height: 40vw;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 1;
+    top: 30%; left: 30%;
+  }
+  .credit-hero {
+    margin-bottom: 8vh;
+  }
+  .credit-hero .label {
+    font-size: 2vh;
+    letter-spacing: 0.6vw;
+    text-transform: uppercase;
+    margin-bottom: 1.5vh;
+  }
+  .credit-hero .name {
+    font-size: 5vh;
+    font-weight: 400;
+    letter-spacing: 0.3vw;
+    color: #fff;
+  }
+  .credit-pair {
+    margin-bottom: 3vh;
+  }
+  .credit-role {
+    font-size: 1.5vh;
+    letter-spacing: 0.5vw;
+    text-transform: uppercase;
+    margin-bottom: 0.6vh;
+  }
+  .credit-name {
+    font-size: 2.6vh;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #e8e0d4;
+  }
+  .separator {
+    width: 8vw;
+    height: 1px;
+    margin: 5vh auto;
+  }
+  .film-title-end {
+    margin-top: 8vh;
+    margin-bottom: 4vh;
+  }
+  .film-title-end .title {
+    font-size: 6vh;
+    font-weight: 400;
+    letter-spacing: 0.8vw;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .film-title-end .year {
+    font-size: 2.2vh;
+    letter-spacing: 1vw;
+    margin-top: 1.5vh;
+    font-weight: 300;
+  }
+  .copyright-text {
+    font-size: 1.1vh;
+    letter-spacing: 0.15em;
+    line-height: 2.2;
+    margin-top: 6vh;
+  }
+  .studio-badge {
+    display: inline-block;
+    font-size: 2vh;
+    letter-spacing: 0.6vw;
+    text-transform: uppercase;
+    padding: 1.2vh 3vw;
+    border: 1px solid;
+    margin-top: 5vh;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div class="starfield" id="starfield"></div>
+<div class="ambient-glow" id="ambientGlow"></div>
+<div class="film-grain"><div class="grain-inner"></div></div>
+<div class="letterbox letterbox-top"></div>
+<div class="letterbox letterbox-bottom"></div>
+<div class="credits-container">
+  <div class="credits-scroll" id="creditsScroll"></div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    filmTitle: 'THE LAST HORIZON',
+    director: 'Elena Vasquez',
+    credits: [
+      { role: 'Produced By', name: 'Marcus Aurelius Chen' },
+      { role: 'Written By', name: 'Sofia Reyes & James Thornton' },
+      { role: 'Director of Photography', name: 'Andrei Volkov' },
+      { role: 'Film Editor', name: 'Yuki Tanaka' },
+      { role: 'Original Score', name: 'Liam O\'Sullivan' },
+      { role: 'Production Design', name: 'Isabella Moretti' },
+      { role: 'Costume Design', name: 'Priya Anand' },
+      { role: 'Sound Design', name: 'Henrik Johansson' },
+      { role: 'Visual Effects Supervisor', name: 'David Kim' },
+      { role: 'Casting By', name: 'Rachel Goldstein' },
+      { role: 'Executive Producer', name: 'Thomas Wright III' },
+      { role: 'Co-Producer', name: 'Maria Santos' },
+      { role: 'Associate Producer', name: 'Kevin Okonkwo' },
+      { role: 'First Assistant Director', name: 'Claire Dubois' },
+      { role: 'Art Director', name: 'Nikolai Petrov' },
+      { role: 'Set Decorator', name: 'Emma Lindqvist' },
+      { role: 'Hair & Makeup', name: 'Zara Khan' },
+      { role: 'Stunt Coordinator', name: 'Jack Morrison' },
+      { role: 'Gaffer', name: 'Robert Nakamura' },
+      { role: 'Key Grip', name: 'Daniel Fischer' }
+    ],
+    bgColor: '#08060a',
+    textColor: '#e8e0d4',
+    accentColor: '#c9a96e',
+    scrollSpeed: 35,
+    cycleDuration: 22000
+  };
+
+  // Apply theme colors
+  const themeStyle = document.createElement('style');
+  themeStyle.textContent = `
+    body { background: ${CONFIG.bgColor}; color: ${CONFIG.textColor}; }
+    .credit-hero .label { color: ${CONFIG.accentColor}; }
+    .credit-role { color: ${CONFIG.accentColor}cc; }
+    .credit-name { color: ${CONFIG.textColor}; }
+    .separator { background: linear-gradient(90deg, transparent, ${CONFIG.accentColor}60, transparent); }
+    .film-title-end .year { color: ${CONFIG.accentColor}; }
+    .copyright-text { color: ${CONFIG.textColor}50; }
+    .studio-badge { color: ${CONFIG.accentColor}; border-color: ${CONFIG.accentColor}40; }
+  `;
+  document.head.appendChild(themeStyle);
+
+  // Ambient glow
+  document.getElementById('ambientGlow').style.background = CONFIG.accentColor;
+
+  // Star field
+  const starfield = document.getElementById('starfield');
+  for (let i = 0; i < 100; i++) {
+    const s = document.createElement('div');
+    s.className = 'sf-star';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    const size = Math.random() * 1.3 + 0.4;
+    s.style.width = s.style.height = size + 'px';
+    s.style.opacity = Math.random() * 0.4 + 0.1;
+    s.style.animation = `twinkle ${3 + Math.random() * 5}s ease-in-out infinite ${Math.random() * 4}s`;
+    starfield.appendChild(s);
+  }
+
+  // Build credits
+  function buildCredits() {
+    const scroll = document.getElementById('creditsScroll');
+    let html = '';
+
+    // Top spacer
+    html += '<div style="height: 90vh;"></div>';
+
+    // Film title hero
+    html += `
+      <div class="film-title-end" style="margin-top: 0; margin-bottom: 8vh;">
+        <div class="title">${CONFIG.filmTitle}</div>
+        <div class="year">${new Date().getFullYear()}</div>
+      </div>
+    `;
+
+    html += '<div class="separator"></div>';
+
+    // A FILM BY
+    html += `
+      <div class="credit-hero">
+        <div class="label">A Film By</div>
+        <div class="name">${CONFIG.director}</div>
+      </div>
+    `;
+
+    html += '<div class="separator"></div>';
+
+    // Credits
+    CONFIG.credits.forEach((credit, i) => {
+      html += `
+        <div class="credit-pair">
+          <div class="credit-role">${credit.role}</div>
+          <div class="credit-name">${credit.name}</div>
+        </div>
+      `;
+
+      if ((i + 1) % 4 === 0 && i < CONFIG.credits.length - 1) {
+        html += '<div class="separator"></div>';
+      }
+    });
+
+    html += '<div class="separator"></div>';
+
+    // Studio badge
+    html += `<div class="studio-badge">MERIDIAN PICTURES</div>`;
+
+    // Copyright
+    html += `
+      <div class="copyright-text">
+        <br><br>
+        No persons were harmed in the making of this motion picture.<br>
+        All characters and events depicted are fictitious.<br>
+        Any resemblance to actual persons is purely coincidental.<br>
+        <br>
+        Filmed on location.<br>
+        Color by TECHNICOLOR<br>
+        <br>
+        &copy; ${new Date().getFullYear()} All Rights Reserved.
+      </div>
+    `;
+
+    // Bottom spacer
+    html += '<div style="height: 100vh;"></div>';
+
+    scroll.innerHTML = html;
+  }
+
+  buildCredits();
+
+  // Scroll animation
+  let scrollY = 0;
+
+  function runCycle() {
+    const scroll = document.getElementById('creditsScroll');
+    const totalHeight = scroll.scrollHeight;
+
+    // Reset position
+    scrollY = 0;
+    scroll.style.transition = 'none';
+    scroll.style.top = '0px';
+    void scroll.offsetWidth;
+
+    // Begin scrolling
+    const scrollDist = totalHeight;
+    const duration = CONFIG.cycleDuration;
+
+    scroll.style.transition = `top ${duration}ms linear`;
+    scroll.style.top = `-${scrollDist}px`;
+
+    // Schedule next cycle
+    setTimeout(runCycle, CONFIG.cycleDuration + 200);
+  }
+
+  // Start after a brief delay
+  setTimeout(runCycle, 300);
+</script>
+</body>
+</html>

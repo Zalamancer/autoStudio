@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zen Garden</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Georgia', serif;
+    background: #f5f0e8;
+  }
+  canvas#zenCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .zen-text {
+    position: fixed; top: 18%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 2; text-align: center; pointer-events: none;
+  }
+  .zen-text h1 {
+    font-size: 36px; font-weight: 300; color: #5a5045;
+    letter-spacing: 14px; text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .zen-text .sub {
+    font-size: 11px; letter-spacing: 8px; color: #8a7e70;
+    margin-top: 6px; font-style: italic; opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+<canvas id="zenCanvas"></canvas>
+<div class="zen-text">
+  <h1 id="mainTitle">ZEN</h1>
+  <div class="sub" id="subTitle">TRANQUIL GARDEN</div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TITLE_TEXT = 'ZEN';
+const SUBTITLE_TEXT = 'TRANQUIL GARDEN';
+const BG_COLOR = '#f5f0e8';
+const SAND_COLOR = '#e8dfd0';
+const SAND_LINE_COLOR = '#d4c8b4';
+const ROCK_COLOR = '#4a4540';
+const PETAL_COLOR = '#f0b0b8';
+const PETAL_COUNT = 25;
+const BAMBOO_COUNT = 5;
+const POND_CENTER_X = 0.65;
+const POND_CENTER_Y = 0.72;
+// ==============================
+
+document.getElementById('mainTitle').textContent = TITLE_TEXT;
+document.getElementById('subTitle').textContent = SUBTITLE_TEXT;
+
+const canvas = document.getElementById('zenCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// Rocks
+const rocks = [
+  { x: 0.3, y: 0.5, rx: 35, ry: 22 },
+  { x: 0.45, y: 0.55, rx: 18, ry: 14 },
+  { x: 0.25, y: 0.58, rx: 12, ry: 10 },
+];
+
+// Cherry blossom petals
+class Petal {
+  constructor() { this.reset(true); }
+  reset(init) {
+    this.x = Math.random() * W;
+    this.y = init ? Math.random() * H : -10 - Math.random() * 40;
+    this.size = 3 + Math.random() * 5;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.02;
+    this.vy = 0.2 + Math.random() * 0.5;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.sway = Math.random() * Math.PI * 2;
+    this.swaySpeed = 0.01 + Math.random() * 0.02;
+    this.opacity = 0.4 + Math.random() * 0.5;
+    const hueShift = Math.random() * 20 - 10;
+    this.r = Math.min(255, 240 + hueShift);
+    this.g = Math.max(0, 176 + hueShift * 2);
+    this.b = Math.max(0, 184 + hueShift);
+  }
+  update() {
+    this.sway += this.swaySpeed;
+    this.x += this.vx + Math.sin(this.sway) * 0.5;
+    this.y += this.vy;
+    this.rotation += this.rotSpeed;
+    if (this.y > H + 20) this.reset(false);
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    ctx.globalAlpha = this.opacity;
+    ctx.fillStyle = `rgb(${this.r|0},${this.g|0},${this.b|0})`;
+    ctx.beginPath();
+    ctx.moveTo(0, -this.size);
+    ctx.bezierCurveTo(this.size * 0.8, -this.size * 0.5, this.size * 0.8, this.size * 0.5, 0, this.size);
+    ctx.bezierCurveTo(-this.size * 0.8, this.size * 0.5, -this.size * 0.8, -this.size * 0.5, 0, -this.size);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+const petals = [];
+for (let i = 0; i < PETAL_COUNT; i++) petals.push(new Petal());
+
+// Bamboo
+class Bamboo {
+  constructor(x) {
+    this.x = x;
+    this.segments = 5 + Math.floor(Math.random() * 4);
+    this.segH = H * 0.08 + Math.random() * H * 0.04;
+    this.baseY = H;
+    this.width = 8 + Math.random() * 6;
+    this.swayPhase = Math.random() * Math.PI * 2;
+    this.swayAmount = 2 + Math.random() * 3;
+    this.leaves = [];
+    for (let s = 1; s < this.segments; s++) {
+      if (Math.random() > 0.4) {
+        const side = Math.random() > 0.5 ? 1 : -1;
+        this.leaves.push({ seg: s, side, len: 15 + Math.random() * 20, angle: side * (0.3 + Math.random() * 0.4) });
+      }
+    }
+  }
+  draw(t) {
+    const sway = Math.sin(t * 0.0008 + this.swayPhase) * this.swayAmount;
+    ctx.save();
+    for (let s = 0; s < this.segments; s++) {
+      const segSway = sway * (s / this.segments) * (s / this.segments);
+      const y1 = this.baseY - s * this.segH;
+      const y2 = this.baseY - (s + 1) * this.segH;
+      const x1 = this.x + segSway * (s / this.segments);
+      const x2 = this.x + segSway * ((s + 1) / this.segments);
+      ctx.strokeStyle = '#5a7a40';
+      ctx.lineWidth = this.width - s * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.strokeStyle = '#4a6a30';
+      ctx.lineWidth = this.width - s * 0.6 + 2;
+      ctx.beginPath();
+      ctx.moveTo(x1 - 1, y1);
+      ctx.lineTo(x1 + 1, y1);
+      ctx.stroke();
+    }
+    this.leaves.forEach(leaf => {
+      const leafSway = sway * (leaf.seg / this.segments);
+      const lx = this.x + leafSway * (leaf.seg / this.segments);
+      const ly = this.baseY - leaf.seg * this.segH;
+      const leafAngle = leaf.angle + Math.sin(t * 0.001 + leaf.seg) * 0.1;
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(leafAngle);
+      ctx.fillStyle = '#6a9a48';
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(leaf.len * 0.3, -4, leaf.len * 0.7, -3, leaf.len, 0);
+      ctx.bezierCurveTo(leaf.len * 0.7, 3, leaf.len * 0.3, 4, 0, 0);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+}
+
+const bamboos = [];
+for (let i = 0; i < BAMBOO_COUNT; i++) {
+  bamboos.push(new Bamboo(W * 0.02 + i * 18 + Math.random() * 10));
+}
+
+// Sand raking patterns
+function drawSandRipples(t) {
+  const slowT = t * 0.00005;
+  ctx.strokeStyle = SAND_LINE_COLOR;
+  ctx.lineWidth = 1;
+  for (let y = H * 0.3; y < H * 0.9; y += 12) {
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 3) {
+      const waviness = Math.sin(x * 0.01 + y * 0.02 + slowT) * 2;
+      if (x === 0) ctx.moveTo(x, y + waviness);
+      else ctx.lineTo(x, y + waviness);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  rocks.forEach(rock => {
+    const rx = rock.x * W, ry = rock.y * H;
+    for (let ring = 1; ring <= 5; ring++) {
+      const radius = rock.rx + ring * 14 + Math.sin(t * 0.0005 + ring) * 1.5;
+      ctx.globalAlpha = 0.15 - ring * 0.02;
+      ctx.strokeStyle = SAND_LINE_COLOR;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(rx, ry, radius, radius * 0.7, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawRocks() {
+  rocks.forEach(rock => {
+    const rx = rock.x * W, ry = rock.y * H;
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.beginPath();
+    ctx.ellipse(rx + 4, ry + 5, rock.rx * 1.1, rock.ry * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const grad = ctx.createRadialGradient(rx - rock.rx * 0.2, ry - rock.ry * 0.3, 0, rx, ry, rock.rx);
+    grad.addColorStop(0, '#6a6560');
+    grad.addColorStop(0.5, ROCK_COLOR);
+    grad.addColorStop(1, '#3a3530');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(rx, ry, rock.rx, rock.ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+// Koi pond
+class KoiFish {
+  constructor() {
+    this.angle = Math.random() * Math.PI * 2;
+    this.radius = 20 + Math.random() * 30;
+    this.speed = 0.003 + Math.random() * 0.004;
+    this.size = 6 + Math.random() * 4;
+    this.color = Math.random() > 0.5 ? '#e06830' : '#c83020';
+  }
+  draw(t, cx, cy) {
+    const a = this.angle + t * this.speed;
+    const fx = cx + Math.cos(a) * this.radius;
+    const fy = cy + Math.sin(a) * this.radius * 0.6;
+    const heading = a + Math.PI / 2;
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.rotate(heading);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, this.size, this.size * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-this.size, 0);
+    ctx.lineTo(-this.size - 4, -3);
+    ctx.lineTo(-this.size - 4, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(this.size * 0.3, 0, this.size * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+const koifish = [new KoiFish(), new KoiFish(), new KoiFish()];
+
+function drawPond(t) {
+  const cx = POND_CENTER_X * W, cy = POND_CENTER_Y * H;
+  const pr = 55;
+  ctx.fillStyle = 'rgba(0,0,0,0.05)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 3, cy + 3, pr + 5, pr * 0.65 + 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr);
+  grad.addColorStop(0, '#8ab8c0');
+  grad.addColorStop(0.7, '#6a98a0');
+  grad.addColorStop(1, '#c8c0b0');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, pr, pr * 0.65, 0, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 3; i++) {
+    const phase = (t * 0.001 + i * 2) % 4;
+    if (phase < 3) {
+      const ripR = phase * 15;
+      ctx.globalAlpha = 0.1 * (1 - phase / 3);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(cx + Math.sin(i * 2.5) * 10, cy + Math.cos(i * 2.5) * 6, ripR, ripR * 0.65, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+  koifish.forEach(k => k.draw(t, cx, cy));
+}
+
+function drawMist(t) {
+  for (let i = 0; i < 4; i++) {
+    const mx = (W * 0.3 + Math.sin(t * 0.0003 + i * 1.5) * W * 0.3);
+    const my = H * 0.25 + i * H * 0.12;
+    const mr = 100 + Math.sin(t * 0.0005 + i) * 30;
+    ctx.globalAlpha = 0.03 + Math.sin(t * 0.0004 + i * 0.7) * 0.015;
+    const grad = ctx.createRadialGradient(mx, my, 0, mx, my, mr);
+    grad.addColorStop(0, '#f5f0e8');
+    grad.addColorStop(1, 'rgba(245,240,232,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(mx, my, mr, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function animate(t) {
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = SAND_COLOR;
+  ctx.fillRect(0, H * 0.25, W, H * 0.75);
+  drawSandRipples(t);
+  bamboos.forEach(b => b.draw(t));
+  drawRocks();
+  drawPond(t);
+  petals.forEach(p => { p.update(); p.draw(); });
+  drawMist(t);
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

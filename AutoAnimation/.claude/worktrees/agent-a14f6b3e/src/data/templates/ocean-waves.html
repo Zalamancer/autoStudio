@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocean Waves Seascape</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  canvas#oceanCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+</style>
+</head>
+<body>
+<canvas id="oceanCanvas"></canvas>
+
+<script>
+// ===== EDITABLE CONFIG =====
+const CONFIG = {
+  skyColors: ['#FF6B35', '#FF8C42', '#FFB347', '#FFD700', '#87CEEB'],
+  waveColors: ['#0A4C6A', '#0E6B8A', '#1A8CAA', '#2BA5C0'],
+  sunColor: '#FFE066',
+  timeOfDay: 'sunset', // 'sunset' | 'night' | 'day'
+  cloudCount: 6,
+  birdCount: 5,
+  sparkleCount: 40,
+  foamAlpha: 0.6,
+  cycleDuration: 30000,
+};
+// ============================
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config);
+});
+
+const canvas = document.getElementById('oceanCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+// --- Sky palette by time of day ---
+function getSkyPalette() {
+  switch (CONFIG.timeOfDay) {
+    case 'night':
+      return ['#0A0A2E', '#0D1B3E', '#152244', '#1A2A50', '#1E3355'];
+    case 'day':
+      return ['#4A90D9', '#5BA3E8', '#7AB8F0', '#A8D4F5', '#D4EEFF'];
+    default: // sunset
+      return CONFIG.skyColors;
+  }
+}
+
+function getSunProperties() {
+  switch (CONFIG.timeOfDay) {
+    case 'night':
+      return { color: '#E8E8F0', glowColor: '#8888AA', y: 0.18, radius: 0.03, glowRadius: 0.08, isMoon: true };
+    case 'day':
+      return { color: '#FFFDE0', glowColor: '#FFE866', y: 0.15, radius: 0.04, glowRadius: 0.15, isMoon: false };
+    default:
+      return { color: CONFIG.sunColor, glowColor: '#FF8C42', y: 0.32, radius: 0.045, glowRadius: 0.18, isMoon: false };
+  }
+}
+
+// --- Clouds ---
+const clouds = [];
+for (let i = 0; i < CONFIG.cloudCount; i++) {
+  clouds.push({
+    x: Math.random() * 2,
+    y: 0.05 + Math.random() * 0.2,
+    w: 0.1 + Math.random() * 0.15,
+    h: 0.015 + Math.random() * 0.02,
+    speed: 0.00002 + Math.random() * 0.00004,
+    opacity: 0.15 + Math.random() * 0.25,
+    puffs: 3 + Math.floor(Math.random() * 4),
+  });
+}
+
+// --- Birds ---
+const birds = [];
+for (let i = 0; i < CONFIG.birdCount; i++) {
+  birds.push({
+    x: Math.random() * 2 - 0.5,
+    y: 0.1 + Math.random() * 0.25,
+    speed: 0.00008 + Math.random() * 0.00012,
+    wingPhase: Math.random() * Math.PI * 2,
+    wingSpeed: 0.008 + Math.random() * 0.005,
+    size: 8 + Math.random() * 8,
+  });
+}
+
+// --- Sparkles on water ---
+const sparkles = [];
+for (let i = 0; i < CONFIG.sparkleCount; i++) {
+  sparkles.push({
+    x: Math.random(),
+    y: 0.5 + Math.random() * 0.35,
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.003 + Math.random() * 0.006,
+    size: 1 + Math.random() * 2,
+  });
+}
+
+// --- Drawing functions ---
+function drawSky() {
+  const palette = getSkyPalette();
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  for (let i = 0; i < palette.length; i++) {
+    grad.addColorStop(i / (palette.length - 1), palette[i]);
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H * 0.55);
+}
+
+function drawSun(t) {
+  const props = getSunProperties();
+  const cx = W * 0.5 + Math.sin(t * 0.00005) * W * 0.02;
+  const cy = H * props.y;
+  const radius = Math.min(W, H) * props.radius;
+  const glowR = Math.min(W, H) * props.glowRadius;
+  const rgb = hexToRgb(props.color);
+  const glowRgb = hexToRgb(props.glowColor);
+
+  // Outer glow
+  const glowGrad = ctx.createRadialGradient(cx, cy, radius * 0.5, cx, cy, glowR);
+  glowGrad.addColorStop(0, `rgba(${glowRgb.r},${glowRgb.g},${glowRgb.b},0.3)`);
+  glowGrad.addColorStop(0.5, `rgba(${glowRgb.r},${glowRgb.g},${glowRgb.b},0.1)`);
+  glowGrad.addColorStop(1, `rgba(${glowRgb.r},${glowRgb.g},${glowRgb.b},0)`);
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sun/Moon body
+  const bodyGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  bodyGrad.addColorStop(0, `rgba(${rgb.r},${rgb.g},${rgb.b},1)`);
+  bodyGrad.addColorStop(0.7, `rgba(${rgb.r},${rgb.g},${rgb.b},0.9)`);
+  bodyGrad.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0.3)`);
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sun reflection path on water
+  if (!props.isMoon) {
+    const reflY = H * 0.52;
+    for (let ry = reflY; ry < H; ry += 4) {
+      const wobble = Math.sin(t * 0.003 + ry * 0.02) * 5;
+      const width = (ry - reflY) * 0.15 + 10;
+      const alpha = Math.max(0, 0.12 - (ry - reflY) * 0.0003);
+      ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+      ctx.fillRect(cx - width + wobble, ry, width * 2, 3);
+    }
+  }
+}
+
+function drawClouds(t) {
+  const isNight = CONFIG.timeOfDay === 'night';
+  clouds.forEach(cloud => {
+    cloud.x += cloud.speed;
+    if (cloud.x > 1.3) cloud.x = -cloud.w - 0.1;
+    const cx = cloud.x * W;
+    const cy = cloud.y * H;
+    const cw = cloud.w * W;
+    const ch = cloud.h * H;
+    const alpha = cloud.opacity * (isNight ? 0.3 : 1);
+
+    for (let p = 0; p < cloud.puffs; p++) {
+      const px = cx + (p / cloud.puffs) * cw;
+      const py = cy + Math.sin(p * 1.5) * ch * 0.3;
+      const pr = ch * (0.8 + Math.sin(p * 2.1) * 0.4);
+      const pGrad = ctx.createRadialGradient(px, py, 0, px, py, pr);
+      if (isNight) {
+        pGrad.addColorStop(0, `rgba(40,40,60,${alpha})`);
+        pGrad.addColorStop(1, `rgba(40,40,60,0)`);
+      } else {
+        pGrad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+        pGrad.addColorStop(1, `rgba(255,255,255,0)`);
+      }
+      ctx.fillStyle = pGrad;
+      ctx.beginPath();
+      ctx.arc(px, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+}
+
+function drawWaves(t) {
+  const waveLayers = CONFIG.waveColors.length;
+  for (let layer = 0; layer < waveLayers; layer++) {
+    const color = hexToRgb(CONFIG.waveColors[layer]);
+    const baseY = H * (0.48 + layer * 0.12);
+    const amplitude = 8 + layer * 5;
+    const frequency = 0.006 - layer * 0.001;
+    const speed = 0.0015 + layer * 0.0003;
+    const phaseOffset = layer * 1.2;
+
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 3) {
+      const wave1 = Math.sin(x * frequency + t * speed + phaseOffset) * amplitude;
+      const wave2 = Math.sin(x * frequency * 2.3 + t * speed * 0.7 + phaseOffset + 1) * amplitude * 0.4;
+      const wave3 = Math.sin(x * frequency * 0.5 + t * speed * 1.5 + phaseOffset + 2.5) * amplitude * 0.6;
+      const y = baseY + wave1 + wave2 + wave3;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+
+    // Gradient fill for depth
+    const grad = ctx.createLinearGradient(0, baseY - amplitude, 0, baseY + H * 0.2);
+    const alpha1 = 0.95 - layer * 0.05;
+    const alpha2 = 0.8 - layer * 0.05;
+    grad.addColorStop(0, `rgba(${color.r},${color.g},${color.b},${alpha1})`);
+    grad.addColorStop(0.3, `rgba(${Math.max(0,color.r-20)},${Math.max(0,color.g-15)},${Math.max(0,color.b-10)},${alpha2})`);
+    grad.addColorStop(1, `rgba(${Math.max(0,color.r-40)},${Math.max(0,color.g-30)},${Math.max(0,color.b-20)},1)`);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Foam/white caps on wave peaks
+    if (layer < 2) {
+      for (let x = 0; x <= W; x += 3) {
+        const wave1 = Math.sin(x * frequency + t * speed + phaseOffset) * amplitude;
+        const wave2 = Math.sin(x * frequency * 2.3 + t * speed * 0.7 + phaseOffset + 1) * amplitude * 0.4;
+        const wave3 = Math.sin(x * frequency * 0.5 + t * speed * 1.5 + phaseOffset + 2.5) * amplitude * 0.6;
+        const y = baseY + wave1 + wave2 + wave3;
+        const slope = Math.cos(x * frequency + t * speed + phaseOffset) * amplitude * frequency;
+        // Foam on crests
+        if (wave1 < -amplitude * 0.5 && Math.abs(slope) < 0.08) {
+          const foamAlpha = CONFIG.foamAlpha * (0.2 + Math.random() * 0.3);
+          ctx.fillStyle = `rgba(255,255,255,${foamAlpha})`;
+          ctx.fillRect(x, y - 1, 4 + Math.random() * 6, 2);
+        }
+      }
+    }
+  }
+}
+
+function drawSparkles(t) {
+  const sunProps = getSunProperties();
+  const sparkColor = hexToRgb(sunProps.color);
+  sparkles.forEach(s => {
+    s.phase += s.speed;
+    const brightness = Math.max(0, Math.sin(s.phase));
+    if (brightness < 0.3) return;
+    const sx = s.x * W + Math.sin(t * 0.001 + s.phase) * 5;
+    const sy = s.y * H + Math.sin(t * 0.002 + s.phase * 1.3) * 3;
+    const alpha = brightness * 0.7;
+    ctx.fillStyle = `rgba(${sparkColor.r},${sparkColor.g},${sparkColor.b},${alpha})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, s.size * brightness, 0, Math.PI * 2);
+    ctx.fill();
+    // Cross sparkle
+    if (brightness > 0.7) {
+      ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.5})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(sx - s.size * 2, sy);
+      ctx.lineTo(sx + s.size * 2, sy);
+      ctx.moveTo(sx, sy - s.size * 2);
+      ctx.lineTo(sx, sy + s.size * 2);
+      ctx.stroke();
+    }
+  });
+}
+
+function drawBirds(t) {
+  birds.forEach(bird => {
+    bird.x += bird.speed;
+    bird.wingPhase += bird.wingSpeed;
+    if (bird.x > 1.2) bird.x = -0.1;
+    const bx = bird.x * W;
+    const by = bird.y * H + Math.sin(t * 0.0008 + bird.wingPhase) * 8;
+    const wingAngle = Math.sin(bird.wingPhase) * 0.4;
+    const sz = bird.size;
+
+    ctx.strokeStyle = CONFIG.timeOfDay === 'night' ? 'rgba(150,150,180,0.5)' : 'rgba(30,30,30,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    // Left wing
+    ctx.moveTo(bx, by);
+    ctx.quadraticCurveTo(bx - sz * 0.5, by - sz * wingAngle, bx - sz, by + sz * 0.2 * wingAngle);
+    // Right wing
+    ctx.moveTo(bx, by);
+    ctx.quadraticCurveTo(bx + sz * 0.5, by - sz * wingAngle, bx + sz, by + sz * 0.2 * wingAngle);
+    ctx.stroke();
+  });
+}
+
+function drawDeepWater() {
+  // Gradient at the very bottom for deep water
+  const deepGrad = ctx.createLinearGradient(0, H * 0.85, 0, H);
+  const deepColor = hexToRgb(CONFIG.waveColors[CONFIG.waveColors.length - 1]);
+  deepGrad.addColorStop(0, `rgba(${Math.max(0,deepColor.r-30)},${Math.max(0,deepColor.g-25)},${Math.max(0,deepColor.b-15)},0.5)`);
+  deepGrad.addColorStop(1, `rgba(${Math.max(0,deepColor.r-50)},${Math.max(0,deepColor.g-45)},${Math.max(0,deepColor.b-30)},0.9)`);
+  ctx.fillStyle = deepGrad;
+  ctx.fillRect(0, H * 0.85, W, H * 0.15);
+}
+
+function animate(t) {
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  drawSun(t);
+  drawClouds(t);
+  drawWaves(t);
+  drawSparkles(t);
+  drawDeepWater();
+  drawBirds(t);
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

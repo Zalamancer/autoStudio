@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bounce Pop — Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Arial Rounded MT Bold', 'Nunito', 'Quicksand', sans-serif;
+    background: var(--bg-color, #FFF5F5);
+  }
+  #stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .word-row {
+    display: flex;
+    gap: clamp(4px, 1vw, 8px);
+    align-items: center;
+    justify-content: center;
+  }
+  .letter-cell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(32px, 8vw, 64px);
+    height: clamp(36px, 9vw, 72px);
+    border-radius: clamp(10px, 2.5vw, 20px);
+    color: #fff;
+    font-size: clamp(20px, 5vw, 38px);
+    font-weight: 900;
+    text-transform: uppercase;
+    user-select: none;
+    will-change: transform, opacity;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10), inset 0 2px 0 rgba(255,255,255,0.25);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .letter-cell .shine {
+    position: absolute;
+    top: 6px;
+    left: 12px;
+    width: 40%;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    pointer-events: none;
+  }
+  #confetti-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<canvas id="confetti-canvas"></canvas>
+<script>
+const CONFIG = {
+  words: ['GOOD', 'VIBES', 'ONLY', 'LOVE', 'LIFE', 'MORE'],
+  colors: ['#FF6B9D', '#C44AFF', '#4AEBFF', '#FFD93D', '#6BCB77', '#FF6B6B'],
+  bgColor: '#FFF5F5',
+  bounceHeight: 0.7,
+  letterStagger: 80,
+  wordStagger: 400,
+  squashStretch: 1.3,
+  cycleDuration: 10000,
+  popForce: 300,
+};
+
+/* ───── globals ───── */
+const stage = document.getElementById('stage');
+const confettiCanvas = document.getElementById('confetti-canvas');
+const ctx = confettiCanvas.getContext('2d');
+let stageW, stageH;
+let allLetters = [];        // flat list of letter state objects
+let confettiParticles = [];
+let phase = 'idle';         // idle | bounce | hold | wave | pop-hold | pop | pause
+let phaseStart = 0;
+let cycleStart = 0;
+
+/* ───── sizing ───── */
+function resize() {
+  stageW = window.innerWidth;
+  stageH = window.innerHeight;
+  confettiCanvas.width = stageW;
+  confettiCanvas.height = stageH;
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ───── color helpers ───── */
+function pickColor(wordIdx, letterIdx) {
+  const pool = CONFIG.colors;
+  return pool[(wordIdx + letterIdx) % pool.length];
+}
+
+function darken(hex, amt) {
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+  r = Math.max(0, r - amt);
+  g = Math.max(0, g - amt);
+  b = Math.max(0, b - amt);
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ───── build DOM ───── */
+function buildLetters() {
+  document.documentElement.style.setProperty('--bg-color', CONFIG.bgColor);
+  stage.innerHTML = '';
+  allLetters = [];
+
+  CONFIG.words.forEach((word, wi) => {
+    const row = document.createElement('div');
+    row.className = 'word-row';
+    word.split('').forEach((ch, li) => {
+      const cell = document.createElement('div');
+      cell.className = 'letter-cell';
+      const bg = pickColor(wi, li);
+      cell.style.backgroundColor = bg;
+      cell.style.borderBottom = `4px solid ${darken(bg, 40)}`;
+      cell.textContent = ch;
+      const shine = document.createElement('span');
+      shine.className = 'shine';
+      cell.appendChild(shine);
+      row.appendChild(cell);
+
+      const globalIdx = allLetters.length;
+      allLetters.push({
+        el: cell,
+        wordIdx: wi,
+        letterIdx: li,
+        globalIdx,
+        /* physics state */
+        y: 0,            // current offset from rest (negative = up)
+        vy: 0,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        opacity: 0,
+        landed: false,
+        /* pop state */
+        popVx: 0,
+        popVy: 0,
+        popRot: 0,
+        popX: 0,
+        popY: 0,
+        popOpacity: 1,
+        popping: false,
+      });
+    });
+    stage.appendChild(row);
+  });
+}
+
+/* ───── easing helpers ───── */
+function easeOutBounce(t) {
+  const n1 = 7.5625, d1 = 2.75;
+  if (t < 1 / d1) return n1 * t * t;
+  if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+  if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+  return n1 * (t -= 2.625 / d1) * t + 0.984375;
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* ───── timing helpers ───── */
+function letterDelay(letter) {
+  return letter.wordIdx * CONFIG.wordStagger + letter.letterIdx * CONFIG.letterStagger;
+}
+
+function totalBounceTime() {
+  const lastLetter = allLetters[allLetters.length - 1];
+  return letterDelay(lastLetter) + 700; // 700ms bounce duration per letter
+}
+
+/* ───── phase: BOUNCE ───── */
+const BOUNCE_DUR = 700;     // ms per letter bounce
+const DROP_DIST_RATIO = 0.7; // fraction of stageH
+
+function updateBounce(now) {
+  const elapsed = now - phaseStart;
+  let allDone = true;
+
+  allLetters.forEach((lt) => {
+    const delay = letterDelay(lt);
+    const local = elapsed - delay;
+    if (local < 0) { allDone = false; return; }
+
+    const t = clamp(local / BOUNCE_DUR, 0, 1);
+    const dropDist = stageH * DROP_DIST_RATIO;
+    const bounceT = easeOutBounce(t);
+
+    // y goes from -dropDist to 0 (rest)
+    lt.y = lerp(-dropDist, 0, bounceT);
+
+    // squash / stretch
+    const speed = Math.abs(bounceT - easeOutBounce(clamp((local - 16) / BOUNCE_DUR, 0, 1)));
+    const impact = t > 0.85 ? 0 : speed * 8;
+    const ss = CONFIG.squashStretch;
+    if (lt.y > -10 && t < 0.95) {
+      // near ground — squash
+      lt.scaleX = lerp(1, ss, impact);
+      lt.scaleY = lerp(1, 1 / ss, impact);
+    } else {
+      // in air — stretch
+      lt.scaleX = lerp(1, 1 / ss, impact * 0.5);
+      lt.scaleY = lerp(1, ss, impact * 0.5);
+    }
+
+    if (t >= 1) {
+      lt.scaleX = 1;
+      lt.scaleY = 1;
+      lt.y = 0;
+      lt.landed = true;
+    } else {
+      allDone = false;
+    }
+
+    lt.opacity = t > 0 ? 1 : 0;
+  });
+
+  if (allDone) {
+    phase = 'hold';
+    phaseStart = now;
+  }
+}
+
+/* ───── phase: WAVE ───── */
+const WAVE_AMP = 28;
+const WAVE_SPEED = 0.012;
+const WAVE_CYCLES = 2;
+const WAVE_DUR = 1800;
+
+function updateWave(now) {
+  const elapsed = now - phaseStart;
+  if (elapsed > WAVE_DUR) {
+    allLetters.forEach(lt => { lt.y = 0; lt.scaleX = 1; lt.scaleY = 1; });
+    phase = 'pop-hold';
+    phaseStart = now;
+    return;
+  }
+  const progress = elapsed / WAVE_DUR;
+  allLetters.forEach((lt) => {
+    const offset = lt.globalIdx * 0.35;
+    const wave = Math.sin((elapsed * WAVE_SPEED) - offset) * WAVE_AMP;
+    const envelope = Math.sin(progress * Math.PI); // fade in/out
+    lt.y = wave * envelope;
+
+    // subtle squash/stretch during wave
+    const normWave = wave / WAVE_AMP;
+    lt.scaleY = 1 + normWave * 0.08 * envelope;
+    lt.scaleX = 1 - normWave * 0.04 * envelope;
+  });
+}
+
+/* ───── phase: POP ───── */
+const POP_DUR = 900;
+
+function initPop(now) {
+  phase = 'pop';
+  phaseStart = now;
+  confettiParticles = [];
+
+  allLetters.forEach((lt) => {
+    const angle = (Math.random() - 0.5) * Math.PI * 1.2;
+    const force = CONFIG.popForce * (0.7 + Math.random() * 0.6);
+    lt.popVx = Math.sin(angle) * force;
+    lt.popVy = -Math.abs(Math.cos(angle)) * force - 100;
+    lt.popRot = (Math.random() - 0.5) * 720;
+    lt.popX = 0;
+    lt.popY = 0;
+    lt.popOpacity = 1;
+    lt.popping = true;
+
+    // spawn confetti at letter position
+    const rect = lt.el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 6; i++) {
+      confettiParticles.push(createConfetti(cx, cy));
+    }
+  });
+}
+
+function updatePop(now) {
+  const elapsed = now - phaseStart;
+  const t = clamp(elapsed / POP_DUR, 0, 1);
+  const dt = 1 / 60; // normalized timestep
+
+  allLetters.forEach((lt) => {
+    if (!lt.popping) return;
+
+    // scale up then burst
+    if (t < 0.12) {
+      const scaleUp = 1 + (t / 0.12) * 0.3;
+      lt.scaleX = scaleUp;
+      lt.scaleY = scaleUp;
+      lt.popX = 0;
+      lt.popY = 0;
+    } else {
+      const burstT = (t - 0.12) / 0.88;
+      lt.popX += lt.popVx * dt;
+      lt.popY += lt.popVy * dt;
+      lt.popVy += 600 * dt; // gravity
+      lt.rotation += lt.popRot * dt;
+      lt.popOpacity = Math.max(0, 1 - burstT * 1.5);
+      lt.scaleX = 1.3 * (1 - burstT * 0.4);
+      lt.scaleY = 1.3 * (1 - burstT * 0.4);
+    }
+  });
+
+  if (t >= 1) {
+    phase = 'pause';
+    phaseStart = now;
+    allLetters.forEach(lt => { lt.opacity = 0; lt.popping = false; });
+  }
+}
+
+/* ───── confetti ───── */
+function createConfetti(x, y) {
+  const colors = CONFIG.colors;
+  return {
+    x, y,
+    vx: (Math.random() - 0.5) * 500,
+    vy: -Math.random() * 400 - 100,
+    rot: Math.random() * 360,
+    rotV: (Math.random() - 0.5) * 800,
+    size: 4 + Math.random() * 6,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    life: 1,
+    decay: 0.6 + Math.random() * 0.5,
+    shape: Math.random() > 0.5 ? 'rect' : 'circle',
+  };
+}
+
+function updateConfetti(dt) {
+  confettiParticles.forEach(p => {
+    p.vy += 800 * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.rot += p.rotV * dt;
+    p.life -= p.decay * dt;
+    p.vx *= 0.99;
+  });
+  confettiParticles = confettiParticles.filter(p => p.life > 0 && p.y < stageH + 50);
+}
+
+function drawConfetti() {
+  ctx.clearRect(0, 0, stageW, stageH);
+  confettiParticles.forEach(p => {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate((p.rot * Math.PI) / 180);
+    ctx.globalAlpha = clamp(p.life, 0, 1);
+    ctx.fillStyle = p.color;
+    if (p.shape === 'rect') {
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+/* ───── render letters ───── */
+function renderLetters() {
+  allLetters.forEach(lt => {
+    const tx = lt.popping ? lt.popX : 0;
+    const ty = lt.y + (lt.popping ? lt.popY : 0);
+    const op = lt.popping ? lt.popOpacity : lt.opacity;
+    lt.el.style.opacity = op;
+    lt.el.style.transform =
+      `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) ` +
+      `rotate(${lt.rotation.toFixed(1)}deg) ` +
+      `scale(${lt.scaleX.toFixed(3)}, ${lt.scaleY.toFixed(3)})`;
+  });
+}
+
+/* ───── main loop ───── */
+let lastTime = 0;
+
+function resetCycle(now) {
+  phase = 'bounce';
+  phaseStart = now;
+  cycleStart = now;
+  confettiParticles = [];
+  allLetters.forEach(lt => {
+    lt.y = 0; lt.vy = 0;
+    lt.scaleX = 1; lt.scaleY = 1;
+    lt.rotation = 0; lt.opacity = 0;
+    lt.landed = false;
+    lt.popVx = 0; lt.popVy = 0;
+    lt.popRot = 0; lt.popX = 0; lt.popY = 0;
+    lt.popOpacity = 1; lt.popping = false;
+  });
+}
+
+function tick(now) {
+  requestAnimationFrame(tick);
+
+  const dt = lastTime ? (now - lastTime) / 1000 : 1 / 60;
+  lastTime = now;
+
+  switch (phase) {
+    case 'bounce':
+      updateBounce(now);
+      break;
+
+    case 'hold':
+      // short rest after bounce before wave
+      if (now - phaseStart > 500) {
+        phase = 'wave';
+        phaseStart = now;
+      }
+      break;
+
+    case 'wave':
+      updateWave(now);
+      break;
+
+    case 'pop-hold':
+      // brief pause before pop
+      if (now - phaseStart > 400) {
+        initPop(now);
+      }
+      break;
+
+    case 'pop':
+      updatePop(now);
+      break;
+
+    case 'pause':
+      // wait then restart cycle
+      if (now - phaseStart > 800) {
+        resetCycle(now);
+      }
+      break;
+  }
+
+  updateConfetti(dt);
+  renderLetters();
+  drawConfetti();
+}
+
+/* ───── init ───── */
+buildLetters();
+resetCycle(performance.now());
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

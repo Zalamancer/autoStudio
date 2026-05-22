@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNA Sequencer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .header {
+    position: absolute;
+    top: 6vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+  }
+  .header h1 {
+    font-size: 2.4vw;
+    letter-spacing: 0.6em;
+    text-transform: uppercase;
+    color: #4af0c0;
+    text-shadow: 0 0 20px rgba(74, 240, 192, 0.4);
+  }
+  .header .subtitle {
+    font-size: 1vw;
+    color: #5a7a9a;
+    letter-spacing: 0.3em;
+    margin-top: 0.8vh;
+  }
+
+  .sequence-viewport {
+    position: absolute;
+    top: 18vh;
+    width: 80vw;
+    height: 10vh;
+    overflow: hidden;
+    border: 1px solid rgba(74, 240, 192, 0.15);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+  }
+  .sequence-track {
+    display: flex;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    will-change: transform;
+  }
+  .base {
+    font-size: 3.2vh;
+    font-weight: bold;
+    padding: 0 0.4vw;
+    opacity: 0.9;
+  }
+  .scan-line {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: rgba(74, 240, 192, 0.8);
+    box-shadow: 0 0 15px rgba(74, 240, 192, 0.6), 0 0 30px rgba(74, 240, 192, 0.3);
+    z-index: 2;
+  }
+
+  .helix-container {
+    position: absolute;
+    top: 34vh;
+    width: 80vw;
+    height: 26vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .helix-wrapper {
+    position: relative;
+    width: 70vw;
+    height: 20vh;
+  }
+  .helix-dot {
+    position: absolute;
+    width: 1.2vw;
+    height: 1.2vw;
+    border-radius: 50%;
+    opacity: 0;
+  }
+  .helix-bond {
+    position: absolute;
+    height: 2px;
+    opacity: 0;
+  }
+
+  .stats-container {
+    position: absolute;
+    bottom: 22vh;
+    width: 70vw;
+    display: flex;
+    justify-content: space-around;
+  }
+  .stat-box {
+    text-align: center;
+    opacity: 0;
+  }
+  .stat-label {
+    font-size: 1.8vw;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.5vh;
+  }
+  .stat-count {
+    font-size: 3vw;
+    font-weight: bold;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-container {
+    position: absolute;
+    bottom: 10vh;
+    width: 60vw;
+    opacity: 0;
+  }
+  .progress-label {
+    font-size: 0.9vw;
+    color: #5a7a9a;
+    letter-spacing: 0.25em;
+    margin-bottom: 1vh;
+    display: flex;
+    justify-content: space-between;
+  }
+  .progress-bar {
+    width: 100%;
+    height: 0.6vh;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1vh;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 1vh;
+    background: linear-gradient(90deg, #4af0c0, #2a9df4);
+    box-shadow: 0 0 10px rgba(74, 240, 192, 0.5);
+  }
+
+  .corner-deco {
+    position: absolute;
+    width: 3vw;
+    height: 3vw;
+    border-color: rgba(74, 240, 192, 0.2);
+    border-style: solid;
+    border-width: 0;
+    opacity: 0;
+  }
+  .corner-deco.tl { top: 2vh; left: 2vw; border-top-width: 2px; border-left-width: 2px; }
+  .corner-deco.tr { top: 2vh; right: 2vw; border-top-width: 2px; border-right-width: 2px; }
+  .corner-deco.bl { bottom: 2vh; left: 2vw; border-bottom-width: 2px; border-left-width: 2px; }
+  .corner-deco.br { bottom: 2vh; right: 2vw; border-bottom-width: 2px; border-right-width: 2px; }
+</style>
+</head>
+<body>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  title: "GENOME ANALYSIS",
+  sequence: "ATGCGATCTAGCTAGCATGCATGCGATCGATCTAGCATGCATGCGATCGATCTAGCATGCATGCGATCGATCTAGCATGCATGCGATCGATCTAGCATGCATGCGATCGATCTAGCATGC",
+  bgColor: "#0a1628",
+  colors: {
+    A: "#4af0c0",
+    T: "#f04a6e",
+    G: "#f0c44a",
+    C: "#4a8ef0"
+  },
+  cycleDuration: 12
+};
+// === END EDITABLE CONFIG ===
+
+document.body.style.background = CONFIG.bgColor;
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+document.body.innerHTML = `
+  <div class="corner-deco tl"></div>
+  <div class="corner-deco tr"></div>
+  <div class="corner-deco bl"></div>
+  <div class="corner-deco br"></div>
+  <div class="header">
+    <h1>${CONFIG.title}</h1>
+    <div class="subtitle">REAL-TIME BASE PAIR IDENTIFICATION</div>
+  </div>
+  <div class="sequence-viewport">
+    <div class="scan-line"></div>
+    <div class="sequence-track"></div>
+  </div>
+  <div class="helix-container">
+    <div class="helix-wrapper"></div>
+  </div>
+  <div class="stats-container">
+    <div class="stat-box" data-base="A">
+      <div class="stat-label" style="color:${CONFIG.colors.A}">ADENINE</div>
+      <div class="stat-count">0</div>
+    </div>
+    <div class="stat-box" data-base="T">
+      <div class="stat-label" style="color:${CONFIG.colors.T}">THYMINE</div>
+      <div class="stat-count">0</div>
+    </div>
+    <div class="stat-box" data-base="G">
+      <div class="stat-label" style="color:${CONFIG.colors.G}">GUANINE</div>
+      <div class="stat-count">0</div>
+    </div>
+    <div class="stat-box" data-base="C">
+      <div class="stat-label" style="color:${CONFIG.colors.C}">CYTOSINE</div>
+      <div class="stat-count">0</div>
+    </div>
+  </div>
+  <div class="progress-container">
+    <div class="progress-label">
+      <span>SEQUENCING PROGRESS</span>
+      <span class="progress-pct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+  </div>
+`;
+
+// Build sequence letters
+const track = $('.sequence-track');
+const seq = CONFIG.sequence;
+seq.split('').forEach(ch => {
+  const el = document.createElement('span');
+  el.className = 'base';
+  el.textContent = ch;
+  el.style.color = CONFIG.colors[ch] || '#fff';
+  track.appendChild(el);
+});
+
+// Build double helix
+const helixWrapper = $('.helix-wrapper');
+const helixDotCount = 40;
+const helixDots = [];
+const helixBonds = [];
+for (let i = 0; i < helixDotCount; i++) {
+  const xPct = (i / (helixDotCount - 1)) * 100;
+  const phase1 = (i / helixDotCount) * Math.PI * 4;
+  const phase2 = phase1 + Math.PI;
+  const baseIdx = i % seq.length;
+  const complement = { A: 'T', T: 'A', G: 'C', C: 'G' };
+  const b1 = seq[baseIdx];
+  const b2 = complement[b1] || 'A';
+
+  const dot1 = document.createElement('div');
+  dot1.className = 'helix-dot';
+  dot1.style.left = xPct + '%';
+  dot1.style.background = CONFIG.colors[b1];
+  dot1.style.boxShadow = '0 0 8px ' + CONFIG.colors[b1] + '80';
+  dot1.style.transform = 'translate(-50%, -50%)';
+  helixWrapper.appendChild(dot1);
+
+  const dot2 = document.createElement('div');
+  dot2.className = 'helix-dot';
+  dot2.style.left = xPct + '%';
+  dot2.style.background = CONFIG.colors[b2];
+  dot2.style.boxShadow = '0 0 8px ' + CONFIG.colors[b2] + '80';
+  dot2.style.transform = 'translate(-50%, -50%)';
+  helixWrapper.appendChild(dot2);
+
+  if (Math.abs(Math.sin(phase1)) < 0.7) {
+    const bond = document.createElement('div');
+    bond.className = 'helix-bond';
+    bond.style.left = xPct + '%';
+    bond.style.width = '1px';
+    bond.style.background = 'linear-gradient(' + CONFIG.colors[b1] + '60, ' + CONFIG.colors[b2] + '60)';
+    bond.style.transform = 'translateX(-50%)';
+    helixWrapper.appendChild(bond);
+    helixBonds.push(bond);
+  }
+
+  helixDots.push({ dot1, dot2, phase1, phase2, xPct, baseIdx });
+}
+
+// Animation loop
+const cycleDur = CONFIG.cycleDuration * 1000;
+let startTime = null;
+
+const baseCounts = { A: 0, T: 0, G: 0, C: 0 };
+seq.split('').forEach(ch => { if (baseCounts[ch] !== undefined) baseCounts[ch]++; });
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInCubic(t) { return t * t * t; }
+function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+
+function animate(now) {
+  if (!startTime) startTime = now;
+  const elapsed = (now - startTime) % cycleDur;
+
+  const entranceDur = cycleDur * 0.12;
+  const analysisDur = cycleDur * 0.65;
+  const holdDur = cycleDur * 0.1;
+  const exitDur = cycleDur * 0.13;
+
+  let globalOpacity = 1;
+  let analysisProgress = 0;
+
+  if (elapsed < entranceDur) {
+    globalOpacity = easeOutCubic(elapsed / entranceDur);
+    analysisProgress = 0;
+  } else if (elapsed < entranceDur + analysisDur) {
+    const t = (elapsed - entranceDur) / analysisDur;
+    analysisProgress = easeInOutCubic(t);
+    globalOpacity = 1;
+  } else if (elapsed < entranceDur + analysisDur + holdDur) {
+    analysisProgress = 1;
+    globalOpacity = 1;
+  } else {
+    const t = (elapsed - entranceDur - analysisDur - holdDur) / exitDur;
+    analysisProgress = 1;
+    globalOpacity = 1 - easeInCubic(Math.min(1, t));
+  }
+
+  // Header
+  const header = $('.header');
+  header.style.opacity = globalOpacity;
+  header.style.transform = 'translateX(-50%) translateY(' + ((1 - globalOpacity) * -20) + 'px)';
+
+  // Corners
+  $$('.corner-deco').forEach(el => { el.style.opacity = globalOpacity * 0.6; });
+
+  // Sequence scrolling
+  const viewport = $('.sequence-viewport');
+  const vpWidth = viewport.offsetWidth;
+  const trackWidth = track.scrollWidth;
+  const scrollDist = trackWidth - vpWidth;
+  const scrollPos = -analysisProgress * scrollDist;
+  track.style.transform = 'translateY(-50%) translateX(' + scrollPos + 'px)';
+
+  const scanLine = $('.scan-line');
+  scanLine.style.left = (vpWidth * 0.35) + 'px';
+  scanLine.style.opacity = globalOpacity;
+
+  // Helix
+  const helixTime = now * 0.001;
+  helixDots.forEach((item, i) => {
+    const revealT = Math.max(0, Math.min(1, (analysisProgress * helixDotCount - i) / 3));
+    const p1 = item.phase1 + helixTime * 1.5;
+    const p2 = p1 + Math.PI;
+    const y1 = 50 + Math.sin(p1) * 35;
+    const y2 = 50 + Math.sin(p2) * 35;
+    const z1 = Math.cos(p1);
+    const z2 = Math.cos(p2);
+    const scale1 = 0.6 + z1 * 0.4;
+    const scale2 = 0.6 + z2 * 0.4;
+
+    item.dot1.style.top = y1 + '%';
+    item.dot1.style.opacity = revealT * globalOpacity * (0.5 + z1 * 0.5);
+    item.dot1.style.width = item.dot1.style.height = (1.2 * scale1) + 'vw';
+    item.dot2.style.top = y2 + '%';
+    item.dot2.style.opacity = revealT * globalOpacity * (0.5 + z2 * 0.5);
+    item.dot2.style.width = item.dot2.style.height = (1.2 * scale2) + 'vw';
+  });
+  helixBonds.forEach((bond, i) => {
+    const revealT = Math.max(0, Math.min(1, (analysisProgress * helixBonds.length - i) / 3));
+    bond.style.opacity = revealT * globalOpacity * 0.4;
+  });
+
+  // Stats
+  $$('.stat-box').forEach((box, i) => {
+    const stagger = i * 0.05;
+    const t = Math.max(0, Math.min(1, (analysisProgress - stagger) / 0.3));
+    box.style.opacity = easeOutCubic(t) * globalOpacity;
+    box.style.transform = 'translateY(' + ((1 - easeOutCubic(t)) * 20) + 'px)';
+    const base = box.dataset.base;
+    box.querySelector('.stat-count').textContent = Math.round(baseCounts[base] * analysisProgress);
+  });
+
+  // Progress
+  const progressContainer = $('.progress-container');
+  const entT = Math.max(0, Math.min(1, (analysisProgress - 0.05) / 0.15));
+  progressContainer.style.opacity = easeOutCubic(entT) * globalOpacity;
+  $('.progress-fill').style.width = (analysisProgress * 100) + '%';
+  $('.progress-pct').textContent = Math.round(analysisProgress * 100) + '%';
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+    document.body.style.background = CONFIG.bgColor;
+  }
+});
+</script>
+</body>
+</html>

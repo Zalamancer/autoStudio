@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vintage Radio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Georgia', 'Times New Roman', serif; background: #1a1208; }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Warm background */
+  .bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, #2a1e10 0%, #1a1208 60%, #0e0a04 100%); }
+
+  /* Film grain */
+  .grain { position: absolute; inset: 0; z-index: 20; pointer-events: none; opacity: 0.06; mix-blend-mode: overlay; }
+  .grain-inner { width: 200%; height: 200%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: grainShift 0.4s steps(5) infinite; }
+  @keyframes grainShift { 0% { transform: translate(0,0); } 25% { transform: translate(-3%,-6%); } 50% { transform: translate(5%,-2%); } 75% { transform: translate(-6%,4%); } 100% { transform: translate(0,0); } }
+
+  /* Radio body */
+  .radio-body { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70vw; height: 60vh; background: linear-gradient(180deg, #3d2e1a 0%, #2a1e10 50%, #1e1508 100%); border-radius: 3vh; border: 2px solid rgba(180,140,80,0.15); box-shadow: 0 0 60px rgba(180,140,80,0.05), inset 0 1px 0 rgba(255,255,255,0.03); z-index: 2; overflow: hidden; }
+  .radio-body::before { content: ''; position: absolute; inset: 4px; border-radius: 2.5vh; border: 1px solid rgba(180,140,80,0.06); pointer-events: none; }
+
+  /* Speaker grille */
+  .speaker-grille { position: absolute; top: 8%; left: 50%; transform: translateX(-50%); width: 55%; height: 28%; display: flex; flex-direction: column; gap: 3px; justify-content: center; align-items: center; }
+  .grille-line { width: 100%; height: 2px; background: rgba(180,140,80,0.12); border-radius: 1px; }
+
+  /* Dial section */
+  .dial-section { position: absolute; top: 42%; left: 50%; transform: translateX(-50%); width: 50%; height: 18%; background: rgba(0,0,0,0.3); border-radius: 1.5vh; border: 1px solid rgba(180,140,80,0.1); overflow: hidden; }
+  .dial-bg { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(40,30,15,0.8), rgba(20,15,5,0.9)); }
+  .freq-marks { position: absolute; top: 20%; left: 5%; right: 5%; height: 40%; display: flex; justify-content: space-between; align-items: flex-end; }
+  .freq-mark { text-align: center; }
+  .freq-mark .tick { width: 1px; height: 1.5vh; background: rgba(180,140,80,0.3); margin: 0 auto 3px; }
+  .freq-mark .num { font-size: 1.1vh; color: rgba(180,140,80,0.4); font-family: 'Courier New', monospace; }
+  .dial-needle { position: absolute; top: 15%; width: 2px; height: 70%; background: linear-gradient(180deg, #ff6020, #ff8040, #ff6020); box-shadow: 0 0 6px rgba(255,100,30,0.6); z-index: 3; border-radius: 1px; transition: left 0.1s linear; }
+  .dial-glow { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(255,160,60,0.08) 0%, transparent 70%); pointer-events: none; animation: dialGlow 3s ease-in-out infinite; }
+  @keyframes dialGlow { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+  /* Frequency display */
+  .freq-display { position: absolute; top: 62%; left: 50%; transform: translateX(-50%); text-align: center; opacity: 0; }
+  .freq-number { font-size: 3.5vh; font-family: 'Courier New', monospace; color: #ff9030; text-shadow: 0 0 10px rgba(255,140,40,0.4); letter-spacing: 2px; }
+  .freq-unit { font-size: 1.4vh; color: rgba(180,140,80,0.4); letter-spacing: 3px; margin-top: 0.3vh; }
+
+  /* Vacuum tubes */
+  .tubes { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); display: flex; gap: 4vw; z-index: 3; }
+  .tube { width: 4vw; height: 6vh; position: relative; }
+  .tube-glass { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 3vw; height: 5vh; border-radius: 1.5vw 1.5vw 0.5vw 0.5vw; background: rgba(30,20,10,0.5); border: 1px solid rgba(180,140,80,0.1); overflow: hidden; }
+  .tube-glow { position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); width: 1.5vw; height: 2.5vh; border-radius: 50%; background: radial-gradient(circle, rgba(255,140,40,0.6) 0%, rgba(255,80,20,0.3) 50%, transparent 70%); }
+  @keyframes tubePulse { 0%,100% { opacity: 0.4; transform: translateX(-50%) scale(0.9); } 50% { opacity: 1; transform: translateX(-50%) scale(1.1); } }
+  .tube-glow.active { animation: tubePulse 2s ease-in-out infinite; }
+  .tube-base { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 3.5vw; height: 1vh; background: rgba(100,80,50,0.3); border-radius: 0 0 2px 2px; }
+
+  /* ON AIR sign */
+  .on-air { position: absolute; top: 5%; right: 8%; z-index: 5; opacity: 0; }
+  .on-air-box { background: rgba(200,30,20,0.9); padding: 0.8vh 1.5vw; border-radius: 4px; box-shadow: 0 0 20px rgba(200,30,20,0.4), 0 0 40px rgba(200,30,20,0.2); }
+  .on-air-text { font-size: 2vh; font-weight: 700; color: #fff; letter-spacing: 4px; font-family: 'Segoe UI', system-ui, sans-serif; }
+  @keyframes onAirPulse { 0%,100% { box-shadow: 0 0 20px rgba(200,30,20,0.4), 0 0 40px rgba(200,30,20,0.2); } 50% { box-shadow: 0 0 30px rgba(200,30,20,0.6), 0 0 60px rgba(200,30,20,0.3); } }
+
+  /* Station info */
+  .station-info { position: absolute; top: 5%; left: 8%; z-index: 5; opacity: 0; }
+  .station-name { font-size: 2.5vh; font-weight: 700; color: rgba(255,200,120,0.8); letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,160,60,0.2); }
+  .show-name { font-size: 1.5vh; color: rgba(180,140,80,0.5); margin-top: 0.5vh; letter-spacing: 1px; }
+  .host-name { font-size: 1.3vh; color: rgba(180,140,80,0.35); margin-top: 0.3vh; font-style: italic; }
+
+  /* Sound wave bars */
+  .wave-section { position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 3px; height: 8vh; z-index: 3; }
+  .wave-bar { width: 4px; background: linear-gradient(to top, rgba(255,140,40,0.6), rgba(255,200,80,0.3)); border-radius: 2px; transition: height 0.08s ease; }
+
+  /* Warm vignette */
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(10,8,2,0.6) 100%); pointer-events: none; z-index: 15; }
+
+  /* Ambient warm glow */
+  .warm-glow { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); width: 50vw; height: 30vh; background: radial-gradient(ellipse, rgba(255,140,40,0.04) 0%, transparent 70%); pointer-events: none; z-index: 1; }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="bg"></div>
+  <div class="warm-glow"></div>
+  <div class="radio-body">
+    <div class="speaker-grille" id="speakerGrille"></div>
+    <div class="dial-section">
+      <div class="dial-bg"></div>
+      <div class="freq-marks" id="freqMarks"></div>
+      <div class="dial-needle" id="dialNeedle" style="left: 30%;"></div>
+      <div class="dial-glow"></div>
+    </div>
+    <div class="wave-section" id="waveSection"></div>
+    <div class="tubes" id="tubes"></div>
+    <div class="freq-display" id="freqDisplay">
+      <div class="freq-number" id="freqNumber">98.7</div>
+      <div class="freq-unit">FM MHz</div>
+    </div>
+  </div>
+  <div class="on-air" id="onAir">
+    <div class="on-air-box"><span class="on-air-text">ON AIR</span></div>
+  </div>
+  <div class="station-info" id="stationInfo">
+    <div class="station-name" id="stationName">GOLDEN WAVE</div>
+    <div class="show-name" id="showName">The Evening Hour</div>
+    <div class="host-name" id="hostName">with Frank Morrison</div>
+  </div>
+  <div class="vignette"></div>
+  <div class="grain"><div class="grain-inner"></div></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  stationName: 'GOLDEN WAVE',
+  frequency: '98.7',
+  showName: 'The Evening Hour',
+  hostName: 'Frank Morrison',
+  onAirTime: '8:00 PM',
+  cycleDuration: 14000,
+  warmColor: '#ff9030',
+};
+
+document.getElementById('stationName').textContent = CONFIG.stationName;
+document.getElementById('showName').textContent = CONFIG.showName;
+document.getElementById('hostName').textContent = 'with ' + CONFIG.hostName;
+document.getElementById('freqNumber').textContent = CONFIG.frequency;
+
+// Speaker grille lines
+const grille = document.getElementById('speakerGrille');
+for (let i = 0; i < 18; i++) {
+  const line = document.createElement('div');
+  line.className = 'grille-line';
+  grille.appendChild(line);
+}
+
+// Frequency marks
+const freqMarks = document.getElementById('freqMarks');
+const freqs = ['88', '92', '96', '100', '104', '108'];
+freqs.forEach(f => {
+  const mark = document.createElement('div');
+  mark.className = 'freq-mark';
+  mark.innerHTML = '<div class="tick"></div><div class="num">' + f + '</div>';
+  freqMarks.appendChild(mark);
+});
+
+// Vacuum tubes
+const tubesEl = document.getElementById('tubes');
+for (let i = 0; i < 5; i++) {
+  const tube = document.createElement('div');
+  tube.className = 'tube';
+  const glass = document.createElement('div');
+  glass.className = 'tube-glass';
+  const glow = document.createElement('div');
+  glow.className = 'tube-glow active';
+  glow.style.animationDelay = (i * 0.4) + 's';
+  const base = document.createElement('div');
+  base.className = 'tube-base';
+  glass.appendChild(glow);
+  tube.appendChild(glass);
+  tube.appendChild(base);
+  tubesEl.appendChild(tube);
+}
+
+// Sound wave bars
+const waveSection = document.getElementById('waveSection');
+const waveBars = [];
+for (let i = 0; i < 32; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'wave-bar';
+  bar.style.height = '2px';
+  waveSection.appendChild(bar);
+  waveBars.push(bar);
+}
+
+// Animate wave bars
+let waveTime = 0;
+function animateWaves() {
+  waveTime += 0.06;
+  waveBars.forEach((bar, i) => {
+    const center = waveBars.length / 2;
+    const dist = Math.abs(i - center) / center;
+    const h = 2 + Math.abs(Math.sin(waveTime * 2.5 + i * 0.25)) * (40 * (1 - dist * 0.5)) * (0.3 + 0.7 * Math.sin(waveTime * 0.8 + i * 0.15));
+    bar.style.height = h + 'px';
+  });
+  requestAnimationFrame(animateWaves);
+}
+animateWaves();
+
+// Dial needle animation
+const needle = document.getElementById('dialNeedle');
+let needleTarget = 30;
+let needlePos = 30;
+function animateNeedle() {
+  needlePos += (needleTarget - needlePos) * 0.02;
+  needle.style.left = needlePos + '%';
+  // Map position to frequency
+  const freq = (88 + (needlePos / 100) * 20).toFixed(1);
+  document.getElementById('freqNumber').textContent = freq;
+  requestAnimationFrame(animateNeedle);
+}
+animateNeedle();
+
+// Slowly sweep the dial
+setInterval(() => {
+  needleTarget = 10 + Math.random() * 80;
+}, 4000);
+
+// Set initial target based on CONFIG frequency
+const configFreq = parseFloat(CONFIG.frequency);
+needleTarget = ((configFreq - 88) / 20) * 100;
+needlePos = needleTarget;
+
+// Cycle animation
+function runCycle() {
+  const onAir = document.getElementById('onAir');
+  const stationInfo = document.getElementById('stationInfo');
+  const freqDisplay = document.getElementById('freqDisplay');
+
+  // Reset
+  onAir.style.transition = 'none'; onAir.style.opacity = '0';
+  stationInfo.style.transition = 'none'; stationInfo.style.opacity = '0';
+  freqDisplay.style.transition = 'none'; freqDisplay.style.opacity = '0';
+  void onAir.offsetWidth;
+
+  // Set needle to config frequency
+  needleTarget = ((configFreq - 88) / 20) * 100;
+
+  // Animate in
+  setTimeout(() => {
+    onAir.style.transition = 'opacity 0.6s ease';
+    onAir.style.opacity = '1';
+    onAir.querySelector('.on-air-box').style.animation = 'onAirPulse 2s ease-in-out infinite';
+  }, 400);
+
+  setTimeout(() => {
+    stationInfo.style.transition = 'opacity 0.8s ease';
+    stationInfo.style.opacity = '1';
+  }, 900);
+
+  setTimeout(() => {
+    freqDisplay.style.transition = 'opacity 0.8s ease';
+    freqDisplay.style.opacity = '1';
+  }, 1400);
+
+  // Mid-cycle: sweep dial to new position
+  setTimeout(() => {
+    needleTarget = 10 + Math.random() * 80;
+  }, CONFIG.cycleDuration * 0.4);
+
+  // Return to station
+  setTimeout(() => {
+    needleTarget = ((configFreq - 88) / 20) * 100;
+  }, CONFIG.cycleDuration * 0.65);
+
+  // Animate out
+  setTimeout(() => {
+    onAir.style.transition = 'opacity 1s ease'; onAir.style.opacity = '0';
+    stationInfo.style.transition = 'opacity 1s ease'; stationInfo.style.opacity = '0';
+    freqDisplay.style.transition = 'opacity 1s ease'; freqDisplay.style.opacity = '0';
+  }, CONFIG.cycleDuration - 1800);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

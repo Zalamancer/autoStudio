@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heartbeat Monitor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', 'Consolas', monospace;
+    color: #33ff66;
+  }
+
+  .monitor-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .grid-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .grid-fine {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(0,80,0,0.08) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(0,80,0,0.08) 1px, transparent 1px);
+    background-size: 10px 10px;
+  }
+
+  .grid-major {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(0,120,0,0.12) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(0,120,0,0.12) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  canvas#ecgCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+  }
+
+  .vital-panel {
+    position: fixed;
+    z-index: 10;
+    padding: 10px 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,120,0,0.2);
+    background: rgba(0,15,0,0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  .vital-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-bottom: 2px;
+  }
+
+  .vital-value {
+    font-size: clamp(24px, 5vw, 52px);
+    font-weight: 700;
+    line-height: 1;
+    animation: vitalGlow 2s ease-in-out infinite;
+  }
+
+  .vital-unit {
+    font-size: 10px;
+    opacity: 0.4;
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  @keyframes vitalGlow {
+    0%, 100% { text-shadow: 0 0 5px currentColor; }
+    50% { text-shadow: 0 0 15px currentColor, 0 0 30px currentColor; }
+  }
+
+  .hr-panel {
+    top: 5%;
+    right: 4%;
+    min-width: 120px;
+  }
+
+  .hr-value {
+    font-size: clamp(36px, 8vw, 72px);
+  }
+
+  .bp-panel {
+    top: 28%;
+    right: 4%;
+    min-width: 100px;
+  }
+
+  .o2-panel {
+    top: 48%;
+    right: 4%;
+    min-width: 100px;
+  }
+
+  .o2-value { color: #33ccff; }
+  .o2-panel { border-color: rgba(0,100,200,0.2); }
+  .o2-panel .vital-label { color: #33ccff; }
+  .o2-panel .vital-unit { color: #33ccff; }
+
+  .patient-panel {
+    bottom: 5%;
+    left: 4%;
+    min-width: 160px;
+    padding: 12px 20px;
+  }
+
+  .patient-name {
+    font-size: clamp(12px, 2vw, 18px);
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .patient-id {
+    font-size: 10px;
+    opacity: 0.4;
+    letter-spacing: 0.15em;
+  }
+
+  .patient-info-row {
+    font-size: 9px;
+    opacity: 0.3;
+    margin-top: 3px;
+    letter-spacing: 0.1em;
+  }
+
+  .beep-indicator {
+    position: fixed;
+    top: 6%;
+    left: 4%;
+    z-index: 12;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .beep-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #33ff66;
+    box-shadow: 0 0 8px #33ff66;
+    opacity: 0.3;
+    transition: opacity 0.05s;
+  }
+
+  .beep-dot.active {
+    opacity: 1;
+    box-shadow: 0 0 15px #33ff66, 0 0 30px rgba(51,255,102,0.4);
+  }
+
+  .beep-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    opacity: 0.4;
+  }
+
+  .status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3%;
+    min-height: 20px;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2%;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    opacity: 0.3;
+    border-top: 1px solid rgba(0,120,0,0.15);
+    background: rgba(0,10,0,0.5);
+  }
+
+  .alarm-indicator {
+    position: fixed;
+    top: 6%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 4px 16px;
+    border-radius: 2px;
+    border: 1px solid;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @keyframes alarmFlash {
+    0%, 100% { opacity: 0; }
+    10%, 90% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .secondary-trace {
+    position: fixed;
+    bottom: 20%;
+    left: 0;
+    right: 0;
+    height: 15%;
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  .trace-label {
+    position: fixed;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    opacity: 0.25;
+    z-index: 6;
+  }
+
+  .trace-label-ecg { top: 18%; left: 4%; }
+  .trace-label-spo2 { bottom: 22%; left: 4%; color: #33ccff; }
+  .trace-label-resp { bottom: 8%; left: 4%; color: #ffcc33; }
+
+  .scan-line {
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 1px;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.04;
+    animation: scanMove 6s linear infinite;
+  }
+
+  @keyframes scanMove {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+
+  .monitor-bezel {
+    position: fixed;
+    inset: 0;
+    border: 3px solid rgba(40,50,40,0.4);
+    border-radius: 8px;
+    z-index: 20;
+    pointer-events: none;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.3);
+  }
+
+  .monitor-reflection {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 60%;
+    height: 40%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%);
+    z-index: 21;
+    pointer-events: none;
+    border-radius: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="monitor-bg" id="monitorBg"></div>
+
+<div class="grid-overlay">
+  <div class="grid-fine"></div>
+  <div class="grid-major"></div>
+</div>
+
+<div class="scan-line" id="scanLine"></div>
+
+<canvas id="ecgCanvas"></canvas>
+
+<div class="beep-indicator">
+  <div class="beep-dot" id="beepDot"></div>
+  <span class="beep-label">ECG LEAD II</span>
+</div>
+
+<div class="vital-panel hr-panel">
+  <div class="vital-label">HEART RATE</div>
+  <div class="vital-value hr-value" id="hrValue">72</div>
+  <div class="vital-unit">BPM</div>
+</div>
+
+<div class="vital-panel bp-panel">
+  <div class="vital-label">BLOOD PRESSURE</div>
+  <div class="vital-value" id="bpValue" style="font-size:clamp(20px,4vw,40px);">120/80</div>
+  <div class="vital-unit">mmHg</div>
+</div>
+
+<div class="vital-panel o2-panel">
+  <div class="vital-label" style="color:#33ccff;">SpO2</div>
+  <div class="vital-value o2-value" id="o2Value">98</div>
+  <div class="vital-unit" style="color:#33ccff;">%</div>
+</div>
+
+<div class="vital-panel patient-panel">
+  <div class="patient-name" id="patientName">DOE, JOHN</div>
+  <div class="patient-id" id="patientId">ID: 847291</div>
+  <div class="patient-info-row">ROOM: ICU-04 | BED: 2A</div>
+  <div class="patient-info-row" id="timeDisplay">12:00:00</div>
+</div>
+
+<div class="alarm-indicator" id="alarmIndicator">NORMAL SINUS RHYTHM</div>
+
+<div class="trace-label trace-label-ecg">ECG II</div>
+<div class="trace-label trace-label-spo2">SpO2</div>
+<div class="trace-label trace-label-resp">RESP</div>
+
+<div class="status-bar">
+  <span>MONITOR V3.2.1</span>
+  <span id="statusTime">00:00:00</span>
+  <span>CH: LEAD II</span>
+</div>
+
+<div class="monitor-bezel"></div>
+<div class="monitor-reflection"></div>
+
+<script>
+// ===== EDITABLE CONFIG =====
+var CONFIG = {
+  heartRate: 72,
+  bloodPressure: '120/80',
+  oxygenLevel: 98,
+  patientName: 'DOE, JOHN',
+  patientId: '847291',
+  bgColor: '#001a00',
+  traceColor: '#33ff66',
+  alertColor: '#ff3333'
+};
+// ==============================
+
+// --- Apply CONFIG ---
+document.getElementById('monitorBg').style.background =
+  'radial-gradient(ellipse at center, ' + CONFIG.bgColor + ' 0%, #000800 100%)';
+document.getElementById('hrValue').textContent = CONFIG.heartRate;
+document.getElementById('bpValue').textContent = CONFIG.bloodPressure;
+document.getElementById('o2Value').textContent = CONFIG.oxygenLevel;
+document.getElementById('patientName').textContent = CONFIG.patientName;
+document.getElementById('patientId').textContent = 'ID: ' + CONFIG.patientId;
+
+var scanLine = document.getElementById('scanLine');
+scanLine.style.background = 'linear-gradient(90deg, transparent, ' + CONFIG.traceColor + ', transparent)';
+
+// --- Canvas setup ---
+var canvas = document.getElementById('ecgCanvas');
+var ctx = canvas.getContext('2d');
+var W, H;
+var dpr = window.devicePixelRatio || 1;
+
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- ECG Waveform ---
+// Standard PQRST waveform shape generator
+function getECGValue(t) {
+  // t is 0-1 representing one heartbeat cycle
+  t = t % 1;
+
+  // P wave (small bump)
+  if (t >= 0.0 && t < 0.1) {
+    var pt = (t - 0.0) / 0.1;
+    return Math.sin(pt * Math.PI) * 0.08;
+  }
+  // Flat segment
+  if (t >= 0.1 && t < 0.18) return 0;
+  // Q wave (small dip)
+  if (t >= 0.18 && t < 0.22) {
+    var qt = (t - 0.18) / 0.04;
+    return -Math.sin(qt * Math.PI) * 0.06;
+  }
+  // R wave (tall spike up)
+  if (t >= 0.22 && t < 0.28) {
+    var rt = (t - 0.22) / 0.06;
+    return Math.sin(rt * Math.PI) * 0.7;
+  }
+  // S wave (dip below baseline)
+  if (t >= 0.28 && t < 0.34) {
+    var st = (t - 0.28) / 0.06;
+    return -Math.sin(st * Math.PI) * 0.15;
+  }
+  // ST segment (flat or slight rise)
+  if (t >= 0.34 && t < 0.42) {
+    return 0.01;
+  }
+  // T wave (rounded bump)
+  if (t >= 0.42 && t < 0.58) {
+    var tt = (t - 0.42) / 0.16;
+    return Math.sin(tt * Math.PI) * 0.15;
+  }
+  // Rest of the cycle (flat baseline)
+  return 0;
+}
+
+// SpO2 plethysmograph waveform
+function getSpO2Value(t) {
+  t = t % 1;
+  if (t < 0.15) {
+    var st = t / 0.15;
+    return Math.pow(Math.sin(st * Math.PI * 0.5), 0.6) * 0.4;
+  }
+  if (t < 0.4) {
+    var dt = (t - 0.15) / 0.25;
+    return (1 - dt) * 0.4 * Math.pow(0.5 + 0.5 * Math.cos(dt * Math.PI * 0.7), 0.8);
+  }
+  if (t < 0.5) {
+    var nt = (t - 0.4) / 0.1;
+    return Math.sin(nt * Math.PI) * 0.08;
+  }
+  return 0;
+}
+
+// Respiration waveform
+function getRespValue(t) {
+  return Math.sin(t * Math.PI * 2) * 0.3;
+}
+
+// --- Trace state ---
+var ecgX = 0;
+var ecgSpeed = 2.5; // pixels per frame
+var ecgHistory = [];
+var spo2History = [];
+var respHistory = [];
+var maxHistory;
+var beepDot = document.getElementById('beepDot');
+var lastBeepTime = 0;
+var beepInterval = 60 / CONFIG.heartRate; // seconds between beats
+var ecgPhase = 0;
+var spo2Phase = 0;
+var respPhase = 0;
+var time = 0;
+
+function initHistories() {
+  maxHistory = Math.ceil(W / ecgSpeed) + 10;
+  ecgHistory = new Array(maxHistory).fill(0);
+  spo2History = new Array(maxHistory).fill(0);
+  respHistory = new Array(maxHistory).fill(0);
+}
+initHistories();
+
+// --- ECG Y positioning ---
+var ecgCenterY = 0.38; // fraction of screen height
+var ecgAmplitude;
+var spo2CenterY = 0.72;
+var spo2Amplitude;
+var respCenterY = 0.88;
+var respAmplitude;
+
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+// --- Vital fluctuation ---
+var displayHR = CONFIG.heartRate;
+var displayO2 = CONFIG.oxygenLevel;
+var hrFlucTimer = 0;
+
+// --- Render ---
+function render() {
+  if (!W || !H) { requestAnimationFrame(render); return; }
+  time += 0.016;
+  var dt = 0.016;
+
+  ecgAmplitude = H * 0.18;
+  spo2Amplitude = H * 0.06;
+  respAmplitude = H * 0.04;
+
+  // Advance waveform phases
+  var beatsPerSecond = CONFIG.heartRate / 60;
+  ecgPhase += beatsPerSecond * dt;
+  spo2Phase += beatsPerSecond * dt;
+  respPhase += (beatsPerSecond * 0.25) * dt; // Breathing is slower
+
+  // Sample current values
+  var ecgVal = getECGValue(ecgPhase);
+  var spo2Val = getSpO2Value(spo2Phase);
+  var respVal = getRespValue(respPhase);
+
+  // Push to history
+  ecgHistory.push(ecgVal);
+  spo2History.push(spo2Val);
+  respHistory.push(respVal);
+
+  if (ecgHistory.length > maxHistory) ecgHistory.shift();
+  if (spo2History.length > maxHistory) spo2History.shift();
+  if (respHistory.length > maxHistory) respHistory.shift();
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw sweeping clear zone
+  var sweepX = (ecgHistory.length - 1) * ecgSpeed;
+  if (sweepX > W) sweepX = sweepX % W;
+  var clearWidth = 40;
+
+  // --- Draw ECG trace ---
+  drawTrace(ecgHistory, ecgCenterY * H, ecgAmplitude, CONFIG.traceColor, 2.5, sweepX, clearWidth);
+
+  // --- Draw SpO2 trace ---
+  drawTrace(spo2History, spo2CenterY * H, spo2Amplitude, '#33ccff', 1.8, sweepX, clearWidth);
+
+  // --- Draw Respiration trace ---
+  drawTrace(respHistory, respCenterY * H, respAmplitude, '#ffcc33', 1.5, sweepX, clearWidth);
+
+  // --- Beep indicator on R-wave ---
+  var ecgFrac = ecgPhase % 1;
+  if (ecgFrac >= 0.22 && ecgFrac <= 0.28 && (time - lastBeepTime) > (beepInterval * 0.5)) {
+    beepDot.classList.add('active');
+    lastBeepTime = time;
+    setTimeout(function() { beepDot.classList.remove('active'); }, 100);
+  }
+
+  // --- Fluctuate vital signs slightly ---
+  hrFlucTimer += dt;
+  if (hrFlucTimer > 2) {
+    hrFlucTimer = 0;
+    displayHR = CONFIG.heartRate + Math.round((Math.random() - 0.5) * 4);
+    displayO2 = Math.min(100, Math.max(90, CONFIG.oxygenLevel + Math.round((Math.random() - 0.5) * 2)));
+    document.getElementById('hrValue').textContent = displayHR;
+    document.getElementById('o2Value').textContent = displayO2;
+  }
+
+  // --- Sweep bright leading edge ---
+  var tc = hexToRgb(CONFIG.traceColor);
+  var leadGrad = ctx.createLinearGradient(sweepX - 5, 0, sweepX + 3, 0);
+  leadGrad.addColorStop(0, 'transparent');
+  leadGrad.addColorStop(1, 'rgba(' + tc.r + ',' + tc.g + ',' + tc.b + ',0.8)');
+  ctx.fillStyle = leadGrad;
+  ctx.fillRect(sweepX - 5, 0, 8, H);
+
+  // Update beep interval if HR changed
+  beepInterval = 60 / CONFIG.heartRate;
+
+  requestAnimationFrame(render);
+}
+
+function drawTrace(history, centerY, amplitude, color, lineWidth, sweepX, clearWidth) {
+  var len = history.length;
+  var startIdx = Math.max(0, len - Math.ceil(W / ecgSpeed));
+
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  var firstPoint = true;
+  for (var i = startIdx; i < len; i++) {
+    var x = (i - startIdx) * ecgSpeed;
+    if (x > W) x = x % W;
+    var y = centerY - history[i] * amplitude;
+
+    // Fade near sweep head
+    var distToSweep = Math.abs(x - sweepX);
+    if (distToSweep < clearWidth && x < sweepX) {
+      ctx.stroke();
+      ctx.beginPath();
+      firstPoint = true;
+      continue;
+    }
+    // Clear ahead of sweep
+    if (x > sweepX && x < sweepX + clearWidth * 2) {
+      continue;
+    }
+
+    if (firstPoint) {
+      ctx.moveTo(x, y);
+      firstPoint = false;
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+
+  // Glow pass
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.filter = 'blur(4px)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth + 2;
+  ctx.beginPath();
+  firstPoint = true;
+  for (var j = startIdx; j < len; j++) {
+    var gx = (j - startIdx) * ecgSpeed;
+    if (gx > W) gx = gx % W;
+    var gy = centerY - history[j] * amplitude;
+    var gDist = Math.abs(gx - sweepX);
+    if ((gDist < clearWidth && gx < sweepX) || (gx > sweepX && gx < sweepX + clearWidth * 2)) {
+      ctx.stroke();
+      ctx.beginPath();
+      firstPoint = true;
+      continue;
+    }
+    if (firstPoint) { ctx.moveTo(gx, gy); firstPoint = false; }
+    else { ctx.lineTo(gx, gy); }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// --- Clock ---
+var statusTimeEl = document.getElementById('statusTime');
+var timeDisplayEl = document.getElementById('timeDisplay');
+setInterval(function() {
+  var now = new Date();
+  var ts = String(now.getHours()).padStart(2, '0') + ':' +
+           String(now.getMinutes()).padStart(2, '0') + ':' +
+           String(now.getSeconds()).padStart(2, '0');
+  statusTimeEl.textContent = ts;
+  timeDisplayEl.textContent = ts;
+}, 1000);
+
+render();
+
+// --- postMessage bridge ---
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    var updates = e.data.payload;
+    for (var key in updates) {
+      if (updates.hasOwnProperty(key) && CONFIG.hasOwnProperty(key)) {
+        CONFIG[key] = updates[key];
+      }
+    }
+    document.getElementById('monitorBg').style.background =
+      'radial-gradient(ellipse at center, ' + CONFIG.bgColor + ' 0%, #000800 100%)';
+    document.getElementById('hrValue').textContent = CONFIG.heartRate;
+    document.getElementById('bpValue').textContent = CONFIG.bloodPressure;
+    document.getElementById('o2Value').textContent = CONFIG.oxygenLevel;
+    document.getElementById('patientName').textContent = CONFIG.patientName;
+    document.getElementById('patientId').textContent = 'ID: ' + CONFIG.patientId;
+    beepInterval = 60 / CONFIG.heartRate;
+    initHistories();
+  }
+});
+</script>
+</body>
+</html>

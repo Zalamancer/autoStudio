@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Film Strip Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0d0d0d;
+    font-family: 'Courier New', monospace;
+  }
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .film-strip {
+    position: relative;
+    width: 180px;
+    flex-shrink: 0;
+    background: #1a1a1a;
+    border-left: 22px solid #1a1a1a;
+    border-right: 22px solid #1a1a1a;
+    opacity: 0;
+    transform: translateY(100%);
+    will-change: transform, opacity;
+  }
+
+  /* Sprocket holes */
+  .film-strip::before,
+  .film-strip::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    z-index: 2;
+    background-image: repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 8px,
+      #0d0d0d 8px,
+      #0d0d0d 18px,
+      transparent 18px,
+      transparent 30px
+    );
+  }
+
+  .film-strip::before { left: -20px; }
+  .film-strip::after { right: -20px; }
+
+  .frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    margin: 6px 0;
+    overflow: hidden;
+  }
+
+  .frame-color {
+    width: 100%;
+    height: 100%;
+  }
+
+  .frame-number {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'Courier New', monospace;
+  }
+
+  .frame-label {
+    position: absolute;
+    bottom: 4px;
+    left: 6px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Slight vignette on frames */
+  .frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+    pointer-events: none;
+  }
+
+  /* Film grain overlay */
+  .grain-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  /* Film edge text */
+  .film-edge-text {
+    position: absolute;
+    font-size: 8px;
+    color: rgba(255,165,0,0.4);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  @keyframes slideUp {
+    0% { opacity: 0; transform: translateY(110%); }
+    60% { opacity: 1; transform: translateY(-3%); }
+    80% { transform: translateY(1%); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideDown {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(110%); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  strips: 4,
+  framesPerStrip: 4,
+  frameColors: [
+    '#c62828', '#1565c0', '#2e7d32', '#f57f17',
+    '#6a1b9a', '#00838f', '#d84315', '#283593',
+    '#558b2f', '#e91e63', '#ff6f00', '#0097a7',
+    '#4527a0', '#ef6c00', '#2e7d32', '#ad1457',
+  ],
+  labels: ['SCENE 1', 'TAKE 2', 'CUT', 'ACTION', 'CLOSE UP', 'WIDE', 'PAN', 'ZOOM', 'DOLLY', 'FADE', 'ROLL', 'SLATE', 'MARKER', 'SPEED', 'FINAL', 'WRAP'],
+  bgColor: '#0d0d0d',
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function createFilmStrips() {
+  stage.innerHTML = '';
+  const elements = [];
+  let frameIdx = 0;
+
+  for (let s = 0; s < CONFIG.strips; s++) {
+    const strip = document.createElement('div');
+    strip.className = 'film-strip';
+
+    // Edge text
+    const edgeText = document.createElement('div');
+    edgeText.className = 'film-edge-text';
+    edgeText.style.top = '4px';
+    edgeText.style.left = '4px';
+    edgeText.textContent = `KODAK 5219  ${s + 1}A`;
+    strip.appendChild(edgeText);
+
+    for (let f = 0; f < CONFIG.framesPerStrip; f++) {
+      const frame = document.createElement('div');
+      frame.className = 'frame';
+
+      const color = document.createElement('div');
+      color.className = 'frame-color';
+      color.style.background = CONFIG.frameColors[frameIdx % CONFIG.frameColors.length];
+      frame.appendChild(color);
+
+      const num = document.createElement('div');
+      num.className = 'frame-number';
+      num.textContent = String(frameIdx + 1).padStart(2, '0');
+      frame.appendChild(num);
+
+      const label = document.createElement('div');
+      label.className = 'frame-label';
+      label.textContent = CONFIG.labels[frameIdx % CONFIG.labels.length];
+      frame.appendChild(label);
+
+      strip.appendChild(frame);
+      frameIdx++;
+    }
+
+    // Grain overlay
+    const grain = document.createElement('div');
+    grain.className = 'grain-overlay';
+    strip.appendChild(grain);
+
+    stage.appendChild(strip);
+    elements.push(strip);
+  }
+
+  return elements;
+}
+
+function runAnimation(strips) {
+  const count = strips.length;
+  const slideStagger = 400;
+  const slideDuration = 700;
+  const holdDuration = 3500;
+  const exitStagger = 300;
+  const exitDuration = 500;
+  const pauseBeforeLoop = 800;
+
+  const totalSlideTime = (count - 1) * slideStagger + slideDuration;
+  const totalExitTime = (count - 1) * exitStagger + exitDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    strips.forEach(s => { s.style.animation = 'none'; s.style.opacity = '0'; s.style.transform = 'translateY(100%)'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalSlideTime) {
+      strips.forEach((strip, i) => {
+        const ws = i * slideStagger;
+        if (elapsed >= ws && !strip.dataset.in) {
+          strip.dataset.in = '1';
+          strip.style.animation = `slideUp ${slideDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalSlideTime + holdDuration) {
+    } else if (elapsed < totalSlideTime + holdDuration + totalExitTime) {
+      const exitElapsed = elapsed - totalSlideTime - holdDuration;
+      strips.forEach((strip, i) => {
+        const ws = i * exitStagger;
+        if (exitElapsed >= ws && !strip.dataset.out) {
+          strip.dataset.out = '1';
+          strip.style.animation = `slideDown ${exitDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalSlideTime + holdDuration + totalExitTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      strips.forEach(s => { delete s.dataset.in; delete s.dataset.out; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(animationFrame);
+}
+
+let strips = createFilmStrips();
+runAnimation(strips);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    strips = createFilmStrips();
+    runAnimation(strips);
+  }, 300);
+});
+</script>
+</body>
+</html>

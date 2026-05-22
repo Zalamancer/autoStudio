@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progress Loader</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #0d0d1a; display: flex; align-items: center; justify-content: center; }
+canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="loader"></canvas>
+<script>
+const CONFIG = {
+  phases: [
+    { label: 'Downloading', duration: 3000 },
+    { label: 'Processing', duration: 2500 },
+    { label: 'Optimizing', duration: 2000 },
+    { label: 'Completing', duration: 1500 }
+  ],
+  ringColor: '#6366f1',
+  bgColor: '#0d0d1a',
+  textColor: '#e2e8f0',
+  ringSize: 0.22,
+  particleCount: 30
+};
+
+const canvas = document.getElementById('loader');
+const ctx = canvas.getContext('2d');
+
+let width, height, cx, cy, ringRadius, ringThickness;
+let startTime = 0;
+let particles = [];
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+  cx = width / 2;
+  cy = height / 2;
+  ringRadius = Math.min(width, height) * CONFIG.ringSize;
+  ringThickness = Math.max(6, ringRadius * 0.08);
+  initParticles();
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < CONFIG.particleCount; i++) {
+    particles.push({
+      angle: Math.random() * Math.PI * 2,
+      dist: ringRadius + 15 + Math.random() * 40,
+      size: 1 + Math.random() * 2.5,
+      speed: 0.3 + Math.random() * 0.8,
+      alpha: Math.random(),
+      alphaSpeed: 0.5 + Math.random() * 1.5,
+      orbitOffset: Math.random() * 10
+    });
+  }
+}
+
+function getTotalDuration() {
+  return CONFIG.phases.reduce((sum, p) => sum + p.duration, 0);
+}
+
+function getCurrentPhase(elapsed) {
+  const total = getTotalDuration();
+  const loopTime = elapsed % total;
+  let acc = 0;
+  for (let i = 0; i < CONFIG.phases.length; i++) {
+    acc += CONFIG.phases[i].duration;
+    if (loopTime < acc) {
+      const phaseStart = acc - CONFIG.phases[i].duration;
+      const phaseProgress = (loopTime - phaseStart) / CONFIG.phases[i].duration;
+      return { index: i, phase: CONFIG.phases[i], progress: phaseProgress };
+    }
+  }
+  return { index: CONFIG.phases.length - 1, phase: CONFIG.phases[CONFIG.phases.length - 1], progress: 1 };
+}
+
+function getOverallProgress(elapsed) {
+  const total = getTotalDuration();
+  const loopTime = elapsed % total;
+  return loopTime / total;
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // Subtle radial gradient
+  const bg = hexToRgb(CONFIG.bgColor);
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.5);
+  gradient.addColorStop(0, `rgba(${bg.r + 15}, ${bg.g + 15}, ${bg.b + 30}, 1)`);
+  gradient.addColorStop(1, CONFIG.bgColor);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawRingTrack() {
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+  ctx.lineWidth = ringThickness;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Inner subtle ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringRadius - ringThickness * 0.8, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Outer subtle ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringRadius + ringThickness * 0.8, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawProgressRing(progress, time) {
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + easeInOutCubic(progress) * Math.PI * 2;
+  const rgb = hexToRgb(CONFIG.ringColor);
+
+  // Glow
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringRadius, startAngle, endAngle);
+  ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+  ctx.lineWidth = ringThickness + 8;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = CONFIG.ringColor;
+  ctx.shadowBlur = 20;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Main arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringRadius, startAngle, endAngle);
+  const arcGradient = ctx.createLinearGradient(
+    cx + Math.cos(startAngle) * ringRadius,
+    cy + Math.sin(startAngle) * ringRadius,
+    cx + Math.cos(endAngle) * ringRadius,
+    cy + Math.sin(endAngle) * ringRadius
+  );
+  arcGradient.addColorStop(0, CONFIG.ringColor);
+  arcGradient.addColorStop(1, `rgba(${Math.min(255, rgb.r + 60)}, ${Math.min(255, rgb.g + 60)}, ${Math.min(255, rgb.b + 60)}, 1)`);
+  ctx.strokeStyle = arcGradient;
+  ctx.lineWidth = ringThickness;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Tip glow
+  if (progress > 0.01) {
+    const tipX = cx + Math.cos(endAngle) * ringRadius;
+    const tipY = cy + Math.sin(endAngle) * ringRadius;
+    const tipGlow = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, ringThickness * 2);
+    tipGlow.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`);
+    tipGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, ringThickness * 2, 0, Math.PI * 2);
+    ctx.fillStyle = tipGlow;
+    ctx.fill();
+  }
+}
+
+function drawPercentage(progress) {
+  const pct = Math.round(easeInOutCubic(progress) * 100);
+  const fontSize = Math.max(24, ringRadius * 0.55);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.fillText(`${pct}%`, cx, cy - fontSize * 0.08);
+}
+
+function drawPhaseLabel(phase, phaseIndex, time) {
+  const fontSize = Math.max(12, ringRadius * 0.16);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Phase label
+  ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.globalAlpha = 0.8;
+  ctx.fillText(phase.label, cx, cy + ringRadius + fontSize * 2.5);
+  ctx.globalAlpha = 1;
+
+  // Animated dots
+  const dotCount = 3;
+  const dotPhase = (time * 0.003) % dotCount;
+  let dots = '';
+  for (let i = 0; i < dotCount; i++) {
+    dots += i <= Math.floor(dotPhase) ? '.' : ' ';
+  }
+  ctx.font = `bold ${fontSize}px monospace`;
+  ctx.fillStyle = CONFIG.ringColor;
+  const labelWidth = ctx.measureText(phase.label).width;
+  ctx.textAlign = 'left';
+  ctx.fillText(dots, cx + labelWidth / 2 + 4, cy + ringRadius + fontSize * 2.5);
+  ctx.textAlign = 'center';
+
+  // Phase indicators (small dots)
+  const indicatorY = cy + ringRadius + fontSize * 4;
+  const spacing = 20;
+  const totalWidth = (CONFIG.phases.length - 1) * spacing;
+  for (let i = 0; i < CONFIG.phases.length; i++) {
+    const x = cx - totalWidth / 2 + i * spacing;
+    ctx.beginPath();
+    ctx.arc(x, indicatorY, i === phaseIndex ? 4 : 3, 0, Math.PI * 2);
+    if (i === phaseIndex) {
+      ctx.fillStyle = CONFIG.ringColor;
+      ctx.shadowColor = CONFIG.ringColor;
+      ctx.shadowBlur = 8;
+    } else if (i < phaseIndex) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    } else {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawParticles(time, progress) {
+  const rgb = hexToRgb(CONFIG.ringColor);
+  particles.forEach(p => {
+    p.angle += p.speed * 0.008;
+    p.alpha = 0.15 + Math.sin(time * 0.001 * p.alphaSpeed + p.orbitOffset) * 0.15 + 0.15;
+
+    const wobble = Math.sin(time * 0.002 + p.orbitOffset) * 8;
+    const x = cx + Math.cos(p.angle) * (p.dist + wobble);
+    const y = cy + Math.sin(p.angle) * (p.dist + wobble);
+
+    // Particle glow
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, p.size * 3);
+    glow.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha * 0.5})`);
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.beginPath();
+    ctx.arc(x, y, p.size * 3, 0, Math.PI * 2);
+    ctx.fillStyle = glow;
+    ctx.fill();
+
+    // Particle core
+    ctx.beginPath();
+    ctx.arc(x, y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${p.alpha})`;
+    ctx.fill();
+  });
+}
+
+function drawOrbitRing(time) {
+  // Rotating dashed orbit
+  const rgb = hexToRgb(CONFIG.ringColor);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(time * 0.0005);
+
+  ctx.beginPath();
+  ctx.arc(0, 0, ringRadius + ringThickness + 20, 0, Math.PI * 2);
+  ctx.setLineDash([2, 12]);
+  ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
+function animate(time) {
+  if (!startTime) startTime = time;
+  const elapsed = time - startTime;
+
+  const { index, phase, progress } = getCurrentPhase(elapsed);
+  const overall = getOverallProgress(elapsed);
+
+  drawBackground();
+  drawOrbitRing(time);
+  drawParticles(time, overall);
+  drawRingTrack();
+  drawProgressRing(overall, time);
+  drawPercentage(overall);
+  drawPhaseLabel(phase, index, time);
+
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    resize();
+  }
+});
+
+resize();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bold Retro Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5f0e8;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+  }
+
+  .scene {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+  }
+
+  .block {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .block.black { background: #1a1a1a; color: #f5f0e8; }
+  .block.cream { background: #f5f0e8; color: #1a1a1a; }
+  .block.red { background: #cc2200; color: #f5f0e8; }
+
+  .block-text {
+    font-size: 72px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    white-space: nowrap;
+  }
+
+  .halftone-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.08;
+  }
+
+  .badge {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .badge.outlined {
+    border: 4px solid #1a1a1a;
+    background: transparent;
+    color: #1a1a1a;
+  }
+
+  .badge.filled {
+    background: #cc2200;
+    color: #f5f0e8;
+  }
+
+  .thick-border {
+    position: absolute;
+    border: 6px solid #1a1a1a;
+  }
+
+  .slide-text {
+    position: absolute;
+    font-size: 120px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    white-space: nowrap;
+    color: #1a1a1a;
+  }
+
+  .stripe {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: #1a1a1a;
+  }
+
+  .stripe.red-stripe {
+    background: #cc2200;
+    height: 6px;
+  }
+
+  @keyframes slideFromLeft {
+    0% { transform: translateX(-110%); }
+    15% { transform: translateX(0); }
+    85% { transform: translateX(0); }
+    100% { transform: translateX(110%); }
+  }
+
+  @keyframes slideFromRight {
+    0% { transform: translateX(110%); }
+    15% { transform: translateX(0); }
+    85% { transform: translateX(0); }
+    100% { transform: translateX(-110%); }
+  }
+
+  @keyframes slideFromTop {
+    0% { transform: translateY(-110%); }
+    15% { transform: translateY(0); }
+    85% { transform: translateY(0); }
+    100% { transform: translateY(110%); }
+  }
+
+  @keyframes slideFromBottom {
+    0% { transform: translateY(110%); }
+    15% { transform: translateY(0); }
+    85% { transform: translateY(0); }
+    100% { transform: translateY(-110%); }
+  }
+
+  @keyframes spinBadge {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes blockReveal {
+    0% { clip-path: inset(0 100% 0 0); }
+    15% { clip-path: inset(0 0 0 0); }
+    85% { clip-path: inset(0 0 0 0); }
+    100% { clip-path: inset(0 0 0 100%); }
+  }
+
+  @keyframes fadeInScale {
+    0% { transform: scale(0.8); opacity: 0; }
+    15% { transform: scale(1); opacity: 1; }
+    85% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.1); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="halftone" class="halftone-overlay"></canvas>
+<div class="scene" id="scene"></div>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#f5f0e8',
+    darkColor: '#1a1a1a',
+    accentColor: '#cc2200',
+    headings: ['BOLD', 'RETRO', 'STYLE', 'CLASSIC', 'VINTAGE', 'ICONIC'],
+    subTexts: ['EST. 2024', 'ORIGINAL', 'PREMIUM', 'AUTHENTIC', 'HANDMADE', 'LIMITED'],
+    badgeTexts: ['NEW', '100%', 'TOP', 'PRO', 'A+', 'NO.1'],
+    sceneDuration: 3500,
+    transitionDuration: 600,
+  };
+
+  // Halftone canvas
+  const htCanvas = document.getElementById('halftone');
+  const htCtx = htCanvas.getContext('2d');
+
+  function drawHalftone() {
+    htCanvas.width = window.innerWidth;
+    htCanvas.height = window.innerHeight;
+    const dotSpacing = 8;
+    const maxRadius = 3;
+
+    for (let x = 0; x < htCanvas.width; x += dotSpacing) {
+      for (let y = 0; y < htCanvas.height; y += dotSpacing) {
+        const dist = Math.sqrt(
+          Math.pow(x - htCanvas.width / 2, 2) +
+          Math.pow(y - htCanvas.height / 2, 2)
+        );
+        const maxDist = Math.sqrt(
+          Math.pow(htCanvas.width / 2, 2) +
+          Math.pow(htCanvas.height / 2, 2)
+        );
+        const r = (dist / maxDist) * maxRadius;
+        htCtx.beginPath();
+        htCtx.arc(x, y, r, 0, Math.PI * 2);
+        htCtx.fillStyle = '#1a1a1a';
+        htCtx.fill();
+      }
+    }
+  }
+  drawHalftone();
+  window.addEventListener('resize', drawHalftone);
+
+  const scene = document.getElementById('scene');
+  let sceneIndex = 0;
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function clearScene() {
+    while (scene.firstChild) scene.removeChild(scene.firstChild);
+  }
+
+  function createScene1() {
+    // Big text blocks alternating
+    const heading = pick(CONFIG.headings);
+    const dur = CONFIG.sceneDuration;
+
+    // Top block
+    const topBlock = document.createElement('div');
+    topBlock.className = 'block black';
+    topBlock.style.cssText = `top:0;left:0;width:100%;height:40%;animation:blockReveal ${dur}ms ease-in-out forwards;`;
+    const topText = document.createElement('div');
+    topText.className = 'block-text';
+    topText.textContent = heading;
+    topBlock.appendChild(topText);
+
+    // Middle accent stripe
+    const midStripe = document.createElement('div');
+    midStripe.className = 'block red';
+    midStripe.style.cssText = `top:40%;left:0;width:100%;height:20%;animation:blockReveal ${dur}ms ease-in-out forwards;animation-delay:150ms;`;
+    const midText = document.createElement('div');
+    midText.className = 'block-text';
+    midText.style.fontSize = '36px';
+    midText.textContent = pick(CONFIG.subTexts);
+    midStripe.appendChild(midText);
+
+    // Bottom block
+    const bottomBlock = document.createElement('div');
+    bottomBlock.className = 'block cream';
+    bottomBlock.style.cssText = `top:60%;left:0;width:100%;height:40%;animation:blockReveal ${dur}ms ease-in-out forwards;animation-delay:300ms;border-top:6px solid #1a1a1a;`;
+    const bottomText = document.createElement('div');
+    bottomText.className = 'block-text';
+    bottomText.style.color = '#1a1a1a';
+    bottomText.textContent = pick(CONFIG.headings);
+    bottomBlock.appendChild(bottomText);
+
+    // Badge
+    const badge = document.createElement('div');
+    badge.className = 'badge outlined';
+    badge.style.cssText = `width:100px;height:100px;right:30px;top:30px;animation:spinBadge 8s linear infinite, fadeInScale ${dur}ms ease-in-out forwards;z-index:10;`;
+    badge.textContent = pick(CONFIG.badgeTexts);
+
+    scene.appendChild(topBlock);
+    scene.appendChild(midStripe);
+    scene.appendChild(bottomBlock);
+    scene.appendChild(badge);
+  }
+
+  function createScene2() {
+    // Sliding text from opposite edges
+    const dur = CONFIG.sceneDuration;
+
+    const texts = [pick(CONFIG.headings), pick(CONFIG.headings), pick(CONFIG.subTexts)];
+    const bgColors = ['#1a1a1a', '#cc2200', '#f5f0e8'];
+    const fgColors = ['#f5f0e8', '#f5f0e8', '#1a1a1a'];
+    const anims = ['slideFromLeft', 'slideFromRight', 'slideFromLeft'];
+
+    texts.forEach((text, i) => {
+      const block = document.createElement('div');
+      block.className = 'block';
+      block.style.cssText = `
+        top: ${i * 33.33}%;
+        left: 0;
+        width: 100%;
+        height: 33.34%;
+        background: ${bgColors[i]};
+        color: ${fgColors[i]};
+        animation: ${anims[i]} ${dur}ms ease-in-out forwards;
+        animation-delay: ${i * 200}ms;
+        ${i === 2 ? 'border-top: 6px solid #1a1a1a;' : ''}
+      `;
+      const t = document.createElement('div');
+      t.className = 'block-text';
+      t.style.fontSize = i === 2 ? '36px' : '72px';
+      t.textContent = text;
+      block.appendChild(t);
+      scene.appendChild(block);
+    });
+
+    // Rotating filled badge
+    const badge = document.createElement('div');
+    badge.className = 'badge filled';
+    badge.style.cssText = `width:80px;height:80px;left:20px;bottom:20px;animation:spinBadge 6s linear infinite, fadeInScale ${dur}ms ease-in-out forwards;z-index:10;font-size:12px;`;
+    badge.textContent = pick(CONFIG.badgeTexts);
+    scene.appendChild(badge);
+  }
+
+  function createScene3() {
+    // Poster style with thick borders
+    const dur = CONFIG.sceneDuration;
+
+    // Full background
+    const bg = document.createElement('div');
+    bg.className = 'block black';
+    bg.style.cssText = `top:0;left:0;width:100%;height:100%;animation:fadeInScale ${dur}ms ease-in-out forwards;`;
+    scene.appendChild(bg);
+
+    // Inner cream box with thick border
+    const inner = document.createElement('div');
+    inner.className = 'thick-border';
+    inner.style.cssText = `
+      top: 10%; left: 10%;
+      width: 80%; height: 80%;
+      background: ${CONFIG.bgColor};
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: fadeInScale ${dur}ms ease-in-out forwards;
+      animation-delay: 200ms;
+      opacity: 0;
+    `;
+
+    const h = document.createElement('div');
+    h.style.cssText = 'font-size:80px;font-weight:900;text-transform:uppercase;letter-spacing:6px;color:#1a1a1a;text-align:center;';
+    h.textContent = pick(CONFIG.headings);
+
+    const redBar = document.createElement('div');
+    redBar.style.cssText = 'width:60%;height:6px;background:#cc2200;margin:20px 0;';
+
+    const sub = document.createElement('div');
+    sub.style.cssText = 'font-size:24px;font-weight:900;text-transform:uppercase;letter-spacing:8px;color:#cc2200;';
+    sub.textContent = pick(CONFIG.subTexts);
+
+    inner.appendChild(h);
+    inner.appendChild(redBar);
+    inner.appendChild(sub);
+    scene.appendChild(inner);
+
+    // Corner badges
+    const corners = [
+      { top: '12%', left: '12%' },
+      { top: '12%', right: '12%' },
+    ];
+    corners.forEach(pos => {
+      const b = document.createElement('div');
+      b.className = 'badge outlined';
+      const posStr = Object.entries(pos).map(([k, v]) => `${k}:${v}`).join(';');
+      b.style.cssText = `width:60px;height:60px;${posStr};animation:spinBadge 10s linear infinite;font-size:10px;z-index:10;`;
+      b.textContent = pick(CONFIG.badgeTexts);
+      scene.appendChild(b);
+    });
+  }
+
+  const scenes = [createScene1, createScene2, createScene3];
+
+  function nextScene() {
+    clearScene();
+    scenes[sceneIndex % scenes.length]();
+    sceneIndex++;
+  }
+
+  nextScene();
+  setInterval(nextScene, CONFIG.sceneDuration + CONFIG.transitionDuration);
+</script>
+</body>
+</html>

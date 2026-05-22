@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Softly Wellness</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    font-family: 'Helvetica Neue', 'Segoe UI', sans-serif;
+  }
+  .bg-gradient {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    animation: gradientShift 12s ease-in-out infinite;
+  }
+  @keyframes gradientShift {
+    0% { background: linear-gradient(135deg, #E8D5E0 0%, #D4E8D0 30%, #F5E6D0 60%, #D0D8E8 100%); }
+    33% { background: linear-gradient(135deg, #D0D8E8 0%, #E8D5E0 30%, #D4E8D0 60%, #F5E6D0 100%); }
+    66% { background: linear-gradient(135deg, #F5E6D0 0%, #D0D8E8 30%, #E8D5E0 60%, #D4E8D0 100%); }
+    100% { background: linear-gradient(135deg, #E8D5E0 0%, #D4E8D0 30%, #F5E6D0 60%, #D0D8E8 100%); }
+  }
+  .grain-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.025;
+  }
+  .bubble-field {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), transparent 70%);
+    animation: bubbleFloat linear infinite;
+  }
+  @keyframes bubbleFloat {
+    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.6; }
+    90% { opacity: 0.3; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+  .breathing-circle {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+    animation: breathe 6s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .breathing-circle::before {
+    content: '';
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.2);
+    animation: breathe 6s ease-in-out infinite 0.3s;
+  }
+  .breathing-circle::after {
+    content: '';
+    position: absolute;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    animation: breathe 6s ease-in-out infinite 0.6s;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+    50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  }
+  .breathing-circle { animation: breatheOuter 6s ease-in-out infinite; }
+  @keyframes breatheOuter {
+    0%, 100% { width: 160px; height: 160px; opacity: 0.5; }
+    50% { width: 240px; height: 240px; opacity: 1; }
+  }
+  .breath-text {
+    position: fixed;
+    top: calc(50% + 160px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: clamp(11px, 1.5vw, 14px);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    animation: breathTextSwitch 6s ease-in-out infinite;
+    text-align: center;
+  }
+  @keyframes breathTextSwitch {
+    0%, 20% { opacity: 1; }
+    25%, 45% { opacity: 0; }
+    50%, 70% { opacity: 1; }
+    75%, 95% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .content-area {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 15;
+    text-align: center;
+    width: 85%;
+    max-width: 500px;
+  }
+  .title-soft {
+    font-size: clamp(28px, 7vw, 56px);
+    font-weight: 300;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.2;
+    animation: softFade 8s ease-in-out infinite;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.05);
+  }
+  .subtitle-soft {
+    font-size: clamp(12px, 2vw, 16px);
+    font-weight: 300;
+    color: rgba(255,255,255,0.55);
+    margin-top: 16px;
+    letter-spacing: 0.15em;
+    animation: softFade 8s ease-in-out infinite 0.4s;
+  }
+  @keyframes softFade {
+    0%, 100% { opacity: 0; transform: translateY(10px); }
+    15%, 85% { opacity: 1; transform: translateY(0); }
+  }
+  /* Wellness icons */
+  .wellness-icon {
+    position: fixed;
+    z-index: 4;
+    opacity: 0;
+  }
+  .wi-leaf {
+    top: 18%; left: 12%;
+    animation: iconFloat 10s ease-in-out infinite;
+  }
+  .wi-drop {
+    top: 25%; right: 15%;
+    animation: iconFloat 10s ease-in-out infinite 2.5s;
+  }
+  .wi-sun {
+    bottom: 22%; left: 18%;
+    animation: iconFloat 10s ease-in-out infinite 5s;
+  }
+  .wi-lotus {
+    bottom: 30%; right: 12%;
+    animation: iconFloat 10s ease-in-out infinite 7.5s;
+  }
+  @keyframes iconFloat {
+    0%, 100% { opacity: 0; transform: translateY(15px) scale(0.9); }
+    20%, 80% { opacity: 0.35; transform: translateY(0) scale(1); }
+    50% { opacity: 0.35; transform: translateY(-8px) scale(1.05); }
+  }
+  .corner-label {
+    position: fixed;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    z-index: 20;
+  }
+  .cl-tl { top: 20px; left: 20px; }
+  .cl-br { bottom: 20px; right: 20px; }
+</style>
+</head>
+<body>
+<div class="bg-gradient"></div>
+<div class="bubble-field" id="bubbleField"></div>
+
+<div class="breathing-circle"></div>
+
+<div class="breath-text" id="breathText">Breathe In</div>
+
+<div class="wellness-icon wi-leaf">
+  <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 5 C10 10 5 20 8 30 C12 25 15 18 20 12 C25 18 28 25 32 30 C35 20 30 10 20 5Z" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <line x1="20" y1="12" x2="20" y2="35" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+  </svg>
+</div>
+<div class="wellness-icon wi-drop">
+  <svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M15 5 C15 5 5 18 5 25 C5 32 9 37 15 37 C21 37 25 32 25 25 C25 18 15 5 15 5Z" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  </svg>
+</div>
+<div class="wellness-icon wi-sun">
+  <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="20" r="8" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+    <line x1="20" y1="5" x2="20" y2="10" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="20" y1="30" x2="20" y2="35" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="5" y1="20" x2="10" y2="20" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="30" y1="20" x2="35" y2="20" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="9.4" y1="9.4" x2="12.9" y2="12.9" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="27.1" y1="27.1" x2="30.6" y2="30.6" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="30.6" y1="9.4" x2="27.1" y2="12.9" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+    <line x1="12.9" y1="27.1" x2="9.4" y2="30.6" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+  </svg>
+</div>
+<div class="wellness-icon wi-lotus">
+  <svg width="44" height="36" viewBox="0 0 44 36" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22 30 C18 22 10 18 6 22 C10 20 16 22 22 30Z" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+    <path d="M22 30 C26 22 34 18 38 22 C34 20 28 22 22 30Z" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+    <path d="M22 30 C20 20 16 12 12 10 C16 14 20 20 22 30Z" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+    <path d="M22 30 C24 20 28 12 32 10 C28 14 24 20 22 30Z" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+    <path d="M22 30 C22 20 22 12 22 6 C22 12 22 20 22 30Z" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+  </svg>
+</div>
+
+<div class="content-area">
+  <div class="title-soft" id="titleText">Find Your<br>Calm</div>
+  <div class="subtitle-soft" id="subtitleText">A moment of peace in every breath</div>
+</div>
+
+<div class="corner-label cl-tl" id="cornerTL">WELLNESS</div>
+<div class="corner-label cl-br" id="cornerBR">BE PRESENT</div>
+
+<canvas class="grain-overlay" id="grain"></canvas>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var TITLE_TEXT = 'Find Your<br>Calm';
+  var SUBTITLE_TEXT = 'A moment of peace in every breath';
+  var BREATHE_IN_TEXT = 'Breathe In';
+  var BREATHE_OUT_TEXT = 'Breathe Out';
+  var CORNER_TL = 'WELLNESS';
+  var CORNER_BR = 'BE PRESENT';
+  // === END EDITABLE ===
+
+  document.getElementById('titleText').innerHTML = TITLE_TEXT;
+  document.getElementById('subtitleText').textContent = SUBTITLE_TEXT;
+  document.getElementById('cornerTL').textContent = CORNER_TL;
+  document.getElementById('cornerBR').textContent = CORNER_BR;
+
+  // Breathing text switcher
+  var breathEl = document.getElementById('breathText');
+  var breathIn = true;
+  setInterval(function() {
+    breathIn = !breathIn;
+    breathEl.textContent = breathIn ? BREATHE_IN_TEXT : BREATHE_OUT_TEXT;
+  }, 3000);
+
+  // Generate bubbles
+  var bubbleField = document.getElementById('bubbleField');
+  var pastelColors = [
+    'rgba(200,180,220,0.15)',
+    'rgba(180,220,200,0.15)',
+    'rgba(220,200,180,0.15)',
+    'rgba(180,200,220,0.15)',
+    'rgba(220,180,200,0.15)'
+  ];
+  for (var i = 0; i < 20; i++) {
+    var b = document.createElement('div');
+    b.className = 'bubble';
+    var size = 15 + Math.random() * 50;
+    b.style.width = size + 'px';
+    b.style.height = size + 'px';
+    b.style.left = (Math.random() * 100) + '%';
+    b.style.animationDelay = (Math.random() * 12) + 's';
+    b.style.animationDuration = (10 + Math.random() * 10) + 's';
+    b.style.background = 'radial-gradient(circle at 30% 30%, ' + pastelColors[Math.floor(Math.random() * pastelColors.length)] + ', transparent 70%)';
+    bubbleField.appendChild(b);
+  }
+
+  // Subtle grain for paper feel
+  var grainCanvas = document.getElementById('grain');
+  var gCtx = grainCanvas.getContext('2d');
+  function resizeGrain() {
+    grainCanvas.width = window.innerWidth / 3;
+    grainCanvas.height = window.innerHeight / 3;
+  }
+  resizeGrain();
+  window.addEventListener('resize', resizeGrain);
+
+  var frameC = 0;
+  function renderGrain() {
+    frameC++;
+    if (frameC % 6 !== 0) { requestAnimationFrame(renderGrain); return; }
+    var w = grainCanvas.width;
+    var h = grainCanvas.height;
+    if (!w || !h) { requestAnimationFrame(renderGrain); return; }
+    var imageData = gCtx.createImageData(w, h);
+    var data = imageData.data;
+    for (var j = 0; j < data.length; j += 4) {
+      var v = Math.random() * 200 + 55;
+      data[j] = v;
+      data[j+1] = v;
+      data[j+2] = v;
+      data[j+3] = 255;
+    }
+    gCtx.putImageData(imageData, 0, 0);
+    requestAnimationFrame(renderGrain);
+  }
+  renderGrain();
+</script>
+</body>
+</html>

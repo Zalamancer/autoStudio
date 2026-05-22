@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Terminal</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; }
+canvas { position: fixed; inset: 0; }
+.terminal-overlay {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 70vw; max-height: 55vh;
+  background: rgba(0,10,0,0.85);
+  border: 1px solid rgba(0,255,65,0.25);
+  border-radius: 1vh;
+  box-shadow: 0 0 40px rgba(0,255,65,0.1), inset 0 0 60px rgba(0,255,65,0.03);
+  padding: 2vh 2.5vw;
+  overflow: hidden;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.8s;
+  backdrop-filter: blur(8px);
+}
+.terminal-overlay.visible { opacity: 1; }
+.term-header { display: flex; align-items: center; gap: 0.8vw; margin-bottom: 1.5vh; padding-bottom: 1vh; border-bottom: 1px solid rgba(0,255,65,0.1); }
+.term-dot { width: 1vh; height: 1vh; border-radius: 50%; }
+.term-title { font-size: 1.2vh; color: rgba(0,255,65,0.4); margin-left: 1vw; letter-spacing: 0.1em; }
+.term-content { font-size: 1.5vh; line-height: 2; color: #00ff41; }
+.term-line { opacity: 0; transform: translateX(-10px); transition: opacity 0.3s, transform 0.3s; white-space: pre; }
+.term-line.visible { opacity: 1; transform: translateX(0); }
+.prompt { color: #00cc33; }
+.output { color: rgba(0,255,65,0.6); }
+.cursor { display: inline-block; width: 0.8vw; height: 1.8vh; background: #00ff41; animation: blink 0.8s step-end infinite; vertical-align: middle; }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+.scanline { position: fixed; inset: 0; pointer-events: none; z-index: 20; background: repeating-linear-gradient(0deg, transparent 0, transparent 1px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0.03) 2px); }
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="terminal-overlay" id="terminal">
+  <div class="term-header">
+    <div class="term-dot" style="background:#ff5f57"></div>
+    <div class="term-dot" style="background:#febc2e"></div>
+    <div class="term-dot" style="background:#28c840"></div>
+    <div class="term-title" id="termTitle">root@matrix ~ $</div>
+  </div>
+  <div class="term-content" id="termContent"></div>
+</div>
+<div class="scanline"></div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  commands: [
+    { cmd: 'nmap -sV target.local', output: 'PORT     STATE  SERVICE\n22/tcp   open   ssh\n80/tcp   open   http\n443/tcp  open   https\n3306/tcp open   mysql' },
+    { cmd: 'cat /etc/shadow | head -3', output: 'root:$6$xyz:19500:0:99999:7:::\ndaemon:*:19500:0:99999:7:::\nbin:*:19500:0:99999:7:::' },
+    { cmd: 'ssh root@target.local', output: 'Access granted.\nWelcome to the Matrix.\nLast login: Never' },
+  ],
+  termTitle: 'root@matrix ~ $',
+  rainSpeed: 1.2,
+  fontSize: 14,
+  greenColor: '#00ff41',
+  cycleDuration: 14000,
+  bgColor: '#000a00',
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.getElementById('termTitle').textContent = CONFIG.termTitle;
+
+var canvas = document.getElementById('rain');
+var ctx = canvas.getContext('2d');
+var W, H, columns, drops;
+var chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789'.split('');
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  columns = Math.floor(W / CONFIG.fontSize);
+  drops = Array.from({length: columns}, function() { return Math.random() * H / CONFIG.fontSize; });
+}
+window.addEventListener('resize', resize);
+resize();
+
+function drawRain() {
+  ctx.fillStyle = 'rgba(0,10,0,0.06)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = CONFIG.greenColor;
+  ctx.font = CONFIG.fontSize + 'px monospace';
+  for (var i = 0; i < drops.length; i++) {
+    var ch = chars[Math.floor(Math.random() * chars.length)];
+    var x = i * CONFIG.fontSize;
+    var y = drops[i] * CONFIG.fontSize;
+    ctx.globalAlpha = 0.3 + Math.random() * 0.5;
+    ctx.fillText(ch, x, y);
+    if (y > H && Math.random() > 0.975) drops[i] = 0;
+    drops[i] += CONFIG.rainSpeed;
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(drawRain);
+}
+drawRain();
+
+var termContent = document.getElementById('termContent');
+
+function typeCommand(cmd, callback) {
+  var line = document.createElement('div');
+  line.className = 'term-line visible';
+  var span = document.createElement('span');
+  span.className = 'prompt';
+  span.textContent = '$ ';
+  line.appendChild(span);
+  var textSpan = document.createElement('span');
+  line.appendChild(textSpan);
+  var cursorEl = document.createElement('span');
+  cursorEl.className = 'cursor';
+  line.appendChild(cursorEl);
+  termContent.appendChild(line);
+  var idx = 0;
+  var typeInterval = setInterval(function() {
+    if (idx < cmd.length) {
+      textSpan.textContent += cmd[idx];
+      idx++;
+    } else {
+      clearInterval(typeInterval);
+      cursorEl.remove();
+      if (callback) setTimeout(callback, 300);
+    }
+  }, 40);
+}
+
+function showOutput(text, callback) {
+  var lines = text.split('\n');
+  lines.forEach(function(l, i) {
+    setTimeout(function() {
+      var line = document.createElement('div');
+      line.className = 'term-line';
+      line.innerHTML = '<span class="output">' + l + '</span>';
+      termContent.appendChild(line);
+      requestAnimationFrame(function() { line.classList.add('visible'); });
+      if (i === lines.length - 1 && callback) setTimeout(callback, 400);
+    }, i * 150);
+  });
+}
+
+function runCycle() {
+  var terminal = document.getElementById('terminal');
+  terminal.classList.remove('visible');
+  termContent.innerHTML = '';
+
+  setTimeout(function() { terminal.classList.add('visible'); }, 500);
+
+  var delay = 1200;
+  CONFIG.commands.forEach(function(item, i) {
+    (function(d, it) {
+      setTimeout(function() {
+        typeCommand(it.cmd, function() {
+          showOutput(it.output);
+        });
+      }, d);
+    })(delay, item);
+    delay += (item.cmd.length * 45) + 300 + (item.output.split('\n').length * 150) + 800;
+  });
+
+  setTimeout(function() {
+    terminal.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

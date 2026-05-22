@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synapse Neural Network Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #050505;
+  }
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#050505',
+    nodeColor: 'rgba(100, 180, 255, 0.8)',
+    nodeGlow: 'rgba(100, 180, 255, 0.3)',
+    connectionColor: 'rgba(80, 150, 255, 0.12)',
+    pulseColor: 'rgba(150, 220, 255, 1.0)',
+    fireColor: 'rgba(255, 255, 255, 0.9)',
+    dataColor: 'rgba(100, 200, 255, 0.6)',
+    organicColor: 'rgba(60, 120, 200, 0.04)',
+    nodeCount: 60,
+    connectionDistance: 200,
+    fireInterval: 800,
+    nodeMinRadius: 2,
+    nodeMaxRadius: 5,
+    speed: 0.3,
+    dataParticleCount: 40,
+  };
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function rand(a, b) { return Math.random() * (b - a) + a; }
+
+  // Nodes
+  class Node {
+    constructor() {
+      this.x = rand(0, W);
+      this.y = rand(0, H);
+      this.vx = rand(-CONFIG.speed, CONFIG.speed);
+      this.vy = rand(-CONFIG.speed, CONFIG.speed);
+      this.radius = rand(CONFIG.nodeMinRadius, CONFIG.nodeMaxRadius);
+      this.baseRadius = this.radius;
+      this.fireTime = 0;
+      this.connections = [];
+    }
+
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+
+      if (this.x < -50) this.x = W + 50;
+      if (this.x > W + 50) this.x = -50;
+      if (this.y < -50) this.y = H + 50;
+      if (this.y > H + 50) this.y = -50;
+
+      // Fire decay
+      if (this.fireTime > 0) {
+        this.fireTime -= 0.02;
+        this.radius = this.baseRadius + this.fireTime * 4;
+      } else {
+        this.radius = this.baseRadius;
+      }
+    }
+
+    fire() {
+      this.fireTime = 1;
+    }
+
+    draw() {
+      // Glow
+      const glowRadius = this.radius * 4;
+      const gradient = ctx.createRadialGradient(
+        this.x, this.y, 0,
+        this.x, this.y, glowRadius
+      );
+
+      if (this.fireTime > 0) {
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${this.fireTime * 0.8})`);
+        gradient.addColorStop(0.3, `rgba(150, 220, 255, ${this.fireTime * 0.4})`);
+        gradient.addColorStop(1, 'rgba(100, 180, 255, 0)');
+      } else {
+        gradient.addColorStop(0, CONFIG.nodeGlow);
+        gradient.addColorStop(1, 'rgba(100, 180, 255, 0)');
+      }
+
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Core
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = this.fireTime > 0
+        ? `rgba(255, 255, 255, ${0.5 + this.fireTime * 0.5})`
+        : CONFIG.nodeColor;
+      ctx.fill();
+    }
+  }
+
+  // Data particles that travel along connections
+  class DataParticle {
+    constructor(fromNode, toNode) {
+      this.from = fromNode;
+      this.to = toNode;
+      this.progress = 0;
+      this.speed = rand(0.005, 0.02);
+      this.radius = rand(1, 2.5);
+      this.alive = true;
+    }
+
+    update() {
+      this.progress += this.speed;
+      if (this.progress >= 1) {
+        this.alive = false;
+        // Trigger fire at destination
+        if (Math.random() < 0.3) this.to.fire();
+      }
+    }
+
+    draw() {
+      const x = this.from.x + (this.to.x - this.from.x) * this.progress;
+      const y = this.from.y + (this.to.y - this.from.y) * this.progress;
+
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.radius * 3);
+      gradient.addColorStop(0, CONFIG.pulseColor);
+      gradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
+
+      ctx.beginPath();
+      ctx.arc(x, y, this.radius * 3, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(x, y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.dataColor;
+      ctx.fill();
+    }
+  }
+
+  // Organic brain-like background shapes
+  class OrganicShape {
+    constructor() {
+      this.cx = rand(W * 0.2, W * 0.8);
+      this.cy = rand(H * 0.2, H * 0.8);
+      this.points = [];
+      const numPoints = Math.floor(rand(6, 12));
+      for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        const r = rand(80, 200);
+        this.points.push({
+          angle,
+          baseR: r,
+          phase: rand(0, Math.PI * 2),
+          freq: rand(0.3, 0.8),
+          amp: rand(10, 40),
+        });
+      }
+    }
+
+    draw(t) {
+      ctx.beginPath();
+      this.points.forEach((p, i) => {
+        const r = p.baseR + Math.sin(t * p.freq + p.phase) * p.amp;
+        const x = this.cx + Math.cos(p.angle) * r;
+        const y = this.cy + Math.sin(p.angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else {
+          const prev = this.points[i - 1];
+          const prevR = prev.baseR + Math.sin(t * prev.freq + prev.phase) * prev.amp;
+          const cpx = this.cx + Math.cos((prev.angle + p.angle) / 2) * (prevR + r) * 0.6;
+          const cpy = this.cy + Math.sin((prev.angle + p.angle) / 2) * (prevR + r) * 0.6;
+          ctx.quadraticCurveTo(cpx, cpy, x, y);
+        }
+      });
+      ctx.closePath();
+      ctx.fillStyle = CONFIG.organicColor;
+      ctx.fill();
+    }
+  }
+
+  // Initialize
+  const nodes = [];
+  for (let i = 0; i < CONFIG.nodeCount; i++) {
+    nodes.push(new Node());
+  }
+
+  const organicShapes = [];
+  for (let i = 0; i < 4; i++) {
+    organicShapes.push(new OrganicShape());
+  }
+
+  let dataParticles = [];
+  let time = 0;
+  let lastFire = 0;
+
+  function spawnDataParticle() {
+    const fromIdx = Math.floor(rand(0, nodes.length));
+    const from = nodes[fromIdx];
+
+    // Find nearest connected node
+    let nearest = null;
+    let nearestDist = Infinity;
+    nodes.forEach((n, i) => {
+      if (i === fromIdx) return;
+      const dx = n.x - from.x;
+      const dy = n.y - from.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < CONFIG.connectionDistance && d < nearestDist) {
+        nearest = n;
+        nearestDist = d;
+      }
+    });
+
+    if (nearest) {
+      dataParticles.push(new DataParticle(from, nearest));
+      if (Math.random() < 0.2) from.fire();
+    }
+  }
+
+  function drawConnections() {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[j].x - nodes[i].x;
+        const dy = nodes[j].y - nodes[i].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < CONFIG.connectionDistance) {
+          const alpha = (1 - d / CONFIG.connectionDistance) * 0.15;
+
+          // Pulse along connection
+          const pulse = Math.sin(time * 2 - d * 0.02) * 0.5 + 0.5;
+          const finalAlpha = alpha * (0.5 + pulse * 0.5);
+
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(80, 150, 255, ${finalAlpha})`;
+          ctx.lineWidth = 0.5 + alpha * 2;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function animate() {
+    time += 0.016;
+
+    ctx.fillStyle = CONFIG.bgColor;
+    ctx.fillRect(0, 0, W, H);
+
+    // Organic shapes
+    organicShapes.forEach(s => s.draw(time));
+
+    // Connections
+    drawConnections();
+
+    // Nodes
+    nodes.forEach(n => {
+      n.update();
+      n.draw();
+    });
+
+    // Data particles
+    if (time - lastFire > CONFIG.fireInterval / 1000) {
+      for (let i = 0; i < 3; i++) spawnDataParticle();
+      lastFire = time;
+    }
+
+    dataParticles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    dataParticles = dataParticles.filter(p => p.alive);
+
+    // Occasional synaptic flash
+    if (Math.random() < 0.005) {
+      const node = nodes[Math.floor(rand(0, nodes.length))];
+      node.fire();
+      // Fire chain
+      nodes.forEach(n => {
+        const dx = n.x - node.x;
+        const dy = n.y - node.y;
+        if (Math.sqrt(dx * dx + dy * dy) < CONFIG.connectionDistance * 0.5) {
+          setTimeout(() => n.fire(), rand(50, 200));
+        }
+      });
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>

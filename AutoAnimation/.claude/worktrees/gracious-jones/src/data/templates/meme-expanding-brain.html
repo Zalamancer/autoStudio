@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; background: #1a1a2e; }
+.tier { display: flex; width: 100%; height: 25%; border-bottom: 3px solid rgba(255,255,255,0.1); opacity: 0; transform: translateY(20px); }
+.tier.show { opacity: 1; transform: translateY(0); transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.brain-col { width: 35%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.brain-emoji { font-size: 70px; filter: drop-shadow(0 0 0px transparent); transition: filter 0.5s ease; position: relative; z-index: 2; }
+.tier.show .brain-emoji { filter: drop-shadow(0 0 var(--glow-size) var(--glow-color)); }
+.glow-bg { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s ease; }
+.tier.show .glow-bg { opacity: 1; }
+.text-col { width: 65%; display: flex; align-items: center; padding: 20px 30px; }
+.tier-text { font-size: 30px; line-height: 1.3; color: white; text-transform: uppercase; letter-spacing: 1px; word-wrap: break-word; }
+.tier1 .brain-col { background: #2d3436; }
+.tier1 .text-col { background: #2d3436; }
+.tier2 .brain-col { background: #0c2461; }
+.tier2 .text-col { background: #0c2461; }
+.tier3 .brain-col { background: #6c5ce7; }
+.tier3 .text-col { background: #6c5ce7; }
+.tier4 .brain-col { background: linear-gradient(135deg, #fd79a8, #e17055, #fdcb6e); }
+.tier4 .text-col { background: linear-gradient(135deg, #fd79a8, #e17055, #fdcb6e); }
+.particles { position: absolute; inset: 0; pointer-events: none; }
+.particle { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: white; opacity: 0; }
+.tier.show .particle { animation: sparkle 1.5s ease-in-out infinite; }
+@keyframes sparkle { 0%, 100% { opacity: 0; transform: scale(0); } 50% { opacity: 0.8; transform: scale(1); } }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  tier1Text: 'Using a calculator',
+  tier2Text: 'Doing math in your head',
+  tier3Text: 'Using math memes to learn',
+  tier4Text: 'Becoming the math',
+  tier1Emoji: '\u{1F9E0}',
+  tier2Emoji: '\u{1F4A1}',
+  tier3Emoji: '\u{2728}',
+  tier4Emoji: '\u{1F30C}',
+  textColor: '#ffffff',
+  fontSize: 30,
+  animationDelay: 400
+};
+</script>
+<div class="tier tier1" id="tier1">
+  <div class="brain-col" style="--glow-size:0px;--glow-color:transparent">
+    <div class="glow-bg" style="background:radial-gradient(circle,rgba(255,255,255,0.05),transparent)"></div>
+    <span class="brain-emoji" id="emoji1"></span>
+  </div>
+  <div class="text-col"><div class="tier-text" id="text1"></div></div>
+</div>
+<div class="tier tier2" id="tier2">
+  <div class="brain-col" style="--glow-size:10px;--glow-color:rgba(108,92,231,0.5)">
+    <div class="glow-bg" style="background:radial-gradient(circle,rgba(108,92,231,0.2),transparent)"></div>
+    <span class="brain-emoji" id="emoji2"></span>
+    <div class="particles"><div class="particle" style="top:20%;left:30%;animation-delay:0.2s"></div><div class="particle" style="top:60%;left:70%;animation-delay:0.5s"></div></div>
+  </div>
+  <div class="text-col"><div class="tier-text" id="text2"></div></div>
+</div>
+<div class="tier tier3" id="tier3">
+  <div class="brain-col" style="--glow-size:20px;--glow-color:rgba(253,121,168,0.6)">
+    <div class="glow-bg" style="background:radial-gradient(circle,rgba(253,121,168,0.3),transparent)"></div>
+    <span class="brain-emoji" id="emoji3"></span>
+    <div class="particles"><div class="particle" style="top:15%;left:25%;animation-delay:0.1s"></div><div class="particle" style="top:45%;left:75%;animation-delay:0.3s"></div><div class="particle" style="top:70%;left:40%;animation-delay:0.6s"></div></div>
+  </div>
+  <div class="text-col"><div class="tier-text" id="text3"></div></div>
+</div>
+<div class="tier tier4" id="tier4">
+  <div class="brain-col" style="--glow-size:40px;--glow-color:rgba(253,203,110,0.8)">
+    <div class="glow-bg" style="background:radial-gradient(circle,rgba(253,203,110,0.4),transparent)"></div>
+    <span class="brain-emoji" id="emoji4"></span>
+    <div class="particles"><div class="particle" style="top:10%;left:20%;animation-delay:0s"></div><div class="particle" style="top:30%;left:60%;animation-delay:0.2s"></div><div class="particle" style="top:55%;left:35%;animation-delay:0.4s"></div><div class="particle" style="top:75%;left:80%;animation-delay:0.7s"></div></div>
+  </div>
+  <div class="text-col"><div class="tier-text" id="text4"></div></div>
+</div>
+<script>
+document.getElementById('text1').textContent = CONFIG.tier1Text;
+document.getElementById('text2').textContent = CONFIG.tier2Text;
+document.getElementById('text3').textContent = CONFIG.tier3Text;
+document.getElementById('text4').textContent = CONFIG.tier4Text;
+document.getElementById('emoji1').textContent = CONFIG.tier1Emoji;
+document.getElementById('emoji2').textContent = CONFIG.tier2Emoji;
+document.getElementById('emoji3').textContent = CONFIG.tier3Emoji;
+document.getElementById('emoji4').textContent = CONFIG.tier4Emoji;
+document.querySelectorAll('.tier-text').forEach(el => {
+  el.style.color = CONFIG.textColor;
+  el.style.fontSize = CONFIG.fontSize + 'px';
+});
+
+var delay = CONFIG.animationDelay;
+setTimeout(() => document.getElementById('tier1').classList.add('show'), delay);
+setTimeout(() => document.getElementById('tier2').classList.add('show'), delay * 2);
+setTimeout(() => document.getElementById('tier3').classList.add('show'), delay * 3);
+setTimeout(() => document.getElementById('tier4').classList.add('show'), delay * 4);
+</script>
+</body>
+</html>

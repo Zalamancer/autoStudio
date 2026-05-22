@@ -1,0 +1,20 @@
+FROM node:20-slim
+
+# Install Chromium for Remotion local rendering
+RUN apt-get update && apt-get install -y \
+  chromium \
+  --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
+
+# Set Chromium path for Remotion
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Install ProAnimate CLI
+RUN npm install -g @proanimate/cli
+
+# API key should be provided at runtime
+ENV PROANIMATE_API_KEY=""
+
+WORKDIR /workspace
+
+ENTRYPOINT ["proanimate"]

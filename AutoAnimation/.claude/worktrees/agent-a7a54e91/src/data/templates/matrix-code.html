@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Code</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  fontSize: 16,
+  columnGap: 20,
+  speed: 1.0,
+  charSet: 'katakana',
+  headColor: '#aaffaa',
+  trailColor: '#00ff41',
+  bgColor: '#000000',
+  density: 0.85
+};
+
+window.addEventListener('message', e => {
+  if (e.data && typeof e.data === 'object') Object.assign(CONFIG, e.data);
+});
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  initColumns();
+}
+
+// Character sets
+function getCharSet() {
+  const sets = {
+    katakana: [],
+    latin: [],
+    numbers: [],
+    mixed: []
+  };
+  // Katakana: U+30A0 to U+30FF
+  for (let i = 0x30A0; i <= 0x30FF; i++) sets.katakana.push(String.fromCharCode(i));
+  // Latin
+  for (let i = 65; i <= 90; i++) sets.latin.push(String.fromCharCode(i));
+  for (let i = 97; i <= 122; i++) sets.latin.push(String.fromCharCode(i));
+  // Numbers + symbols
+  for (let i = 48; i <= 57; i++) sets.numbers.push(String.fromCharCode(i));
+  sets.numbers.push(...'!@#$%^&*<>{}[]|'.split(''));
+
+  sets.mixed = [...sets.katakana, ...sets.latin, ...sets.numbers];
+
+  return sets[CONFIG.charSet] || sets.mixed;
+}
+
+class Column {
+  constructor(x) {
+    this.x = x;
+    this.chars = [];
+    this.speed = (0.5 + Math.random() * 1.5) * CONFIG.speed;
+    this.y = -Math.random() * H * 2;
+    this.trailLength = 10 + Math.floor(Math.random() * 25);
+    this.active = Math.random() < CONFIG.density;
+    this.respawnTimer = 0;
+    this.charChangeTimer = 0;
+
+    // Pre-fill with random chars
+    for (let i = 0; i < this.trailLength + 5; i++) {
+      this.chars.push(this.randomChar());
+    }
+  }
+
+  randomChar() {
+    const charset = getCharSet();
+    return charset[Math.floor(Math.random() * charset.length)];
+  }
+
+  update(dt) {
+    if (!this.active) {
+      this.respawnTimer += dt;
+      if (this.respawnTimer > 2 + Math.random() * 5) {
+        this.active = true;
+        this.respawnTimer = 0;
+        this.y = -CONFIG.fontSize * 2;
+        this.speed = (0.5 + Math.random() * 1.5) * CONFIG.speed;
+        this.trailLength = 10 + Math.floor(Math.random() * 25);
+      }
+      return;
+    }
+
+    this.y += this.speed * dt * 60;
+
+    // Randomly change some characters
+    this.charChangeTimer += dt;
+    if (this.charChangeTimer > 0.08) {
+      this.charChangeTimer = 0;
+      const idx = Math.floor(Math.random() * this.chars.length);
+      this.chars[idx] = this.randomChar();
+    }
+
+    // Reset when off screen
+    if (this.y - this.trailLength * CONFIG.fontSize > H) {
+      if (Math.random() < CONFIG.density) {
+        this.y = -CONFIG.fontSize * (2 + Math.random() * 8);
+        this.speed = (0.5 + Math.random() * 1.5) * CONFIG.speed;
+        this.trailLength = 10 + Math.floor(Math.random() * 25);
+      } else {
+        this.active = false;
+      }
+    }
+  }
+
+  draw() {
+    if (!this.active) return;
+
+    const fs = CONFIG.fontSize;
+    ctx.font = `${fs}px "MS Gothic", "Courier New", monospace`;
+    ctx.textAlign = 'center';
+
+    for (let i = 0; i < this.trailLength; i++) {
+      const charY = this.y - i * fs;
+      if (charY < -fs || charY > H + fs) continue;
+
+      const charIndex = i % this.chars.length;
+      const t = i / this.trailLength;
+
+      if (i === 0) {
+        // Head character - brightest
+        ctx.save();
+        ctx.shadowColor = CONFIG.headColor;
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 1;
+        ctx.fillText(this.chars[charIndex], this.x, charY);
+        ctx.restore();
+
+        // Glow around head
+        ctx.save();
+        ctx.shadowColor = CONFIG.headColor;
+        ctx.shadowBlur = 25;
+        ctx.fillStyle = CONFIG.headColor;
+        ctx.globalAlpha = 0.7;
+        ctx.fillText(this.chars[charIndex], this.x, charY);
+        ctx.restore();
+      } else if (i === 1) {
+        // Second char - very bright
+        ctx.fillStyle = CONFIG.headColor;
+        ctx.globalAlpha = 0.95;
+        ctx.fillText(this.chars[charIndex], this.x, charY);
+      } else {
+        // Trail - fades out
+        const fade = 1 - t;
+        const brightness = Math.pow(fade, 1.5);
+
+        // Parse trail color and darken
+        const tc = hexToRGB(CONFIG.trailColor);
+        const r = Math.floor(tc.r * brightness);
+        const g = Math.floor(tc.g * brightness);
+        const b = Math.floor(tc.b * brightness);
+
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.globalAlpha = Math.max(0.05, brightness * 0.9);
+        ctx.fillText(this.chars[charIndex], this.x, charY);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function hexToRGB(hex) {
+  hex = hex.replace('#', '');
+  return {
+    r: parseInt(hex.substring(0, 2), 16),
+    g: parseInt(hex.substring(2, 4), 16),
+    b: parseInt(hex.substring(4, 6), 16)
+  };
+}
+
+let columns = [];
+
+function initColumns() {
+  columns = [];
+  const gap = CONFIG.columnGap;
+  const numCols = Math.ceil(W / gap);
+  for (let i = 0; i < numCols; i++) {
+    columns.push(new Column(i * gap + gap / 2));
+  }
+}
+
+resize();
+window.addEventListener('resize', resize);
+
+let lastTime = performance.now();
+
+function animate(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  // Semi-transparent background for trail effect
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.globalAlpha = 0.12;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  columns.forEach(col => {
+    col.update(dt);
+    col.draw();
+  });
+
+  // Top and bottom gradient fog
+  const topFog = ctx.createLinearGradient(0, 0, 0, H * 0.08);
+  topFog.addColorStop(0, CONFIG.bgColor);
+  topFog.addColorStop(1, CONFIG.bgColor + '00');
+  ctx.fillStyle = topFog;
+  ctx.fillRect(0, 0, W, H * 0.08);
+
+  const botFog = ctx.createLinearGradient(0, H * 0.92, 0, H);
+  botFog.addColorStop(0, CONFIG.bgColor + '00');
+  botFog.addColorStop(1, CONFIG.bgColor);
+  ctx.fillStyle = botFog;
+  ctx.fillRect(0, H * 0.92, W, H * 0.08);
+
+  // Subtle scanline effect
+  ctx.fillStyle = 'rgba(0,0,0,0.03)';
+  for (let y = 0; y < H; y += 3) {
+    ctx.fillRect(0, y, W, 1);
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// Initial clear
+ctx.fillStyle = CONFIG.bgColor;
+ctx.fillRect(0, 0, W, H);
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

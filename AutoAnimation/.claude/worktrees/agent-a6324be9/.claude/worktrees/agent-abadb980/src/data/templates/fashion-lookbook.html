@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fashion Lookbook</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Georgia', serif; }
+.container { width: 100%; height: 100%; display: grid; grid-template-columns: 40% 1fr; position: relative; }
+.left { padding: 6vh 5vw; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 1; }
+.season-badge { font-family: 'Segoe UI', sans-serif; font-size: 1.1vh; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(0,0,0,0.35); margin-bottom: 2vh; opacity: 0; transform: translateX(-15px); transition: all 0.6s; }
+.season-badge.visible { opacity: 1; transform: translateX(0); }
+.collection-name { font-size: 6vh; font-weight: 400; line-height: 1.1; margin-bottom: 1vh; opacity: 0; transform: translateY(20px); transition: all 0.8s cubic-bezier(0.22,1,0.36,1); }
+.collection-name.visible { opacity: 1; transform: translateY(0); }
+.designer { font-family: 'Segoe UI', sans-serif; font-size: 1.5vh; color: rgba(0,0,0,0.4); letter-spacing: 0.15em; margin-bottom: 4vh; opacity: 0; transition: opacity 0.6s; }
+.designer.visible { opacity: 1; }
+.divider { width: 8vw; height: 1px; background: rgba(0,0,0,0.15); margin-bottom: 3vh; opacity: 0; transform: scaleX(0); transform-origin: left; transition: all 0.6s; }
+.divider.visible { opacity: 1; transform: scaleX(1); }
+.items-list { display: flex; flex-direction: column; gap: 1.5vh; }
+.item { display: flex; justify-content: space-between; align-items: center; opacity: 0; transform: translateX(-10px); transition: all 0.4s; font-family: 'Segoe UI', sans-serif; }
+.item.visible { opacity: 1; transform: translateX(0); }
+.item-name { font-size: 1.5vh; color: rgba(0,0,0,0.6); }
+.item-price { font-size: 1.4vh; color: rgba(0,0,0,0.35); font-variant-numeric: tabular-nums; }
+.right { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1.5vh; padding: 3vh 3vw 3vh 1.5vw; }
+.swatch { border-radius: 1.5vh; opacity: 0; transform: scale(0.9); transition: all 0.6s cubic-bezier(0.22,1,0.36,1); position: relative; overflow: hidden; }
+.swatch.visible { opacity: 1; transform: scale(1); }
+.swatch-label { position: absolute; bottom: 1.5vh; left: 1.5vw; font-family: 'Segoe UI', sans-serif; font-size: 1.2vh; font-weight: 600; color: rgba(255,255,255,0.7); letter-spacing: 0.1em; text-transform: uppercase; }
+.editorial-mark { position: absolute; bottom: 3vh; right: 5vw; font-size: 1vh; color: rgba(0,0,0,0.2); letter-spacing: 0.3em; transform: rotate(-90deg); transform-origin: bottom right; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="left">
+    <div class="season-badge" id="season">AUTUMN / WINTER 2026</div>
+    <div class="collection-name" id="collName">Ethereal<br>Silhouettes</div>
+    <div class="designer" id="designer">by Maison Lumière</div>
+    <div class="divider" id="divider"></div>
+    <div class="items-list" id="items"></div>
+    <div class="editorial-mark">LOOKBOOK N°14</div>
+  </div>
+  <div class="right" id="swatches"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  collectionName: 'Ethereal\nSilhouettes',
+  season: 'AUTUMN / WINTER 2026',
+  designer: 'by Maison Lumière',
+  items: [
+    { name: 'Draped Wool Coat', price: '$2,450', color: '#2c2c3a' },
+    { name: 'Silk Midi Dress', price: '$1,890', color: '#8b6f5e' },
+    { name: 'Cashmere Turtleneck', price: '$980', color: '#c4b5a0' },
+    { name: 'Tailored Trousers', price: '$1,120', color: '#4a4a5a' },
+  ],
+  cycleDuration: 12000,
+  bgColor: '#f5f0eb',
+  textColor: '#1a1a2e',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('container').style.color = CONFIG.textColor;
+document.getElementById('season').textContent = CONFIG.season;
+document.getElementById('collName').innerHTML = CONFIG.collectionName.replace('\n', '<br>');
+document.getElementById('designer').textContent = CONFIG.designer;
+
+var itemsEl = document.getElementById('items');
+CONFIG.items.forEach(function(it) {
+  var el = document.createElement('div');
+  el.className = 'item';
+  el.innerHTML = '<div class="item-name">' + it.name + '</div><div class="item-price">' + it.price + '</div>';
+  itemsEl.appendChild(el);
+});
+
+var swatchesEl = document.getElementById('swatches');
+CONFIG.items.forEach(function(it) {
+  var el = document.createElement('div');
+  el.className = 'swatch';
+  el.style.background = it.color;
+  el.innerHTML = '<div class="swatch-label">' + it.name + '</div>';
+  swatchesEl.appendChild(el);
+});
+
+function runCycle() {
+  var season = document.getElementById('season');
+  var collName = document.getElementById('collName');
+  var designer = document.getElementById('designer');
+  var divider = document.getElementById('divider');
+  var items = document.querySelectorAll('.item');
+  var swatches = document.querySelectorAll('.swatch');
+
+  [season, collName, designer, divider].forEach(function(el) { el.classList.remove('visible'); });
+  items.forEach(function(el) { el.classList.remove('visible'); });
+  swatches.forEach(function(el) { el.classList.remove('visible'); });
+
+  setTimeout(function() { season.classList.add('visible'); }, 300);
+  setTimeout(function() { collName.classList.add('visible'); }, 600);
+  setTimeout(function() { designer.classList.add('visible'); }, 1000);
+  setTimeout(function() { divider.classList.add('visible'); }, 1300);
+  items.forEach(function(el, i) { setTimeout(function() { el.classList.add('visible'); }, 1600 + i * 200); });
+  swatches.forEach(function(el, i) { setTimeout(function() { el.classList.add('visible'); }, 800 + i * 300); });
+
+  setTimeout(function() {
+    [season, collName, designer, divider].forEach(function(el) { el.style.transition = 'opacity 0.8s'; el.classList.remove('visible'); });
+    items.forEach(function(el) { el.classList.remove('visible'); });
+    swatches.forEach(function(el) { el.classList.remove('visible'); });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

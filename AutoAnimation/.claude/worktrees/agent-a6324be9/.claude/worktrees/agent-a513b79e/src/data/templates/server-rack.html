@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Rack - Data Center</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0f1219; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#0f1219',
+  bgGlow: '#141a25',
+  rackColor: '#1a1f2e',
+  rackBorder: '#2a3040',
+  serverColor: '#1e2538',
+  serverBorder: '#333d52',
+  serverFace: '#252d42',
+  ledGreen: '#00ff66',
+  ledAmber: '#ffaa00',
+  ledRed: '#ff3344',
+  ledOff: '#333333',
+  cableColors: ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'],
+  labelColor: '#7a8ba8',
+  brightLabel: '#c8d6e8',
+  dataDotColor: '#00ff88',
+  fanColor: '#4a5568',
+  statusColors: { online: '#00ff66', warning: '#ffaa00', offline: '#ff3344' },
+  title: 'DATA CENTER',
+  rackCount: 3,
+  serversPerRack: 8
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let racks = [];
+let cables = [];
+let dataPackets = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  initScene();
+}
+
+function initScene() {
+  racks = [];
+  cables = [];
+  dataPackets = [];
+
+  const rackW = W * 0.24;
+  const rackH = H * 0.78;
+  const rackGap = W * 0.04;
+  const totalW = CONFIG.rackCount * rackW + (CONFIG.rackCount - 1) * rackGap;
+  const startX = (W - totalW) / 2;
+  const startY = H * 0.12;
+
+  const serverLabels = [
+    ['WEB-01', 'WEB-02', 'API-01', 'API-02', 'DB-MAIN', 'DB-REPLICA', 'CACHE-01', 'STORAGE'],
+    ['ML-GPU-01', 'ML-GPU-02', 'WORKER-01', 'WORKER-02', 'QUEUE-01', 'MONITOR', 'LOG-SRV', 'BACKUP'],
+    ['CDN-01', 'CDN-02', 'PROXY-01', 'PROXY-02', 'DNS-01', 'DNS-02', 'FIREWALL', 'VPN-GW']
+  ];
+
+  for (let r = 0; r < CONFIG.rackCount; r++) {
+    const rx = startX + r * (rackW + rackGap);
+    const rack = { x: rx, y: startY, w: rackW, h: rackH, servers: [] };
+
+    const serverH = rackH * 0.1;
+    const serverGap = rackH * 0.015;
+    const serverStartY = startY + rackH * 0.06;
+
+    for (let s = 0; s < CONFIG.serversPerRack; s++) {
+      const sy = serverStartY + s * (serverH + serverGap);
+      const status = Math.random() > 0.1 ? (Math.random() > 0.15 ? 'online' : 'warning') : 'offline';
+      const ledCount = 4 + Math.floor(Math.random() * 4);
+      const leds = [];
+
+      for (let l = 0; l < ledCount; l++) {
+        leds.push({
+          phase: Math.random() * Math.PI * 2,
+          speed: 2 + Math.random() * 6,
+          isActivity: Math.random() > 0.3
+        });
+      }
+
+      rack.servers.push({
+        x: rx + rackW * 0.05,
+        y: sy,
+        w: rackW * 0.9,
+        h: serverH,
+        label: serverLabels[r][s] || `SRV-${r}${s}`,
+        status,
+        leds,
+        hasFan: Math.random() > 0.4,
+        fanAngle: Math.random() * Math.PI * 2,
+        is2U: Math.random() > 0.7
+      });
+    }
+
+    racks.push(rack);
+  }
+
+  // Generate cables between racks
+  for (let r = 0; r < CONFIG.rackCount - 1; r++) {
+    const fromRack = racks[r];
+    const toRack = racks[r + 1];
+
+    for (let c = 0; c < 4; c++) {
+      const fromServer = fromRack.servers[Math.floor(Math.random() * fromRack.servers.length)];
+      const toServer = toRack.servers[Math.floor(Math.random() * toRack.servers.length)];
+      const color = CONFIG.cableColors[Math.floor(Math.random() * CONFIG.cableColors.length)];
+
+      cables.push({
+        fromX: fromServer.x + fromServer.w,
+        fromY: fromServer.y + fromServer.h * 0.5,
+        toX: toServer.x,
+        toY: toServer.y + toServer.h * 0.5,
+        color,
+        dataProgress: Math.random(),
+        dataSpeed: 0.005 + Math.random() * 0.01
+      });
+    }
+  }
+}
+
+function drawBackground() {
+  const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.6);
+  grad.addColorStop(0, CONFIG.bgGlow);
+  grad.addColorStop(1, CONFIG.bgColor);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Floor reflection
+  const floorY = H * 0.92;
+  const floorGrad = ctx.createLinearGradient(0, floorY, 0, H);
+  floorGrad.addColorStop(0, 'rgba(30,37,56,0.3)');
+  floorGrad.addColorStop(1, 'rgba(15,18,25,0)');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, floorY, W, H - floorY);
+
+  // Title
+  ctx.fillStyle = CONFIG.brightLabel;
+  ctx.font = `bold ${W * 0.018}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(CONFIG.title, W / 2, H * 0.06);
+
+  ctx.fillStyle = CONFIG.labelColor;
+  ctx.font = `${W * 0.01}px monospace`;
+  ctx.fillText('Status: All Systems Operational', W / 2, H * 0.085);
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawRacks() {
+  racks.forEach((rack, ri) => {
+    // Rack frame
+    roundRect(rack.x, rack.y, rack.w, rack.h, 6);
+    ctx.fillStyle = CONFIG.rackColor;
+    ctx.fill();
+    ctx.strokeStyle = CONFIG.rackBorder;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Rack label
+    ctx.fillStyle = CONFIG.labelColor;
+    ctx.font = `bold ${W * 0.01}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`RACK-${String.fromCharCode(65 + ri)}`, rack.x + rack.w / 2, rack.y + rack.h * 0.025);
+
+    // Servers
+    rack.servers.forEach(server => {
+      drawServer(server);
+    });
+  });
+}
+
+function drawServer(server) {
+  // Server body
+  roundRect(server.x, server.y, server.w, server.h, 3);
+  ctx.fillStyle = CONFIG.serverFace;
+  ctx.fill();
+  ctx.strokeStyle = CONFIG.serverBorder;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Top bevel
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(server.x + 2, server.y + 1, server.w - 4, 2);
+
+  // Status LED
+  const statusColor = CONFIG.statusColors[server.status];
+  const ledR = server.h * 0.12;
+  const ledX = server.x + server.w * 0.04;
+  const ledY = server.y + server.h * 0.5;
+
+  // Glow
+  ctx.beginPath();
+  ctx.arc(ledX, ledY, ledR * 3, 0, Math.PI * 2);
+  ctx.fillStyle = statusColor + '22';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(ledX, ledY, ledR, 0, Math.PI * 2);
+  ctx.fillStyle = statusColor;
+  ctx.fill();
+
+  // Activity LEDs
+  const ledStartX = server.x + server.w * 0.1;
+  const ledSpacing = server.w * 0.025;
+
+  server.leds.forEach((led, i) => {
+    const lx = ledStartX + i * ledSpacing;
+    const isOn = led.isActivity ?
+      Math.sin(time * led.speed + led.phase) > 0.2 :
+      true;
+
+    ctx.beginPath();
+    ctx.arc(lx, ledY, ledR * 0.6, 0, Math.PI * 2);
+    ctx.fillStyle = isOn ? CONFIG.ledGreen : CONFIG.ledOff;
+    ctx.fill();
+  });
+
+  // Server label
+  ctx.fillStyle = CONFIG.labelColor;
+  ctx.font = `${W * 0.008}px monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillText(server.label, server.x + server.w * 0.35, server.y + server.h * 0.55);
+
+  // Drive bays (small rectangles)
+  const bayStartX = server.x + server.w * 0.6;
+  const bayW = server.w * 0.04;
+  const bayH = server.h * 0.5;
+  for (let d = 0; d < 3; d++) {
+    const bx = bayStartX + d * (bayW + 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(bx, server.y + server.h * 0.25, bayW, bayH);
+    ctx.strokeStyle = CONFIG.serverBorder;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(bx, server.y + server.h * 0.25, bayW, bayH);
+  }
+
+  // Fan indicator
+  if (server.hasFan) {
+    server.fanAngle += 0.2;
+    const fanX = server.x + server.w * 0.88;
+    const fanY = server.y + server.h * 0.5;
+    const fanR = server.h * 0.25;
+
+    ctx.strokeStyle = CONFIG.fanColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(fanX, fanY, fanR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Fan blades
+    for (let b = 0; b < 4; b++) {
+      const angle = server.fanAngle + (b * Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(fanX, fanY);
+      ctx.lineTo(
+        fanX + Math.cos(angle) * fanR * 0.8,
+        fanY + Math.sin(angle) * fanR * 0.8
+      );
+      ctx.stroke();
+    }
+  }
+
+  // Power button
+  ctx.beginPath();
+  ctx.arc(server.x + server.w * 0.95, ledY, ledR * 0.8, 0, Math.PI * 2);
+  ctx.strokeStyle = CONFIG.labelColor;
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+}
+
+function drawCables() {
+  cables.forEach(cable => {
+    const midX = (cable.fromX + cable.toX) / 2;
+    const sag = H * 0.03;
+
+    ctx.strokeStyle = cable.color + '66';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cable.fromX, cable.fromY);
+    ctx.quadraticCurveTo(midX, Math.max(cable.fromY, cable.toY) + sag, cable.toX, cable.toY);
+    ctx.stroke();
+
+    // Data packet
+    cable.dataProgress += cable.dataSpeed;
+    if (cable.dataProgress > 1) cable.dataProgress -= 1;
+
+    const t = cable.dataProgress;
+    const px = (1 - t) * (1 - t) * cable.fromX + 2 * (1 - t) * t * midX + t * t * cable.toX;
+    const controlY = Math.max(cable.fromY, cable.toY) + sag;
+    const py = (1 - t) * (1 - t) * cable.fromY + 2 * (1 - t) * t * controlY + t * t * cable.toY;
+
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.dataDotColor;
+    ctx.fill();
+
+    // Glow
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.dataDotColor + '44';
+    ctx.fill();
+  });
+}
+
+function drawStats() {
+  const statsX = W * 0.04;
+  const statsY = H * 0.94;
+
+  ctx.fillStyle = CONFIG.labelColor;
+  ctx.font = `${W * 0.009}px monospace`;
+  ctx.textAlign = 'left';
+
+  const uptime = Math.floor(time * 10) % 99999;
+  const cpu = 42 + Math.floor(Math.sin(time * 0.5) * 15);
+  const mem = 67 + Math.floor(Math.sin(time * 0.3) * 8);
+  const net = Math.floor(Math.abs(Math.sin(time * 2)) * 980);
+
+  ctx.fillText(`UPTIME: ${uptime}h  |  CPU: ${cpu}%  |  MEM: ${mem}%  |  NET: ${net} Mbps`, statsX, statsY);
+
+  // Blinking status indicator
+  const blink = Math.sin(time * 3) > 0;
+  ctx.fillStyle = blink ? CONFIG.ledGreen : CONFIG.ledOff;
+  ctx.beginPath();
+  ctx.arc(W * 0.96, statsY - W * 0.003, W * 0.004, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = CONFIG.brightLabel;
+  ctx.textAlign = 'right';
+  ctx.fillText('OPERATIONAL', W * 0.95, statsY);
+}
+
+function draw() {
+  drawBackground();
+  drawRacks();
+  drawCables();
+  drawStats();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

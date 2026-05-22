@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facebook Post</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #18191a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    color: #e4e6eb;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .fb-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5vh 4vw;
+    background: #242526;
+    border-bottom: 1px solid #3a3b3c;
+    opacity: 0;
+  }
+  .fb-logo { font-size: 2.8vh; font-weight: 800; color: #1877f2; }
+  .fb-icons { display: flex; gap: 2vw; }
+  .fb-icon {
+    width: 4vh; height: 4vh;
+    background: #3a3b3c;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8vh;
+  }
+  .fb-tabs {
+    display: flex;
+    background: #242526;
+    border-bottom: 1px solid #3a3b3c;
+    opacity: 0;
+  }
+  .fb-tab {
+    flex: 1; text-align: center;
+    padding: 1.2vh 0;
+    font-size: 2vh; color: #b0b3b8;
+  }
+  .fb-tab.active { color: #1877f2; border-bottom: 2px solid #1877f2; }
+  .create-post {
+    display: flex; align-items: center; gap: 2vw;
+    padding: 1.5vh 4vw;
+    background: #242526;
+    margin: 1vh 0;
+    border-radius: 0;
+    opacity: 0;
+  }
+  .create-avatar {
+    width: 4.5vh; height: 4.5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .create-input {
+    flex: 1;
+    background: #3a3b3c;
+    border-radius: 10vh;
+    padding: 1vh 2.5vw;
+    font-size: 1.3vh;
+    color: #b0b3b8;
+  }
+  .post-card {
+    background: #242526;
+    margin-bottom: 1vh;
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  .post-head {
+    display: flex; align-items: center; gap: 2vw;
+    padding: 1.5vh 4vw;
+  }
+  .post-av {
+    width: 5vh; height: 5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .post-name { font-size: 1.5vh; font-weight: 700; }
+  .post-meta { font-size: 1.1vh; color: #b0b3b8; display: flex; align-items: center; gap: 1vw; }
+  .post-dots { margin-left: auto; font-size: 2vh; color: #b0b3b8; }
+  .post-text {
+    padding: 0 4vw 1.5vh;
+    font-size: 1.5vh; line-height: 1.5;
+  }
+  .post-link-preview {
+    border: 1px solid #3a3b3c;
+    margin: 0 4vw 1.5vh;
+    border-radius: 0.8vh;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .link-image { width: 100%; height: 16vh; }
+  .link-body {
+    padding: 1.2vh 2vw;
+    background: #3a3b3c;
+  }
+  .link-domain { font-size: 1vh; color: #b0b3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .link-title { font-size: 1.4vh; font-weight: 600; line-height: 1.3; margin: 0.3vh 0; }
+  .link-desc { font-size: 1.1vh; color: #b0b3b8; line-height: 1.3; }
+  .post-reactions {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.8vh 4vw;
+    border-bottom: 1px solid #3a3b3c;
+    opacity: 0;
+  }
+  .reaction-icons {
+    display: flex; align-items: center; gap: -0.5vw;
+  }
+  .reaction-emoji { font-size: 1.6vh; }
+  .reaction-count { font-size: 1.2vh; color: #b0b3b8; margin-left: 1vw; }
+  .comment-share { font-size: 1.1vh; color: #b0b3b8; display: flex; gap: 2vw; }
+  .post-action-bar {
+    display: flex;
+    padding: 0.8vh 4vw;
+    border-bottom: 1px solid #3a3b3c;
+    opacity: 0;
+  }
+  .action-btn {
+    flex: 1; text-align: center;
+    font-size: 1.3vh; font-weight: 600;
+    color: #b0b3b8;
+    padding: 0.8vh 0;
+    display: flex; align-items: center; justify-content: center; gap: 1vw;
+  }
+  .comments-section {
+    padding: 1.5vh 4vw;
+    opacity: 0;
+  }
+  .fb-comment {
+    display: flex; gap: 2vw;
+    margin-bottom: 1.2vh;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  .fb-comment-av {
+    width: 3.5vh; height: 3.5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .comment-bubble {
+    background: #3a3b3c;
+    border-radius: 1.5vh;
+    padding: 1vh 2vw;
+    flex: 1;
+  }
+  .comment-name { font-size: 1.2vh; font-weight: 700; }
+  .comment-text { font-size: 1.2vh; line-height: 1.4; color: #e4e6eb; }
+  .comment-actions {
+    display: flex; gap: 2vw;
+    font-size: 0.9vh; color: #b0b3b8;
+    padding: 0.3vh 1vw 0;
+  }
+  .comment-actions span { font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="fb-header" id="fbHeader">
+    <div class="fb-logo" id="logoText">facebook</div>
+    <div class="fb-icons">
+      <div class="fb-icon">&#x1F50D;</div>
+      <div class="fb-icon">&#x1F4AC;</div>
+    </div>
+  </div>
+
+  <div class="fb-tabs" id="fbTabs">
+    <div class="fb-tab active">&#x1F3E0;</div>
+    <div class="fb-tab">&#x1F465;</div>
+    <div class="fb-tab">&#x25B6;</div>
+    <div class="fb-tab">&#x1F514;</div>
+    <div class="fb-tab">&#x2630;</div>
+  </div>
+
+  <div class="create-post" id="createPost">
+    <div class="create-avatar" style="background:#1877f2;"></div>
+    <div class="create-input">What's on your mind?</div>
+  </div>
+
+  <div class="post-card" id="postCard">
+    <div class="post-head">
+      <div class="post-av" id="postAvatar" style="background: #e74c3c;"></div>
+      <div>
+        <div class="post-name" id="postName">TechCrunch</div>
+        <div class="post-meta"><span id="postTime">2h</span> &middot; &#x1F310;</div>
+      </div>
+      <div class="post-dots">&#x2022;&#x2022;&#x2022;</div>
+    </div>
+    <div class="post-text" id="postText">Breaking: OpenAI announces its latest model with unprecedented reasoning capabilities. The AI landscape continues to evolve at a breathtaking pace. What are your thoughts on the future of artificial intelligence?</div>
+    <div class="post-link-preview" id="linkPreview">
+      <div class="link-image" id="linkImage" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
+      <div class="link-body">
+        <div class="link-domain" id="linkDomain">TECHCRUNCH.COM</div>
+        <div class="link-title" id="linkTitle">OpenAI's New Model Sets Record on Every Major Benchmark</div>
+        <div class="link-desc" id="linkDesc">The latest advancement pushes the boundaries of what's possible with artificial intelligence, achieving human-level performance on multiple tasks.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="post-reactions" id="postReactions">
+    <div style="display:flex;align-items:center;">
+      <span class="reaction-emoji">&#x1F44D;</span>
+      <span class="reaction-emoji">&#x2764;</span>
+      <span class="reaction-emoji">&#x1F62E;</span>
+      <span class="reaction-count" id="reactionCount">4.2K</span>
+    </div>
+    <div class="comment-share">
+      <span id="commentCount">847 comments</span>
+      <span id="shareCount">1.2K shares</span>
+    </div>
+  </div>
+
+  <div class="post-action-bar" id="actionBar">
+    <div class="action-btn">&#x1F44D; Like</div>
+    <div class="action-btn">&#x1F4AC; Comment</div>
+    <div class="action-btn">&#x21A9; Share</div>
+  </div>
+
+  <div class="comments-section" id="commentsSection">
+    <div class="fb-comment" id="comment1">
+      <div class="fb-comment-av" style="background: #2ecc71;"></div>
+      <div>
+        <div class="comment-bubble">
+          <div class="comment-name" id="c1Name">David Chen</div>
+          <div class="comment-text" id="c1Text">This is incredible progress. The benchmarks are impressive but I wonder about real-world applications.</div>
+        </div>
+        <div class="comment-actions"><span>Like</span><span>Reply</span><span>23m</span></div>
+      </div>
+    </div>
+    <div class="fb-comment" id="comment2">
+      <div class="fb-comment-av" style="background: #f39c12;"></div>
+      <div>
+        <div class="comment-bubble">
+          <div class="comment-name" id="c2Name">Sarah Kim</div>
+          <div class="comment-text" id="c2Text">The pace of AI development is both exciting and concerning. We need to ensure responsible deployment.</div>
+        </div>
+        <div class="comment-actions"><span>Like</span><span>Reply</span><span>1h</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    posterName: 'TechCrunch',
+    posterAvatar: '#e74c3c',
+    postTime: '2h',
+    postText: 'Breaking: OpenAI announces its latest model with unprecedented reasoning capabilities. The AI landscape continues to evolve at a breathtaking pace. What are your thoughts on the future of artificial intelligence?',
+    linkDomain: 'TECHCRUNCH.COM',
+    linkTitle: 'OpenAI\'s New Model Sets Record on Every Major Benchmark',
+    linkDesc: 'The latest advancement pushes the boundaries of what\'s possible with artificial intelligence, achieving human-level performance on multiple tasks.',
+    linkImageGradient1: '#667eea',
+    linkImageGradient2: '#764ba2',
+    reactionCount: '4.2K',
+    commentCount: '847 comments',
+    shareCount: '1.2K shares',
+    comment1Name: 'David Chen',
+    comment1Text: 'This is incredible progress. The benchmarks are impressive but I wonder about real-world applications.',
+    comment2Name: 'Sarah Kim',
+    comment2Text: 'The pace of AI development is both exciting and concerning. We need to ensure responsible deployment.',
+    bgColor: '#18191a',
+    accentColor: '#1877f2',
+    cycleDuration: 15000
+  };
+
+  document.getElementById('postName').textContent = CONFIG.posterName;
+  document.getElementById('postAvatar').style.background = CONFIG.posterAvatar;
+  document.getElementById('postTime').textContent = CONFIG.postTime;
+  document.getElementById('postText').textContent = CONFIG.postText;
+  document.getElementById('linkDomain').textContent = CONFIG.linkDomain;
+  document.getElementById('linkTitle').textContent = CONFIG.linkTitle;
+  document.getElementById('linkDesc').textContent = CONFIG.linkDesc;
+  document.getElementById('linkImage').style.background = 'linear-gradient(135deg, ' + CONFIG.linkImageGradient1 + ', ' + CONFIG.linkImageGradient2 + ')';
+  document.getElementById('reactionCount').textContent = CONFIG.reactionCount;
+  document.getElementById('commentCount').textContent = CONFIG.commentCount;
+  document.getElementById('shareCount').textContent = CONFIG.shareCount;
+  document.getElementById('c1Name').textContent = CONFIG.comment1Name;
+  document.getElementById('c1Text').textContent = CONFIG.comment1Text;
+  document.getElementById('c2Name').textContent = CONFIG.comment2Name;
+  document.getElementById('c2Text').textContent = CONFIG.comment2Text;
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.6s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    ['fbHeader','fbTabs','createPost','postCard','linkPreview','postReactions','actionBar','commentsSection','comment1','comment2'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      if (['postCard','linkPreview'].includes(id)) el.style.transform = 'translateY(15px)';
+      if (['comment1','comment2'].includes(id)) el.style.transform = 'translateY(8px)';
+    });
+    void document.getElementById('fbHeader').offsetWidth;
+
+    anim(document.getElementById('fbHeader'), { opacity: '1' }, 200);
+    anim(document.getElementById('fbTabs'), { opacity: '1' }, 400);
+    anim(document.getElementById('createPost'), { opacity: '1' }, 600);
+    anim(document.getElementById('postCard'), { opacity: '1', transform: 'translateY(0)' }, 1000);
+    anim(document.getElementById('linkPreview'), { opacity: '1', transform: 'translateY(0)' }, 2000);
+    anim(document.getElementById('postReactions'), { opacity: '1' }, 3000);
+    anim(document.getElementById('actionBar'), { opacity: '1' }, 3400);
+    anim(document.getElementById('commentsSection'), { opacity: '1' }, 3800);
+    anim(document.getElementById('comment1'), { opacity: '1', transform: 'translateY(0)' }, 4200);
+    anim(document.getElementById('comment2'), { opacity: '1', transform: 'translateY(0)' }, 4800);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

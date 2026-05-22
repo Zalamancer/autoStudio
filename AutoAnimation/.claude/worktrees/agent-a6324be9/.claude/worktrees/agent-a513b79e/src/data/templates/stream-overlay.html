@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream Overlay</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #e0e6f0;
+  }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Subtle animated bg noise */
+  .bg-grid {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(120,0,255,0.03) 1px, transparent 1px),
+      linear-gradient(rgba(120,0,255,0.03) 1px, transparent 1px);
+    background-size: 4vw 4vh;
+    pointer-events: none;
+  }
+  .bg-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    opacity: 0.08;
+  }
+  .glow1 { width: 40vw; height: 40vw; top: -15vw; left: -10vw; }
+  .glow2 { width: 30vw; height: 30vw; bottom: -10vw; right: -5vw; }
+
+  /* Webcam frame */
+  .webcam-area {
+    position: absolute;
+    bottom: 8vh; left: 3vw;
+    width: 28vw; height: 28vw;
+    border-radius: 2vh;
+    overflow: hidden;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.6s, transform 0.6s cubic-bezier(0.22,1,0.36,1);
+  }
+  .webcam-area.visible { opacity: 1; transform: scale(1); }
+  .webcam-inner {
+    width: 100%; height: 100%;
+    background: rgba(20, 15, 40, 0.6);
+    border-radius: 2vh;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2vh; opacity: 0.3;
+    letter-spacing: 0.1em;
+  }
+  .webcam-border {
+    position: absolute; inset: 0;
+    border-radius: 2vh;
+    border: 3px solid transparent;
+    background: linear-gradient(var(--bg), var(--bg)) padding-box,
+                linear-gradient(135deg, var(--accent1), var(--accent2), var(--accent1)) border-box;
+    pointer-events: none;
+    animation: borderShift 3s linear infinite;
+  }
+  @keyframes borderShift {
+    0% { background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(0deg, var(--accent1), var(--accent2), var(--accent1)) border-box; }
+    33% { background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(120deg, var(--accent1), var(--accent2), var(--accent1)) border-box; }
+    66% { background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(240deg, var(--accent1), var(--accent2), var(--accent1)) border-box; }
+    100% { background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(360deg, var(--accent1), var(--accent2), var(--accent1)) border-box; }
+  }
+
+  /* LIVE badge */
+  .live-badge {
+    position: absolute;
+    top: 3vh; left: 3vw;
+    display: flex; align-items: center; gap: 0.8vw;
+    background: #e63946;
+    padding: 0.8vh 2vw;
+    border-radius: 0.6vh;
+    font-size: 1.6vh;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.4s, transform 0.4s;
+    z-index: 20;
+  }
+  .live-badge.visible { opacity: 1; transform: translateX(0); }
+  .live-rec-dot {
+    width: 1vh; height: 1vh;
+    background: #fff;
+    border-radius: 50%;
+    animation: recBlink 1s ease-in-out infinite;
+  }
+  @keyframes recBlink { 0%,100%{opacity:1;}50%{opacity:0.2;} }
+
+  /* Viewer count */
+  .viewer-count {
+    position: absolute;
+    top: 3vh; left: 14vw;
+    display: flex; align-items: center; gap: 0.6vw;
+    background: rgba(20,15,40,0.8);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 0.8vh 1.5vw;
+    border-radius: 0.6vh;
+    font-size: 1.4vh;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.5s;
+    z-index: 20;
+  }
+  .viewer-count.visible { opacity: 1; }
+  .viewer-icon { font-size: 1.6vh; }
+
+  /* Stream info bar */
+  .stream-info {
+    position: absolute;
+    top: 3vh; right: 3vw;
+    text-align: right;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.5s, transform 0.5s;
+    z-index: 20;
+  }
+  .stream-info.visible { opacity: 1; transform: translateX(0); }
+  .streamer-name {
+    font-size: 2.2vh;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+  }
+  .stream-title {
+    font-size: 1.4vh;
+    opacity: 0.7;
+    margin-top: 0.3vh;
+    max-width: 30vw;
+  }
+  .stream-category {
+    display: inline-block;
+    margin-top: 0.6vh;
+    padding: 0.3vh 1vw;
+    border-radius: 0.4vh;
+    font-size: 1.1vh;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+  }
+
+  /* Chat panel */
+  .chat-panel {
+    position: absolute;
+    top: 10vh; right: 3vw;
+    width: 26vw;
+    height: 50vh;
+    background: rgba(10, 8, 25, 0.7);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 1.5vh;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: translateX(30px);
+    transition: opacity 0.6s, transform 0.6s;
+    z-index: 10;
+  }
+  .chat-panel.visible { opacity: 1; transform: translateX(0); }
+  .chat-header {
+    padding: 1.2vh 1.5vw;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 1.3vh;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    display: flex; align-items: center; gap: 0.5vw;
+    opacity: 0.6;
+  }
+  .chat-messages {
+    padding: 1vh 1.5vw;
+    overflow: hidden;
+    height: calc(100% - 4vh);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .chat-msg {
+    margin-bottom: 0.8vh;
+    font-size: 1.2vh;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .chat-msg.visible { opacity: 1; transform: translateY(0); }
+  .chat-user {
+    font-weight: 700;
+    margin-right: 0.5vw;
+  }
+  .chat-text { opacity: 0.85; }
+
+  /* Alert popup */
+  .alert-popup {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: rgba(10, 8, 25, 0.9);
+    border: 2px solid;
+    border-radius: 2vh;
+    padding: 3vh 4vw;
+    text-align: center;
+    backdrop-filter: blur(15px);
+    z-index: 30;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+    opacity: 0;
+  }
+  .alert-popup.visible { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .alert-icon { font-size: 5vh; margin-bottom: 1vh; }
+  .alert-type {
+    font-size: 1.2vh;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 0.5vh;
+  }
+  .alert-name {
+    font-size: 2.5vh;
+    font-weight: 800;
+  }
+  .alert-detail {
+    font-size: 1.4vh;
+    opacity: 0.7;
+    margin-top: 0.5vh;
+  }
+
+  /* Donation alert */
+  .donation-alert {
+    position: absolute;
+    bottom: 40vh; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(10, 8, 25, 0.9);
+    border: 2px solid;
+    border-radius: 1.5vh;
+    padding: 2vh 3vw;
+    text-align: center;
+    backdrop-filter: blur(15px);
+    z-index: 25;
+    opacity: 0;
+    transition: opacity 0.5s, transform 0.5s cubic-bezier(0.22,1,0.36,1);
+    white-space: nowrap;
+  }
+  .donation-alert.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .donation-amount {
+    font-size: 3vh;
+    font-weight: 900;
+  }
+  .donation-from {
+    font-size: 1.3vh;
+    opacity: 0.6;
+    margin-top: 0.3vh;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 5vh;
+    display: flex;
+    align-items: center;
+    padding: 0 3vw;
+    gap: 3vw;
+    font-size: 1.1vh;
+    opacity: 0;
+    transition: opacity 0.5s;
+    z-index: 15;
+  }
+  .bottom-bar.visible { opacity: 1; }
+  .bar-item { display: flex; align-items: center; gap: 0.4vw; opacity: 0.5; }
+  .bar-sep { width: 1px; height: 2vh; background: rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="bg-grid"></div>
+  <div class="bg-glow glow1" id="glow1"></div>
+  <div class="bg-glow glow2" id="glow2"></div>
+
+  <div class="live-badge" id="liveBadge">
+    <div class="live-rec-dot"></div>
+    LIVE
+  </div>
+
+  <div class="viewer-count" id="viewerCount">
+    <span class="viewer-icon">&#128065;</span>
+    <span id="viewerNum">0</span>
+  </div>
+
+  <div class="stream-info" id="streamInfo">
+    <div class="streamer-name" id="streamerName"></div>
+    <div class="stream-title" id="streamTitle"></div>
+    <div class="stream-category" id="streamCategory"></div>
+  </div>
+
+  <div class="webcam-area" id="webcam">
+    <div class="webcam-inner">CAMERA</div>
+    <div class="webcam-border"></div>
+  </div>
+
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-header">&#128172; LIVE CHAT</div>
+    <div class="chat-messages" id="chatMessages"></div>
+  </div>
+
+  <div class="alert-popup" id="alertPopup">
+    <div class="alert-icon">&#127881;</div>
+    <div class="alert-type" id="alertType">NEW SUBSCRIBER</div>
+    <div class="alert-name" id="alertName"></div>
+    <div class="alert-detail" id="alertDetail"></div>
+  </div>
+
+  <div class="donation-alert" id="donationAlert">
+    <div class="donation-amount" id="donationAmount">$25.00</div>
+    <div class="donation-from" id="donationFrom"></div>
+  </div>
+
+  <div class="bottom-bar" id="bottomBar">
+    <div class="bar-item" id="barStream">&#127918; Stream</div>
+    <div class="bar-sep"></div>
+    <div class="bar-item" id="barFollowers">Followers: --</div>
+    <div class="bar-sep"></div>
+    <div class="bar-item" id="barUptime">Uptime: 0:00:00</div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  streamerName: 'NightOwlGaming',
+  streamTitle: 'Late Night Ranked Grind - Road to Diamond',
+  category: 'Valorant',
+  viewerCount: 2847,
+  chatMessages: [
+    { user: 'PixelWitch', color: '#e83e8c', text: 'that clutch was insane!!' },
+    { user: 'ShadowByte', color: '#00d4ff', text: 'lets gooo' },
+    { user: 'CosmicDust', color: '#ffd700', text: 'GG' },
+    { user: 'NeonFrost', color: '#00ff88', text: 'how do you aim like that' },
+    { user: 'ThunderCat', color: '#ff6b6b', text: 'L M A O' },
+    { user: 'VoidRunner', color: '#a78bfa', text: 'sub hype!!' },
+    { user: 'IceBlade99', color: '#4ecdc4', text: 'first time catching a stream, this is awesome' },
+    { user: 'GlitchQueen', color: '#f472b6', text: 'can you play phoenix next??' },
+    { user: 'DragonAsh', color: '#fb923c', text: 'the vibes are immaculate tonight' },
+    { user: 'ZeroGravity', color: '#34d399', text: 'W stream W chat' },
+  ],
+  subscriberNames: ['StarFire_X', 'LunarEcho', 'CyberNomad'],
+  donorName: 'PhantomReaper',
+  donorAmount: '$25.00',
+  donorMessage: 'Keep up the grind!',
+  bgColor: '#0a0818',
+  accentColor: '#7c3aed',
+  accentColor2: '#06b6d4',
+  cycleDuration: 18000,
+};
+
+// Apply theme
+const root = document.documentElement;
+root.style.setProperty('--bg', CONFIG.bgColor);
+root.style.setProperty('--accent1', CONFIG.accentColor);
+root.style.setProperty('--accent2', CONFIG.accentColor2);
+document.body.style.background = CONFIG.bgColor;
+
+document.getElementById('glow1').style.background = CONFIG.accentColor;
+document.getElementById('glow2').style.background = CONFIG.accentColor2;
+document.getElementById('streamCategory').style.background = CONFIG.accentColor + '33';
+document.getElementById('streamCategory').style.color = CONFIG.accentColor2;
+document.getElementById('alertPopup').style.borderColor = CONFIG.accentColor;
+document.getElementById('donationAlert').style.borderColor = CONFIG.accentColor2;
+document.getElementById('donationAmount').style.color = CONFIG.accentColor2;
+
+// Populate static
+document.getElementById('streamerName').textContent = CONFIG.streamerName;
+document.getElementById('streamTitle').textContent = CONFIG.streamTitle;
+document.getElementById('streamCategory').textContent = CONFIG.category;
+document.getElementById('donationAmount').textContent = CONFIG.donorAmount;
+document.getElementById('donationFrom').textContent = 'from ' + CONFIG.donorName;
+
+// Animated viewer count
+let currentViewers = 0;
+function animateViewers(target, duration) {
+  const start = currentViewers;
+  const diff = target - start;
+  const startTime = performance.now();
+  function step(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    currentViewers = Math.round(start + diff * eased);
+    document.getElementById('viewerNum').textContent = currentViewers.toLocaleString();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// Chat message rendering
+let msgIndex = 0;
+function addChatMessage() {
+  const container = document.getElementById('chatMessages');
+  const msgData = CONFIG.chatMessages[msgIndex % CONFIG.chatMessages.length];
+  msgIndex++;
+
+  const el = document.createElement('div');
+  el.className = 'chat-msg';
+  el.innerHTML = `<span class="chat-user" style="color:${msgData.color}">${msgData.user}:</span><span class="chat-text">${msgData.text}</span>`;
+  container.appendChild(el);
+
+  // Keep max 12 messages
+  while (container.children.length > 12) {
+    container.removeChild(container.firstChild);
+  }
+
+  setTimeout(() => el.classList.add('visible'), 50);
+}
+
+let chatInterval;
+let subIndex = 0;
+
+function runCycle() {
+  const liveBadge = document.getElementById('liveBadge');
+  const viewerCount = document.getElementById('viewerCount');
+  const streamInfo = document.getElementById('streamInfo');
+  const webcam = document.getElementById('webcam');
+  const chatPanel = document.getElementById('chatPanel');
+  const alertPopup = document.getElementById('alertPopup');
+  const donationAlert = document.getElementById('donationAlert');
+  const bottomBar = document.getElementById('bottomBar');
+  const chatMessages = document.getElementById('chatMessages');
+
+  // Reset
+  liveBadge.classList.remove('visible');
+  viewerCount.classList.remove('visible');
+  streamInfo.classList.remove('visible');
+  webcam.classList.remove('visible');
+  chatPanel.classList.remove('visible');
+  alertPopup.classList.remove('visible');
+  donationAlert.classList.remove('visible');
+  bottomBar.classList.remove('visible');
+  chatMessages.innerHTML = '';
+  currentViewers = 0;
+  document.getElementById('viewerNum').textContent = '0';
+  clearInterval(chatInterval);
+
+  // Stagger in
+  setTimeout(() => liveBadge.classList.add('visible'), 200);
+  setTimeout(() => {
+    viewerCount.classList.add('visible');
+    animateViewers(CONFIG.viewerCount, 2000);
+  }, 500);
+  setTimeout(() => streamInfo.classList.add('visible'), 700);
+  setTimeout(() => webcam.classList.add('visible'), 1000);
+  setTimeout(() => {
+    chatPanel.classList.add('visible');
+    // Start chat messages
+    msgIndex = 0;
+    addChatMessage();
+    chatInterval = setInterval(addChatMessage, 1200);
+  }, 1400);
+  setTimeout(() => bottomBar.classList.add('visible'), 1800);
+
+  // Subscriber alert at 5s
+  setTimeout(() => {
+    const name = CONFIG.subscriberNames[subIndex % CONFIG.subscriberNames.length];
+    subIndex++;
+    document.getElementById('alertName').textContent = name;
+    document.getElementById('alertDetail').textContent = 'Welcome to the community!';
+    alertPopup.classList.add('visible');
+  }, 5000);
+  setTimeout(() => alertPopup.classList.remove('visible'), 8000);
+
+  // Donation alert at 10s
+  setTimeout(() => {
+    donationAlert.classList.add('visible');
+  }, 10000);
+  setTimeout(() => donationAlert.classList.remove('visible'), 13000);
+
+  // Uptime counter
+  let upSec = 0;
+  const upInt = setInterval(() => {
+    upSec++;
+    const h = Math.floor(upSec / 3600);
+    const m = Math.floor((upSec % 3600) / 60);
+    const s = upSec % 60;
+    document.getElementById('barUptime').textContent =
+      'Uptime: ' + h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }, 1000);
+
+  // Fluctuate viewers
+  const viewerFluc = setInterval(() => {
+    const delta = Math.floor(Math.random() * 40) - 15;
+    animateViewers(Math.max(100, currentViewers + delta), 500);
+  }, 3000);
+
+  // Fade out
+  setTimeout(() => {
+    clearInterval(chatInterval);
+    clearInterval(upInt);
+    clearInterval(viewerFluc);
+    liveBadge.classList.remove('visible');
+    viewerCount.classList.remove('visible');
+    streamInfo.classList.remove('visible');
+    webcam.classList.remove('visible');
+    chatPanel.classList.remove('visible');
+    alertPopup.classList.remove('visible');
+    donationAlert.classList.remove('visible');
+    bottomBar.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>

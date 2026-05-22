@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concert Stage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; }
+  body { background: #0a0008; }
+  canvas#concertCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="concertCanvas"></canvas>
+
+<script>
+const CONFIG = {
+  titleText: 'LIVE',
+  backgroundColor: '#0a0008',
+  spotlightCount: 8,
+  spotlightColors: ['#ff0066', '#00ccff', '#ff8800', '#aa00ff', '#00ff88', '#ffff00', '#ff3366', '#00aaff'],
+  beamCount: 12,
+  fogDensity: 0.6,
+  crowdDensity: 120,
+  strobeFrequency: 0.3,
+  bassPulseIntensity: 0.7,
+  cycleDuration: 16,
+};
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config);
+});
+
+const canvas = document.getElementById('concertCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  generateCrowd();
+  generateLaserPoints();
+}
+
+function hexToRgb(hex) {
+  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+}
+
+// --- Stage geometry ---
+const stageTop = () => H * 0.48;
+const stageLeft = () => W * 0.1;
+const stageRight = () => W * 0.9;
+
+// --- Crowd silhouettes ---
+let crowdHeads = [];
+function generateCrowd() {
+  crowdHeads = [];
+  for (let i = 0; i < CONFIG.crowdDensity; i++) {
+    const row = Math.floor(i / (CONFIG.crowdDensity / 4));
+    const baseY = H * 0.72 + row * H * 0.07;
+    crowdHeads.push({
+      x: Math.random() * W,
+      y: baseY + Math.random() * H * 0.04,
+      headR: 6 + Math.random() * 5,
+      bodyH: 20 + Math.random() * 15,
+      swayPhase: Math.random() * Math.PI * 2,
+      swaySpeed: 0.01 + Math.random() * 0.02,
+      swayAmp: 2 + Math.random() * 4,
+      armUp: Math.random() > 0.7,
+      armPhase: Math.random() * Math.PI * 2,
+      phoneLight: Math.random() > 0.88,
+      phoneBrightness: Math.random(),
+    });
+  }
+}
+
+// --- Spotlights ---
+class Spotlight {
+  constructor(i) {
+    this.index = i;
+    this.x = W * (0.15 + (i / CONFIG.spotlightCount) * 0.7);
+    this.y = 0;
+    this.angle = Math.PI / 2 + (Math.random() - 0.5) * 0.3;
+    this.sweepSpeed = 0.003 + Math.random() * 0.005;
+    this.sweepAmp = 0.3 + Math.random() * 0.4;
+    this.phase = Math.random() * Math.PI * 2;
+    this.beamWidth = 0.06 + Math.random() * 0.08;
+    this.colorIdx = i % CONFIG.spotlightColors.length;
+    this.intensity = 0.3 + Math.random() * 0.4;
+  }
+  update(t) {
+    this.angle = Math.PI / 2 + Math.sin(t * this.sweepSpeed + this.phase) * this.sweepAmp;
+    this.x = W * (0.15 + (this.index / CONFIG.spotlightCount) * 0.7) + Math.sin(t * 0.002 + this.phase) * 30;
+  }
+  draw(t) {
+    const color = CONFIG.spotlightColors[this.colorIdx % CONFIG.spotlightColors.length];
+    const c = hexToRgb(color);
+    const beamLen = H * 1.2;
+    const endX1 = this.x + Math.cos(this.angle - this.beamWidth) * beamLen;
+    const endY1 = this.y + Math.sin(this.angle - this.beamWidth) * beamLen;
+    const endX2 = this.x + Math.cos(this.angle + this.beamWidth) * beamLen;
+    const endY2 = this.y + Math.sin(this.angle + this.beamWidth) * beamLen;
+
+    const pulse = 0.6 + 0.4 * Math.sin(t * 0.008 + this.phase);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(endX1, endY1);
+    ctx.lineTo(endX2, endY2);
+    ctx.closePath();
+
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, beamLen * 0.8);
+    grad.addColorStop(0, `rgba(${c.r},${c.g},${c.b},${this.intensity * pulse})`);
+    grad.addColorStop(0.3, `rgba(${c.r},${c.g},${c.b},${this.intensity * pulse * 0.4})`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    // Source glow
+    const sg = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 30);
+    sg.addColorStop(0, `rgba(${c.r},${c.g},${c.b},${0.8 * pulse})`);
+    sg.addColorStop(0.5, `rgba(${c.r},${c.g},${c.b},${0.2 * pulse})`);
+    sg.addColorStop(1, 'transparent');
+    ctx.fillStyle = sg;
+    ctx.fillRect(this.x - 30, this.y - 10, 60, 40);
+  }
+}
+
+const spotlights = [];
+for (let i = 0; i < CONFIG.spotlightCount; i++) spotlights.push(new Spotlight(i));
+
+// --- Laser beams ---
+let laserPoints = [];
+function generateLaserPoints() {
+  laserPoints = [];
+  for (let i = 0; i < CONFIG.beamCount; i++) {
+    laserPoints.push({
+      originX: W * (0.3 + Math.random() * 0.4),
+      originY: H * 0.1,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.004 + Math.random() * 0.006,
+      hue: Math.random() * 360,
+    });
+  }
+}
+
+function drawLasers(t) {
+  ctx.globalCompositeOperation = 'screen';
+  laserPoints.forEach(lp => {
+    const angle = Math.sin(t * lp.speed + lp.phase) * 1.2;
+    const endX = lp.originX + Math.cos(angle + Math.PI / 2) * H * 1.5;
+    const endY = lp.originY + Math.sin(angle + Math.PI / 2) * H * 1.5;
+    const hue = (lp.hue + t * 0.05) % 360;
+
+    ctx.beginPath();
+    ctx.moveTo(lp.originX, lp.originY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 0.15)`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(lp.originX, lp.originY);
+    ctx.lineTo(endX, endY);
+    ctx.strokeStyle = `hsla(${hue}, 100%, 80%, 0.4)`;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// --- Fog particles ---
+const fogParticles = [];
+for (let i = 0; i < 60; i++) {
+  fogParticles.push({
+    x: Math.random() * 1.2 - 0.1,
+    y: 0.35 + Math.random() * 0.35,
+    size: 80 + Math.random() * 160,
+    speed: 0.0001 + Math.random() * 0.0003,
+    opacity: 0.02 + Math.random() * 0.04,
+    phase: Math.random() * Math.PI * 2,
+  });
+}
+
+function drawFog(t) {
+  fogParticles.forEach(fp => {
+    fp.x += fp.speed;
+    if (fp.x > 1.15) fp.x = -0.15;
+    const fx = fp.x * W;
+    const fy = fp.y * H + Math.sin(t * 0.001 + fp.phase) * 20;
+    const wobble = 1 + Math.sin(t * 0.002 + fp.phase) * 0.15;
+    const grad = ctx.createRadialGradient(fx, fy, 0, fx, fy, fp.size * wobble);
+    grad.addColorStop(0, `rgba(200, 200, 220, ${fp.opacity * CONFIG.fogDensity})`);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fillRect(fx - fp.size * wobble, fy - fp.size * wobble, fp.size * wobble * 2, fp.size * wobble * 2);
+  });
+}
+
+// --- Draw background ---
+function drawBackground(t) {
+  const bg = hexToRgb(CONFIG.backgroundColor);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, `rgb(${bg.r + 5}, ${bg.g}, ${bg.b + 15})`);
+  grad.addColorStop(0.5, `rgb(${bg.r}, ${bg.g}, ${bg.b})`);
+  grad.addColorStop(1, `rgb(${Math.max(0, bg.r - 5)}, ${bg.g}, ${Math.max(0, bg.b - 5)})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Bass pulse
+  const bassPulse = Math.abs(Math.sin(t * 0.006)) * CONFIG.bassPulseIntensity;
+  if (bassPulse > 0.85) {
+    ctx.fillStyle = `rgba(255, 0, 80, ${(bassPulse - 0.85) * 0.15})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// --- Stage structure ---
+function drawStage(t) {
+  const sTop = stageTop();
+  const sLeft = stageLeft();
+  const sRight = stageRight();
+
+  // Stage floor
+  const stageGrad = ctx.createLinearGradient(0, sTop, 0, sTop + 30);
+  stageGrad.addColorStop(0, 'rgba(40, 30, 50, 0.8)');
+  stageGrad.addColorStop(1, 'rgba(20, 15, 25, 0.9)');
+  ctx.fillStyle = stageGrad;
+  ctx.fillRect(sLeft, sTop, sRight - sLeft, 30);
+
+  // Stage front edge highlight
+  const edgePulse = 0.3 + 0.7 * Math.sin(t * 0.004);
+  ctx.fillStyle = `rgba(255, 100, 200, ${0.15 * edgePulse})`;
+  ctx.fillRect(sLeft, sTop, sRight - sLeft, 2);
+
+  // Speaker stacks
+  const drawSpeaker = (x, y) => {
+    ctx.fillStyle = '#1a1520';
+    ctx.fillRect(x, y, 40, 60);
+    ctx.strokeStyle = 'rgba(100, 80, 120, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, 40, 60);
+    // Speaker cones
+    for (let r = 0; r < 3; r++) {
+      const cy = y + 10 + r * 18;
+      ctx.beginPath(); ctx.arc(x + 20, cy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#0d0a12'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 20, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a1520'; ctx.fill();
+    }
+  };
+  drawSpeaker(sLeft - 20, sTop - 60);
+  drawSpeaker(sRight - 20, sTop - 60);
+  drawSpeaker(sLeft - 25, sTop - 130);
+  drawSpeaker(sRight - 15, sTop - 130);
+
+  // Truss structure at top
+  ctx.strokeStyle = 'rgba(80, 70, 90, 0.4)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(sLeft - 30, 0); ctx.lineTo(sLeft - 30, sTop - 160);
+  ctx.moveTo(sRight + 30, 0); ctx.lineTo(sRight + 30, sTop - 160);
+  ctx.moveTo(sLeft - 30, H * 0.05); ctx.lineTo(sRight + 30, H * 0.05);
+  ctx.stroke();
+  // Cross braces
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(80, 70, 90, 0.2)';
+  for (let i = 0; i < 8; i++) {
+    const x1 = sLeft + i * (sRight - sLeft) / 8;
+    const x2 = x1 + (sRight - sLeft) / 8;
+    ctx.beginPath();
+    ctx.moveTo(x1, H * 0.04); ctx.lineTo(x2, H * 0.06);
+    ctx.moveTo(x2, H * 0.04); ctx.lineTo(x1, H * 0.06);
+    ctx.stroke();
+  }
+
+  // Band silhouettes on stage
+  drawBandMember(W * 0.35, sTop, 0.9, t);
+  drawBandMember(W * 0.50, sTop, 1.0, t);
+  drawBandMember(W * 0.65, sTop, 0.85, t);
+
+  // Drum kit silhouette (center back)
+  drawDrumKit(W * 0.50, sTop - 40, t);
+}
+
+function drawBandMember(x, stageY, scale, t) {
+  const h = 80 * scale;
+  const sway = Math.sin(t * 0.005 + x * 0.01) * 3;
+  ctx.save();
+  ctx.translate(x + sway, stageY);
+  ctx.fillStyle = 'rgba(5, 3, 8, 0.9)';
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, -h * 0.35, 12 * scale, h * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Head
+  ctx.beginPath();
+  ctx.arc(sway * 0.3, -h * 0.75, 8 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  // Guitar/instrument arm
+  const armAngle = Math.sin(t * 0.008 + x) * 0.3;
+  ctx.save();
+  ctx.rotate(armAngle);
+  ctx.fillRect(-2, -h * 0.5, 4, h * 0.4);
+  ctx.fillRect(-15 * scale, -h * 0.55, 30 * scale, 6);
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawDrumKit(x, y, t) {
+  ctx.fillStyle = 'rgba(5, 3, 8, 0.85)';
+  // Bass drum
+  ctx.beginPath(); ctx.ellipse(x, y, 25, 20, 0, 0, Math.PI * 2); ctx.fill();
+  // Cymbals
+  const cymPulse = Math.sin(t * 0.01) * 2;
+  ctx.beginPath(); ctx.ellipse(x - 30, y - 25 + cymPulse, 15, 4, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + 30, y - 25 - cymPulse, 15, 4, 0.2, 0, Math.PI * 2); ctx.fill();
+  // Hi-hat
+  ctx.fillRect(x - 35, y - 30, 2, 30);
+  ctx.fillRect(x + 33, y - 30, 2, 30);
+  // Snare + toms
+  ctx.beginPath(); ctx.ellipse(x - 12, y - 8, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + 12, y - 8, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// --- Crowd ---
+function drawCrowd(t) {
+  // Crowd gradient base
+  const crowdGrad = ctx.createLinearGradient(0, H * 0.70, 0, H);
+  crowdGrad.addColorStop(0, 'rgba(8, 5, 15, 0.5)');
+  crowdGrad.addColorStop(0.3, 'rgba(5, 3, 10, 0.85)');
+  crowdGrad.addColorStop(1, 'rgba(3, 2, 5, 0.95)');
+  ctx.fillStyle = crowdGrad;
+  ctx.fillRect(0, H * 0.70, W, H * 0.30);
+
+  crowdHeads.forEach(ch => {
+    ch.swayPhase += ch.swaySpeed;
+    const sway = Math.sin(ch.swayPhase) * ch.swayAmp;
+    const cx = ch.x + sway;
+    const cy = ch.y;
+
+    // Body silhouette
+    ctx.fillStyle = 'rgba(8, 5, 15, 0.9)';
+    ctx.fillRect(cx - 6, cy, 12, ch.bodyH);
+
+    // Head
+    ctx.beginPath();
+    ctx.arc(cx, cy, ch.headR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Raised arms
+    if (ch.armUp) {
+      const armSway = Math.sin(t * 0.008 + ch.armPhase) * 8;
+      ctx.fillRect(cx - 2, cy - ch.headR - 25 + armSway, 4, 25);
+      ctx.fillRect(cx + 4, cy - ch.headR - 20 - armSway * 0.5, 4, 20);
+    }
+
+    // Phone flashlight
+    if (ch.phoneLight) {
+      const flicker = 0.5 + 0.5 * Math.sin(t * 0.01 + ch.phoneBrightness * 10);
+      const glow = ctx.createRadialGradient(cx, cy - ch.headR - 28, 0, cx, cy - ch.headR - 28, 15);
+      glow.addColorStop(0, `rgba(255, 255, 255, ${0.6 * flicker})`);
+      glow.addColorStop(0.5, `rgba(200, 200, 255, ${0.15 * flicker})`);
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.fillRect(cx - 15, cy - ch.headR - 43, 30, 30);
+    }
+  });
+}
+
+// --- Strobe effect ---
+function drawStrobe(t) {
+  if (Math.random() < CONFIG.strobeFrequency * 0.02) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.05 + Math.random() * 0.08})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// --- Floor lights ---
+function drawFloorLights(t) {
+  const sTop = stageTop();
+  const sLeft = stageLeft();
+  const sRight = stageRight();
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const x = sLeft + (i / (count - 1)) * (sRight - sLeft);
+    const pulse = 0.3 + 0.7 * Math.sin(t * 0.006 + i * 0.8);
+    const hue = (i * 36 + t * 0.1) % 360;
+    const glow = ctx.createRadialGradient(x, sTop + 5, 0, x, sTop + 5, 40);
+    glow.addColorStop(0, `hsla(${hue}, 100%, 60%, ${0.4 * pulse})`);
+    glow.addColorStop(0.5, `hsla(${hue}, 100%, 50%, ${0.1 * pulse})`);
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x - 40, sTop - 35, 80, 80);
+  }
+}
+
+// --- Ambient color wash ---
+function drawColorWash(t) {
+  const hue1 = (t * 0.02) % 360;
+  const hue2 = (hue1 + 120) % 360;
+  ctx.globalCompositeOperation = 'screen';
+
+  const glow1 = ctx.createRadialGradient(W * 0.25, H * 0.3, 0, W * 0.25, H * 0.3, W * 0.4);
+  glow1.addColorStop(0, `hsla(${hue1}, 80%, 40%, 0.04)`);
+  glow1.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow1;
+  ctx.fillRect(0, 0, W, H);
+
+  const glow2 = ctx.createRadialGradient(W * 0.75, H * 0.3, 0, W * 0.75, H * 0.3, W * 0.4);
+  glow2.addColorStop(0, `hsla(${hue2}, 80%, 40%, 0.04)`);
+  glow2.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow2;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+resize();
+window.addEventListener('resize', resize);
+
+function animate(t) {
+  drawBackground(t);
+  drawColorWash(t);
+
+  ctx.globalCompositeOperation = 'screen';
+  spotlights.forEach(s => { s.update(t); s.draw(t); });
+  ctx.globalCompositeOperation = 'source-over';
+
+  drawLasers(t);
+  drawFog(t);
+  drawStage(t);
+  drawFloorLights(t);
+  drawCrowd(t);
+  drawStrobe(t);
+
+  // Vignette
+  const vig = ctx.createRadialGradient(W / 2, H / 2, W * 0.2, W / 2, H / 2, W * 0.7);
+  vig.addColorStop(0, 'transparent');
+  vig.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Scoreboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.bg-accent { position: absolute; inset: 0; pointer-events: none; }
+.bg-left { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; opacity: 0.04; }
+.bg-right { position: absolute; right: 0; top: 0; bottom: 0; width: 50%; opacity: 0.04; }
+.top-bar { position: absolute; top: 0; left: 0; right: 0; height: 6vh; display: flex; align-items: center; justify-content: center; gap: 2vw; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.league-badge { font-size: 1.3vh; font-weight: 700; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+.live-badge { display: flex; align-items: center; gap: 0.5vw; font-size: 1.2vh; font-weight: 700; color: #ef4444; }
+.live-dot { width: 0.7vh; height: 0.7vh; border-radius: 50%; background: #ef4444; animation: livePulse 1s infinite; }
+@keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.scoreboard { display: flex; align-items: center; gap: 4vw; opacity: 0; transform: scale(0.9); transition: all 0.8s cubic-bezier(0.22,1,0.36,1); }
+.scoreboard.visible { opacity: 1; transform: scale(1); }
+.team { display: flex; flex-direction: column; align-items: center; gap: 1.5vh; min-width: 20vw; }
+.team-logo { width: 12vh; height: 12vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 4vh; font-weight: 900; color: #fff; box-shadow: 0 0 30px rgba(0,0,0,0.3); transition: box-shadow 0.5s; }
+.team-name { font-size: 2.5vh; font-weight: 800; color: #fff; letter-spacing: 0.05em; }
+.team-record { font-size: 1.2vh; color: rgba(255,255,255,0.35); }
+.score-center { display: flex; flex-direction: column; align-items: center; gap: 1vh; }
+.scores { display: flex; align-items: center; gap: 3vw; }
+.score { font-size: 10vh; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 0 20px rgba(255,255,255,0.15); transition: transform 0.3s; }
+.score.bump { transform: scale(1.15); }
+.score-divider { font-size: 5vh; color: rgba(255,255,255,0.2); }
+.period-badge { font-size: 1.4vh; font-weight: 700; letter-spacing: 0.2em; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); padding: 0.5vh 2vw; border-radius: 1vh; }
+.game-clock { font-size: 3vh; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; margin-top: 0.5vh; }
+.stats-bar { position: absolute; bottom: 5vh; left: 10vw; right: 10vw; display: flex; justify-content: space-between; gap: 3vw; opacity: 0; transition: opacity 0.6s; }
+.stats-bar.visible { opacity: 1; }
+.stat-item { flex: 1; text-align: center; }
+.stat-label { font-size: 1.1vh; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.8vh; }
+.stat-bar-track { height: 0.5vh; background: rgba(255,255,255,0.08); border-radius: 0.3vh; overflow: hidden; display: flex; }
+.stat-bar-left { height: 100%; transition: width 1s ease; border-radius: 0.3vh 0 0 0.3vh; }
+.stat-bar-right { height: 100%; transition: width 1s ease; border-radius: 0 0.3vh 0.3vh 0; }
+.stat-values { display: flex; justify-content: space-between; margin-top: 0.4vh; font-size: 1.2vh; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="bg-accent">
+    <div class="bg-left" id="bgLeft"></div>
+    <div class="bg-right" id="bgRight"></div>
+  </div>
+  <div class="top-bar" id="topBar">
+    <div class="league-badge" id="leagueBadge">NBA • Playoffs</div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+  </div>
+  <div class="scoreboard" id="scoreboard">
+    <div class="team">
+      <div class="team-logo" id="homeLogo">LAL</div>
+      <div class="team-name" id="homeName">Lakers</div>
+      <div class="team-record" id="homeRecord">52-30</div>
+    </div>
+    <div class="score-center">
+      <div class="scores">
+        <div class="score" id="homeScore">0</div>
+        <div class="score-divider">:</div>
+        <div class="score" id="awayScore">0</div>
+      </div>
+      <div class="period-badge" id="period">4TH QUARTER</div>
+      <div class="game-clock" id="clock">4:32</div>
+    </div>
+    <div class="team">
+      <div class="team-logo" id="awayLogo">BOS</div>
+      <div class="team-name" id="awayName">Celtics</div>
+      <div class="team-record" id="awayRecord">58-24</div>
+    </div>
+  </div>
+  <div class="stats-bar" id="statsBar"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  homeTeam: 'Lakers', awayTeam: 'Celtics',
+  homeInitials: 'LAL', awayInitials: 'BOS',
+  homeColor: '#552583', awayColor: '#007A33',
+  homeRecord: '52-30', awayRecord: '58-24',
+  league: 'NBA • Playoffs',
+  period: '4TH QUARTER',
+  homeTargetScore: 108, awayTargetScore: 104,
+  stats: [
+    { label: 'Possession', home: 54, away: 46 },
+    { label: 'FG%', home: 47, away: 44 },
+    { label: 'Rebounds', home: 42, away: 38 },
+    { label: '3PT%', home: 38, away: 35 },
+  ],
+  cycleDuration: 12000,
+  bgColor: '#0a0f18',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('homeLogo').textContent = CONFIG.homeInitials;
+document.getElementById('homeLogo').style.background = CONFIG.homeColor;
+document.getElementById('awayLogo').textContent = CONFIG.awayInitials;
+document.getElementById('awayLogo').style.background = CONFIG.awayColor;
+document.getElementById('homeName').textContent = CONFIG.homeTeam;
+document.getElementById('awayName').textContent = CONFIG.awayTeam;
+document.getElementById('homeRecord').textContent = CONFIG.homeRecord;
+document.getElementById('awayRecord').textContent = CONFIG.awayRecord;
+document.getElementById('leagueBadge').textContent = CONFIG.league;
+document.getElementById('period').textContent = CONFIG.period;
+document.getElementById('bgLeft').style.background = CONFIG.homeColor;
+document.getElementById('bgRight').style.background = CONFIG.awayColor;
+
+var statsBar = document.getElementById('statsBar');
+CONFIG.stats.forEach(function(s) {
+  var total = s.home + s.away;
+  var el = document.createElement('div');
+  el.className = 'stat-item';
+  el.innerHTML = '<div class="stat-label">' + s.label + '</div>' +
+    '<div class="stat-bar-track"><div class="stat-bar-left" style="width:0%;background:' + CONFIG.homeColor + '"></div><div class="stat-bar-right" style="width:0%;background:' + CONFIG.awayColor + '"></div></div>' +
+    '<div class="stat-values"><span style="color:' + CONFIG.homeColor + '">' + s.home + '</span><span style="color:' + CONFIG.awayColor + '">' + s.away + '</span></div>';
+  statsBar.appendChild(el);
+});
+
+function animateStats() {
+  var items = statsBar.querySelectorAll('.stat-item');
+  CONFIG.stats.forEach(function(s, i) {
+    var total = s.home + s.away;
+    var bars = items[i].querySelectorAll('.stat-bar-left, .stat-bar-right');
+    bars[0].style.width = (s.home / total * 100) + '%';
+    bars[1].style.width = (s.away / total * 100) + '%';
+  });
+}
+
+function runCycle() {
+  var scoreboard = document.getElementById('scoreboard');
+  var statsBarEl = document.getElementById('statsBar');
+  var homeScoreEl = document.getElementById('homeScore');
+  var awayScoreEl = document.getElementById('awayScore');
+  var clockEl = document.getElementById('clock');
+
+  scoreboard.classList.remove('visible');
+  statsBarEl.classList.remove('visible');
+  homeScoreEl.textContent = '0';
+  awayScoreEl.textContent = '0';
+
+  var items = statsBar.querySelectorAll('.stat-bar-left, .stat-bar-right');
+  items.forEach(function(b) { b.style.width = '0%'; });
+
+  setTimeout(function() { scoreboard.classList.add('visible'); }, 300);
+
+  var homeScore = 0, awayScore = 0;
+  var scoreInterval = setInterval(function() {
+    if (Math.random() > 0.4 && homeScore < CONFIG.homeTargetScore) {
+      var pts = Math.random() > 0.6 ? 3 : 2;
+      homeScore = Math.min(homeScore + pts, CONFIG.homeTargetScore);
+      homeScoreEl.textContent = homeScore;
+      homeScoreEl.classList.add('bump');
+      setTimeout(function() { homeScoreEl.classList.remove('bump'); }, 300);
+    }
+    if (Math.random() > 0.4 && awayScore < CONFIG.awayTargetScore) {
+      var pts = Math.random() > 0.6 ? 3 : 2;
+      awayScore = Math.min(awayScore + pts, CONFIG.awayTargetScore);
+      awayScoreEl.textContent = awayScore;
+      awayScoreEl.classList.add('bump');
+      setTimeout(function() { awayScoreEl.classList.remove('bump'); }, 300);
+    }
+  }, 300);
+
+  var mins = 4, secs = 32;
+  var clockInterval = setInterval(function() {
+    secs--;
+    if (secs < 0) { mins--; secs = 59; }
+    if (mins < 0) { mins = 0; secs = 0; clearInterval(clockInterval); }
+    clockEl.textContent = mins + ':' + String(secs).padStart(2, '0');
+  }, 400);
+
+  setTimeout(function() { statsBarEl.classList.add('visible'); animateStats(); }, 1800);
+
+  setTimeout(function() {
+    clearInterval(scoreInterval);
+    clearInterval(clockInterval);
+    scoreboard.classList.remove('visible');
+    statsBarEl.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

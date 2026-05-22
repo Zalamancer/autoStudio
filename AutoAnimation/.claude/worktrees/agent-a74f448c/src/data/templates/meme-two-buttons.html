@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; background: #2d3436; }
+.scene { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; background: linear-gradient(180deg, #0c2461 0%, #1a1a2e 100%); }
+.buttons-row { display: flex; gap: 40px; }
+.btn { width: 380px; height: 160px; border-radius: 20px; display: flex; align-items: center; justify-content: center; padding: 25px; cursor: pointer; position: relative; overflow: hidden; opacity: 0; transform: scale(0.8); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.btn.show { opacity: 1; transform: scale(1); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.btn-left { background: linear-gradient(135deg, #e74c3c, #c0392b); border: 4px solid #ff6b6b; }
+.btn-right { background: linear-gradient(135deg, #2ecc71, #27ae60); border: 4px solid #55efc4; }
+.btn-text { font-size: 32px; color: white; text-transform: uppercase; text-align: center; line-height: 1.2; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.person { font-size: 120px; opacity: 0; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4)); }
+.person.show { opacity: 1; transition: opacity 0.5s ease; }
+.sweat { position: absolute; font-size: 40px; top: 28%; right: 30%; opacity: 0; }
+.sweat.show { opacity: 1; animation: drip 1s ease-in-out infinite; }
+@keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+.title { position: absolute; top: 5%; font-size: 28px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 5px; }
+.glow-left, .glow-right { position: absolute; width: 200px; height: 200px; border-radius: 50%; filter: blur(60px); opacity: 0; }
+.glow-left { top: 30%; left: 10%; background: #e74c3c; }
+.glow-right { top: 30%; right: 10%; background: #2ecc71; }
+.btn.show ~ .glow-left, .btn.show ~ .glow-right { opacity: 0.3; transition: opacity 1s ease; }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  leftButtonText: 'Sleep 8 hours',
+  rightButtonText: 'One more episode',
+  titleText: 'THE HARDEST CHOICES',
+  leftColor1: '#e74c3c',
+  leftColor2: '#c0392b',
+  rightColor1: '#2ecc71',
+  rightColor2: '#27ae60',
+  textColor: '#ffffff',
+  fontSize: 32,
+  animationSpeed: 500
+};
+</script>
+<div class="scene">
+  <div class="title" id="title"></div>
+  <div class="buttons-row">
+    <div class="btn btn-left" id="btnLeft" style="">
+      <div class="btn-text" id="leftText"></div>
+    </div>
+    <div class="btn btn-right" id="btnRight" style="">
+      <div class="btn-text" id="rightText"></div>
+    </div>
+  </div>
+  <div style="position:relative">
+    <span class="person" id="person">\u{1F630}</span>
+    <span class="sweat" id="sweat">\u{1F4A6}</span>
+  </div>
+</div>
+<script>
+document.getElementById('leftText').textContent = CONFIG.leftButtonText;
+document.getElementById('rightText').textContent = CONFIG.rightButtonText;
+document.getElementById('title').textContent = CONFIG.titleText;
+document.getElementById('btnLeft').style.background = 'linear-gradient(135deg,' + CONFIG.leftColor1 + ',' + CONFIG.leftColor2 + ')';
+document.getElementById('btnRight').style.background = 'linear-gradient(135deg,' + CONFIG.rightColor1 + ',' + CONFIG.rightColor2 + ')';
+document.querySelectorAll('.btn-text').forEach(el => {
+  el.style.color = CONFIG.textColor;
+  el.style.fontSize = CONFIG.fontSize + 'px';
+});
+
+setTimeout(() => document.getElementById('btnLeft').classList.add('show'), 300);
+setTimeout(() => document.getElementById('btnRight').classList.add('show'), 600);
+setTimeout(() => document.getElementById('person').classList.add('show'), 900);
+setTimeout(() => document.getElementById('sweat').classList.add('show'), 1200);
+</script>
+</body>
+</html>

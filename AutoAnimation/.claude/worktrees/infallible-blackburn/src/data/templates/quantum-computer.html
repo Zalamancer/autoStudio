@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Computer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #050818;
+    font-family: 'Courier New', monospace;
+  }
+  canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  processorName: 'QUASAR-7 QPU',
+  qubitCount: 8,
+  accentColor: '#00ffff',
+  dataStreams: true,
+  cycleDuration: 14000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, startTime = performance.now();
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1,3),16),
+    g: parseInt(hex.slice(3,5),16),
+    b: parseInt(hex.slice(5,7),16)
+  };
+}
+
+function lerpColor(a, b, t) {
+  return {
+    r: a.r + (b.r - a.r) * t,
+    g: a.g + (b.g - a.g) * t,
+    b: a.b + (b.b - a.b) * t
+  };
+}
+
+// Qubits
+let qubits = [];
+function initQubits() {
+  qubits = [];
+  const count = CONFIG.qubitCount;
+  const cols = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / cols);
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    qubits.push({
+      gridX: col, gridY: row,
+      cols, rows,
+      spinAngle: Math.random() * Math.PI * 2,
+      spinSpeed: 1.5 + Math.random() * 2,
+      superposition: true,
+      collapseValue: Math.random() > 0.5 ? 1 : 0,
+      collapseTime: 0,
+      phase: Math.random() * Math.PI * 2,
+      blochTheta: Math.random() * Math.PI,
+      blochPhi: Math.random() * Math.PI * 2
+    });
+  }
+}
+initQubits();
+
+// Entanglement pairs
+let entanglements = [];
+function initEntanglements() {
+  entanglements = [];
+  const n = qubits.length;
+  for (let i = 0; i < Math.min(n - 1, Math.floor(n * 0.7)); i++) {
+    let a = i;
+    let b = (i + 1 + Math.floor(Math.random() * (n - 2))) % n;
+    if (b === a) b = (a + 1) % n;
+    entanglements.push({
+      a, b,
+      pulsePhase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.8 + Math.random() * 1.5,
+      strength: 0.4 + Math.random() * 0.6
+    });
+  }
+}
+initEntanglements();
+
+// Data streams
+const dataStreams = [];
+for (let i = 0; i < 18; i++) {
+  const chars = [];
+  const len = 15 + Math.floor(Math.random() * 25);
+  for (let j = 0; j < len; j++) {
+    chars.push({
+      char: Math.random() > 0.4 ? String(Math.floor(Math.random() * 2)) : '0123456789ABCDEF'[Math.floor(Math.random() * 16)],
+      alpha: Math.random() * 0.3 + 0.05
+    });
+  }
+  dataStreams.push({
+    x: Math.random(),
+    speed: 0.02 + Math.random() * 0.04,
+    offset: Math.random() * 100,
+    chars,
+    fontSize: 8 + Math.random() * 6,
+    isHex: Math.random() > 0.5
+  });
+}
+
+// Energy ripples
+const ripples = [];
+let lastRipple = 0;
+
+// Gate operations display
+const gateOps = ['H', 'CNOT', 'X', 'Z', 'T', 'S', 'RX', 'RZ', 'SWAP', 'CZ'];
+let currentGate = { text: 'H', startTime: 0, qubitIdx: 0 };
+
+// Cold vapor particles
+const vaporParticles = [];
+for (let i = 0; i < 80; i++) {
+  vaporParticles.push({
+    x: 0.3 + Math.random() * 0.4,
+    y: 0.3 + Math.random() * 0.4,
+    vx: (Math.random() - 0.5) * 0.15,
+    vy: (Math.random() - 0.5) * 0.15,
+    life: Math.random(),
+    maxLife: 3 + Math.random() * 4,
+    size: 15 + Math.random() * 35
+  });
+}
+
+function getQubitPos(q) {
+  const chipSize = Math.min(W, H) * 0.28;
+  const cx = W * 0.5;
+  const cy = H * 0.5;
+  const spacing = chipSize / Math.max(q.cols, q.rows);
+  const offsetX = (q.cols - 1) * spacing * 0.5;
+  const offsetY = (q.rows - 1) * spacing * 0.5;
+  return {
+    x: cx + q.gridX * spacing - offsetX,
+    y: cy + q.gridY * spacing - offsetY
+  };
+}
+
+function drawBackground(t) {
+  // Deep dark gradient
+  const grad = ctx.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.7);
+  grad.addColorStop(0, '#0a1028');
+  grad.addColorStop(0.5, '#060c1e');
+  grad.addColorStop(1, '#020510');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(20,40,80,0.15)';
+  ctx.lineWidth = 0.5;
+  const gridSize = Math.min(W, H) * 0.04;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+}
+
+function drawDataStreams(t) {
+  if (!CONFIG.dataStreams) return;
+  for (const stream of dataStreams) {
+    const sx = stream.x * W;
+    const baseY = ((t * stream.speed * 0.001 + stream.offset) % 1.4 - 0.2) * H;
+    ctx.font = `${stream.fontSize}px 'Courier New', monospace`;
+    const ac = hexToRgb(CONFIG.accentColor);
+    for (let j = 0; j < stream.chars.length; j++) {
+      const cy = baseY + j * stream.fontSize * 1.3;
+      if (cy < -20 || cy > H + 20) continue;
+      const distFromCenter = Math.abs(sx - W * 0.5) / (W * 0.5);
+      const fadeEdge = Math.max(0, 1 - distFromCenter * 1.5);
+      const alpha = stream.chars[j].alpha * fadeEdge;
+      // Randomly change chars
+      if (Math.random() < 0.005) {
+        stream.chars[j].char = stream.isHex
+          ? '0123456789ABCDEF'[Math.floor(Math.random() * 16)]
+          : String(Math.floor(Math.random() * 2));
+      }
+      ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${alpha})`;
+      ctx.textAlign = 'center';
+      ctx.fillText(stream.chars[j].char, sx, cy);
+    }
+  }
+}
+
+function drawProcessor(t) {
+  const cx = W * 0.5, cy = H * 0.5;
+  const chipW = Math.min(W, H) * 0.38;
+  const chipH = chipW * 0.85;
+  const ac = hexToRgb(CONFIG.accentColor);
+
+  // Processor chip body
+  ctx.fillStyle = '#0a0c14';
+  ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},0.2)`;
+  ctx.lineWidth = 2;
+  const chipX = cx - chipW / 2;
+  const chipY = cy - chipH / 2;
+
+  // Rounded rect
+  const cr = 8;
+  ctx.beginPath();
+  ctx.moveTo(chipX + cr, chipY);
+  ctx.lineTo(chipX + chipW - cr, chipY);
+  ctx.quadraticCurveTo(chipX + chipW, chipY, chipX + chipW, chipY + cr);
+  ctx.lineTo(chipX + chipW, chipY + chipH - cr);
+  ctx.quadraticCurveTo(chipX + chipW, chipY + chipH, chipX + chipW - cr, chipY + chipH);
+  ctx.lineTo(chipX + cr, chipY + chipH);
+  ctx.quadraticCurveTo(chipX, chipY + chipH, chipX, chipY + chipH - cr);
+  ctx.lineTo(chipX, chipY + cr);
+  ctx.quadraticCurveTo(chipX, chipY, chipX + cr, chipY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Inner border glow
+  ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},0.08)`;
+  ctx.lineWidth = 8;
+  ctx.stroke();
+
+  // Circuit traces around edges
+  const traceCount = 20;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < traceCount; i++) {
+    const side = i % 4;
+    const pos = (i / traceCount) + t * 0.00005;
+    const progress = (pos % 1);
+    let sx, sy, ex, ey;
+    const margin = 12;
+    const innerMargin = chipW * 0.08;
+
+    if (side === 0) { // top
+      sx = chipX + margin + progress * (chipW - margin * 2);
+      sy = chipY + 4;
+      ex = sx + (Math.random() - 0.5) * 20;
+      ey = sy + innerMargin;
+    } else if (side === 1) { // right
+      sx = chipX + chipW - 4;
+      sy = chipY + margin + progress * (chipH - margin * 2);
+      ex = sx - innerMargin;
+      ey = sy + (Math.random() - 0.5) * 20;
+    } else if (side === 2) { // bottom
+      sx = chipX + margin + progress * (chipW - margin * 2);
+      sy = chipY + chipH - 4;
+      ex = sx + (Math.random() - 0.5) * 20;
+      ey = sy - innerMargin;
+    } else { // left
+      sx = chipX + 4;
+      sy = chipY + margin + progress * (chipH - margin * 2);
+      ex = sx + innerMargin;
+      ey = sy + (Math.random() - 0.5) * 20;
+    }
+
+    const pulseAlpha = 0.1 + 0.15 * Math.sin(t * 0.003 + i * 0.7);
+    ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},${pulseAlpha})`;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+
+    // Trace node
+    ctx.beginPath();
+    ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${pulseAlpha * 1.5})`;
+    ctx.fill();
+  }
+
+  // Pin connectors
+  const pinCount = 14;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.15)`;
+  for (let side = 0; side < 4; side++) {
+    for (let i = 0; i < pinCount; i++) {
+      const frac = (i + 1) / (pinCount + 1);
+      let px, py, pw, ph;
+      if (side === 0) { px = chipX + frac * chipW - 2; py = chipY - 8; pw = 4; ph = 8; }
+      else if (side === 1) { px = chipX + chipW; py = chipY + frac * chipH - 2; pw = 8; ph = 4; }
+      else if (side === 2) { px = chipX + frac * chipW - 2; py = chipY + chipH; pw = 4; ph = 8; }
+      else { px = chipX - 8; py = chipY + frac * chipH - 2; pw = 8; ph = 4; }
+      ctx.fillRect(px, py, pw, ph);
+    }
+  }
+
+  // Processor name
+  const nameSize = Math.min(W, H) * 0.015;
+  ctx.font = `${nameSize}px 'Courier New', monospace`;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.25)`;
+  ctx.textAlign = 'center';
+  ctx.fillText(CONFIG.processorName, cx, chipY + chipH - nameSize);
+}
+
+function drawQubits(t) {
+  const cyclePos = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+  const collapsePhase = cyclePos > 0.55 && cyclePos < 0.75;
+  const ac = hexToRgb(CONFIG.accentColor);
+  const qubitR = Math.min(W, H) * 0.025;
+
+  for (let i = 0; i < qubits.length; i++) {
+    const q = qubits[i];
+    const pos = getQubitPos(q);
+
+    if (collapsePhase) {
+      if (q.superposition) {
+        q.superposition = false;
+        q.collapseTime = t;
+        q.collapseValue = Math.random() > 0.5 ? 1 : 0;
+      }
+    } else if (cyclePos < 0.1) {
+      q.superposition = true;
+    }
+
+    q.spinAngle += q.spinSpeed * 0.016;
+    q.blochPhi += 0.02;
+
+    if (q.superposition) {
+      // Spinning sphere with split colors
+      // Outer glow
+      const glowGrad = ctx.createRadialGradient(pos.x, pos.y, qubitR * 0.5, pos.x, pos.y, qubitR * 2.5);
+      glowGrad.addColorStop(0, `rgba(${ac.r},${ac.g},${ac.b},0.15)`);
+      glowGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, qubitR * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sphere body - split blue/red
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, qubitR, 0, Math.PI * 2);
+      ctx.clip();
+
+      const splitAngle = q.spinAngle;
+      const splitX = Math.cos(splitAngle) * qubitR * 2;
+
+      // Blue half (|0>)
+      const blueGrad = ctx.createLinearGradient(pos.x - qubitR, pos.y, pos.x + splitX, pos.y);
+      blueGrad.addColorStop(0, '#1144cc');
+      blueGrad.addColorStop(1, '#2266ee');
+      ctx.fillStyle = blueGrad;
+      ctx.fillRect(pos.x - qubitR, pos.y - qubitR, qubitR * 2, qubitR * 2);
+
+      // Red half (|1>)
+      ctx.beginPath();
+      ctx.moveTo(pos.x + Math.cos(splitAngle) * qubitR, pos.y - qubitR);
+      ctx.lineTo(pos.x + qubitR, pos.y - qubitR);
+      ctx.lineTo(pos.x + qubitR, pos.y + qubitR);
+      ctx.lineTo(pos.x + Math.cos(splitAngle) * qubitR, pos.y + qubitR);
+      ctx.closePath();
+      const redGrad = ctx.createLinearGradient(pos.x + splitX, pos.y, pos.x + qubitR, pos.y);
+      redGrad.addColorStop(0, '#cc2244');
+      redGrad.addColorStop(1, '#ee3355');
+      ctx.fillStyle = redGrad;
+      ctx.fill();
+
+      ctx.restore();
+
+      // Sphere highlight
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, qubitR, 0, Math.PI * 2);
+      const sphereHighlight = ctx.createRadialGradient(pos.x - qubitR * 0.3, pos.y - qubitR * 0.3, 0, pos.x, pos.y, qubitR);
+      sphereHighlight.addColorStop(0, 'rgba(255,255,255,0.2)');
+      sphereHighlight.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+      sphereHighlight.addColorStop(1, 'rgba(0,0,0,0.15)');
+      ctx.fillStyle = sphereHighlight;
+      ctx.fill();
+
+      // Orbit ring
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y, qubitR * 1.4, qubitR * 0.4, q.spinAngle * 0.3, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},0.25)`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.restore();
+
+    } else {
+      // Collapsed state - show 0 or 1
+      const collapsedAge = t - q.collapseTime;
+      const flashIntensity = Math.max(0, 1 - collapsedAge / 400);
+
+      // Flash on collapse
+      if (flashIntensity > 0) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, qubitR * (1 + flashIntensity * 2), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${flashIntensity * 0.4})`;
+        ctx.fill();
+      }
+
+      // Stable sphere
+      const stateColor = q.collapseValue === 0 ? '#2266ee' : '#ee3355';
+      const stateColorRgb = hexToRgb(stateColor);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, qubitR, 0, Math.PI * 2);
+      const cGrad = ctx.createRadialGradient(pos.x - qubitR * 0.25, pos.y - qubitR * 0.25, 0, pos.x, pos.y, qubitR);
+      cGrad.addColorStop(0, `rgba(${stateColorRgb.r + 40},${stateColorRgb.g + 40},${stateColorRgb.b + 40},1)`);
+      cGrad.addColorStop(1, stateColor);
+      ctx.fillStyle = cGrad;
+      ctx.fill();
+
+      // Value text
+      const valSize = qubitR * 1.2;
+      ctx.font = `bold ${valSize}px 'Courier New', monospace`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(q.collapseValue), pos.x, pos.y + 1);
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    // Qubit label
+    const labelSize = Math.min(W, H) * 0.01;
+    ctx.font = `${labelSize}px 'Courier New', monospace`;
+    ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.4)`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`q${i}`, pos.x, pos.y + qubitR + labelSize + 4);
+  }
+}
+
+function drawEntanglements(t) {
+  const ac = hexToRgb(CONFIG.accentColor);
+  for (const e of entanglements) {
+    if (e.a >= qubits.length || e.b >= qubits.length) continue;
+    const posA = getQubitPos(qubits[e.a]);
+    const posB = getQubitPos(qubits[e.b]);
+
+    const pulse = 0.3 + 0.7 * Math.abs(Math.sin(t * 0.001 * e.pulseSpeed + e.pulsePhase));
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(posA.x, posA.y);
+    ctx.lineTo(posB.x, posB.y);
+    ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},${0.12 * pulse * e.strength})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Energy particle traveling along the line
+    const particlePos = ((t * 0.001 * e.pulseSpeed + e.pulsePhase) % (Math.PI * 2)) / (Math.PI * 2);
+    const px = posA.x + (posB.x - posA.x) * particlePos;
+    const py = posA.y + (posB.y - posA.y) * particlePos;
+    ctx.beginPath();
+    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${0.6 * pulse})`;
+    ctx.fill();
+    // Particle glow
+    ctx.beginPath();
+    ctx.arc(px, py, 8, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${0.1 * pulse})`;
+    ctx.fill();
+
+    // Reverse particle
+    const rPos = 1 - particlePos;
+    const rpx = posA.x + (posB.x - posA.x) * rPos;
+    const rpy = posA.y + (posB.y - posA.y) * rPos;
+    ctx.beginPath();
+    ctx.arc(rpx, rpy, 2, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${0.35 * pulse})`;
+    ctx.fill();
+  }
+}
+
+function drawColdVapor(t, dt) {
+  const cx = W * 0.5, cy = H * 0.5;
+  const chipSize = Math.min(W, H) * 0.38;
+
+  for (const p of vaporParticles) {
+    p.x += p.vx * dt * 0.0003;
+    p.y += p.vy * dt * 0.0003;
+    p.life += dt * 0.001;
+
+    if (p.life > p.maxLife) {
+      p.x = 0.35 + Math.random() * 0.3;
+      p.y = 0.35 + Math.random() * 0.3;
+      p.life = 0;
+    }
+
+    const lifeFrac = p.life / p.maxLife;
+    const alpha = Math.sin(lifeFrac * Math.PI) * 0.06;
+    const px = p.x * W;
+    const py = p.y * H;
+
+    const vaporGrad = ctx.createRadialGradient(px, py, 0, px, py, p.size);
+    vaporGrad.addColorStop(0, `rgba(100,150,255,${alpha})`);
+    vaporGrad.addColorStop(0.5, `rgba(60,100,200,${alpha * 0.4})`);
+    vaporGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = vaporGrad;
+    ctx.beginPath();
+    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawEnergyRipples(t) {
+  const cyclePos = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+  const ac = hexToRgb(CONFIG.accentColor);
+
+  // Spawn ripples during computation
+  if (cyclePos > 0.3 && cyclePos < 0.55 && t - lastRipple > 600) {
+    ripples.push({ born: t, x: W * 0.5, y: H * 0.5 });
+    lastRipple = t;
+  }
+
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const rip = ripples[i];
+    const age = t - rip.born;
+    const progress = age / 2000;
+    if (progress > 1) { ripples.splice(i, 1); continue; }
+
+    const maxR = Math.min(W, H) * 0.35;
+    const r = maxR * progress;
+    const alpha = (1 - progress) * 0.25;
+
+    ctx.beginPath();
+    ctx.arc(rip.x, rip.y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},${alpha})`;
+    ctx.lineWidth = 2 * (1 - progress);
+    ctx.stroke();
+
+    // Inner ring
+    if (progress < 0.7) {
+      ctx.beginPath();
+      ctx.arc(rip.x, rip.y, r * 0.7, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},${alpha * 0.4})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+}
+
+function drawGateOps(t) {
+  const cyclePos = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+  const ac = hexToRgb(CONFIG.accentColor);
+
+  // Change gate every ~1.5 seconds during active phase
+  if (t - currentGate.startTime > 1500 || cyclePos < 0.05) {
+    currentGate.text = gateOps[Math.floor(Math.random() * gateOps.length)];
+    currentGate.startTime = t;
+    currentGate.qubitIdx = Math.floor(Math.random() * qubits.length);
+  }
+
+  // Active phase
+  if (cyclePos < 0.15 || cyclePos > 0.85) return;
+
+  const age = t - currentGate.startTime;
+  const fadeIn = Math.min(1, age / 300);
+  const fadeOut = Math.max(0, 1 - Math.max(0, age - 1200) / 300);
+  const alpha = fadeIn * fadeOut;
+
+  // Gate display at top
+  const fontSize = Math.min(W, H) * 0.025;
+  ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${alpha * 0.7})`;
+  ctx.fillText(`GATE: ${currentGate.text}`, W * 0.5, H * 0.12);
+
+  // Target qubit indicator
+  if (currentGate.qubitIdx < qubits.length) {
+    const pos = getQubitPos(qubits[currentGate.qubitIdx]);
+    ctx.strokeStyle = `rgba(${ac.r},${ac.g},${ac.b},${alpha * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5, H * 0.14);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Operation status
+  const smallSize = fontSize * 0.55;
+  ctx.font = `${smallSize}px 'Courier New', monospace`;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},${alpha * 0.4})`;
+  ctx.fillText(`TARGET: q${currentGate.qubitIdx}  |  FIDELITY: ${(99.2 + Math.random() * 0.7).toFixed(2)}%`, W * 0.5, H * 0.15);
+}
+
+function drawStatusReadouts(t) {
+  const ac = hexToRgb(CONFIG.accentColor);
+  const cyclePos = (t % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+  const fontSize = Math.max(9, Math.min(W, H) * 0.013);
+
+  ctx.font = `${fontSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'left';
+
+  // Left status
+  let y = H * 0.2;
+  const lineH = fontSize * 1.6;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.3)`;
+  ctx.fillText('QUANTUM STATE', W * 0.03, y);
+  y += lineH;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.6)`;
+  ctx.fillText(`QUBITS: ${CONFIG.qubitCount}`, W * 0.03, y);
+  y += lineH;
+  const entCount = entanglements.filter(e => e.a < qubits.length && e.b < qubits.length).length;
+  ctx.fillText(`ENTANGLED: ${entCount} PAIRS`, W * 0.03, y);
+  y += lineH;
+  const coherence = (95 - cyclePos * 30 + Math.sin(t * 0.002) * 2).toFixed(1);
+  ctx.fillText(`COHERENCE: ${coherence}%`, W * 0.03, y);
+  y += lineH;
+  const temp = (15 + Math.sin(t * 0.001) * 0.5).toFixed(1);
+  ctx.fillText(`CRYO TEMP: ${temp} mK`, W * 0.03, y);
+
+  // Right status
+  ctx.textAlign = 'right';
+  y = H * 0.2;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.3)`;
+  ctx.fillText('EXECUTION LOG', W * 0.97, y);
+  y += lineH;
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.6)`;
+  const gateCount = Math.floor(t / 1500);
+  ctx.fillText(`GATES: ${gateCount}`, W * 0.97, y);
+  y += lineH;
+  const errRate = (0.001 + Math.random() * 0.0005).toFixed(4);
+  ctx.fillText(`ERR RATE: ${errRate}`, W * 0.97, y);
+  y += lineH;
+  const phase = cyclePos < 0.15 ? 'INIT' :
+                cyclePos < 0.55 ? 'COMPUTE' :
+                cyclePos < 0.75 ? 'MEASURE' : 'READOUT';
+  const phaseColor = phase === 'COMPUTE' ? '#33ff66' : phase === 'MEASURE' ? '#ffaa33' : `rgba(${ac.r},${ac.g},${ac.b},0.6)`;
+  ctx.fillStyle = phaseColor;
+  ctx.fillText(`PHASE: ${phase}`, W * 0.97, y);
+
+  // Bottom center: processor name
+  const nameSize = Math.min(W, H) * 0.018;
+  ctx.font = `bold ${nameSize}px 'Courier New', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(${ac.r},${ac.g},${ac.b},0.2)`;
+  ctx.fillText(CONFIG.processorName, W * 0.5, H * 0.94);
+}
+
+let prevTime = performance.now();
+function animate(now) {
+  const t = now - startTime;
+  const dt = now - prevTime;
+  prevTime = now;
+
+  if (t >= CONFIG.cycleDuration) {
+    startTime = now;
+    // Reset qubits to superposition
+    for (const q of qubits) {
+      q.superposition = true;
+    }
+  }
+
+  drawBackground(t);
+  drawDataStreams(now);
+  drawColdVapor(now, dt);
+  drawProcessor(now);
+  drawEntanglements(now);
+  drawQubits(now);
+  drawEnergyRipples(now);
+  drawGateOps(now);
+  drawStatusReadouts(now);
+
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && typeof e.data === 'object') {
+    const prevCount = CONFIG.qubitCount;
+    Object.assign(CONFIG, e.data);
+    if (CONFIG.qubitCount !== prevCount) {
+      initQubits();
+      initEntanglements();
+    }
+  }
+});
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

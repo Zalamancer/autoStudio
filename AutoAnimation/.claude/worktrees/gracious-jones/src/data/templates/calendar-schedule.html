@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar Schedule - Planner</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#f8fafc',
+  cardBg: '#ffffff',
+  gridLine: '#e2e8f0',
+  headerBg: '#3b82f6',
+  headerText: '#ffffff',
+  todayBg: '#3b82f6',
+  todayText: '#ffffff',
+  dayText: '#1e293b',
+  dimDayText: '#94a3b8',
+  eventColors: ['#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981', '#ec4899'],
+  eventTextColor: '#ffffff',
+  clockHandColor: '#1e293b',
+  clockFaceColor: '#ffffff',
+  clockBorder: '#e2e8f0',
+  shadowColor: 'rgba(0,0,0,0.08)',
+  monthNames: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  events: [
+    { name: 'Team Standup', time: '9:00 AM', color: 0 },
+    { name: 'Design Review', time: '11:00 AM', color: 1 },
+    { name: 'Lunch Meeting', time: '12:30 PM', color: 2 },
+    { name: 'Sprint Planning', time: '2:00 PM', color: 3 },
+    { name: 'Code Review', time: '4:00 PM', color: 4 },
+    { name: 'Yoga Class', time: '6:00 PM', color: 5 }
+  ]
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let eventSlideProgress = [];
+let dayFadeProgress = [];
+let monthTransition = 0;
+let currentMonthIndex = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  eventSlideProgress = CONFIG.events.map(() => 0);
+  dayFadeProgress = new Array(42).fill(0);
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle pattern
+  ctx.fillStyle = 'rgba(59,130,246,0.02)';
+  for (let i = 0; i < 20; i++) {
+    for (let j = 0; j < 30; j++) {
+      if ((i + j) % 3 === 0) {
+        ctx.beginPath();
+        ctx.arc(i * W / 20, j * H / 30, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+}
+
+function drawCalendarGrid() {
+  const calX = W * 0.04;
+  const calY = H * 0.08;
+  const calW = W * 0.55;
+  const calH = H * 0.82;
+  const cellW = calW / 7;
+  const headerH = calH * 0.12;
+  const dayHeaderH = calH * 0.06;
+  const cellH = (calH - headerH - dayHeaderH) / 6;
+
+  // Card shadow
+  ctx.shadowColor = CONFIG.shadowColor;
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 4;
+  roundRect(calX, calY, calW, calH, 12);
+  ctx.fillStyle = CONFIG.cardBg;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Month header
+  roundRect(calX, calY, calW, headerH, 12);
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = CONFIG.headerBg;
+  ctx.fillRect(calX, calY, calW, headerH);
+  ctx.restore();
+
+  // Month cycling
+  const cyclePeriod = 5;
+  const cycleTime = (time * 0.5) % cyclePeriod;
+  if (cycleTime < 0.02) {
+    currentMonthIndex = (currentMonthIndex + 1) % 12;
+  }
+  monthTransition = Math.min(cycleTime / 0.5, 1);
+
+  ctx.fillStyle = CONFIG.headerText;
+  ctx.font = `bold ${W * 0.022}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  const monthText = CONFIG.monthNames[currentMonthIndex] + ' 2025';
+  ctx.globalAlpha = easeOutCubic(monthTransition);
+  ctx.fillText(monthText, calX + calW / 2, calY + headerH * 0.6);
+  ctx.globalAlpha = 1;
+
+  // Nav arrows
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `${W * 0.018}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('\u2039', calX + W * 0.015, calY + headerH * 0.62);
+  ctx.textAlign = 'right';
+  ctx.fillText('\u203A', calX + calW - W * 0.015, calY + headerH * 0.62);
+
+  // "Today" badge
+  const badgePulse = 0.9 + 0.1 * Math.sin(time * 3);
+  ctx.save();
+  ctx.translate(calX + calW - W * 0.06, calY + headerH * 0.5);
+  ctx.scale(badgePulse, badgePulse);
+  roundRect(-W * 0.03, -W * 0.01, W * 0.06, W * 0.02, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fill();
+  ctx.fillStyle = CONFIG.headerText;
+  ctx.font = `bold ${W * 0.009}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('TODAY', 0, W * 0.004);
+  ctx.restore();
+
+  // Day names header
+  const dayY = calY + headerH;
+  CONFIG.dayNames.forEach((name, i) => {
+    ctx.fillStyle = CONFIG.dimDayText;
+    ctx.font = `600 ${W * 0.011}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(name, calX + i * cellW + cellW / 2, dayY + dayHeaderH * 0.65);
+  });
+
+  // Grid lines
+  ctx.strokeStyle = CONFIG.gridLine;
+  ctx.lineWidth = 0.5;
+
+  // Day numbers
+  const today = 15;
+  const startDay = 2; // Tuesday start
+  const daysInMonth = 30;
+  const gridY = dayY + dayHeaderH;
+
+  for (let row = 0; row < 6; row++) {
+    for (let col = 0; col < 7; col++) {
+      const idx = row * 7 + col;
+      const dayNum = idx - startDay + 1;
+      const cx = calX + col * cellW;
+      const cy = gridY + row * cellH;
+
+      // Animate day numbers fading in
+      const fadeDelay = idx * 0.03;
+      const cycleP = ((time * 0.5) % cyclePeriod);
+      dayFadeProgress[idx] = Math.min(Math.max((cycleP - fadeDelay) / 0.3, 0), 1);
+
+      if (dayNum >= 1 && dayNum <= daysInMonth) {
+        ctx.globalAlpha = easeOutCubic(dayFadeProgress[idx]);
+
+        // Today highlight
+        if (dayNum === today) {
+          const pulse = 0.95 + 0.05 * Math.sin(time * 2);
+          ctx.save();
+          ctx.translate(cx + cellW / 2, cy + cellH * 0.4);
+          ctx.scale(pulse, pulse);
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.min(cellW, cellH) * 0.3, 0, Math.PI * 2);
+          ctx.fillStyle = CONFIG.todayBg;
+          ctx.fill();
+          ctx.restore();
+
+          ctx.fillStyle = CONFIG.todayText;
+        } else {
+          ctx.fillStyle = (col === 0 || col === 6) ? CONFIG.dimDayText : CONFIG.dayText;
+        }
+
+        ctx.font = `${dayNum === today ? 'bold ' : ''}${W * 0.013}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(dayNum.toString(), cx + cellW / 2, cy + cellH * 0.48);
+
+        ctx.globalAlpha = 1;
+      }
+
+      // Cell border
+      ctx.strokeStyle = CONFIG.gridLine;
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(cx, cy, cellW, cellH);
+    }
+  }
+}
+
+function drawClock() {
+  const cx = W * 0.78;
+  const cy = H * 0.18;
+  const r = W * 0.08;
+
+  // Shadow
+  ctx.shadowColor = CONFIG.shadowColor;
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.clockFaceColor;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Border
+  ctx.strokeStyle = CONFIG.clockBorder;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Hour markers
+  for (let i = 0; i < 12; i++) {
+    const angle = (i * Math.PI / 6) - Math.PI / 2;
+    const inner = i % 3 === 0 ? r * 0.78 : r * 0.85;
+    const outer = r * 0.92;
+    ctx.strokeStyle = i % 3 === 0 ? CONFIG.dayText : CONFIG.dimDayText;
+    ctx.lineWidth = i % 3 === 0 ? 2.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+    ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
+    ctx.stroke();
+  }
+
+  // Clock hands (animated)
+  const secAngle = (time * 1.0) % (Math.PI * 2) - Math.PI / 2;
+  const minAngle = (time * 0.02) % (Math.PI * 2) - Math.PI / 2;
+  const hourAngle = (time * 0.0016) % (Math.PI * 2) - Math.PI / 2;
+
+  // Hour hand
+  ctx.strokeStyle = CONFIG.clockHandColor;
+  ctx.lineWidth = 3.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(hourAngle) * r * 0.5, cy + Math.sin(hourAngle) * r * 0.5);
+  ctx.stroke();
+
+  // Minute hand
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(minAngle) * r * 0.7, cy + Math.sin(minAngle) * r * 0.7);
+  ctx.stroke();
+
+  // Second hand
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(secAngle) * r * 0.8, cy + Math.sin(secAngle) * r * 0.8);
+  ctx.stroke();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#ef4444';
+  ctx.fill();
+}
+
+function drawEventList() {
+  const listX = W * 0.63;
+  const listY = H * 0.36;
+  const listW = W * 0.34;
+  const itemH = H * 0.085;
+  const gap = H * 0.012;
+
+  // Card
+  ctx.shadowColor = CONFIG.shadowColor;
+  ctx.shadowBlur = 15;
+  roundRect(listX, listY - H * 0.04, listW, CONFIG.events.length * (itemH + gap) + H * 0.07, 12);
+  ctx.fillStyle = CONFIG.cardBg;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Title
+  ctx.fillStyle = CONFIG.dayText;
+  ctx.font = `bold ${W * 0.015}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText("Today's Schedule", listX + W * 0.015, listY - H * 0.005);
+
+  const cyclePeriod = 5;
+  const cycleP = (time * 0.5) % cyclePeriod;
+
+  CONFIG.events.forEach((event, i) => {
+    const delay = 0.5 + i * 0.2;
+    const slideP = Math.min(Math.max((cycleP - delay) / 0.5, 0), 1);
+    const eased = easeOutCubic(slideP);
+
+    const y = listY + H * 0.03 + i * (itemH + gap);
+    const slideX = listX + W * 0.015 + (1 - eased) * W * 0.3;
+    ctx.globalAlpha = eased;
+
+    // Event bar
+    const color = CONFIG.eventColors[event.color];
+    roundRect(slideX, y, listW - W * 0.03, itemH, 8);
+    ctx.fillStyle = color + '18';
+    ctx.fill();
+
+    // Left accent
+    roundRect(slideX, y, 4, itemH, 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // Event text
+    ctx.fillStyle = CONFIG.dayText;
+    ctx.font = `600 ${W * 0.012}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(event.name, slideX + W * 0.012, y + itemH * 0.42);
+
+    ctx.fillStyle = CONFIG.dimDayText;
+    ctx.font = `${W * 0.01}px sans-serif`;
+    ctx.fillText(event.time, slideX + W * 0.012, y + itemH * 0.75);
+
+    // Color dot
+    ctx.beginPath();
+    ctx.arc(slideX + listW - W * 0.05, y + itemH / 2, W * 0.005, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+  });
+}
+
+function draw() {
+  drawBackground();
+  drawCalendarGrid();
+  drawClock();
+  drawEventList();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

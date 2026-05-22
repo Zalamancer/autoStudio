@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Charts - Trading Terminal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0D1117; font-family: 'Courier New', monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#0D1117',
+  gridColor: 'rgba(48, 54, 61, 0.5)',
+  upColor: '#26a641',
+  downColor: '#f85149',
+  lineColor: '#58a6ff',
+  maColor: '#d2a8ff',
+  textColor: '#8b949e',
+  brightText: '#c9d1d9',
+  tickerSymbols: ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX', 'AMD', 'COIN'],
+  candleCount: 40,
+  cycleSpeed: 0.015,
+  title: 'MARKET OVERVIEW'
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0, candles = [], tickerOffset = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  ctx.scale(1, 1);
+  generateCandles();
+}
+
+function generateCandles() {
+  candles = [];
+  let price = 150 + Math.random() * 50;
+  for (let i = 0; i < CONFIG.candleCount; i++) {
+    const change = (Math.random() - 0.48) * 8;
+    const open = price;
+    const close = price + change;
+    const high = Math.max(open, close) + Math.random() * 4;
+    const low = Math.min(open, close) - Math.random() * 4;
+    const volume = 20 + Math.random() * 80;
+    candles.push({ open, close, high, low, volume, up: close >= open });
+    price = close;
+  }
+}
+
+function drawGrid(chartArea) {
+  ctx.strokeStyle = CONFIG.gridColor;
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = chartArea.y + (chartArea.h / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(chartArea.x, y);
+    ctx.lineTo(chartArea.x + chartArea.w, y);
+    ctx.stroke();
+  }
+  for (let i = 0; i <= 8; i++) {
+    const x = chartArea.x + (chartArea.w / 8) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, chartArea.y);
+    ctx.lineTo(x, chartArea.y + chartArea.h);
+    ctx.stroke();
+  }
+}
+
+function drawCandles(chartArea, progress) {
+  const visibleCount = Math.floor(progress * CONFIG.candleCount);
+  if (visibleCount === 0) return;
+
+  const prices = candles.slice(0, visibleCount);
+  const allHighs = prices.map(c => c.high);
+  const allLows = prices.map(c => c.low);
+  const maxPrice = Math.max(...allHighs) + 5;
+  const minPrice = Math.min(...allLows) - 5;
+  const priceRange = maxPrice - minPrice;
+
+  const candleW = chartArea.w / CONFIG.candleCount;
+  const bodyW = candleW * 0.6;
+
+  // Price labels
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.font = `${W * 0.012}px Courier New`;
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const price = maxPrice - (priceRange / 5) * i;
+    const y = chartArea.y + (chartArea.h / 5) * i;
+    ctx.fillText('$' + price.toFixed(2), chartArea.x - 8, y + 4);
+  }
+
+  // Volume bars
+  const maxVol = Math.max(...prices.map(c => c.volume));
+  const volH = chartArea.h * 0.15;
+
+  prices.forEach((c, i) => {
+    const x = chartArea.x + i * candleW + candleW / 2;
+    const vH = (c.volume / maxVol) * volH;
+    ctx.fillStyle = c.up ? 'rgba(38,166,65,0.2)' : 'rgba(248,81,73,0.2)';
+    ctx.fillRect(x - bodyW / 2, chartArea.y + chartArea.h - vH, bodyW, vH);
+  });
+
+  // Candlesticks
+  prices.forEach((c, i) => {
+    const x = chartArea.x + i * candleW + candleW / 2;
+    const openY = chartArea.y + ((maxPrice - c.open) / priceRange) * chartArea.h;
+    const closeY = chartArea.y + ((maxPrice - c.close) / priceRange) * chartArea.h;
+    const highY = chartArea.y + ((maxPrice - c.high) / priceRange) * chartArea.h;
+    const lowY = chartArea.y + ((maxPrice - c.low) / priceRange) * chartArea.h;
+    const color = c.up ? CONFIG.upColor : CONFIG.downColor;
+
+    // Wick
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, highY);
+    ctx.lineTo(x, lowY);
+    ctx.stroke();
+
+    // Body
+    ctx.fillStyle = color;
+    const top = Math.min(openY, closeY);
+    const bodyH = Math.max(Math.abs(closeY - openY), 2);
+    ctx.fillRect(x - bodyW / 2, top, bodyW, bodyH);
+  });
+
+  // Moving average line
+  if (visibleCount > 5) {
+    ctx.strokeStyle = CONFIG.maColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 4; i < visibleCount; i++) {
+      const avg = candles.slice(i - 4, i + 1).reduce((s, c) => s + c.close, 0) / 5;
+      const x = chartArea.x + i * candleW + candleW / 2;
+      const y = chartArea.y + ((maxPrice - avg) / priceRange) * chartArea.h;
+      if (i === 4) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Price line
+  if (visibleCount > 0) {
+    const lastCandle = prices[visibleCount - 1];
+    const lastY = chartArea.y + ((maxPrice - lastCandle.close) / priceRange) * chartArea.h;
+    const lastX = chartArea.x + (visibleCount - 1) * candleW + candleW / 2;
+
+    ctx.strokeStyle = CONFIG.lineColor;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(chartArea.x + chartArea.w, lastY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Price tag
+    ctx.fillStyle = CONFIG.lineColor;
+    const tagW = W * 0.08;
+    ctx.fillRect(chartArea.x + chartArea.w, lastY - W * 0.012, tagW, W * 0.024);
+    ctx.fillStyle = '#0D1117';
+    ctx.font = `bold ${W * 0.011}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText('$' + lastCandle.close.toFixed(2), chartArea.x + chartArea.w + tagW / 2, lastY + 4);
+  }
+}
+
+function drawTicker() {
+  const tickerH = H * 0.045;
+  const y = H - tickerH;
+
+  ctx.fillStyle = 'rgba(13,17,23,0.95)';
+  ctx.fillRect(0, y, W, tickerH);
+  ctx.strokeStyle = CONFIG.gridColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(W, y);
+  ctx.stroke();
+
+  ctx.font = `${W * 0.013}px Courier New`;
+  ctx.textAlign = 'left';
+
+  let xPos = -tickerOffset;
+  const itemW = W * 0.18;
+
+  while (xPos < W + itemW) {
+    CONFIG.tickerSymbols.forEach((sym) => {
+      if (xPos > -itemW && xPos < W + itemW) {
+        const price = (100 + Math.sin(time * 0.5 + sym.charCodeAt(0)) * 50).toFixed(2);
+        const change = (Math.sin(time * 0.3 + sym.charCodeAt(1)) * 5).toFixed(2);
+        const up = parseFloat(change) >= 0;
+
+        ctx.fillStyle = CONFIG.brightText;
+        ctx.fillText(sym, xPos, y + tickerH * 0.65);
+
+        ctx.fillStyle = up ? CONFIG.upColor : CONFIG.downColor;
+        const priceX = xPos + W * 0.055;
+        ctx.fillText('$' + price, priceX, y + tickerH * 0.65);
+
+        const changeX = priceX + W * 0.07;
+        ctx.fillText((up ? '+' : '') + change + '%', changeX, y + tickerH * 0.65);
+      }
+      xPos += itemW;
+    });
+  }
+
+  tickerOffset = (tickerOffset + 1.5) % (CONFIG.tickerSymbols.length * itemW);
+}
+
+function drawHeader() {
+  const headerH = H * 0.06;
+
+  ctx.fillStyle = CONFIG.brightText;
+  ctx.font = `bold ${W * 0.016}px Courier New`;
+  ctx.textAlign = 'left';
+  ctx.fillText(CONFIG.title, W * 0.02, headerH * 0.65);
+
+  // LIVE indicator
+  const liveX = W * 0.85;
+  const pulse = 0.5 + 0.5 * Math.sin(time * 4);
+  ctx.fillStyle = `rgba(248, 81, 73, ${0.4 + pulse * 0.6})`;
+  ctx.beginPath();
+  ctx.arc(liveX, headerH * 0.5, W * 0.005, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = CONFIG.downColor;
+  ctx.font = `bold ${W * 0.013}px Courier New`;
+  ctx.fillText('LIVE', liveX + W * 0.012, headerH * 0.65);
+
+  // Time
+  const now = new Date();
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.font = `${W * 0.012}px Courier New`;
+  ctx.textAlign = 'right';
+  ctx.fillText(now.toLocaleTimeString(), W * 0.98, headerH * 0.65);
+}
+
+function draw() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const chartArea = {
+    x: W * 0.1,
+    y: H * 0.08,
+    w: W * 0.82,
+    h: H * 0.8
+  };
+
+  drawGrid(chartArea);
+
+  const cycleTime = (time * CONFIG.cycleSpeed) % 2;
+  let progress;
+  if (cycleTime < 1.6) {
+    progress = Math.min(cycleTime / 1.4, 1);
+  } else {
+    progress = 1;
+    if (cycleTime > 1.9) {
+      generateCandles();
+      time = 0;
+    }
+  }
+
+  drawCandles(chartArea, progress);
+  drawHeader();
+  drawTicker();
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

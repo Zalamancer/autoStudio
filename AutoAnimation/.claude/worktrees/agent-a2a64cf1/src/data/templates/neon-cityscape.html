@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Cityscape</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #050510; }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Sky gradient */
+  .sky { position: absolute; inset: 0; background: linear-gradient(180deg, #050510 0%, #0a0a2e 40%, #150a30 60%, #1a0520 80%, #050510 100%); }
+
+  /* Stars */
+  .stars { position: absolute; inset: 0; pointer-events: none; }
+  .star { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; }
+
+  /* Fog layer */
+  .fog { position: absolute; bottom: 20%; left: 0; width: 200%; height: 20%; background: linear-gradient(90deg, transparent 0%, rgba(80,20,120,0.08) 25%, rgba(0,200,255,0.05) 50%, rgba(80,20,120,0.08) 75%, transparent 100%); animation: fogDrift 20s linear infinite; pointer-events: none; z-index: 5; }
+  @keyframes fogDrift { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+  /* Ground reflection */
+  .ground { position: absolute; bottom: 0; left: 0; right: 0; height: 18%; background: linear-gradient(180deg, rgba(5,5,16,0) 0%, rgba(5,5,16,0.7) 20%, #050510 100%); z-index: 6; }
+  .wet-ground { position: absolute; bottom: 0; left: 0; right: 0; height: 12%; background: linear-gradient(180deg, transparent 0%, rgba(0,200,255,0.03) 30%, rgba(255,0,120,0.02) 60%, rgba(0,200,255,0.04) 100%); z-index: 7; pointer-events: none; }
+  .ground-line { position: absolute; bottom: 18%; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,200,255,0.15), rgba(255,0,120,0.1), rgba(0,200,255,0.15), transparent); z-index: 7; }
+
+  /* Buildings container */
+  .buildings { position: absolute; bottom: 18%; left: 0; right: 0; height: 70%; z-index: 3; }
+  .building { position: absolute; bottom: 0; background: #08081a; border: 1px solid rgba(0,200,255,0.08); }
+  .building::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .building .windows { position: absolute; inset: 8px; display: grid; gap: 3px; }
+  .building .window { background: rgba(0,200,255,0.04); border-radius: 1px; }
+  .building .window.lit { background: rgba(255,220,100,0.15); box-shadow: 0 0 4px rgba(255,220,100,0.1); }
+
+  /* Neon signs */
+  .neon-signs { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .neon-sign { position: absolute; font-size: 2.2vh; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; opacity: 0; }
+  .neon-sign.pink { color: #ff2d80; text-shadow: 0 0 7px #ff2d80, 0 0 20px #ff2d80, 0 0 40px #ff2d80, 0 0 80px #ff005580; }
+  .neon-sign.cyan { color: #00e5ff; text-shadow: 0 0 7px #00e5ff, 0 0 20px #00e5ff, 0 0 40px #00e5ff, 0 0 80px #00bbff80; }
+  .neon-sign.purple { color: #c840ff; text-shadow: 0 0 7px #c840ff, 0 0 20px #c840ff, 0 0 40px #c840ff, 0 0 80px #a020f080; }
+  .neon-sign.yellow { color: #ffe030; text-shadow: 0 0 7px #ffe030, 0 0 20px #ffe030, 0 0 40px #ffe030, 0 0 80px #ffaa0080; }
+  @keyframes flicker { 0%,19%,21%,23%,25%,54%,56%,100% { opacity: 1; } 20%,24%,55% { opacity: 0.3; } }
+  .flicker { animation: flicker 3s infinite; }
+  .flicker2 { animation: flicker 4s infinite 1.2s; }
+
+  /* Rain */
+  .rain-container { position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; }
+  .raindrop { position: absolute; width: 1px; background: linear-gradient(180deg, transparent, rgba(150,200,255,0.3)); animation: rainFall linear infinite; }
+  @keyframes rainFall { 0% { transform: translateY(-10vh); } 100% { transform: translateY(110vh); } }
+
+  /* Flying car light trails */
+  .light-trails { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .light-trail { position: absolute; height: 2px; border-radius: 1px; opacity: 0; }
+  .trail-red { background: linear-gradient(90deg, transparent, #ff3355, #ff3355, transparent); box-shadow: 0 0 8px #ff335580; }
+  .trail-white { background: linear-gradient(90deg, transparent, #ffffff, #ffffff, transparent); box-shadow: 0 0 8px #ffffff80; }
+  @keyframes flyLeft { 0% { left: 110%; opacity: 0; } 10% { opacity: 0.8; } 90% { opacity: 0.8; } 100% { left: -30%; opacity: 0; } }
+  @keyframes flyRight { 0% { right: 110%; opacity: 0; } 10% { opacity: 0.8; } 90% { opacity: 0.8; } 100% { right: -30%; opacity: 0; } }
+
+  /* Holographic billboard */
+  .billboard { position: absolute; top: 15%; right: 12%; width: 18vw; height: 10vh; border: 1px solid rgba(0,200,255,0.2); background: rgba(0,200,255,0.03); z-index: 4; overflow: hidden; opacity: 0; }
+  .billboard::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,200,255,0.05) 0%, transparent 50%, rgba(255,0,120,0.03) 100%); animation: holoPulse 3s ease-in-out infinite; }
+  @keyframes holoPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+  .billboard-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #00e5ff; font-size: 2vh; font-weight: 700; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
+  .billboard .scanline { position: absolute; left: 0; right: 0; height: 2px; background: rgba(0,229,255,0.15); animation: scanDown 4s linear infinite; }
+  @keyframes scanDown { 0% { top: -2px; } 100% { top: 100%; } }
+
+  /* City name */
+  .city-name { position: absolute; top: 6%; left: 50%; transform: translateX(-50%); text-align: center; z-index: 9; opacity: 0; }
+  .city-name h1 { font-size: 5vh; font-weight: 200; letter-spacing: 1.5vw; text-transform: uppercase; color: #ffffff; text-shadow: 0 0 30px rgba(0,200,255,0.3), 0 0 60px rgba(0,200,255,0.1); }
+  .city-name .tagline { font-size: 1.6vh; letter-spacing: 0.8vw; color: rgba(0,229,255,0.5); margin-top: 1vh; }
+
+  /* Ambient glow */
+  .glow-orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 2; }
+  .orb-pink { width: 30vw; height: 30vw; top: 20%; left: -5%; background: rgba(255,0,100,0.04); }
+  .orb-cyan { width: 25vw; height: 25vw; top: 10%; right: -5%; background: rgba(0,200,255,0.04); }
+  .orb-purple { width: 20vw; height: 20vw; bottom: 25%; left: 40%; background: rgba(150,50,255,0.03); }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="sky"></div>
+  <div class="stars" id="stars"></div>
+  <div class="glow-orb orb-pink"></div>
+  <div class="glow-orb orb-cyan"></div>
+  <div class="glow-orb orb-purple"></div>
+  <div class="buildings" id="buildings"></div>
+  <div class="neon-signs" id="neonSigns"></div>
+  <div class="billboard" id="billboard">
+    <div class="billboard-text" id="billboardText">FUTURE AWAITS</div>
+    <div class="scanline"></div>
+  </div>
+  <div class="fog"></div>
+  <div class="ground-line"></div>
+  <div class="ground"></div>
+  <div class="wet-ground"></div>
+  <div class="rain-container" id="rainContainer"></div>
+  <div class="light-trails" id="lightTrails"></div>
+  <div class="city-name" id="cityName">
+    <h1 id="cityTitle">NEO TOKYO</h1>
+    <div class="tagline" id="cityTagline">2084 AD</div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  cityName: 'NEO TOKYO',
+  cityTagline: '2084 AD',
+  signTexts: ['RAMEN', 'HOTEL', 'BAR', 'CYBER', 'NEON', 'ARCADE'],
+  rainIntensity: 80,
+  neonColors: ['pink', 'cyan', 'purple', 'yellow'],
+  billboardText: 'FUTURE AWAITS',
+  cycleDuration: 14000,
+};
+
+document.getElementById('cityTitle').textContent = CONFIG.cityName;
+document.getElementById('cityTagline').textContent = CONFIG.cityTagline;
+document.getElementById('billboardText').textContent = CONFIG.billboardText;
+
+// Stars
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 60; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 40 + '%';
+  s.style.opacity = Math.random() * 0.4 + 0.1;
+  s.style.width = s.style.height = (Math.random() * 1.5 + 0.5) + 'px';
+  starsEl.appendChild(s);
+}
+
+// Buildings
+const buildingsEl = document.getElementById('buildings');
+const buildingData = [
+  { left: '2%', width: '8%', height: '55%' },
+  { left: '11%', width: '6%', height: '70%' },
+  { left: '18%', width: '10%', height: '45%' },
+  { left: '29%', width: '7%', height: '80%' },
+  { left: '37%', width: '9%', height: '60%' },
+  { left: '47%', width: '6%', height: '90%' },
+  { left: '54%', width: '11%', height: '50%' },
+  { left: '66%', width: '7%', height: '75%' },
+  { left: '74%', width: '8%', height: '65%' },
+  { left: '83%', width: '6%', height: '85%' },
+  { left: '90%', width: '9%', height: '55%' },
+];
+buildingData.forEach(b => {
+  const el = document.createElement('div');
+  el.className = 'building';
+  el.style.left = b.left;
+  el.style.width = b.width;
+  el.style.height = b.height;
+  // Random top glow
+  const colors = ['rgba(0,200,255,0.3)', 'rgba(255,0,120,0.3)', 'rgba(150,50,255,0.3)'];
+  el.style.setProperty('border-top-color', colors[Math.floor(Math.random() * colors.length)]);
+  // Windows
+  const win = document.createElement('div');
+  win.className = 'windows';
+  const cols = Math.max(2, Math.floor(parseFloat(b.width) / 2));
+  const rows = Math.max(3, Math.floor(parseFloat(b.height) / 6));
+  win.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  win.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  for (let i = 0; i < cols * rows; i++) {
+    const w = document.createElement('div');
+    w.className = 'window' + (Math.random() > 0.7 ? ' lit' : '');
+    win.appendChild(w);
+  }
+  el.appendChild(win);
+  buildingsEl.appendChild(el);
+});
+
+// Animate random windows
+setInterval(() => {
+  const windows = document.querySelectorAll('.building .window');
+  const idx = Math.floor(Math.random() * windows.length);
+  windows[idx].classList.toggle('lit');
+}, 500);
+
+// Neon signs
+const neonSignsEl = document.getElementById('neonSigns');
+const signPositions = [
+  { top: '25%', left: '14%' },
+  { top: '35%', left: '52%' },
+  { top: '20%', left: '32%' },
+  { top: '40%', left: '72%' },
+  { top: '30%', left: '88%' },
+  { top: '45%', left: '5%' },
+];
+CONFIG.signTexts.forEach((text, i) => {
+  if (i >= signPositions.length) return;
+  const el = document.createElement('div');
+  el.className = 'neon-sign ' + CONFIG.neonColors[i % CONFIG.neonColors.length] + (Math.random() > 0.5 ? ' flicker' : ' flicker2');
+  el.style.top = signPositions[i].top;
+  el.style.left = signPositions[i].left;
+  el.textContent = text;
+  el.id = 'sign' + i;
+  neonSignsEl.appendChild(el);
+});
+
+// Rain
+const rainContainer = document.getElementById('rainContainer');
+for (let i = 0; i < CONFIG.rainIntensity; i++) {
+  const drop = document.createElement('div');
+  drop.className = 'raindrop';
+  drop.style.left = Math.random() * 100 + '%';
+  drop.style.height = (Math.random() * 15 + 10) + 'px';
+  drop.style.animationDuration = (Math.random() * 0.5 + 0.4) + 's';
+  drop.style.animationDelay = (Math.random() * 2) + 's';
+  drop.style.opacity = Math.random() * 0.4 + 0.1;
+  rainContainer.appendChild(drop);
+}
+
+// Light trails
+const lightTrails = document.getElementById('lightTrails');
+function spawnTrail() {
+  const trail = document.createElement('div');
+  const goLeft = Math.random() > 0.5;
+  trail.className = 'light-trail ' + (Math.random() > 0.5 ? 'trail-red' : 'trail-white');
+  trail.style.top = (15 + Math.random() * 40) + '%';
+  trail.style.width = (8 + Math.random() * 15) + 'vw';
+  if (goLeft) {
+    trail.style.animation = `flyLeft ${2 + Math.random() * 2}s linear forwards`;
+  } else {
+    trail.style.animation = `flyRight ${2 + Math.random() * 2}s linear forwards`;
+  }
+  lightTrails.appendChild(trail);
+  trail.addEventListener('animationend', () => trail.remove());
+}
+setInterval(spawnTrail, 1800);
+
+// Cycle
+function runCycle() {
+  const cityName = document.getElementById('cityName');
+  const billboard = document.getElementById('billboard');
+  const signs = document.querySelectorAll('.neon-sign');
+
+  // Reset
+  cityName.style.transition = 'none'; cityName.style.opacity = '0';
+  billboard.style.transition = 'none'; billboard.style.opacity = '0';
+  signs.forEach(s => { s.style.transition = 'none'; s.style.opacity = '0'; });
+  void cityName.offsetWidth;
+
+  // Animate in: signs staggered
+  signs.forEach((s, i) => {
+    setTimeout(() => {
+      s.style.transition = 'opacity 0.6s ease';
+      s.style.opacity = '1';
+    }, 400 + i * 300);
+  });
+
+  // Billboard
+  setTimeout(() => {
+    billboard.style.transition = 'opacity 0.8s ease';
+    billboard.style.opacity = '1';
+  }, 1000);
+
+  // City name
+  setTimeout(() => {
+    cityName.style.transition = 'opacity 1.2s ease';
+    cityName.style.opacity = '1';
+  }, 1800);
+
+  // Animate out
+  setTimeout(() => {
+    cityName.style.transition = 'opacity 1.2s ease'; cityName.style.opacity = '0';
+    billboard.style.transition = 'opacity 1s ease'; billboard.style.opacity = '0';
+    signs.forEach((s, i) => {
+      setTimeout(() => {
+        s.style.transition = 'opacity 0.5s ease';
+        s.style.opacity = '0';
+      }, i * 100);
+    });
+  }, CONFIG.cycleDuration - 2000);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  body { background: #0a0e17; color: #e0e8f5; }
+
+  .glow-orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; opacity: 0; transition: opacity 2s; }
+  .orb1 { width: 40vw; height: 40vw; top: -15vw; right: -10vw; background: radial-gradient(circle, #7c3aed 0%, transparent 70%); }
+  .orb2 { width: 35vw; height: 35vw; bottom: -12vw; left: -8vw; background: radial-gradient(circle, #06b6d4 0%, transparent 70%); }
+  .orb3 { width: 25vw; height: 25vw; top: 40%; left: 50%; transform: translateX(-50%); background: radial-gradient(circle, #f59e0b33 0%, transparent 70%); }
+
+  .grid-bg {
+    position: fixed; inset: 0; pointer-events: none; opacity: 0.03;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 5vw 5vh;
+  }
+
+  .dashboard { width: 100%; height: 100%; display: grid; grid-template-rows: 8vh auto 15vh; padding: 2vh 2.5vw; gap: 1.5vh; position: relative; z-index: 1; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; opacity: 0; transform: translateY(-20px); }
+  .logo { font-size: 2.6vh; font-weight: 800; letter-spacing: 0.08em; }
+  .logo-grad { background: linear-gradient(135deg, #06b6d4, #7c3aed, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .header-right { display: flex; align-items: center; gap: 1.5vw; font-size: 1.5vh; color: #64748b; }
+  .live-badge { display: flex; align-items: center; gap: 0.5vw; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 1vh; padding: 0.4vh 1vw; }
+  .live-dot { width: 0.7vh; height: 0.7vh; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981; animation: livePulse 1.5s ease-in-out infinite; }
+  @keyframes livePulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+  .live-badge span { color: #10b981; font-weight: 700; font-size: 1.3vh; letter-spacing: 0.1em; }
+  .clock { font-variant-numeric: tabular-nums; font-weight: 600; color: #94a3b8; font-size: 1.6vh; }
+
+  .portfolio-strip { display: flex; align-items: center; gap: 2vw; padding: 0 1vw; opacity: 0; }
+  .portfolio-label { font-size: 1.3vh; color: #64748b; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; }
+  .portfolio-value { font-size: 3.5vh; font-weight: 800; background: linear-gradient(90deg, #e0e8f5, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-variant-numeric: tabular-nums; }
+  .portfolio-change { font-size: 1.8vh; font-weight: 700; }
+  .portfolio-change.up { color: #10b981; }
+  .portfolio-change.down { color: #ef4444; }
+
+  .main { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5vw; overflow: hidden; }
+
+  .card {
+    background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.6));
+    border: 1px solid rgba(100,116,139,0.12);
+    border-radius: 1.2vh;
+    padding: 2vh 1.8vw;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+    backdrop-filter: blur(10px);
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent, #06b6d4), transparent);
+    opacity: 0.7;
+  }
+  .card::after {
+    content: ''; position: absolute; top: 0; right: 0; width: 40%; height: 100%;
+    background: radial-gradient(ellipse at top right, var(--accent-glow, rgba(6,182,212,0.06)), transparent 70%);
+    pointer-events: none;
+  }
+
+  .coin-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1vh; }
+  .coin-icon { width: 4vh; height: 4vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2vh; font-weight: 800; color: #0a0e17; flex-shrink: 0; }
+  .coin-info { margin-left: 1vw; flex: 1; }
+  .coin-name { font-size: 1.8vh; font-weight: 700; color: #e2e8f0; }
+  .coin-symbol { font-size: 1.2vh; color: #64748b; font-weight: 600; letter-spacing: 0.08em; margin-top: 0.2vh; }
+  .coin-change-badge { padding: 0.3vh 0.8vw; border-radius: 0.6vh; font-size: 1.3vh; font-weight: 700; white-space: nowrap; }
+  .coin-change-badge.up { background: rgba(16,185,129,0.15); color: #10b981; }
+  .coin-change-badge.down { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+  .coin-price { font-size: 2.8vh; font-weight: 800; margin: 0.5vh 0; font-variant-numeric: tabular-nums; }
+  .coin-vol { font-size: 1.1vh; color: #475569; margin-top: 0.3vh; }
+
+  .spark-area { position: absolute; bottom: 0; left: 0; right: 0; height: 35%; pointer-events: none; }
+  .spark-area svg { width: 100%; height: 100%; }
+
+  .bottom-section { display: flex; flex-direction: column; gap: 0.8vh; }
+  .ticker-scroll { display: flex; gap: 3vw; overflow: hidden; opacity: 0; }
+  .ticker-item { display: flex; align-items: center; gap: 0.8vw; font-size: 1.4vh; white-space: nowrap; opacity: 0; transform: translateX(30px); }
+  .ticker-sym { font-weight: 700; color: #cbd5e1; }
+  .ticker-price { color: #94a3b8; }
+
+  .market-bar { display: flex; justify-content: space-between; opacity: 0; }
+  .market-stat { font-size: 1.2vh; color: #475569; }
+  .market-stat strong { color: #94a3b8; }
+
+  @keyframes priceFlash { 0% { background: rgba(16,185,129,0.2); } 100% { background: transparent; } }
+  @keyframes priceFlashDown { 0% { background: rgba(239,68,68,0.2); } 100% { background: transparent; } }
+  .price-updating { animation: priceFlash 0.6s ease-out; border-radius: 0.5vh; }
+  .price-updating-down { animation: priceFlashDown 0.6s ease-out; border-radius: 0.5vh; }
+</style>
+</head>
+<body>
+<div class="glow-orb orb1" id="orb1"></div>
+<div class="glow-orb orb2" id="orb2"></div>
+<div class="glow-orb orb3" id="orb3"></div>
+<div class="grid-bg"></div>
+
+<div class="dashboard">
+  <div class="header" id="header">
+    <div class="logo"><span class="logo-grad" id="logoText">CRYPTOPULSE</span></div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div><span>LIVE</span></div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:1.5vh;overflow:hidden;">
+    <div class="portfolio-strip" id="portfolioStrip">
+      <div class="portfolio-label">Portfolio Value</div>
+      <div class="portfolio-value" id="portfolioValue">$0</div>
+      <div class="portfolio-change up" id="portfolioChange">+0%</div>
+    </div>
+    <div class="main" id="cards"></div>
+  </div>
+
+  <div class="bottom-section">
+    <div class="ticker-scroll" id="ticker"></div>
+    <div class="market-bar" id="marketBar">
+      <div class="market-stat">Market Cap: <strong id="mcap">$2.41T</strong></div>
+      <div class="market-stat">24h Vol: <strong id="vol24">$89.2B</strong></div>
+      <div class="market-stat">BTC Dom: <strong id="btcDom">52.4%</strong></div>
+      <div class="market-stat">Fear &amp; Greed: <strong id="fng" style="color:#10b981">72 Greed</strong></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  logoText: 'CRYPTOPULSE',
+  coins: [
+    { name: 'Bitcoin',   symbol: 'BTC',  price: 97432.18, change: 4.72,  up: true,  accent: '#f59e0b', icon: '\u20BF', vol: '28.4B' },
+    { name: 'Ethereum',  symbol: 'ETH',  price: 3821.05,  change: 2.15,  up: true,  accent: '#818cf8', icon: '\u039E', vol: '14.7B' },
+    { name: 'Solana',    symbol: 'SOL',  price: 198.93,   change: -1.34, up: false, accent: '#a78bfa', icon: 'S',      vol: '3.2B'  },
+    { name: 'Cardano',   symbol: 'ADA',  price: 0.82,     change: 6.18,  up: true,  accent: '#3b82f6', icon: 'A',      vol: '1.1B'  },
+    { name: 'Avalanche', symbol: 'AVAX', price: 42.17,    change: 3.29,  up: true,  accent: '#ef4444', icon: 'AV',     vol: '0.9B'  },
+    { name: 'Polkadot',  symbol: 'DOT',  price: 8.45,     change: -0.87, up: false, accent: '#ec4899', icon: '\u25C9', vol: '0.6B'  },
+  ],
+  tickerExtra: [
+    { sym: 'MATIC', price: '0.92',  change: '+1.4%', up: true  },
+    { sym: 'LINK',  price: '18.73', change: '-0.6%', up: false },
+    { sym: 'UNI',   price: '12.08', change: '+2.9%', up: true  },
+    { sym: 'ATOM',  price: '11.52', change: '+0.8%', up: true  },
+    { sym: 'DOGE',  price: '0.17',  change: '+5.2%', up: true  },
+    { sym: 'XRP',   price: '0.63',  change: '-0.3%', up: false },
+  ],
+  portfolioValue: 247832.50,
+  portfolioChange: 3.84,
+  marketCap: '$2.41T',
+  volume24h: '$89.2B',
+  btcDominance: '52.4%',
+  fearGreed: '72 Greed',
+  bgColor: '#0a0e17',
+  cycleDuration: 14000,
+};
+
+window.addEventListener('message', (e) => { if (e.data?.type === 'CONFIG_UPDATE') { Object.assign(CONFIG, e.data.config); applyConfig(); } });
+function applyConfig() {
+  document.body.style.background = CONFIG.bgColor;
+  document.getElementById('logoText').textContent = CONFIG.logoText;
+  document.getElementById('mcap').textContent = CONFIG.marketCap;
+  document.getElementById('vol24').textContent = CONFIG.volume24h;
+  document.getElementById('btcDom').textContent = CONFIG.btcDominance;
+  document.getElementById('fng').textContent = CONFIG.fearGreed;
+}
+document.body.style.background = CONFIG.bgColor;
+document.getElementById('logoText').textContent = CONFIG.logoText;
+document.getElementById('mcap').textContent = CONFIG.marketCap;
+document.getElementById('vol24').textContent = CONFIG.volume24h;
+document.getElementById('btcDom').textContent = CONFIG.btcDominance;
+document.getElementById('fng').textContent = CONFIG.fearGreed;
+
+function updateClock() {
+  var now = new Date();
+  document.getElementById('clock').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function formatPrice(p) {
+  if (p >= 1000) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (p >= 1) return '$' + p.toFixed(2);
+  return '$' + p.toFixed(4);
+}
+
+function generateSparkline(up) {
+  var pts = [];
+  var v = 50;
+  for (var i = 0; i <= 24; i++) {
+    v += (Math.random() - (up ? 0.38 : 0.62)) * 7;
+    v = Math.max(8, Math.min(92, v));
+    pts.push(((i / 24) * 100).toFixed(1) + ',' + (100 - v).toFixed(1));
+  }
+  var color = up ? '#10b981' : '#ef4444';
+  var id = 'sg' + Math.random().toString(36).slice(2,8);
+  return '<svg viewBox="0 0 100 100" preserveAspectRatio="none">' +
+    '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.25"/>' +
+    '<stop offset="100%" stop-color="' + color + '" stop-opacity="0"/>' +
+    '</linearGradient></defs>' +
+    '<polygon points="' + pts.join(' ') + ' 100,100 0,100" fill="url(#' + id + ')"/>' +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+}
+
+function buildCards() {
+  var container = document.getElementById('cards');
+  container.innerHTML = '';
+  CONFIG.coins.slice(0, 6).forEach(function(coin, i) {
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.style.setProperty('--accent', coin.accent);
+    card.style.setProperty('--accent-glow', coin.accent + '15');
+    card.innerHTML =
+      '<div class="coin-row">' +
+        '<div class="coin-icon" style="background:' + coin.accent + ';box-shadow:0 0 15px ' + coin.accent + '44">' + coin.icon + '</div>' +
+        '<div class="coin-info"><div class="coin-name">' + coin.name + '</div><div class="coin-symbol">' + coin.symbol + '</div></div>' +
+        '<div class="coin-change-badge ' + (coin.up ? 'up' : 'down') + '">' + (coin.up ? '+' : '') + coin.change + '%</div>' +
+      '</div>' +
+      '<div class="coin-price" id="price-' + i + '">' + formatPrice(coin.price) + '</div>' +
+      '<div class="coin-vol">Vol: $' + coin.vol + '</div>' +
+      '<div class="spark-area">' + generateSparkline(coin.up) + '</div>';
+    container.appendChild(card);
+  });
+}
+
+function buildTicker() {
+  var container = document.getElementById('ticker');
+  container.innerHTML = '';
+  CONFIG.tickerExtra.forEach(function(t) {
+    var el = document.createElement('div');
+    el.className = 'ticker-item';
+    el.innerHTML = '<span class="ticker-sym">' + t.sym + '</span>' +
+      '<span class="ticker-price">$' + t.price + '</span>' +
+      '<span style="color:' + (t.up ? '#10b981' : '#ef4444') + ';font-weight:600">' + t.change + '</span>';
+    container.appendChild(el);
+  });
+}
+
+function animateCounter(el, target, prefix, duration) {
+  var startTime = null;
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    var progress = Math.min((ts - startTime) / duration, 1);
+    var eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = prefix + (target * eased).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+var priceUpdateInterval = null;
+function simulatePriceUpdates() {
+  if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+  priceUpdateInterval = setInterval(function() {
+    var idx = Math.floor(Math.random() * Math.min(CONFIG.coins.length, 6));
+    var coin = CONFIG.coins[idx];
+    var delta = (Math.random() - 0.5) * coin.price * 0.002;
+    coin.price += delta;
+    var el = document.getElementById('price-' + idx);
+    if (el) {
+      el.textContent = formatPrice(coin.price);
+      el.classList.remove('price-updating', 'price-updating-down');
+      void el.offsetWidth;
+      el.classList.add(delta >= 0 ? 'price-updating' : 'price-updating-down');
+    }
+  }, 1800);
+}
+
+function runCycle() {
+  if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+  var header = document.getElementById('header');
+  var strip = document.getElementById('portfolioStrip');
+  var ticker = document.getElementById('ticker');
+  var mbar = document.getElementById('marketBar');
+
+  header.style.transition = 'none'; header.style.opacity = '0'; header.style.transform = 'translateY(-20px)';
+  strip.style.transition = 'none'; strip.style.opacity = '0';
+  ticker.style.transition = 'none'; ticker.style.opacity = '0';
+  mbar.style.transition = 'none'; mbar.style.opacity = '0';
+  document.getElementById('orb1').style.opacity = '0';
+  document.getElementById('orb2').style.opacity = '0';
+  document.getElementById('orb3').style.opacity = '0';
+
+  buildCards(); buildTicker();
+  var cards = document.querySelectorAll('.card');
+  cards.forEach(function(c) { c.style.transition = 'none'; c.style.opacity = '0'; c.style.transform = 'translateY(40px) scale(0.95)'; });
+  var tickerItems = document.querySelectorAll('.ticker-item');
+  tickerItems.forEach(function(t) { t.style.transition = 'none'; t.style.opacity = '0'; t.style.transform = 'translateX(30px)'; });
+  void header.offsetWidth;
+
+  setTimeout(function() { document.getElementById('orb1').style.opacity = '0.08'; document.getElementById('orb2').style.opacity = '0.06'; document.getElementById('orb3').style.opacity = '0.04'; }, 100);
+  setTimeout(function() { header.style.transition = 'opacity 0.7s ease, transform 0.7s cubic-bezier(0.22,1,0.36,1)'; header.style.opacity = '1'; header.style.transform = 'translateY(0)'; }, 200);
+  setTimeout(function() {
+    strip.style.transition = 'opacity 0.8s ease'; strip.style.opacity = '1';
+    animateCounter(document.getElementById('portfolioValue'), CONFIG.portfolioValue, '$', 1500);
+    var pc = document.getElementById('portfolioChange'); pc.textContent = '+' + CONFIG.portfolioChange + '%'; pc.className = 'portfolio-change ' + (CONFIG.portfolioChange >= 0 ? 'up' : 'down');
+  }, 600);
+  cards.forEach(function(c, i) { setTimeout(function() { c.style.transition = 'opacity 0.6s ease, transform 0.7s cubic-bezier(0.22,1,0.36,1)'; c.style.opacity = '1'; c.style.transform = 'translateY(0) scale(1)'; }, 900 + i * 180); });
+  setTimeout(function() { ticker.style.transition = 'opacity 0.5s'; ticker.style.opacity = '1'; tickerItems.forEach(function(t, i) { setTimeout(function() { t.style.transition = 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)'; t.style.opacity = '1'; t.style.transform = 'translateX(0)'; }, i * 120); }); }, 2200);
+  setTimeout(function() { mbar.style.transition = 'opacity 0.6s'; mbar.style.opacity = '1'; }, 2800);
+  setTimeout(simulatePriceUpdates, 3200);
+
+  setTimeout(function() {
+    if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+    header.style.transition = 'opacity 1s'; header.style.opacity = '0';
+    strip.style.transition = 'opacity 1s'; strip.style.opacity = '0';
+    ticker.style.transition = 'opacity 0.8s'; ticker.style.opacity = '0';
+    mbar.style.transition = 'opacity 0.8s'; mbar.style.opacity = '0';
+    cards.forEach(function(c, i) { setTimeout(function() { c.style.transition = 'opacity 0.5s ease, transform 0.5s ease-in'; c.style.opacity = '0'; c.style.transform = 'translateY(-20px) scale(0.95)'; }, i * 80); });
+    document.getElementById('orb1').style.opacity = '0'; document.getElementById('orb2').style.opacity = '0'; document.getElementById('orb3').style.opacity = '0';
+  }, CONFIG.cycleDuration - 1800);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

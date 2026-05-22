@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Datacenter</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #060a12; font-family: 'Courier New', monospace; }
+  canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  bgColor: '#060a12',
+  primaryColor: '#00aaff',
+  secondaryColor: '#0066cc',
+  accentColor: '#00ffcc',
+  warningColor: '#ff4444',
+  successColor: '#00ff88',
+  rackCount: 8,
+  packetCount: 40,
+  nodeCount: 16,
+  connectionCount: 24,
+  title: 'DATACENTER MATRIX',
+  uptimeHours: 99.997,
+  totalServers: 2048,
+  activeRequests: '1.2M',
+  networkLoad: '847 Gbps',
+};
+
+window.addEventListener('message', (e) => { if (e.data?.type === 'CONFIG_UPDATE') Object.assign(CONFIG, e.data.config); });
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+resize();
+addEventListener('resize', resize);
+
+function hexRgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+
+// Server racks
+function drawRacks(t) {
+  const rackW = W * 0.08;
+  const rackH = H * 0.55;
+  const startX = W * 0.06;
+  const startY = H * 0.3;
+  const gap = (W * 0.88) / CONFIG.rackCount;
+
+  for (let r = 0; r < CONFIG.rackCount; r++) {
+    const rx = startX + r * gap;
+    const ry = startY;
+
+    // Rack frame
+    ctx.fillStyle = '#0c1220';
+    ctx.fillRect(rx, ry, rackW, rackH);
+    ctx.strokeStyle = '#1a2540';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rx, ry, rackW, rackH);
+
+    // Server units (2U each)
+    const units = Math.floor(rackH / 14);
+    for (let u = 0; u < units; u++) {
+      const uy = ry + 3 + u * 14;
+      const active = Math.sin(t * 0.003 + r * 2 + u * 0.5) > -0.8;
+      ctx.fillStyle = active ? '#0e1628' : '#080e18';
+      ctx.fillRect(rx + 2, uy, rackW - 4, 11);
+
+      // LED indicators
+      const ledX = rx + rackW - 8;
+      if (active) {
+        const blink = Math.sin(t * 0.01 + r * 3 + u * 7);
+        // Power LED (green)
+        ctx.fillStyle = `rgba(0,255,100,${0.5 + blink * 0.3})`;
+        ctx.beginPath(); ctx.arc(ledX, uy + 3, 1.5, 0, Math.PI * 2); ctx.fill();
+        // Activity LED (blue, blinking)
+        const actBlink = Math.sin(t * 0.05 + r * 5 + u * 11) > 0;
+        if (actBlink) {
+          ctx.fillStyle = `rgba(0,170,255,0.8)`;
+          ctx.beginPath(); ctx.arc(ledX, uy + 7, 1.5, 0, Math.PI * 2); ctx.fill();
+          // LED glow
+          ctx.fillStyle = `rgba(0,170,255,0.15)`;
+          ctx.beginPath(); ctx.arc(ledX, uy + 7, 5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      // Drive bays
+      if (active) {
+        for (let d = 0; d < 4; d++) {
+          ctx.fillStyle = '#0a1525';
+          ctx.fillRect(rx + 4 + d * (rackW * 0.18), uy + 1, rackW * 0.15, 9);
+        }
+      }
+    }
+
+    // Rack label
+    ctx.fillStyle = CONFIG.primaryColor + '40';
+    ctx.font = '9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText(`RACK-${String(r + 1).padStart(2, '0')}`, rx + rackW / 2, ry + rackH + 14);
+  }
+}
+
+// Network topology nodes
+const nodes = [];
+for (let i = 0; i < CONFIG.nodeCount; i++) {
+  nodes.push({
+    x: 0.1 + Math.random() * 0.8,
+    y: 0.05 + Math.random() * 0.2,
+    size: 3 + Math.random() * 4,
+    pulse: Math.random() * Math.PI * 2,
+    type: Math.random() > 0.7 ? 'router' : 'switch',
+  });
+}
+
+// Connections between nodes
+const connections = [];
+for (let i = 0; i < CONFIG.connectionCount; i++) {
+  const a = Math.floor(Math.random() * nodes.length);
+  let b = Math.floor(Math.random() * nodes.length);
+  while (b === a) b = Math.floor(Math.random() * nodes.length);
+  connections.push({ a, b, phase: Math.random() * Math.PI * 2, speed: 0.01 + Math.random() * 0.03 });
+}
+
+function drawTopology(t) {
+  // Draw connections
+  connections.forEach(c => {
+    const na = nodes[c.a];
+    const nb = nodes[c.b];
+    const ax = na.x * W, ay = na.y * H;
+    const bx = nb.x * W, by = nb.y * H;
+    const pulse = 0.15 + 0.15 * Math.sin(t * c.speed + c.phase);
+    const col = hexRgb(CONFIG.primaryColor);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${pulse})`;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Data packet traveling along connection
+    const packetPos = (Math.sin(t * 0.005 + c.phase) + 1) * 0.5;
+    const px = ax + (bx - ax) * packetPos;
+    const py = ay + (by - ay) * packetPos;
+    ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.6 + pulse})`;
+    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // Draw nodes
+  nodes.forEach(n => {
+    const nx = n.x * W, ny = n.y * H;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 0.004 + n.pulse);
+    const col = n.type === 'router' ? hexRgb(CONFIG.accentColor) : hexRgb(CONFIG.primaryColor);
+
+    // Glow
+    ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.08 * pulse})`;
+    ctx.beginPath(); ctx.arc(nx, ny, n.size * 4, 0, Math.PI * 2); ctx.fill();
+
+    // Node
+    ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.6 + 0.4 * pulse})`;
+    ctx.beginPath(); ctx.arc(nx, ny, n.size, 0, Math.PI * 2); ctx.fill();
+
+    // Ring
+    ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.3 * pulse})`;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.arc(nx, ny, n.size + 3, 0, Math.PI * 2); ctx.stroke();
+  });
+}
+
+// Data packets (fiber optic light pulses)
+const packets = [];
+for (let i = 0; i < CONFIG.packetCount; i++) {
+  const rackIdx = Math.floor(Math.random() * CONFIG.rackCount);
+  const startX = W * 0.06 + rackIdx * ((W * 0.88) / CONFIG.rackCount) + W * 0.04;
+  const targetNode = Math.floor(Math.random() * nodes.length);
+  packets.push({
+    x: startX, y: H * 0.3,
+    tx: nodes[targetNode].x * W, ty: nodes[targetNode].y * H,
+    progress: Math.random(),
+    speed: 0.003 + Math.random() * 0.008,
+    color: Math.random() > 0.5 ? CONFIG.primaryColor : CONFIG.accentColor,
+    size: 1 + Math.random() * 2,
+  });
+}
+
+function drawPackets(t) {
+  packets.forEach(p => {
+    p.progress += p.speed;
+    if (p.progress >= 1) {
+      p.progress = 0;
+      const rackIdx = Math.floor(Math.random() * CONFIG.rackCount);
+      p.x = W * 0.06 + rackIdx * ((W * 0.88) / CONFIG.rackCount) + W * 0.04;
+      p.y = H * 0.3;
+      const targetNode = Math.floor(Math.random() * nodes.length);
+      p.tx = nodes[targetNode].x * W;
+      p.ty = nodes[targetNode].y * H;
+    }
+    const cx = p.x + (p.tx - p.x) * p.progress;
+    const cy = p.y + (p.ty - p.y) * p.progress - Math.sin(p.progress * Math.PI) * 30;
+    const c = hexRgb(p.color);
+    ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.8 - p.progress * 0.5})`;
+    ctx.beginPath(); ctx.arc(cx, cy, p.size, 0, Math.PI * 2); ctx.fill();
+    // Trail
+    ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.1)`;
+    ctx.beginPath(); ctx.arc(cx, cy, p.size * 4, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+// HUD overlay info
+function drawHUD(t) {
+  const col = hexRgb(CONFIG.primaryColor);
+  ctx.font = '10px Courier New';
+  ctx.textAlign = 'left';
+
+  // Title
+  ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.4)`;
+  ctx.font = 'bold 14px Courier New';
+  ctx.fillText(CONFIG.title, 15, 25);
+
+  // Stats
+  ctx.font = '10px Courier New';
+  ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.3)`;
+  const uptime = CONFIG.uptimeHours + (Math.sin(t * 0.0001) * 0.001);
+  ctx.fillText(`UPTIME: ${uptime.toFixed(3)}%`, 15, 45);
+  ctx.fillText(`SERVERS: ${CONFIG.totalServers}`, 15, 60);
+  ctx.fillText(`REQUESTS: ${CONFIG.activeRequests}/s`, 15, 75);
+  ctx.fillText(`NETWORK: ${CONFIG.networkLoad}`, 15, 90);
+
+  // Uptime counter top-right
+  ctx.textAlign = 'right';
+  const now = new Date();
+  const ts = String(now.getHours()).padStart(2, '0') + ':' +
+             String(now.getMinutes()).padStart(2, '0') + ':' +
+             String(now.getSeconds()).padStart(2, '0');
+  ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.25)`;
+  ctx.font = '11px Courier New';
+  ctx.fillText(ts + ' UTC', W - 15, 25);
+
+  // Throughput sparkline bottom
+  ctx.textAlign = 'left';
+  const sparkY = H * 0.92;
+  ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.15)`;
+  ctx.fillText('THROUGHPUT', 15, sparkY - 5);
+  for (let i = 0; i < 60; i++) {
+    const v = 0.3 + 0.7 * Math.abs(Math.sin(t * 0.003 + i * 0.3));
+    const h = v * 20;
+    ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.15 + v * 0.2})`;
+    ctx.fillRect(15 + i * 5, sparkY + 15 - h, 3, h);
+  }
+}
+
+// Floor grid
+function drawFloor(t) {
+  const floorY = H * 0.87;
+  const vanishY = H * 0.3;
+  const col = hexRgb(CONFIG.secondaryColor);
+  ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.06)`;
+  ctx.lineWidth = 0.5;
+
+  // Horizontal lines
+  for (let i = 0; i < 20; i++) {
+    const ratio = i / 20;
+    const y = floorY + ratio * (H - floorY);
+    const alpha = 0.03 + ratio * 0.04;
+    ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${alpha})`;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Vertical lines (perspective)
+  for (let i = 0; i < 30; i++) {
+    const x = (i / 29) * W;
+    ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.03)`;
+    ctx.beginPath(); ctx.moveTo(x, floorY); ctx.lineTo(W * 0.5 + (x - W * 0.5) * 0.3, vanishY); ctx.stroke();
+  }
+}
+
+function animate() {
+  time++;
+  const t = performance.now();
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  drawFloor(t);
+  drawTopology(t);
+  drawPackets(t);
+  drawRacks(t);
+  drawHUD(t);
+
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

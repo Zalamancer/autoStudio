@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gym Fitness</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a1a1a;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #fff;
+  }
+  .scene {
+    width: 100%; height: 100%;
+    position: relative;
+    background: radial-gradient(ellipse at 30% 40%, #2a1a1a 0%, #1a1a1a 50%, #111 100%);
+  }
+
+  /* ECG Line */
+  .ecg-container {
+    position: absolute;
+    top: 5vh; left: 3vw; right: 3vw;
+    height: 12vh;
+    overflow: hidden;
+  }
+  .ecg-canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* BPM */
+  .bpm-display {
+    position: absolute;
+    top: 5vh; right: 4vw;
+    text-align: right;
+  }
+  .bpm-value {
+    font-size: 5vh;
+    font-weight: 900;
+    color: #ff3333;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 15px rgba(255,50,50,0.4);
+    line-height: 1;
+  }
+  .bpm-label {
+    font-size: 1.2vh;
+    color: #666;
+    letter-spacing: 0.15em;
+  }
+  @keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    15% { transform: scale(1.2); }
+    30% { transform: scale(1); }
+  }
+  .heart-icon {
+    display: inline-block;
+    color: #ff3333;
+    font-size: 2.5vh;
+    animation: heartBeat 0.8s ease-in-out infinite;
+  }
+
+  /* Rep counter */
+  .rep-counter {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+  .rep-label {
+    font-size: 1.4vh;
+    color: #666;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .rep-value {
+    font-size: 12vh;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #fff 0%, #888 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .rep-total {
+    font-size: 2vh;
+    color: #555;
+    font-weight: 600;
+  }
+
+  /* Timer */
+  .workout-timer {
+    position: absolute;
+    top: 20vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .workout-timer.visible { opacity: 1; }
+  .timer-value {
+    font-size: 3.5vh;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #ff6633;
+    text-shadow: 0 0 10px rgba(255,102,51,0.3);
+  }
+  .timer-label {
+    font-size: 1vh;
+    color: #555;
+    letter-spacing: 0.15em;
+  }
+
+  /* Dumbbell icon */
+  .dumbbell {
+    position: absolute;
+    top: 25vh; left: 8vw;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .dumbbell.visible { opacity: 1; }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-1.5vh); }
+  }
+  .dumbbell.bouncing svg { animation: bounce 1s ease-in-out infinite; }
+
+  /* Progress ring */
+  .progress-ring-area {
+    position: absolute;
+    bottom: 20vh; right: 5vw;
+    width: 14vh; height: 14vh;
+    text-align: center;
+  }
+  .progress-ring-svg {
+    width: 100%; height: 100%;
+    transform: rotate(-90deg);
+  }
+  .ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 4;
+  }
+  .ring-fill {
+    fill: none;
+    stroke: #ff6633;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 283;
+    stroke-dashoffset: 283;
+    transition: stroke-dashoffset 2s ease;
+    filter: drop-shadow(0 0 4px rgba(255,102,51,0.4));
+  }
+  .ring-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.1vh;
+    color: #888;
+    letter-spacing: 0.1em;
+  }
+  .ring-pct {
+    font-size: 3vh;
+    font-weight: 800;
+    color: #ff6633;
+    display: block;
+  }
+
+  /* Calorie counter */
+  .calorie-counter {
+    position: absolute;
+    bottom: 20vh; left: 5vw;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .calorie-counter.visible { opacity: 1; }
+  .cal-icon {
+    font-size: 3vh;
+    margin-bottom: 0.5vh;
+  }
+  .cal-value {
+    font-size: 3.5vh;
+    font-weight: 800;
+    color: #ffaa00;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px rgba(255,170,0,0.3);
+  }
+  .cal-label {
+    font-size: 1vh;
+    color: #666;
+    letter-spacing: 0.1em;
+  }
+
+  /* Beast mode text */
+  .beast-mode {
+    position: absolute;
+    bottom: 8vh;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    font-size: 4.5vh;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+    opacity: 0;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+    background: linear-gradient(90deg, #ff4400, #ff8800, #ffcc00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 15px rgba(255,100,0,0.5));
+  }
+  .beast-mode.visible {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+
+  /* Motivational text */
+  .motivation {
+    position: absolute;
+    bottom: 40vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2vh;
+    font-weight: 700;
+    color: #555;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.6s;
+    white-space: nowrap;
+  }
+  .motivation.visible { opacity: 1; }
+
+  /* Particle/ember effects */
+  @keyframes ember {
+    0% { transform: translateY(0) translateX(0); opacity: 0.8; }
+    100% { transform: translateY(-20vh) translateX(10px); opacity: 0; }
+  }
+  .ember {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: #ff6633;
+    pointer-events: none;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <!-- ECG -->
+  <div class="ecg-container">
+    <canvas class="ecg-canvas" id="ecgCanvas"></canvas>
+  </div>
+
+  <!-- BPM -->
+  <div class="bpm-display">
+    <div class="heart-icon" id="heartIcon">&hearts;</div>
+    <div class="bpm-value" id="bpmValue">145</div>
+    <div class="bpm-label">BPM</div>
+  </div>
+
+  <!-- Timer -->
+  <div class="workout-timer" id="workoutTimer">
+    <div class="timer-label">ELAPSED</div>
+    <div class="timer-value" id="timerValue">00:00</div>
+  </div>
+
+  <!-- Dumbbell -->
+  <div class="dumbbell" id="dumbbell">
+    <svg width="8vh" height="8vh" viewBox="0 0 80 40">
+      <rect x="5" y="10" width="12" height="20" rx="2" fill="#555"/>
+      <rect x="17" y="5" width="8" height="30" rx="2" fill="#666"/>
+      <rect x="25" y="16" width="30" height="8" rx="1" fill="#777"/>
+      <rect x="55" y="5" width="8" height="30" rx="2" fill="#666"/>
+      <rect x="63" y="10" width="12" height="20" rx="2" fill="#555"/>
+    </svg>
+  </div>
+
+  <!-- Rep counter -->
+  <div class="rep-counter">
+    <div class="rep-label">REPS</div>
+    <div class="rep-value" id="repValue">0</div>
+    <div class="rep-total" id="repTotal">/ 12</div>
+  </div>
+
+  <!-- Progress ring -->
+  <div class="progress-ring-area">
+    <svg class="progress-ring-svg" viewBox="0 0 100 100">
+      <circle class="ring-bg" cx="50" cy="50" r="45"/>
+      <circle class="ring-fill" id="ringFill" cx="50" cy="50" r="45"/>
+    </svg>
+    <div class="ring-label">
+      DAILY GOAL
+      <span class="ring-pct" id="ringPct">0%</span>
+    </div>
+  </div>
+
+  <!-- Calorie counter -->
+  <div class="calorie-counter" id="calorieCounter">
+    <div class="cal-icon">\uD83D\uDD25</div>
+    <div class="cal-value" id="calValue">0</div>
+    <div class="cal-label">CALORIES</div>
+  </div>
+
+  <!-- Motivational text -->
+  <div class="motivation" id="motivation"></div>
+
+  <!-- Beast mode -->
+  <div class="beast-mode" id="beastMode">BEAST MODE</div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    beastModeText: 'BEAST MODE',
+    maxReps: 12,
+    targetCalories: 450,
+    dailyGoalPct: 78,
+    bpmRange: [130, 175],
+    motivationalTexts: [
+      'NO PAIN NO GAIN',
+      'PUSH YOUR LIMITS',
+      'STRONGER EVERY DAY',
+      'NEVER GIVE UP',
+      'ONE MORE REP'
+    ],
+    cycleDuration: 12000,
+    ecgColor: '#ff3333',
+    accentColor: '#ff6633'
+  };
+
+  document.getElementById('beastMode').textContent = CONFIG.beastModeText;
+  document.getElementById('repTotal').textContent = '/ ' + CONFIG.maxReps;
+
+  // ECG Canvas
+  const ecgCanvas = document.getElementById('ecgCanvas');
+  const ecgCtx = ecgCanvas.getContext('2d');
+  let ecgX = 0;
+  const ecgData = [];
+
+  function resizeEcg() {
+    ecgCanvas.width = ecgCanvas.offsetWidth * 2;
+    ecgCanvas.height = ecgCanvas.offsetHeight * 2;
+  }
+  resizeEcg();
+  window.addEventListener('resize', resizeEcg);
+
+  function generateEcgPoint(x) {
+    const period = 80;
+    const pos = x % period;
+    const h = ecgCanvas.height / 2;
+
+    if (pos > 25 && pos < 30) return h - h * 0.15;
+    if (pos > 30 && pos < 33) return h + h * 0.05;
+    if (pos > 33 && pos < 36) return h - h * 0.7;
+    if (pos > 36 && pos < 39) return h + h * 0.3;
+    if (pos > 39 && pos < 42) return h;
+    if (pos > 50 && pos < 58) return h - h * 0.12;
+
+    return h + (Math.random() - 0.5) * 2;
+  }
+
+  function drawEcg() {
+    const w = ecgCanvas.width;
+    const h = ecgCanvas.height;
+
+    ecgCtx.fillStyle = 'rgba(26,26,26,0.15)';
+    ecgCtx.fillRect(0, 0, w, h);
+
+    ecgData.push(generateEcgPoint(ecgX));
+    ecgX++;
+
+    const maxPoints = Math.floor(w / 2);
+    if (ecgData.length > maxPoints) ecgData.shift();
+
+    ecgCtx.strokeStyle = CONFIG.ecgColor;
+    ecgCtx.lineWidth = 2;
+    ecgCtx.shadowColor = CONFIG.ecgColor;
+    ecgCtx.shadowBlur = 8;
+    ecgCtx.beginPath();
+
+    for (let i = 0; i < ecgData.length; i++) {
+      const x = i * 2;
+      if (i === 0) ecgCtx.moveTo(x, ecgData[i]);
+      else ecgCtx.lineTo(x, ecgData[i]);
+    }
+    ecgCtx.stroke();
+    ecgCtx.shadowBlur = 0;
+  }
+
+  // BPM
+  let bpm = CONFIG.bpmRange[0];
+  let bpmDir = 1;
+  function updateBpm() {
+    bpm += bpmDir * (0.5 + Math.random());
+    if (bpm > CONFIG.bpmRange[1]) bpmDir = -1;
+    if (bpm < CONFIG.bpmRange[0]) bpmDir = 1;
+    document.getElementById('bpmValue').textContent = Math.round(bpm);
+    document.getElementById('heartIcon').style.animationDuration = (60 / bpm) + 's';
+  }
+
+  // Rep counter
+  let rep = 0;
+  let repInterval;
+  function startReps() {
+    rep = 0;
+    clearInterval(repInterval);
+    repInterval = setInterval(() => {
+      if (rep < CONFIG.maxReps) {
+        rep++;
+        document.getElementById('repValue').textContent = rep;
+
+        // Spawn embers at rep 8+
+        if (rep >= 8) spawnEmbers();
+      } else {
+        clearInterval(repInterval);
+      }
+    }, 700);
+  }
+
+  // Timer
+  let elapsed = 0;
+  function updateWorkoutTimer() {
+    elapsed++;
+    const min = Math.floor(elapsed / 60);
+    const sec = elapsed % 60;
+    document.getElementById('timerValue').textContent =
+      String(min).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
+
+  // Calorie animation
+  function animateCalories(target) {
+    const el = document.getElementById('calValue');
+    const duration = 3000;
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(ease * target);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Progress ring
+  function animateRing(pct) {
+    const ring = document.getElementById('ringFill');
+    const ringPctEl = document.getElementById('ringPct');
+    const circumference = 2 * Math.PI * 45;
+    const offset = circumference - (pct / 100) * circumference;
+    ring.style.strokeDashoffset = offset;
+
+    // Animate text
+    const duration = 2000;
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / duration, 1);
+      ringPctEl.textContent = Math.round(p * pct) + '%';
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Motivational text cycling
+  let motIdx = 0;
+  function cycleMotivation() {
+    const el = document.getElementById('motivation');
+    el.classList.remove('visible');
+    setTimeout(() => {
+      el.textContent = CONFIG.motivationalTexts[motIdx % CONFIG.motivationalTexts.length];
+      el.classList.add('visible');
+      motIdx++;
+    }, 300);
+    setTimeout(() => el.classList.remove('visible'), 2500);
+  }
+
+  // Embers
+  function spawnEmbers() {
+    for (let i = 0; i < 8; i++) {
+      const ember = document.createElement('div');
+      ember.className = 'ember';
+      ember.style.left = (40 + Math.random() * 20) + 'vw';
+      ember.style.bottom = '10vh';
+      ember.style.animation = `ember ${1.5 + Math.random()}s ease-out forwards`;
+      ember.style.animationDelay = (Math.random() * 0.5) + 's';
+      document.querySelector('.scene').appendChild(ember);
+      setTimeout(() => ember.remove(), 3000);
+    }
+  }
+
+  function runCycle() {
+    const workoutTimer = document.getElementById('workoutTimer');
+    const dumbbell = document.getElementById('dumbbell');
+    const calorieCounter = document.getElementById('calorieCounter');
+    const beastMode = document.getElementById('beastMode');
+
+    // Reset
+    workoutTimer.classList.remove('visible');
+    dumbbell.classList.remove('visible', 'bouncing');
+    calorieCounter.classList.remove('visible');
+    beastMode.classList.remove('visible');
+    document.getElementById('repValue').textContent = '0';
+    document.getElementById('ringFill').style.strokeDashoffset = '283';
+    document.getElementById('ringPct').textContent = '0%';
+
+    // Sequence
+    setTimeout(() => workoutTimer.classList.add('visible'), 300);
+    setTimeout(() => { dumbbell.classList.add('visible'); }, 600);
+    setTimeout(() => { dumbbell.classList.add('bouncing'); }, 800);
+    setTimeout(() => { calorieCounter.classList.add('visible'); animateCalories(CONFIG.targetCalories); }, 1200);
+    setTimeout(() => { startReps(); }, 1800);
+    setTimeout(() => { animateRing(CONFIG.dailyGoalPct); }, 2500);
+    setTimeout(() => cycleMotivation(), 2000);
+    setTimeout(() => cycleMotivation(), 5000);
+    setTimeout(() => cycleMotivation(), 8000);
+
+    // Beast mode near end
+    setTimeout(() => beastMode.classList.add('visible'), 9000);
+    setTimeout(() => spawnEmbers(), 9200);
+
+    // Fade out
+    setTimeout(() => {
+      workoutTimer.classList.remove('visible');
+      dumbbell.classList.remove('visible', 'bouncing');
+      calorieCounter.classList.remove('visible');
+      beastMode.classList.remove('visible');
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  // Continuous updates
+  setInterval(updateBpm, 800);
+  setInterval(updateWorkoutTimer, 1000);
+
+  // ECG animation loop
+  function ecgLoop() {
+    drawEcg();
+    requestAnimationFrame(ecgLoop);
+  }
+  ecgLoop();
+
+  runCycle();
+</script>
+</body>
+</html>

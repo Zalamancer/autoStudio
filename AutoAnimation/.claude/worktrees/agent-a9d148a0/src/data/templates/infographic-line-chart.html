@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Line Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'User Growth',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  lineColor: '#3B82F6',
+  dotColor: '#60A5FA',
+  showDots: true,
+  showArea: false,
+  smooth: true,
+  data: [
+    { time: 'Jan', value: 1200 },
+    { time: 'Feb', value: 1800 },
+    { time: 'Mar', value: 2400 },
+    { time: 'Apr', value: 2100 },
+    { time: 'May', value: 3200 },
+    { time: 'Jun', value: 3800 },
+    { time: 'Jul', value: 4500 },
+    { time: 'Aug', value: 5200 },
+    { time: 'Sep', value: 4800 },
+    { time: 'Oct', value: 6100 },
+    { time: 'Nov', value: 7200 },
+    { time: 'Dec', value: 8400 }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function formatValue(v) {
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return v.toString();
+}
+
+function getPoint(i, area, data, maxVal) {
+  const n = data.length;
+  const x = area.x + (i / (n - 1)) * area.w;
+  const y = area.y + area.h - (data[i].value / maxVal) * area.h;
+  return { x, y };
+}
+
+function drawSmooth(points, progress) {
+  if (points.length < 2) return;
+  const totalLen = points.length - 1;
+  const drawTo = progress * totalLen;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 0; i < Math.min(Math.ceil(drawTo), totalLen); i++) {
+    const t = Math.min(drawTo - i, 1);
+    const p0 = points[Math.max(i - 1, 0)];
+    const p1 = points[i];
+    const p2 = points[Math.min(i + 1, points.length - 1)];
+    const p3 = points[Math.min(i + 2, points.length - 1)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    if (t >= 1) {
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    } else {
+      const ex = bezierPoint(p1.x, cp1x, cp2x, p2.x, t);
+      const ey = bezierPoint(p1.y, cp1y, cp2y, p2.y, t);
+      const ecx1 = p1.x + (cp1x - p1.x) * t;
+      const ecy1 = p1.y + (cp1y - p1.y) * t;
+      const mid1x = cp1x + (cp2x - cp1x) * t;
+      const mid1y = cp1y + (cp2y - cp1y) * t;
+      const ecx2 = ecx1 + (mid1x - ecx1) * t;
+      const ecy2 = ecy1 + (mid1y - ecy1) * t;
+      ctx.bezierCurveTo(ecx1, ecy1, ecx2, ecy2, ex, ey);
+    }
+  }
+}
+
+function bezierPoint(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+}
+
+function drawLinear(points, progress) {
+  if (points.length < 2) return;
+  const totalLen = points.length - 1;
+  const drawTo = progress * totalLen;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i <= Math.min(Math.ceil(drawTo), totalLen); i++) {
+    const t = Math.min(drawTo - (i - 1), 1);
+    const prev = points[i - 1];
+    const cur = points[i];
+    const x = prev.x + (cur.x - prev.x) * t;
+    const y = prev.y + (cur.y - prev.y) * t;
+    ctx.lineTo(x, y);
+  }
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+  const data = CONFIG.data;
+  const n = data.length;
+  const maxVal = Math.max(...data.map(d => d.value)) * 1.15;
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.12, y: H * 0.15, w: W * 0.82, h: H * 0.68 };
+
+  // Grid
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  ctx.fillStyle = T.text;
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) {
+    const y = area.y + (area.h / steps) * i;
+    ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+    const val = maxVal - (maxVal / steps) * i;
+    ctx.font = `${W * 0.016}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(formatValue(val), area.x - W * 0.012, y);
+  }
+
+  // X labels
+  ctx.fillStyle = T.text; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = `${W * 0.016}px system-ui`;
+  for (let i = 0; i < n; i++) {
+    const x = area.x + (i / (n - 1)) * area.w;
+    ctx.fillText(data[i].time, x, area.y + area.h + W * 0.012);
+  }
+
+  // Points
+  const points = data.map((_, i) => getPoint(i, area, data, maxVal));
+
+  // Area fill
+  if (CONFIG.showArea) {
+    ctx.save();
+    if (CONFIG.smooth) drawSmooth(points, ease);
+    else drawLinear(points, ease);
+    const lastIdx = Math.min(Math.ceil(ease * (n - 1)), n - 1);
+    const lastT = ease * (n - 1) - Math.floor(ease * (n - 1));
+    let lastX;
+    if (lastIdx < n - 1) {
+      lastX = points[Math.floor(ease * (n - 1))].x + (points[Math.ceil(ease * (n - 1))].x - points[Math.floor(ease * (n - 1))].x) * lastT;
+    } else {
+      lastX = points[n - 1].x;
+    }
+    ctx.lineTo(lastX, area.y + area.h);
+    ctx.lineTo(points[0].x, area.y + area.h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, area.y, 0, area.y + area.h);
+    grad.addColorStop(0, CONFIG.lineColor + '40');
+    grad.addColorStop(1, CONFIG.lineColor + '05');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Line
+  ctx.strokeStyle = CONFIG.lineColor;
+  ctx.lineWidth = W * 0.004;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.shadowColor = CONFIG.lineColor; ctx.shadowBlur = W * 0.006;
+  if (CONFIG.smooth) drawSmooth(points, ease);
+  else drawLinear(points, ease);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Dots
+  if (CONFIG.showDots) {
+    const visibleDots = Math.floor(ease * n);
+    for (let i = 0; i < visibleDots; i++) {
+      const p = points[i];
+      ctx.beginPath(); ctx.arc(p.x, p.y, W * 0.006, 0, Math.PI * 2);
+      ctx.fillStyle = T.bg; ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, W * 0.004, 0, Math.PI * 2);
+      ctx.fillStyle = CONFIG.dotColor; ctx.fill();
+    }
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

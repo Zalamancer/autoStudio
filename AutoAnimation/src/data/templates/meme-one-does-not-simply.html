@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; }
+.scene { width: 100%; height: 100%; position: relative; background: linear-gradient(180deg, #2d3436 0%, #636e72 50%, #2d3436 100%); display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+.vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%); z-index: 2; pointer-events: none; }
+.top-text { position: relative; z-index: 5; margin-top: 60px; font-size: 54px; color: white; text-align: center; text-transform: uppercase; text-shadow: 3px 3px 0 black, -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black; letter-spacing: 3px; line-height: 1.2; max-width: 900px; padding: 0 30px; opacity: 0; }
+.top-text.show { opacity: 1; transition: opacity 0.5s ease; }
+.character-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; z-index: 3; }
+.character-emoji { font-size: 180px; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5)); opacity: 0; transform: scale(0.8); }
+.character-emoji.show { opacity: 1; transform: scale(1); transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bottom-text { position: relative; z-index: 5; margin-bottom: 60px; font-size: 54px; color: white; text-align: center; text-transform: uppercase; text-shadow: 3px 3px 0 black, -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black; letter-spacing: 3px; line-height: 1.2; max-width: 900px; padding: 0 30px; opacity: 0; }
+.bottom-text.show { opacity: 1; transition: opacity 0.5s ease; }
+.dramatic-lines { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
+.d-line { position: absolute; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); width: 100%; opacity: 0; }
+.d-line.show { opacity: 1; animation: scan 3s linear infinite; }
+@keyframes scan { 0% { transform: translateY(-100vh); } 100% { transform: translateY(100vh); } }
+.finger-point { position: absolute; bottom: 35%; right: 15%; font-size: 60px; z-index: 4; opacity: 0; transform: rotate(-30deg); }
+.finger-point.show { opacity: 1; transition: opacity 0.4s ease; }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  topText: 'One does not simply',
+  bottomText: 'Walk into production without testing',
+  bgColor1: '#2d3436',
+  bgColor2: '#636e72',
+  textColor: '#ffffff',
+  characterEmoji: '\u{1F9D0}',
+  fontSize: 54,
+  animationSpeed: 500
+};
+</script>
+<div class="scene" id="scene">
+  <div class="vignette"></div>
+  <div class="dramatic-lines">
+    <div class="d-line" id="dl1" style="top:20%;animation-delay:0s"></div>
+    <div class="d-line" id="dl2" style="top:50%;animation-delay:1s"></div>
+    <div class="d-line" id="dl3" style="top:80%;animation-delay:2s"></div>
+  </div>
+  <div class="top-text" id="topText"></div>
+  <div class="character-area">
+    <span class="character-emoji" id="character"></span>
+    <span class="finger-point" id="finger">\u261D\uFE0F</span>
+  </div>
+  <div class="bottom-text" id="bottomText"></div>
+</div>
+<script>
+document.getElementById('topText').textContent = CONFIG.topText;
+document.getElementById('bottomText').textContent = CONFIG.bottomText;
+document.getElementById('character').textContent = CONFIG.characterEmoji;
+document.getElementById('topText').style.color = CONFIG.textColor;
+document.getElementById('bottomText').style.color = CONFIG.textColor;
+document.getElementById('topText').style.fontSize = CONFIG.fontSize + 'px';
+document.getElementById('bottomText').style.fontSize = CONFIG.fontSize + 'px';
+document.getElementById('scene').style.background = 'linear-gradient(180deg,' + CONFIG.bgColor1 + ' 0%,' + CONFIG.bgColor2 + ' 50%,' + CONFIG.bgColor1 + ' 100%)';
+
+var speed = CONFIG.animationSpeed;
+setTimeout(function() {
+  document.getElementById('topText').classList.add('show');
+  document.querySelectorAll('.d-line').forEach(function(l) { l.classList.add('show'); });
+}, speed);
+setTimeout(function() { document.getElementById('character').classList.add('show'); }, speed * 2);
+setTimeout(function() { document.getElementById('finger').classList.add('show'); }, speed * 3);
+setTimeout(function() { document.getElementById('bottomText').classList.add('show'); }, speed * 4);
+</script>
+</body>
+</html>

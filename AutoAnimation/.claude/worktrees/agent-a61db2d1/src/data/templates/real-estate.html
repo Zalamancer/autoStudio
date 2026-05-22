@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real Estate</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #ffffff;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #333;
+  }
+  .scene {
+    width: 100%; height: 100%;
+    position: relative;
+    background: #fafafa;
+  }
+
+  /* Floor plan canvas */
+  .plan-canvas {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80vw; height: 60vh;
+  }
+
+  /* SVG floor plan */
+  .floor-svg {
+    width: 100%; height: 100%;
+  }
+  .room-outline {
+    fill: none;
+    stroke: #333;
+    stroke-width: 2;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    transition: stroke-dashoffset 2s ease;
+  }
+  .room-outline.drawn { stroke-dashoffset: 0; }
+  .room-fill {
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .room-fill.visible { opacity: 1; }
+  .door {
+    fill: none;
+    stroke: #666;
+    stroke-width: 1.5;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .door.visible { opacity: 1; }
+
+  /* Room labels */
+  .room-label {
+    font-size: 1.2vh;
+    font-weight: 600;
+    fill: #555;
+    opacity: 0;
+    transition: opacity 0.6s;
+    text-anchor: middle;
+  }
+  .room-label.visible { opacity: 1; }
+
+  /* Dimension lines */
+  .dimension {
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .dimension.visible { opacity: 1; }
+  .dim-line {
+    stroke: #999;
+    stroke-width: 0.5;
+    stroke-dasharray: 3 2;
+  }
+  .dim-text {
+    font-size: 0.9vh;
+    fill: #888;
+    text-anchor: middle;
+  }
+
+  /* Furniture icons */
+  .furniture {
+    opacity: 0;
+    transform-origin: center;
+    transition: opacity 0.5s, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: scale(0);
+  }
+  .furniture.visible {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  /* Info panel */
+  .info-panel {
+    position: absolute;
+    top: 3vh; left: 4vw;
+    opacity: 0;
+    transition: opacity 0.6s;
+  }
+  .info-panel.visible { opacity: 1; }
+  .info-title {
+    font-size: 1vh;
+    color: #999;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.3vh;
+  }
+  .info-value {
+    font-size: 2.5vh;
+    font-weight: 800;
+    color: #333;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Price tag */
+  .price-tag {
+    position: absolute;
+    top: 3vh; right: 4vw;
+    background: #2962ff;
+    color: #fff;
+    padding: 1vh 2.5vw;
+    border-radius: 0.5vh;
+    font-size: 2.5vh;
+    font-weight: 800;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.5s, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .price-tag.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .price-label {
+    font-size: 1vh;
+    font-weight: 400;
+    opacity: 0.8;
+    letter-spacing: 0.1em;
+  }
+
+  /* For Sale banner */
+  .for-sale {
+    position: absolute;
+    bottom: 5vh;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: #e53935;
+    color: #fff;
+    padding: 1vh 4vw;
+    font-size: 2.5vh;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    border-radius: 0.5vh;
+    opacity: 0;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.5s;
+    white-space: nowrap;
+  }
+  .for-sale.visible {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+
+  /* Sqft counter */
+  .sqft-counter {
+    position: absolute;
+    bottom: 13vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .sqft-counter.visible { opacity: 1; }
+  .sqft-value {
+    font-size: 3vh;
+    font-weight: 800;
+    color: #333;
+    font-variant-numeric: tabular-nums;
+  }
+  .sqft-label {
+    font-size: 1vh;
+    color: #999;
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="plan-canvas">
+    <svg class="floor-svg" viewBox="0 0 600 400" id="floorPlan">
+      <!-- Rooms -->
+      <!-- Living Room -->
+      <rect class="room-fill" id="fillLiving" x="20" y="20" width="250" height="180" fill="rgba(200,220,255,0.15)"/>
+      <rect class="room-outline" id="outlineLiving" x="20" y="20" width="250" height="180"/>
+
+      <!-- Kitchen -->
+      <rect class="room-fill" id="fillKitchen" x="270" y="20" width="160" height="180" fill="rgba(255,240,200,0.2)"/>
+      <rect class="room-outline" id="outlineKitchen" x="270" y="20" width="160" height="180"/>
+
+      <!-- Bedroom 1 -->
+      <rect class="room-fill" id="fillBed1" x="20" y="200" width="180" height="180" fill="rgba(200,200,255,0.15)"/>
+      <rect class="room-outline" id="outlineBed1" x="20" y="200" width="180" height="180"/>
+
+      <!-- Bedroom 2 -->
+      <rect class="room-fill" id="fillBed2" x="430" y="20" width="150" height="180" fill="rgba(200,200,255,0.15)"/>
+      <rect class="room-outline" id="outlineBed2" x="430" y="20" width="150" height="180"/>
+
+      <!-- Bathroom -->
+      <rect class="room-fill" id="fillBath" x="200" y="200" width="130" height="120" fill="rgba(200,255,230,0.15)"/>
+      <rect class="room-outline" id="outlineBath" x="200" y="200" width="130" height="120"/>
+
+      <!-- Hallway -->
+      <rect class="room-fill" id="fillHall" x="200" y="320" width="380" height="60" fill="rgba(240,240,240,0.3)"/>
+      <rect class="room-outline" id="outlineHall" x="200" y="320" width="380" height="60"/>
+
+      <!-- Balcony -->
+      <rect class="room-fill" id="fillBalcony" x="430" y="200" width="150" height="120" fill="rgba(200,240,200,0.15)"/>
+      <rect class="room-outline" id="outlineBalcony" x="430" y="200" width="150" height="120" stroke-dasharray="6 4"/>
+
+      <!-- Doors (arcs) -->
+      <path class="door" id="door1" d="M250,100 A20,20 0 0,1 270,100" />
+      <path class="door" id="door2" d="M100,200 A20,20 0 0,0 100,180" />
+      <path class="door" id="door3" d="M250,250 A20,20 0 0,1 270,250" />
+      <path class="door" id="door4" d="M430,100 A20,20 0 0,0 430,80" />
+      <path class="door" id="door5" d="M480,200 A20,20 0 0,1 480,220" />
+
+      <!-- Room Labels -->
+      <text class="room-label" id="labelLiving" x="145" y="115">LIVING ROOM</text>
+      <text class="room-label" id="labelKitchen" x="350" y="115">KITCHEN</text>
+      <text class="room-label" id="labelBed1" x="110" y="295">BEDROOM 1</text>
+      <text class="room-label" id="labelBed2" x="505" y="115">BEDROOM 2</text>
+      <text class="room-label" id="labelBath" x="265" y="265">BATHROOM</text>
+      <text class="room-label" id="labelHall" x="390" y="355">HALLWAY</text>
+      <text class="room-label" id="labelBalcony" x="505" y="265">BALCONY</text>
+
+      <!-- Furniture -->
+      <!-- Living room: sofa -->
+      <rect class="furniture" id="fSofa" x="40" y="130" width="80" height="30" rx="5" fill="#888"/>
+      <!-- Living room: TV -->
+      <rect class="furniture" id="fTv" x="100" y="30" width="60" height="5" rx="2" fill="#555"/>
+      <!-- Kitchen: counter -->
+      <rect class="furniture" id="fCounter" x="280" y="30" width="10" height="120" rx="2" fill="#b8996e"/>
+      <!-- Kitchen: sink -->
+      <circle class="furniture" id="fSink" cx="380" cy="50" r="10" fill="none" stroke="#888" stroke-width="2"/>
+      <!-- Bedroom 1: bed -->
+      <rect class="furniture" id="fBed1" x="50" y="240" width="60" height="80" rx="4" fill="#aaa"/>
+      <!-- Bedroom 2: bed -->
+      <rect class="furniture" id="fBed2" x="460" y="50" width="60" height="80" rx="4" fill="#aaa"/>
+      <!-- Bathroom: tub -->
+      <ellipse class="furniture" id="fTub" cx="265" cy="240" rx="30" ry="15" fill="none" stroke="#888" stroke-width="2"/>
+
+      <!-- Dimension lines -->
+      <g class="dimension" id="dim1">
+        <line class="dim-line" x1="20" y1="10" x2="270" y2="10"/>
+        <text class="dim-text" x="145" y="8">7.2m</text>
+      </g>
+      <g class="dimension" id="dim2">
+        <line class="dim-line" x1="10" y1="20" x2="10" y2="200"/>
+        <text class="dim-text" x="8" y="115" transform="rotate(-90 8 115)">5.1m</text>
+      </g>
+      <g class="dimension" id="dim3">
+        <line class="dim-line" x1="270" y1="10" x2="430" y2="10"/>
+        <text class="dim-text" x="350" y="8">4.6m</text>
+      </g>
+      <g class="dimension" id="dim4">
+        <line class="dim-line" x1="20" y1="390" x2="200" y2="390"/>
+        <text class="dim-text" x="110" y="398">5.2m</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Info panel -->
+  <div class="info-panel" id="infoPanel">
+    <div class="info-title">PROPERTY ID</div>
+    <div class="info-value" id="propertyId">PR-24-0847</div>
+  </div>
+
+  <!-- Price tag -->
+  <div class="price-tag" id="priceTag">
+    <div class="price-label">ASKING PRICE</div>
+    <div id="priceValue">$485,000</div>
+  </div>
+
+  <!-- Sqft counter -->
+  <div class="sqft-counter" id="sqftCounter">
+    <div class="sqft-value" id="sqftValue">0</div>
+    <div class="sqft-label">SQUARE FEET</div>
+  </div>
+
+  <!-- For Sale banner -->
+  <div class="for-sale" id="forSale">FOR SALE</div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    propertyId: 'PR-24-0847',
+    price: '$485,000',
+    totalSqft: 1850,
+    forSaleText: 'FOR SALE',
+    rooms: [
+      { outline: 'outlineLiving', fill: 'fillLiving', label: 'labelLiving' },
+      { outline: 'outlineKitchen', fill: 'fillKitchen', label: 'labelKitchen' },
+      { outline: 'outlineBed1', fill: 'fillBed1', label: 'labelBed1' },
+      { outline: 'outlineBed2', fill: 'fillBed2', label: 'labelBed2' },
+      { outline: 'outlineBath', fill: 'fillBath', label: 'labelBath' },
+      { outline: 'outlineHall', fill: 'fillHall', label: 'labelHall' },
+      { outline: 'outlineBalcony', fill: 'fillBalcony', label: 'labelBalcony' }
+    ],
+    doors: ['door1', 'door2', 'door3', 'door4', 'door5'],
+    furniture: ['fSofa', 'fTv', 'fCounter', 'fSink', 'fBed1', 'fBed2', 'fTub'],
+    dimensions: ['dim1', 'dim2', 'dim3', 'dim4'],
+    cycleDuration: 14000
+  };
+
+  document.getElementById('propertyId').textContent = CONFIG.propertyId;
+  document.getElementById('priceValue').textContent = CONFIG.price;
+  document.getElementById('forSale').textContent = CONFIG.forSaleText;
+
+  function animateSqft(target) {
+    const el = document.getElementById('sqftValue');
+    const duration = 2000;
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(ease * target).toLocaleString();
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function runCycle() {
+    const infoPanel = document.getElementById('infoPanel');
+    const priceTag = document.getElementById('priceTag');
+    const sqftCounter = document.getElementById('sqftCounter');
+    const forSale = document.getElementById('forSale');
+
+    // Reset everything
+    CONFIG.rooms.forEach(r => {
+      document.getElementById(r.outline).classList.remove('drawn');
+      document.getElementById(r.fill).classList.remove('visible');
+      document.getElementById(r.label).classList.remove('visible');
+    });
+    CONFIG.doors.forEach(d => document.getElementById(d).classList.remove('visible'));
+    CONFIG.furniture.forEach(f => document.getElementById(f).classList.remove('visible'));
+    CONFIG.dimensions.forEach(d => document.getElementById(d).classList.remove('visible'));
+    infoPanel.classList.remove('visible');
+    priceTag.classList.remove('visible');
+    sqftCounter.classList.remove('visible');
+    forSale.classList.remove('visible');
+    document.getElementById('sqftValue').textContent = '0';
+
+    // Sequence: Draw room outlines
+    CONFIG.rooms.forEach((r, i) => {
+      setTimeout(() => {
+        document.getElementById(r.outline).classList.add('drawn');
+      }, 300 + i * 350);
+    });
+
+    // Fill rooms with color
+    setTimeout(() => {
+      CONFIG.rooms.forEach((r, i) => {
+        setTimeout(() => {
+          document.getElementById(r.fill).classList.add('visible');
+        }, i * 150);
+      });
+    }, 3000);
+
+    // Doors
+    setTimeout(() => {
+      CONFIG.doors.forEach((d, i) => {
+        setTimeout(() => document.getElementById(d).classList.add('visible'), i * 150);
+      });
+    }, 4000);
+
+    // Labels
+    setTimeout(() => {
+      CONFIG.rooms.forEach((r, i) => {
+        setTimeout(() => document.getElementById(r.label).classList.add('visible'), i * 200);
+      });
+    }, 4500);
+
+    // Furniture
+    setTimeout(() => {
+      CONFIG.furniture.forEach((f, i) => {
+        setTimeout(() => document.getElementById(f).classList.add('visible'), i * 200);
+      });
+    }, 5500);
+
+    // Dimensions
+    setTimeout(() => {
+      CONFIG.dimensions.forEach((d, i) => {
+        setTimeout(() => document.getElementById(d).classList.add('visible'), i * 250);
+      });
+    }, 6500);
+
+    // Info panel
+    setTimeout(() => infoPanel.classList.add('visible'), 7000);
+
+    // Price tag
+    setTimeout(() => priceTag.classList.add('visible'), 7500);
+
+    // Sqft
+    setTimeout(() => {
+      sqftCounter.classList.add('visible');
+      animateSqft(CONFIG.totalSqft);
+    }, 8000);
+
+    // For Sale
+    setTimeout(() => forSale.classList.add('visible'), 9500);
+
+    // Fade out
+    setTimeout(() => {
+      CONFIG.rooms.forEach(r => {
+        document.getElementById(r.fill).classList.remove('visible');
+        document.getElementById(r.label).classList.remove('visible');
+      });
+      CONFIG.furniture.forEach(f => document.getElementById(f).classList.remove('visible'));
+      CONFIG.dimensions.forEach(d => document.getElementById(d).classList.remove('visible'));
+      infoPanel.classList.remove('visible');
+      priceTag.classList.remove('visible');
+      sqftCounter.classList.remove('visible');
+      forSale.classList.remove('visible');
+    }, CONFIG.cycleDuration - 1800);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

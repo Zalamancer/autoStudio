@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Film Camera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1510; font-family: 'Courier New', monospace; }
+  canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  .overlay { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+  .vignette {
+    position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+  }
+  .scanlines {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0.08;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
+  }
+  .hud { position: fixed; z-index: 4; pointer-events: none; }
+  .rec-indicator {
+    top: 5%; left: 5%; display: flex; align-items: center; gap: 8px;
+    color: #ff3333; font-size: 2vh; font-weight: bold; letter-spacing: 2px;
+  }
+  .rec-dot {
+    width: 12px; height: 12px; background: #ff3333; border-radius: 50%;
+    animation: recBlink 1s infinite;
+  }
+  @keyframes recBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+  .timecode {
+    top: 5%; right: 5%; color: rgba(255,255,255,0.7); font-size: 1.8vh;
+    font-variant-numeric: tabular-nums;
+  }
+  .film-border-left, .film-border-right {
+    position: fixed; top: 0; width: 4%; height: 100%; z-index: 3;
+    background: #111; pointer-events: none;
+  }
+  .film-border-left { left: 0; }
+  .film-border-right { right: 0; }
+  .sprocket {
+    position: absolute; width: 60%; height: 12px; background: #222;
+    left: 20%; border-radius: 2px;
+  }
+  .focus-brackets {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 40%; height: 30%; z-index: 4; pointer-events: none;
+  }
+  .bracket { position: absolute; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.4); }
+  .bracket.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+  .bracket.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+  .bracket.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+  .bracket.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+  .date-stamp {
+    bottom: 5%; right: 5%; color: rgba(255,160,50,0.7); font-size: 1.6vh;
+    letter-spacing: 1px;
+  }
+  .sepia { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: rgba(180,140,80,0.06); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="sepia"></div>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+<div class="film-border-left" id="filmL"></div>
+<div class="film-border-right" id="filmR"></div>
+<div class="focus-brackets">
+  <div class="bracket tl"></div><div class="bracket tr"></div>
+  <div class="bracket bl"></div><div class="bracket br"></div>
+</div>
+<div class="hud rec-indicator"><div class="rec-dot"></div><span>REC</span></div>
+<div class="hud timecode" id="tc">00:00:00:00</div>
+<div class="hud date-stamp" id="dateStamp">02.20.2026</div>
+
+<script>
+const CONFIG = {
+  grainIntensity: 25,
+  scratchFrequency: 0.02,
+  dustCount: 15,
+  flickerSpeed: 0.05,
+  warmthTint: 'rgba(255,200,120,0.03)',
+  sprocketCount: 12,
+};
+
+// Sprockets
+function addSprockets(el) {
+  for (let i = 0; i < CONFIG.sprocketCount; i++) {
+    const s = document.createElement('div');
+    s.className = 'sprocket';
+    s.style.top = (i * (100 / CONFIG.sprocketCount) + 2) + '%';
+    el.appendChild(s);
+  }
+}
+addSprockets(document.getElementById('filmL'));
+addSprockets(document.getElementById('filmR'));
+
+// Canvas for grain, scratches, dust
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, frame = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Timecode
+const tcEl = document.getElementById('tc');
+let startTime = performance.now();
+function updateTC() {
+  const elapsed = performance.now() - startTime;
+  const totalFrames = Math.floor(elapsed / (1000 / 24));
+  const ff = totalFrames % 24;
+  const ss = Math.floor(totalFrames / 24) % 60;
+  const mm = Math.floor(totalFrames / 24 / 60) % 60;
+  const hh = Math.floor(totalFrames / 24 / 3600);
+  tcEl.textContent = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}:${String(ff).padStart(2,'0')}`;
+}
+
+// Dust particles
+const dust = [];
+for (let i = 0; i < CONFIG.dustCount; i++) {
+  dust.push({
+    x: Math.random() * 2000, y: Math.random() * 2000,
+    size: 1 + Math.random() * 3, opacity: Math.random() * 0.5,
+    vx: (Math.random() - 0.5) * 0.3, vy: Math.random() * 0.2 + 0.1,
+    life: Math.random(), decay: 0.001 + Math.random() * 0.002,
+  });
+}
+
+// Lens flare
+let flareX = W * 0.7, flareY = H * 0.3, flareAlpha = 0;
+function updateFlare() {
+  if (Math.random() < 0.003 && flareAlpha === 0) {
+    flareX = W * 0.3 + Math.random() * W * 0.4;
+    flareY = H * 0.2 + Math.random() * H * 0.3;
+    flareAlpha = 0.3;
+  }
+  if (flareAlpha > 0) flareAlpha *= 0.97;
+  if (flareAlpha < 0.01) flareAlpha = 0;
+}
+
+function animate() {
+  frame++;
+  ctx.clearRect(0, 0, W, H);
+
+  // Warm base
+  ctx.fillStyle = CONFIG.warmthTint;
+  ctx.fillRect(0, 0, W, H);
+
+  // Film grain
+  const imageData = ctx.createImageData(W, H);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 16) {
+    const v = (Math.random() - 0.5) * CONFIG.grainIntensity;
+    data[i] = data[i + 1] = data[i + 2] = 128 + v;
+    data[i + 3] = Math.abs(v) * 1.5;
+  }
+  ctx.putImageData(imageData, 0, 0);
+
+  // Scratches
+  if (Math.random() < CONFIG.scratchFrequency) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,255,255,${0.05 + Math.random() * 0.1})`;
+    ctx.lineWidth = 0.5 + Math.random();
+    const sx = Math.random() * W;
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx + (Math.random() - 0.5) * 10, H);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Dust
+  dust.forEach(d => {
+    d.x += d.vx; d.y += d.vy;
+    d.life -= d.decay;
+    if (d.life <= 0 || d.y > H) {
+      d.x = Math.random() * W; d.y = -5;
+      d.life = 0.5 + Math.random() * 0.5;
+    }
+    const dx = d.x % W; const dy = d.y % H;
+    ctx.beginPath();
+    ctx.arc(dx, dy, d.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,180,150,${d.opacity * d.life})`;
+    ctx.fill();
+  });
+
+  // Lens flare
+  updateFlare();
+  if (flareAlpha > 0) {
+    const fg = ctx.createRadialGradient(flareX, flareY, 0, flareX, flareY, 150);
+    fg.addColorStop(0, `rgba(255,220,150,${flareAlpha})`);
+    fg.addColorStop(0.3, `rgba(255,180,80,${flareAlpha * 0.5})`);
+    fg.addColorStop(1, 'rgba(255,180,80,0)');
+    ctx.fillStyle = fg;
+    ctx.fillRect(flareX - 150, flareY - 150, 300, 300);
+  }
+
+  // Brightness flicker
+  const flicker = 0.02 * Math.sin(frame * CONFIG.flickerSpeed) + 0.01 * Math.sin(frame * 0.13);
+  if (Math.abs(flicker) > 0.005) {
+    ctx.fillStyle = `rgba(${flicker > 0 ? '255,255,255' : '0,0,0'},${Math.abs(flicker)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  updateTC();
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

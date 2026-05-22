@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Racing Speedometer Gauge</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', 'Courier New', monospace, sans-serif;
+  }
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+<canvas id="gauge"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  maxSpeed: 280,
+  unit: 'km/h',
+  gaugeColor: '#00e5ff',
+  needleColor: '#ff3d00',
+  bgColor: '#0a0a0f',
+  redlineStart: 220,
+  cycleDuration: 8
+};
+
+const canvas = document.getElementById('gauge');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth * window.devicePixelRatio;
+  canvas.height = window.innerHeight * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+resize();
+window.addEventListener('resize', resize);
+
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+const CX = () => W() / 2;
+const CY = () => H() * 0.52;
+const R = () => Math.min(W(), H()) * 0.36;
+
+// Speed lines particles
+const speedLines = [];
+for (let i = 0; i < 60; i++) {
+  speedLines.push({
+    angle: Math.random() * Math.PI * 2,
+    dist: Math.random() * 0.3 + 0.7,
+    speed: Math.random() * 2 + 1,
+    length: Math.random() * 30 + 15,
+    alpha: Math.random() * 0.3 + 0.1
+  });
+}
+
+// Easing
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function drawGauge(currentSpeed, rpm, gear, t) {
+  const w = W(), h = H(), cx = CX(), cy = CY(), r = R();
+
+  // Background
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, w, h);
+
+  // Subtle radial glow behind gauge
+  const bgGlow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 1.5);
+  bgGlow.addColorStop(0, 'rgba(0,229,255,0.03)');
+  bgGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = bgGlow;
+  ctx.fillRect(0, 0, w, h);
+
+  // Speed lines emanating outward based on speed
+  const speedRatio = currentSpeed / CONFIG.maxSpeed;
+  if (speedRatio > 0.1) {
+    speedLines.forEach(sl => {
+      const effectAlpha = sl.alpha * speedRatio * 1.5;
+      const dist = r * sl.dist + (t * sl.speed * speedRatio * 3) % (r * 0.8);
+      const x1 = cx + Math.cos(sl.angle) * dist;
+      const y1 = cy + Math.sin(sl.angle) * dist;
+      const x2 = cx + Math.cos(sl.angle) * (dist + sl.length * speedRatio);
+      const y2 = cy + Math.sin(sl.angle) * (dist + sl.length * speedRatio);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = `rgba(255,255,255,${effectAlpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+  }
+
+  // Gauge arc
+  const startAngle = Math.PI * 0.75;
+  const endAngle = Math.PI * 2.25;
+  const totalArc = endAngle - startAngle;
+
+  // Outer ring (background)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle, false);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = r * 0.07;
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+
+  // Active arc
+  const speedAngle = startAngle + (currentSpeed / CONFIG.maxSpeed) * totalArc;
+  const redlineAngle = startAngle + (CONFIG.redlineStart / CONFIG.maxSpeed) * totalArc;
+
+  // Normal zone
+  const activeEnd = Math.min(speedAngle, redlineAngle);
+  if (activeEnd > startAngle) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, activeEnd, false);
+    const gc = hexToRgb(CONFIG.gaugeColor);
+    const grad = ctx.createConicGradient(startAngle, cx, cy);
+    ctx.strokeStyle = CONFIG.gaugeColor;
+    ctx.lineWidth = r * 0.07;
+    ctx.lineCap = 'butt';
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = CONFIG.gaugeColor;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Redline zone
+  if (speedAngle > redlineAngle) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, redlineAngle, speedAngle, false);
+    ctx.strokeStyle = '#ff1744';
+    ctx.lineWidth = r * 0.07;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#ff1744';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Tick marks
+  const majorTicks = 8;
+  for (let i = 0; i <= majorTicks; i++) {
+    const tickAngle = startAngle + (i / majorTicks) * totalArc;
+    const tickSpeed = Math.round((i / majorTicks) * CONFIG.maxSpeed);
+    const isRedline = tickSpeed >= CONFIG.redlineStart;
+    const innerR = r - r * 0.14;
+    const outerR = r - r * 0.04;
+    const labelR = r - r * 0.24;
+
+    // Major tick
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(tickAngle) * innerR, cy + Math.sin(tickAngle) * innerR);
+    ctx.lineTo(cx + Math.cos(tickAngle) * outerR, cy + Math.sin(tickAngle) * outerR);
+    ctx.strokeStyle = isRedline ? '#ff1744' : 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = isRedline ? '#ff1744' : 'rgba(255,255,255,0.5)';
+    ctx.font = `${Math.max(10, r * 0.1)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tickSpeed.toString(), cx + Math.cos(tickAngle) * labelR, cy + Math.sin(tickAngle) * labelR);
+
+    // Minor ticks
+    if (i < majorTicks) {
+      for (let j = 1; j < 4; j++) {
+        const minorAngle = tickAngle + (j / 4) * (totalArc / majorTicks);
+        const minorInner = r - r * 0.1;
+        const minorOuter = r - r * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(minorAngle) * minorInner, cy + Math.sin(minorAngle) * minorInner);
+        ctx.lineTo(cx + Math.cos(minorAngle) * minorOuter, cy + Math.sin(minorAngle) * minorOuter);
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Needle
+  const needleAngle = speedAngle;
+  const needleLen = r * 0.82;
+  const needleTail = r * 0.15;
+  const needleWidth = r * 0.025;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(needleAngle);
+
+  // Needle shadow
+  ctx.beginPath();
+  ctx.moveTo(needleLen, 0);
+  ctx.lineTo(-needleTail, -needleWidth);
+  ctx.lineTo(-needleTail, needleWidth);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fill();
+
+  // Needle body
+  ctx.beginPath();
+  ctx.moveTo(needleLen, 0);
+  ctx.lineTo(-needleTail, -needleWidth * 0.8);
+  ctx.lineTo(-needleTail, needleWidth * 0.8);
+  ctx.closePath();
+  const ng = ctx.createLinearGradient(-needleTail, 0, needleLen, 0);
+  ng.addColorStop(0, '#444');
+  ng.addColorStop(0.4, CONFIG.needleColor);
+  ng.addColorStop(1, CONFIG.needleColor);
+  ctx.fillStyle = ng;
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = CONFIG.needleColor;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
+
+  // Center cap
+  const capGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.06);
+  capGrad.addColorStop(0, '#555');
+  capGrad.addColorStop(0.6, '#333');
+  capGrad.addColorStop(1, '#111');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.06, 0, Math.PI * 2);
+  ctx.fillStyle = capGrad;
+  ctx.fill();
+
+  // Digital speed readout
+  const speedStr = Math.round(currentSpeed).toString();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.max(20, r * 0.3)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = CONFIG.gaugeColor;
+  ctx.fillText(speedStr, cx, cy + r * 0.35);
+  ctx.shadowBlur = 0;
+
+  // Unit label
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = `${Math.max(10, r * 0.09)}px monospace`;
+  ctx.fillText(CONFIG.unit, cx, cy + r * 0.5);
+
+  // Gear indicator
+  ctx.fillStyle = CONFIG.gaugeColor;
+  ctx.font = `bold ${Math.max(16, r * 0.15)}px monospace`;
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = CONFIG.gaugeColor;
+  ctx.fillText(gear, cx + r * 0.55, cy + r * 0.35);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = `${Math.max(8, r * 0.06)}px monospace`;
+  ctx.fillText('GEAR', cx + r * 0.55, cy + r * 0.45);
+
+  // RPM mini gauge
+  const rpmX = cx - r * 0.55;
+  const rpmY = cy + r * 0.35;
+  const rpmR = r * 0.18;
+  const rpmStart = Math.PI * 0.8;
+  const rpmEnd = Math.PI * 2.2;
+  const rpmArc = rpmEnd - rpmStart;
+
+  ctx.beginPath();
+  ctx.arc(rpmX, rpmY, rpmR, rpmStart, rpmEnd, false);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = rpmR * 0.15;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  const rpmFrac = rpm / 8;
+  const rpmActiveEnd = rpmStart + rpmFrac * rpmArc;
+  ctx.beginPath();
+  ctx.arc(rpmX, rpmY, rpmR, rpmStart, rpmActiveEnd, false);
+  ctx.strokeStyle = rpmFrac > 0.8 ? '#ff1744' : CONFIG.gaugeColor;
+  ctx.lineWidth = rpmR * 0.15;
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = rpmFrac > 0.8 ? '#ff1744' : CONFIG.gaugeColor;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(10, rpmR * 0.5)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(rpm.toFixed(1), rpmX, rpmY + rpmR * 0.15);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = `${Math.max(7, rpmR * 0.28)}px monospace`;
+  ctx.fillText('RPM x1000', rpmX, rpmY + rpmR * 0.5);
+}
+
+// Animation cycle
+const cycleDurationMs = CONFIG.cycleDuration * 1000;
+let cycleStart = 0;
+
+// Speed curve: accelerate up, hold, decelerate
+function getSpeedAtTime(t) {
+  // t is 0..1 through the cycle
+  const accelEnd = 0.45;
+  const holdEnd = 0.6;
+  const decelEnd = 0.85;
+
+  if (t < accelEnd) {
+    const p = t / accelEnd;
+    return easeInOutCubic(p) * CONFIG.maxSpeed;
+  } else if (t < holdEnd) {
+    return CONFIG.maxSpeed * (0.92 + Math.sin(t * 40) * 0.03);
+  } else if (t < decelEnd) {
+    const p = (t - holdEnd) / (decelEnd - holdEnd);
+    return CONFIG.maxSpeed * (1 - easeInOutCubic(p)) * 0.95;
+  } else {
+    const p = (t - decelEnd) / (1 - decelEnd);
+    return CONFIG.maxSpeed * 0.05 * (1 - p);
+  }
+}
+
+function getGear(speed) {
+  const ms = CONFIG.maxSpeed;
+  if (speed < ms * 0.08) return 'N';
+  if (speed < ms * 0.15) return '1';
+  if (speed < ms * 0.28) return '2';
+  if (speed < ms * 0.42) return '3';
+  if (speed < ms * 0.58) return '4';
+  if (speed < ms * 0.75) return '5';
+  return '6';
+}
+
+function getRpm(speed) {
+  const gearRanges = [
+    [0, CONFIG.maxSpeed * 0.15],
+    [CONFIG.maxSpeed * 0.08, CONFIG.maxSpeed * 0.28],
+    [CONFIG.maxSpeed * 0.2, CONFIG.maxSpeed * 0.42],
+    [CONFIG.maxSpeed * 0.35, CONFIG.maxSpeed * 0.58],
+    [CONFIG.maxSpeed * 0.5, CONFIG.maxSpeed * 0.75],
+    [CONFIG.maxSpeed * 0.65, CONFIG.maxSpeed]
+  ];
+  let gearIdx = 0;
+  if (speed >= CONFIG.maxSpeed * 0.65) gearIdx = 5;
+  else if (speed >= CONFIG.maxSpeed * 0.5) gearIdx = 4;
+  else if (speed >= CONFIG.maxSpeed * 0.35) gearIdx = 3;
+  else if (speed >= CONFIG.maxSpeed * 0.2) gearIdx = 2;
+  else if (speed >= CONFIG.maxSpeed * 0.08) gearIdx = 1;
+
+  const [lo, hi] = gearRanges[gearIdx];
+  const frac = Math.max(0, Math.min(1, (speed - lo) / (hi - lo)));
+  return 1.5 + frac * 6.5;
+}
+
+function animate(timestamp) {
+  if (!cycleStart) cycleStart = timestamp;
+  const elapsed = timestamp - cycleStart;
+  const t = (elapsed % cycleDurationMs) / cycleDurationMs;
+
+  const speed = getSpeedAtTime(t);
+  const gear = getGear(speed);
+  const rpm = getRpm(speed);
+
+  drawGauge(speed, rpm, gear, elapsed * 0.01);
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Serif Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #050505;
+    color: #e0e0e0;
+  }
+
+  canvas#grid {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  .content {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+  }
+
+  .glass-panel {
+    position: absolute;
+    background: rgba(16, 185, 129, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    border-radius: 8px;
+    padding: 20px;
+    overflow: hidden;
+  }
+
+  .glass-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.06) 0%,
+      transparent 50%,
+      rgba(16, 185, 129, 0.03) 100%
+    );
+    pointer-events: none;
+  }
+
+  .serif-heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 48px;
+    font-weight: 400;
+    color: #f0f0f0;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+  }
+
+  .serif-heading .accent {
+    color: #10B981;
+  }
+
+  .mono-data {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #10B981;
+    letter-spacing: 1px;
+    line-height: 1.8;
+  }
+
+  .serif-label {
+    font-family: Georgia, serif;
+    font-size: 12px;
+    font-style: italic;
+    color: rgba(16, 185, 129, 0.6);
+    letter-spacing: 1px;
+  }
+
+  .data-stream {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    color: rgba(16, 185, 129, 0.2);
+    line-height: 1.4;
+    overflow: hidden;
+    writing-mode: vertical-lr;
+    white-space: nowrap;
+  }
+
+  .readout-panel {
+    position: absolute;
+    border-left: 2px solid rgba(16, 185, 129, 0.3);
+    padding-left: 12px;
+  }
+
+  .readout-value {
+    font-family: 'Courier New', monospace;
+    font-size: 28px;
+    font-weight: bold;
+    color: #10B981;
+    line-height: 1;
+  }
+
+  .readout-label {
+    font-family: Georgia, serif;
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 4px;
+  }
+
+  .scan-line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.15), transparent);
+    animation: scanDown 4s linear infinite;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  @keyframes scanDown {
+    0% { top: -1px; }
+    100% { top: 100%; }
+  }
+
+  .elegant-line {
+    position: absolute;
+    height: 1px;
+    background: rgba(16, 185, 129, 0.2);
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes streamScroll {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="grid"></canvas>
+<div class="scan-line"></div>
+
+<div class="content" id="content">
+  <!-- Main heading panel -->
+  <div class="glass-panel" style="top:8%;left:8%;width:55%;height:auto;animation:fadeInUp 1s ease forwards;">
+    <div class="serif-label">System Interface</div>
+    <div class="serif-heading" style="margin-top:8px;">
+      Digital <span class="accent">Elegance</span>
+    </div>
+    <div class="mono-data" style="margin-top:12px;">
+      SYS.VERSION: 4.2.1 // PROTOCOL: ACTIVE // STATUS: NOMINAL
+    </div>
+  </div>
+
+  <!-- Data readout panels -->
+  <div class="readout-panel" id="readout1" style="right:8%;top:12%;">
+    <div class="readout-value" id="rv1">0.847</div>
+    <div class="readout-label">Signal Strength</div>
+  </div>
+
+  <div class="readout-panel" id="readout2" style="right:8%;top:28%;">
+    <div class="readout-value" id="rv2">99.2%</div>
+    <div class="readout-label">System Integrity</div>
+  </div>
+
+  <!-- Bottom glass panel -->
+  <div class="glass-panel" style="bottom:8%;left:8%;width:84%;height:auto;animation:fadeInUp 1.5s ease forwards;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <div class="serif-label">Technical Readout</div>
+        <div class="serif-heading" style="font-size:32px;margin-top:4px;">
+          Precision <span class="accent">Analytics</span>
+        </div>
+      </div>
+      <div class="mono-data" style="text-align:right;" id="liveData">
+        NODE: 7F2A:E9B1<br>
+        LATENCY: 12MS<br>
+        BANDWIDTH: 847MB/S
+      </div>
+    </div>
+  </div>
+
+  <!-- Mid-level glass panel -->
+  <div class="glass-panel" style="top:45%;left:8%;width:40%;height:auto;animation:fadeInUp 1.2s ease forwards;">
+    <div class="serif-label">Classification</div>
+    <div class="mono-data" id="classification" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- Data streams -->
+  <div class="data-stream" id="stream1" style="right:3%;top:0;height:100%;"></div>
+  <div class="data-stream" id="stream2" style="right:6%;top:0;height:100%;opacity:0.15;"></div>
+
+  <!-- Elegant lines -->
+  <div class="elegant-line" style="top:40%;left:0;width:100%;"></div>
+  <div class="elegant-line" style="top:42%;left:0;width:30%;"></div>
+</div>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#050505',
+    accentColor: '#10B981',
+    gridColor: 'rgba(16, 185, 129, 0.04)',
+    gridHighlight: 'rgba(16, 185, 129, 0.12)',
+    gridSize: 50,
+    matrixChars: '0123456789ABCDEF:.',
+    headings: ['Digital Elegance', 'Precision Analytics', 'Neural Architecture', 'Quantum Interface'],
+    classificationLines: [
+      'TYPE: NEURAL_NET_V4',
+      'CLASS: SOVEREIGN',
+      'TIER: APEX',
+      'AUTH: 7F2A:GRANTED',
+      'ZONE: RESTRICTED',
+      'CIPHER: AES-256',
+    ],
+  };
+
+  const canvas = document.getElementById('grid');
+  const ctx = canvas.getContext('2d');
+  let W, H, time = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Generate data stream text
+  function generateStreamText() {
+    const chars = CONFIG.matrixChars;
+    let text = '';
+    for (let i = 0; i < 200; i++) {
+      for (let j = 0; j < 3; j++) {
+        text += chars[Math.floor(Math.random() * chars.length)];
+      }
+      text += '\n';
+    }
+    return text;
+  }
+
+  const stream1 = document.getElementById('stream1');
+  const stream2 = document.getElementById('stream2');
+  const streamText1 = generateStreamText();
+  const streamText2 = generateStreamText();
+  stream1.innerHTML = `<div style="animation:streamScroll 20s linear infinite;">${streamText1}${streamText1}</div>`;
+  stream2.innerHTML = `<div style="animation:streamScroll 25s linear infinite reverse;">${streamText2}${streamText2}</div>`;
+
+  // Classification typing effect
+  const classEl = document.getElementById('classification');
+  let classLine = 0;
+  let classChar = 0;
+  let classText = '';
+
+  function typeClassification() {
+    if (classLine >= CONFIG.classificationLines.length) {
+      classLine = 0;
+      classText = '';
+    }
+    const line = CONFIG.classificationLines[classLine];
+    if (classChar < line.length) {
+      classText += line[classChar];
+      classChar++;
+    } else {
+      classText += '<br>';
+      classLine++;
+      classChar = 0;
+    }
+    classEl.innerHTML = classText + '<span style="animation:pulse 0.5s infinite;">_</span>';
+  }
+
+  setInterval(typeClassification, 60);
+
+  // Draw animated grid
+  function drawGrid(t) {
+    ctx.fillStyle = CONFIG.bgColor;
+    ctx.fillRect(0, 0, W, H);
+
+    const gs = CONFIG.gridSize;
+
+    // Base grid
+    ctx.strokeStyle = CONFIG.gridColor;
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= W; x += gs) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= H; y += gs) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+
+    // Animated highlight lines
+    const highlightY = (t * 40) % H;
+    ctx.strokeStyle = CONFIG.gridHighlight;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, highlightY);
+    ctx.lineTo(W, highlightY);
+    ctx.stroke();
+
+    const highlightX = ((t * 25 + 200) % W);
+    ctx.beginPath();
+    ctx.moveTo(highlightX, 0);
+    ctx.lineTo(highlightX, H);
+    ctx.stroke();
+
+    // Node dots at intersections with pulse
+    for (let x = 0; x <= W; x += gs) {
+      for (let y = 0; y <= H; y += gs) {
+        const dist = Math.sqrt(
+          Math.pow(x - W / 2, 2) + Math.pow(y - H / 2, 2)
+        );
+        const pulse = Math.sin(t * 2 - dist * 0.005) * 0.5 + 0.5;
+        const r = 1 + pulse * 1.5;
+        const alpha = 0.1 + pulse * 0.15;
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(16, 185, 129, ${alpha})`;
+        ctx.fill();
+      }
+    }
+
+    // Occasional data bursts
+    if (Math.sin(t * 3) > 0.95) {
+      const bx = Math.random() * W;
+      const by = Math.random() * H;
+      const gradient = ctx.createRadialGradient(bx, by, 0, bx, by, 80);
+      gradient.addColorStop(0, 'rgba(16, 185, 129, 0.1)');
+      gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(bx, by, 80, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Update live readouts
+  function updateReadouts(t) {
+    document.getElementById('rv1').textContent = (0.847 + Math.sin(t * 0.5) * 0.05).toFixed(3);
+    document.getElementById('rv2').textContent = (99.2 + Math.sin(t * 0.3) * 0.5).toFixed(1) + '%';
+
+    const liveData = document.getElementById('liveData');
+    const hex = () => Math.floor(Math.random() * 256).toString(16).toUpperCase().padStart(2, '0');
+    liveData.innerHTML = `
+      NODE: ${hex()}${hex()}:${hex()}${hex()}<br>
+      LATENCY: ${(12 + Math.sin(t) * 3).toFixed(0)}MS<br>
+      BANDWIDTH: ${(847 + Math.sin(t * 0.7) * 50).toFixed(0)}MB/S
+    `;
+  }
+
+  function animate() {
+    time += 0.016;
+    drawGrid(time);
+    updateReadouts(time);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>

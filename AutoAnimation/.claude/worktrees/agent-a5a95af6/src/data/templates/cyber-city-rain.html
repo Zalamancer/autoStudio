@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber City Rain</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  bgColor: '#0a0812',
+  neonColors: ['#ff0088', '#00ffff', '#ff6600', '#aa00ff'],
+  rainIntensity: 150,
+  buildingCount: 12,
+  fogOpacity: 0.3,
+  cycleDuration: 14000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+let startTime = performance.now();
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  initScene();
+}
+
+// --- Buildings ---
+let buildings = [];
+let neonSigns = [];
+let rainDrops = [];
+let vehicles = [];
+let steamParticles = [];
+let lightningAlpha = 0;
+
+function initScene() {
+  buildings = [];
+  neonSigns = [];
+  rainDrops = [];
+  vehicles = [];
+  steamParticles = [];
+
+  const groundY = H * 0.82;
+
+  // Generate buildings
+  for (let i = 0; i < CONFIG.buildingCount; i++) {
+    const w = W * (0.04 + Math.random() * 0.08);
+    const h = H * (0.25 + Math.random() * 0.45);
+    const x = (i / CONFIG.buildingCount) * W * 0.95 + Math.random() * W * 0.03;
+    const y = groundY - h;
+    const darkness = 0.3 + Math.random() * 0.4;
+    buildings.push({ x, y, w, h, darkness, groundY });
+
+    // Windows
+    const cols = Math.floor(w / (W * 0.012));
+    const rows = Math.floor(h / (H * 0.03));
+    for (let r = 1; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (Math.random() > 0.45) {
+          const wx = x + (c + 0.5) * (w / cols) - W * 0.003;
+          const wy = y + r * (h / rows) - H * 0.008;
+          const ww = W * 0.006;
+          const wh = H * 0.012;
+          const lit = Math.random() > 0.3;
+          const color = lit ? (Math.random() > 0.5 ? '#ffdd88' : '#88ccff') : '#111118';
+          buildings[buildings.length - 1].windows = buildings[buildings.length - 1].windows || [];
+          buildings[buildings.length - 1].windows.push({ x: wx, y: wy, w: ww, h: wh, color, lit, flicker: Math.random() });
+        }
+      }
+    }
+
+    // Neon signs on some buildings
+    if (Math.random() > 0.35) {
+      const signW = w * (0.4 + Math.random() * 0.4);
+      const signH = H * (0.02 + Math.random() * 0.02);
+      const signX = x + (w - signW) * Math.random();
+      const signY = y + h * (0.1 + Math.random() * 0.5);
+      const color = CONFIG.neonColors[Math.floor(Math.random() * CONFIG.neonColors.length)];
+      neonSigns.push({ x: signX, y: signY, w: signW, h: signH, color, flickerSpeed: 1 + Math.random() * 4, flickerPhase: Math.random() * Math.PI * 2, type: Math.random() > 0.5 ? 'rect' : 'text' });
+    }
+  }
+
+  // Sort buildings by height for depth
+  buildings.sort((a, b) => b.h - a.h);
+
+  // Rain
+  for (let i = 0; i < CONFIG.rainIntensity; i++) {
+    rainDrops.push(createRainDrop());
+  }
+
+  // Vehicles
+  for (let i = 0; i < 5; i++) {
+    vehicles.push(createVehicle());
+  }
+
+  // Steam
+  for (let i = 0; i < 20; i++) {
+    steamParticles.push(createSteam());
+  }
+}
+
+function createRainDrop() {
+  return {
+    x: Math.random() * W * 1.3 - W * 0.15,
+    y: Math.random() * H * -0.5,
+    speed: H * (0.012 + Math.random() * 0.008),
+    length: H * (0.02 + Math.random() * 0.04),
+    opacity: 0.15 + Math.random() * 0.35,
+    width: 0.5 + Math.random() * 1
+  };
+}
+
+function createVehicle() {
+  const fromLeft = Math.random() > 0.5;
+  return {
+    x: fromLeft ? -W * 0.1 : W * 1.1,
+    y: H * (0.08 + Math.random() * 0.35),
+    speed: (fromLeft ? 1 : -1) * W * (0.001 + Math.random() * 0.002),
+    size: 2 + Math.random() * 2,
+    color: CONFIG.neonColors[Math.floor(Math.random() * CONFIG.neonColors.length)],
+    trail: [],
+    trailLength: 15 + Math.floor(Math.random() * 20)
+  };
+}
+
+function createSteam() {
+  return {
+    x: W * (0.1 + Math.random() * 0.8),
+    y: H * 0.82,
+    vy: -(H * (0.0005 + Math.random() * 0.001)),
+    vx: (Math.random() - 0.5) * W * 0.0003,
+    size: W * (0.005 + Math.random() * 0.015),
+    opacity: 0.1 + Math.random() * 0.2,
+    life: 0,
+    maxLife: 120 + Math.random() * 120
+  };
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function draw(now) {
+  const elapsed = (now - startTime) % CONFIG.cycleDuration;
+  const cycleT = elapsed / CONFIG.cycleDuration;
+
+  // Background gradient
+  const bgRgb = hexToRgb(CONFIG.bgColor);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, `rgb(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b})`);
+  grad.addColorStop(0.4, `rgb(${bgRgb.r + 10}, ${bgRgb.g + 5}, ${bgRgb.b + 15})`);
+  grad.addColorStop(1, `rgb(${Math.min(bgRgb.r + 20, 255)}, ${bgRgb.g + 8}, ${bgRgb.b + 5})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Distant city glow at horizon
+  const horizonY = H * 0.55;
+  const horizonGlow = ctx.createRadialGradient(W * 0.5, horizonY, 0, W * 0.5, horizonY, W * 0.6);
+  horizonGlow.addColorStop(0, 'rgba(80, 20, 60, 0.25)');
+  horizonGlow.addColorStop(0.5, 'rgba(40, 10, 50, 0.1)');
+  horizonGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = horizonGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Lightning
+  if (lightningAlpha > 0) {
+    ctx.fillStyle = `rgba(200, 210, 255, ${lightningAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+    lightningAlpha *= 0.88;
+    if (lightningAlpha < 0.01) lightningAlpha = 0;
+  }
+  if (Math.random() < 0.002) {
+    lightningAlpha = 0.4 + Math.random() * 0.3;
+  }
+
+  const groundY = H * 0.82;
+
+  // Draw buildings (back to front)
+  for (const b of buildings) {
+    // Building body
+    const bGrad = ctx.createLinearGradient(b.x, b.y, b.x + b.w, b.y + b.h);
+    const d = Math.floor(b.darkness * 30);
+    bGrad.addColorStop(0, `rgb(${d + 8}, ${d + 5}, ${d + 15})`);
+    bGrad.addColorStop(1, `rgb(${d}, ${d}, ${d + 5})`);
+    ctx.fillStyle = bGrad;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // Building edge highlight
+    ctx.strokeStyle = 'rgba(60, 50, 80, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+    // Rooftop accent
+    ctx.fillStyle = 'rgba(100, 60, 120, 0.2)';
+    ctx.fillRect(b.x, b.y, b.w, 3);
+
+    // Windows
+    if (b.windows) {
+      for (const win of b.windows) {
+        if (win.lit) {
+          const flick = Math.sin(now * 0.001 * win.flicker + win.flicker * 10) * 0.15;
+          ctx.fillStyle = win.color;
+          ctx.globalAlpha = 0.6 + flick;
+          ctx.fillRect(win.x, win.y, win.w, win.h);
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.fillStyle = win.color;
+          ctx.globalAlpha = 0.4;
+          ctx.fillRect(win.x, win.y, win.w, win.h);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+  }
+
+  // Neon signs
+  for (const s of neonSigns) {
+    const flicker = Math.sin(now * 0.003 * s.flickerSpeed + s.flickerPhase);
+    const on = flicker > -0.3;
+    if (!on) continue;
+    const intensity = 0.6 + flicker * 0.4;
+    const rgb = hexToRgb(s.color);
+
+    ctx.save();
+    ctx.shadowColor = s.color;
+    ctx.shadowBlur = 20 * intensity;
+    ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity * 0.9})`;
+    ctx.fillRect(s.x, s.y, s.w, s.h);
+
+    // Extra glow layer
+    ctx.shadowBlur = 40 * intensity;
+    ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity * 0.3})`;
+    ctx.fillRect(s.x - 4, s.y - 4, s.w + 8, s.h + 8);
+    ctx.restore();
+  }
+
+  // Fog layers
+  for (let i = 0; i < 3; i++) {
+    const fogY = H * (0.35 + i * 0.15);
+    const fogH = H * 0.12;
+    const drift = Math.sin(now * 0.0003 + i * 2) * W * 0.05;
+    const fogGrad = ctx.createLinearGradient(0, fogY, 0, fogY + fogH);
+    fogGrad.addColorStop(0, `rgba(30, 15, 40, 0)`);
+    fogGrad.addColorStop(0.5, `rgba(30, 15, 40, ${CONFIG.fogOpacity * (0.4 + i * 0.2)})`);
+    fogGrad.addColorStop(1, `rgba(30, 15, 40, 0)`);
+    ctx.fillStyle = fogGrad;
+    ctx.fillRect(drift, fogY, W, fogH);
+  }
+
+  // Vehicles with trails
+  for (const v of vehicles) {
+    v.trail.unshift({ x: v.x, y: v.y });
+    if (v.trail.length > v.trailLength) v.trail.pop();
+    v.x += v.speed;
+
+    // Reset if off screen
+    if ((v.speed > 0 && v.x > W * 1.2) || (v.speed < 0 && v.x < -W * 0.2)) {
+      Object.assign(v, createVehicle());
+    }
+
+    // Draw trail
+    const rgb = hexToRgb(v.color);
+    for (let i = 1; i < v.trail.length; i++) {
+      const alpha = (1 - i / v.trail.length) * 0.6;
+      const size = v.size * (1 - i / v.trail.length * 0.5);
+      ctx.beginPath();
+      ctx.arc(v.trail[i].x, v.trail[i].y, size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+      ctx.fill();
+    }
+
+    // Draw vehicle
+    ctx.save();
+    ctx.shadowColor = v.color;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(v.x, v.y, v.size, 0, Math.PI * 2);
+    ctx.fillStyle = v.color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Ground / Street
+  const streetGrad = ctx.createLinearGradient(0, groundY, 0, H);
+  streetGrad.addColorStop(0, '#0c0a10');
+  streetGrad.addColorStop(0.1, '#0e0b14');
+  streetGrad.addColorStop(1, '#080610');
+  ctx.fillStyle = streetGrad;
+  ctx.fillRect(0, groundY, W, H - groundY);
+
+  // Wet street line
+  ctx.fillStyle = 'rgba(100, 80, 120, 0.15)';
+  ctx.fillRect(0, groundY, W, 2);
+
+  // Puddle reflections of neon signs
+  for (const s of neonSigns) {
+    const flicker = Math.sin(now * 0.003 * s.flickerSpeed + s.flickerPhase);
+    if (flicker <= -0.3) continue;
+    const intensity = 0.6 + flicker * 0.4;
+    const rgb = hexToRgb(s.color);
+
+    const reflY = groundY + (groundY - s.y) * 0.1;
+    const reflH = s.h * 2;
+    const reflW = s.w * 1.5;
+    const reflX = s.x - (reflW - s.w) * 0.5;
+
+    // Wobble effect
+    const wobble = Math.sin(now * 0.005 + s.x * 0.01) * 3;
+
+    const reflGrad = ctx.createRadialGradient(
+      reflX + reflW / 2 + wobble, reflY + reflH / 2, 0,
+      reflX + reflW / 2 + wobble, reflY + reflH / 2, reflW * 0.7
+    );
+    reflGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity * 0.25})`);
+    reflGrad.addColorStop(0.6, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity * 0.08})`);
+    reflGrad.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+    ctx.fillStyle = reflGrad;
+    ctx.fillRect(reflX - reflW * 0.3, reflY - reflH, reflW * 1.6, reflH * 4);
+  }
+
+  // Steam particles
+  for (const p of steamParticles) {
+    p.x += p.vx + Math.sin(now * 0.002 + p.x) * 0.2;
+    p.y += p.vy;
+    p.life++;
+    const lifeRatio = p.life / p.maxLife;
+    const alpha = p.opacity * (1 - lifeRatio);
+    const size = p.size * (1 + lifeRatio * 2);
+
+    if (alpha > 0.01) {
+      const steamGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size);
+      steamGrad.addColorStop(0, `rgba(180, 160, 200, ${alpha})`);
+      steamGrad.addColorStop(1, `rgba(180, 160, 200, 0)`);
+      ctx.fillStyle = steamGrad;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (p.life > p.maxLife) {
+      Object.assign(p, createSteam());
+      p.life = 0;
+    }
+  }
+
+  // Rain
+  const windAngle = Math.sin(now * 0.0005) * 0.15;
+  ctx.strokeStyle = 'rgba(180, 200, 255, 0.35)';
+  ctx.lineWidth = 0.8;
+  for (const r of rainDrops) {
+    r.x += r.speed * windAngle;
+    r.y += r.speed;
+
+    if (r.y > H || r.x > W * 1.2 || r.x < -W * 0.1) {
+      Object.assign(r, createRainDrop());
+      r.y = -r.length;
+    }
+
+    ctx.globalAlpha = r.opacity;
+    ctx.lineWidth = r.width;
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y);
+    ctx.lineTo(r.x + r.length * windAngle * 0.5, r.y + r.length);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Vignette
+  const vigGrad = ctx.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, W * 0.75);
+  vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vigGrad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Cycle reset
+  if (elapsed >= CONFIG.cycleDuration - 50) {
+    startTime = now;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('message', (e) => {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+    initScene();
+  }
+});
+resize();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

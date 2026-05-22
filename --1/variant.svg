@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="g4a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="50%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+    <clipPath id="leftHalf">
+      <path d="M16 16 L300 16 L212 496 L16 496 Z"/>
+    </clipPath>
+    <clipPath id="rightHalf">
+      <path d="M300 16 L496 16 L496 496 L212 496 Z"/>
+    </clipPath>
+    <clipPath id="roundedClip">
+      <rect x="16" y="16" width="480" height="480" rx="96"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Outer border -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="url(#g4a)" stroke-width="10"/>
+  
+  <g clip-path="url(#roundedClip)">
+    <!-- Left half - dark with green letters -->
+    <rect x="16" y="16" width="480" height="480" fill="#0a0a0a"/>
+    
+    <!-- Right half - green fill -->
+    <g clip-path="url(#rightHalf)">
+      <rect x="16" y="16" width="480" height="480" fill="#16a34a"/>
+    </g>
+    
+    <!-- Diagonal divider line -->
+    <line x1="300" y1="16" x2="212" y2="496" stroke="#4ade80" stroke-width="3" opacity="0.5"/>
+    
+    <!-- P on dark side - green stroke -->
+    <g clip-path="url(#leftHalf)">
+      <path d="M133 152 L133 360 M133 152 L241 152 C301 152 301 248 241 248 L133 248" 
+            fill="none" stroke="#4ade80" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <!-- P on green side - dark stroke -->
+    <g clip-path="url(#rightHalf)">
+      <path d="M133 152 L133 360 M133 152 L241 152 C301 152 301 248 241 248 L133 248" 
+            fill="none" stroke="#0a0a0a" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <!-- A on dark side - green stroke -->
+    <g clip-path="url(#leftHalf)">
+      <path d="M265 360 L337 152 L409 360" 
+            fill="none" stroke="#22c55e" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="289" y1="275" x2="385" y2="275" stroke="#22c55e" stroke-width="20" stroke-linecap="round" opacity="0.8"/>
+    </g>
+    
+    <!-- A on green side - white stroke -->
+    <g clip-path="url(#rightHalf)">
+      <path d="M265 360 L337 152 L409 360" 
+            fill="none" stroke="#ffffff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="289" y1="275" x2="385" y2="275" stroke="rgba(255,255,255,0.85)" stroke-width="20" stroke-linecap="round"/>
+    </g>
+    
+    <!-- Motion wave -->
+    <path d="M80 420 Q170 396 256 420 Q342 444 432 420" 
+          fill="none" stroke="#4ade80" stroke-width="6" opacity="0.3"/>
+  </g>
+</svg>

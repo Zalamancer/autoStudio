@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Speed Test</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.bg-dots { position: absolute; inset: 0; background: radial-gradient(circle, rgba(99,102,241,0.03) 1px, transparent 1px); background-size: 3vw 3vh; pointer-events: none; }
+.stats-row { display: flex; gap: 4vw; margin-bottom: 5vh; }
+.stat { text-align: center; opacity: 0; transform: translateY(15px); transition: all 0.6s; }
+.stat.visible { opacity: 1; transform: translateY(0); }
+.stat-value { font-size: 5vh; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.stat-value .unit { font-size: 2vh; color: rgba(255,255,255,0.4); font-weight: 600; }
+.stat-label { font-size: 1.2vh; color: rgba(255,255,255,0.35); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 0.5vh; }
+.passage-box { width: 70vw; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 2vh; padding: 4vh 4vw; text-align: center; margin-bottom: 3vh; opacity: 0; transition: opacity 0.6s; }
+.passage-box.visible { opacity: 1; }
+.passage { font-size: 2.2vh; line-height: 2; color: rgba(255,255,255,0.2); }
+.passage .typed { color: #fff; }
+.passage .current { color: #6366f1; border-bottom: 2px solid #6366f1; }
+.passage .error { color: #ef4444; text-decoration: underline; }
+.progress-container { width: 50vw; opacity: 0; transition: opacity 0.5s; }
+.progress-container.visible { opacity: 1; }
+.progress-track { width: 100%; height: 0.5vh; background: rgba(255,255,255,0.06); border-radius: 0.3vh; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 0.3vh; width: 0%; transition: width 0.3s; }
+.progress-label { display: flex; justify-content: space-between; margin-top: 0.5vh; font-size: 1.1vh; color: rgba(255,255,255,0.25); }
+.cursor-blink { display: inline-block; width: 2px; height: 2.2vh; background: #6366f1; animation: cursorBlink 0.6s step-end infinite; vertical-align: middle; margin-left: 1px; }
+@keyframes cursorBlink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="bg-dots"></div>
+  <div class="stats-row" id="stats">
+    <div class="stat" id="wpmStat"><div class="stat-value"><span id="wpmValue">0</span><span class="unit"> WPM</span></div><div class="stat-label">Words Per Minute</div></div>
+    <div class="stat" id="accStat"><div class="stat-value"><span id="accValue">100</span><span class="unit">%</span></div><div class="stat-label">Accuracy</div></div>
+    <div class="stat" id="timeStat"><div class="stat-value"><span id="timeValue">0</span><span class="unit">s</span></div><div class="stat-label">Time Elapsed</div></div>
+  </div>
+  <div class="passage-box" id="passageBox">
+    <div class="passage" id="passage"></div>
+  </div>
+  <div class="progress-container" id="progressContainer">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label"><span>Progress</span><span id="progressPct">0%</span></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  passage: 'The quick brown fox jumps over the lazy dog. Programming is the art of telling another human being what one wants the computer to do. Code is like humor — when you have to explain it, it is bad.',
+  targetWPM: 85,
+  accuracy: 97,
+  cycleDuration: 12000,
+  bgColor: '#0f0f18',
+  accentColor: '#6366f1',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+
+var words = CONFIG.passage.split('');
+var passageEl = document.getElementById('passage');
+
+function renderPassage(typedIdx) {
+  var html = '';
+  for (var i = 0; i < words.length; i++) {
+    if (i < typedIdx) html += '<span class="typed">' + words[i] + '</span>';
+    else if (i === typedIdx) html += '<span class="current">' + words[i] + '</span><span class="cursor-blink"></span>';
+    else html += words[i];
+  }
+  passageEl.innerHTML = html;
+}
+
+function runCycle() {
+  var stats = document.querySelectorAll('.stat');
+  var passageBox = document.getElementById('passageBox');
+  var progressContainer = document.getElementById('progressContainer');
+  var progressFill = document.getElementById('progressFill');
+  var wpmValue = document.getElementById('wpmValue');
+  var accValue = document.getElementById('accValue');
+  var timeValue = document.getElementById('timeValue');
+  var progressPct = document.getElementById('progressPct');
+
+  stats.forEach(function(s) { s.classList.remove('visible'); });
+  passageBox.classList.remove('visible');
+  progressContainer.classList.remove('visible');
+  progressFill.style.width = '0%';
+  wpmValue.textContent = '0';
+  accValue.textContent = '100';
+  timeValue.textContent = '0';
+  renderPassage(-1);
+
+  setTimeout(function() { stats.forEach(function(s, i) { setTimeout(function() { s.classList.add('visible'); }, i * 150); }); }, 300);
+  setTimeout(function() { passageBox.classList.add('visible'); }, 600);
+  setTimeout(function() { progressContainer.classList.add('visible'); }, 800);
+
+  var typedIdx = 0;
+  var startTime = 1200;
+  var charsPerTick = 1;
+  var typingSpeed = Math.max(20, 60000 / (CONFIG.targetWPM * 5));
+  var elapsed = 0;
+
+  setTimeout(function() {
+    var typeInterval = setInterval(function() {
+      if (typedIdx >= words.length) { clearInterval(typeInterval); return; }
+      typedIdx += charsPerTick;
+      typedIdx = Math.min(typedIdx, words.length);
+      renderPassage(typedIdx);
+
+      var pct = (typedIdx / words.length) * 100;
+      progressFill.style.width = pct + '%';
+      progressPct.textContent = Math.floor(pct) + '%';
+
+      elapsed += typingSpeed / 1000;
+      timeValue.textContent = Math.floor(elapsed);
+      var wordsTyped = typedIdx / 5;
+      var minsElapsed = elapsed / 60;
+      var wpm = minsElapsed > 0 ? Math.floor(wordsTyped / minsElapsed) : 0;
+      wpmValue.textContent = Math.min(wpm, CONFIG.targetWPM);
+      accValue.textContent = CONFIG.accuracy;
+    }, typingSpeed);
+
+    setTimeout(function() { clearInterval(typeInterval); }, CONFIG.cycleDuration - startTime - 2000);
+  }, startTime);
+
+  setTimeout(function() {
+    stats.forEach(function(s) { s.classList.remove('visible'); });
+    passageBox.classList.remove('visible');
+    progressContainer.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

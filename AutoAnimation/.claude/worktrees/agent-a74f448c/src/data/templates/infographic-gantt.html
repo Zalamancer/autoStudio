@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gantt Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Project Timeline',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  barColors: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'],
+  todayColor: '#EF4444',
+  timeUnit: 'weeks',
+  showToday: true,
+  todayPosition: 6,
+  tasks: [
+    { name: 'Research', start: 0, end: 3, group: 'Planning' },
+    { name: 'Requirements', start: 1, end: 4, group: 'Planning' },
+    { name: 'Design', start: 3, end: 6, group: 'Design' },
+    { name: 'Prototyping', start: 5, end: 7, group: 'Design' },
+    { name: 'Frontend', start: 6, end: 11, group: 'Development' },
+    { name: 'Backend', start: 7, end: 12, group: 'Development' },
+    { name: 'API Integration', start: 9, end: 13, group: 'Development' },
+    { name: 'Unit Tests', start: 10, end: 14, group: 'Testing' },
+    { name: 'QA Testing', start: 12, end: 15, group: 'Testing' },
+    { name: 'Deployment', start: 14, end: 16, group: 'Launch' }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function roundRect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  if (r <= 0 || w <= 0) { ctx.fillRect(x, y, Math.max(w, 0), h); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.5 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const tasks = CONFIG.tasks;
+  const n = tasks.length;
+
+  // Compute timeline range
+  let minT = Infinity, maxT = 0;
+  for (const t of tasks) { minT = Math.min(minT, t.start); maxT = Math.max(maxT, t.end); }
+
+  // Get unique groups for coloring
+  const groups = [...new Set(tasks.map(t => t.group))];
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const labelW = W * 0.2;
+  const area = { x: labelW + W * 0.04, y: H * 0.16, w: W * 0.72, h: H * 0.74 };
+  const rowH = area.h / n;
+  const barH = rowH * 0.55;
+  const barR = barH * 0.3;
+  const timeRange = maxT - minT;
+
+  // Time ruler
+  ctx.fillStyle = T.text;
+  ctx.font = `${W * 0.014}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  for (let t = minT; t <= maxT; t++) {
+    const x = area.x + ((t - minT) / timeRange) * area.w;
+    ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, area.y); ctx.lineTo(x, area.y + area.h); ctx.stroke();
+    ctx.fillText(`${CONFIG.timeUnit.charAt(0).toUpperCase()}${t}`, x, area.y - W * 0.005);
+  }
+
+  // Alternating row backgrounds
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) {
+      ctx.fillStyle = T.subtle + '40';
+      ctx.fillRect(area.x, area.y + i * rowH, area.w, rowH);
+    }
+  }
+
+  // Task bars
+  for (let i = 0; i < n; i++) {
+    const task = tasks[i];
+    const itemEase = easeOutCubic(Math.min(Math.max((progress - i * 0.04) / 0.5, 0), 1));
+    if (itemEase <= 0) continue;
+
+    const groupIdx = groups.indexOf(task.group);
+    const color = CONFIG.barColors[groupIdx % CONFIG.barColors.length];
+    const y = area.y + i * rowH + (rowH - barH) / 2;
+
+    // Task label
+    ctx.globalAlpha = itemEase;
+    ctx.fillStyle = T.text;
+    ctx.font = `${W * 0.015}px system-ui`;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(task.name, labelW, y + barH / 2);
+
+    // Group indicator dot
+    ctx.beginPath();
+    ctx.arc(labelW + W * 0.015, y + barH / 2, W * 0.004, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+
+    // Bar
+    const barX = area.x + ((task.start - minT) / timeRange) * area.w;
+    const barEndX = area.x + ((task.end - minT) / timeRange) * area.w;
+    const fullW = barEndX - barX;
+    const animW = fullW * itemEase;
+
+    ctx.fillStyle = color;
+    ctx.shadowColor = color; ctx.shadowBlur = W * 0.005;
+    roundRect(barX, y, animW, barH, barR);
+    ctx.shadowBlur = 0;
+
+    // Duration label
+    if (itemEase > 0.6 && animW > W * 0.03) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${barH * 0.4}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${task.end - task.start}${CONFIG.timeUnit.charAt(0)}`, barX + animW / 2, y + barH / 2);
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  // Today line
+  if (CONFIG.showToday && progress > 0.5) {
+    const todayAlpha = Math.min((progress - 0.5) * 4, 1);
+    const todayX = area.x + ((CONFIG.todayPosition - minT) / timeRange) * area.w;
+    ctx.globalAlpha = todayAlpha;
+    ctx.strokeStyle = CONFIG.todayColor;
+    ctx.lineWidth = W * 0.003;
+    ctx.setLineDash([W * 0.008, W * 0.005]);
+    ctx.beginPath(); ctx.moveTo(todayX, area.y - H * 0.02); ctx.lineTo(todayX, area.y + area.h); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Today label
+    ctx.fillStyle = CONFIG.todayColor;
+    ctx.font = `bold ${W * 0.013}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('TODAY', todayX, area.y - H * 0.025);
+
+    // Triangle indicator
+    ctx.beginPath();
+    ctx.moveTo(todayX, area.y - H * 0.015);
+    ctx.lineTo(todayX - W * 0.006, area.y - H * 0.025);
+    ctx.lineTo(todayX + W * 0.006, area.y - H * 0.025);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Legend
+  const legendY = area.y + area.h + H * 0.04;
+  const boxS = W * 0.01;
+  let lx = area.x;
+  ctx.font = `${W * 0.013}px system-ui`;
+  for (let g = 0; g < groups.length; g++) {
+    ctx.fillStyle = CONFIG.barColors[g % CONFIG.barColors.length];
+    ctx.fillRect(lx, legendY - boxS / 2, boxS, boxS);
+    lx += boxS + W * 0.008;
+    ctx.fillStyle = T.text; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(groups[g], lx, legendY);
+    lx += ctx.measureText(groups[g]).width + W * 0.025;
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

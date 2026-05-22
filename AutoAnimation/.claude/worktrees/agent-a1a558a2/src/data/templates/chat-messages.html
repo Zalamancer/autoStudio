@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Bubbles</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
+.phone { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 38vh; height: 78vh; background: #f2f2f7; border-radius: 5vh; border: 3px solid #ddd; overflow: hidden; box-shadow: 0 3vh 8vh rgba(0,0,0,0.6); }
+.screen { width: 100%; height: 100%; display: flex; flex-direction: column; }
+.nav { background: #f8f8fa; padding: 4vh 2vh 1.5vh; display: flex; align-items: center; gap: 1.5vh; border-bottom: 0.5px solid #d1d1d6; }
+.back-arrow { color: #007aff; font-size: 2vh; }
+.contact-avatar { width: 4vh; height: 4vh; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6vh; font-weight: 700; color: #fff; }
+.contact-info { flex: 1; }
+.contact-name { font-size: 1.6vh; font-weight: 600; color: #000; }
+.contact-status { font-size: 1.1vh; color: #8e8e93; }
+.messages { flex: 1; padding: 1.5vh; display: flex; flex-direction: column; gap: 0.8vh; overflow: hidden; }
+.bubble-row { display: flex; opacity: 0; transform: translateY(1.5vh); transition: all 0.4s cubic-bezier(0.22,1,0.36,1); }
+.bubble-row.show { opacity: 1; transform: translateY(0); }
+.bubble-row.sent { justify-content: flex-end; }
+.bubble-row.received { justify-content: flex-start; }
+.bubble { max-width: 70%; padding: 1vh 1.5vh; font-size: 1.5vh; line-height: 1.45; border-radius: 2vh; }
+.bubble-row.sent .bubble { background: #007aff; color: #fff; border-bottom-right-radius: 0.5vh; }
+.bubble-row.received .bubble { background: #e9e9eb; color: #000; border-bottom-left-radius: 0.5vh; }
+.time-label { text-align: center; font-size: 1vh; color: #8e8e93; padding: 0.5vh 0; }
+.typing-row { display: flex; justify-content: flex-start; opacity: 0; transition: opacity 0.3s; }
+.typing-row.show { opacity: 1; }
+.typing-bubble { background: #e9e9eb; padding: 1vh 1.5vh; border-radius: 2vh; border-bottom-left-radius: 0.5vh; display: flex; gap: 0.4vh; }
+.t-dot { width: 0.8vh; height: 0.8vh; background: #8e8e93; border-radius: 50%; }
+.t-dot:nth-child(1) { animation: tdot 1.2s 0s infinite; }
+.t-dot:nth-child(2) { animation: tdot 1.2s 0.2s infinite; }
+.t-dot:nth-child(3) { animation: tdot 1.2s 0.4s infinite; }
+@keyframes tdot { 0%,60%,100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-0.5vh); } }
+.input-bar { padding: 1vh 1.5vh 2vh; display: flex; align-items: center; gap: 1vh; border-top: 0.5px solid #d1d1d6; background: #f8f8fa; }
+.input-field { flex: 1; background: #fff; border: 1px solid #d1d1d6; border-radius: 2.5vh; padding: 0.8vh 1.5vh; font-size: 1.4vh; color: #8e8e93; }
+.send-circle { width: 3.2vh; height: 3.2vh; background: #007aff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.send-tri { width: 0; height: 0; border-left: 0.7vh solid #fff; border-top: 0.5vh solid transparent; border-bottom: 0.5vh solid transparent; margin-left: 0.15vh; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="screen">
+    <div class="nav">
+      <div class="back-arrow">&#x276E;</div>
+      <div class="contact-avatar" id="avatar" style="background:#007aff">SC</div>
+      <div class="contact-info"><div class="contact-name" id="contactName">Sarah Chen</div><div class="contact-status">online</div></div>
+    </div>
+    <div class="messages" id="msgs"></div>
+    <div class="input-bar"><div class="input-field">iMessage</div><div class="send-circle"><div class="send-tri"></div></div></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  contactName: 'Sarah Chen',
+  contactInitials: 'SC',
+  contactColor: '#007aff',
+  conversation: [
+    { from: 'them', text: 'Hey! Are you coming to the launch party tonight?' },
+    { from: 'me', text: 'Yes! Wouldn\'t miss it for the world \uD83C\uDF89' },
+    { from: 'them', text: 'Amazing! We\'re starting at 8pm. The whole team will be there.' },
+    { from: 'me', text: 'Perfect. Should I bring anything?' },
+    { from: 'them', text: 'Just your good vibes! \uD83D\uDE04 Oh and maybe that demo you showed me last week' },
+    { from: 'me', text: 'Already loaded on my laptop. This is going to be epic!' },
+    { from: 'them', text: 'Can\'t wait! See you there \u2728' }
+  ],
+  bgColor: '#000',
+  cycleDuration: 14000
+};
+
+document.getElementById('contactName').textContent = CONFIG.contactName;
+document.getElementById('avatar').textContent = CONFIG.contactInitials;
+document.getElementById('avatar').style.background = CONFIG.contactColor;
+
+var msgsEl = document.getElementById('msgs');
+var msgIdx = 0;
+
+function addBubble(msg) {
+  var row = document.createElement('div');
+  row.className = 'bubble-row ' + (msg.from === 'me' ? 'sent' : 'received');
+  row.innerHTML = '<div class="bubble">' + msg.text + '</div>';
+  msgsEl.appendChild(row);
+  requestAnimationFrame(function(){ row.classList.add('show'); });
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function showTyping() {
+  var row = document.createElement('div');
+  row.className = 'typing-row'; row.id = 'typing';
+  row.innerHTML = '<div class="typing-bubble"><div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div></div>';
+  msgsEl.appendChild(row);
+  requestAnimationFrame(function(){ row.classList.add('show'); });
+}
+
+function hideTyping() {
+  var el = document.getElementById('typing'); if (el) el.remove();
+}
+
+function runChat() {
+  msgsEl.innerHTML = ''; msgIdx = 0;
+  var timeLabel = document.createElement('div'); timeLabel.className = 'time-label';
+  timeLabel.textContent = 'Today ' + new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+  msgsEl.appendChild(timeLabel);
+  nextMsg();
+}
+
+function nextMsg() {
+  if (msgIdx >= CONFIG.conversation.length) { setTimeout(runChat, 3000); return; }
+  var msg = CONFIG.conversation[msgIdx];
+  if (msg.from === 'them') {
+    showTyping();
+    setTimeout(function() { hideTyping(); addBubble(msg); msgIdx++; setTimeout(nextMsg, 800+Math.random()*600); }, 1000+Math.random()*800);
+  } else {
+    setTimeout(function() { addBubble(msg); msgIdx++; setTimeout(nextMsg, 600+Math.random()*400); }, 500);
+  }
+}
+
+runChat();
+</script>
+</body>
+</html>

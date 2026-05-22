@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Impact Burst - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Impact, 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  }
+  #stage {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    perspective: 800px;
+  }
+  .word {
+    position: absolute;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    pointer-events: none;
+    will-change: transform, opacity;
+    text-shadow:
+      0 0 20px currentColor,
+      0 0 60px currentColor,
+      2px 2px 0 rgba(0,0,0,0.5);
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+    transition: none;
+  }
+  .particle {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform, opacity;
+    border-radius: 50%;
+  }
+  .spark-line {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform, opacity;
+    height: 2px;
+    border-radius: 1px;
+    transform-origin: left center;
+  }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['NEVER', 'GIVE', 'UP', 'ON', 'YOUR', 'DREAMS'],
+  colors: ['#FF3366', '#00FFAA', '#FFD700', '#FF6B35', '#00BFFF', '#FF1493'],
+  bgColor: 'rgba(0,0,0,0.85)',
+  cycleDuration: 6000,
+  shakeIntensity: 15,
+  minFontSize: 60,
+  maxFontSize: 180,
+};
+// =========================================
+
+document.body.style.background = CONFIG.bgColor;
+
+const stage = document.getElementById('stage');
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+
+// --- Utility ---
+function rand(min, max) { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// Easing: elastic out - gives that rubbery slam feel
+function elasticOut(t) {
+  if (t === 0 || t === 1) return t;
+  return Math.pow(2, -10 * t) * Math.sin((t - 0.075) * (2 * Math.PI) / 0.3) + 1;
+}
+
+// --- Screen Shake ---
+let shakeDecay = 0;
+
+function triggerShake(intensity) {
+  shakeDecay = intensity || CONFIG.shakeIntensity;
+}
+
+function updateShake() {
+  if (shakeDecay > 0.5) {
+    const sx = rand(-shakeDecay, shakeDecay);
+    const sy = rand(-shakeDecay, shakeDecay);
+    shakeDecay *= 0.85;
+    stage.style.transform = `translate(${sx}px, ${sy}px)`;
+  } else {
+    shakeDecay = 0;
+    stage.style.transform = 'translate(0,0)';
+  }
+}
+
+// --- Impact Particles & Sparks ---
+const particles = [];
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    const isSpark = Math.random() > 0.4;
+    el.className = isSpark ? 'spark-line' : 'particle';
+
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(2, 12);
+    const size = isSpark ? rand(15, 50) : rand(3, 8);
+    const life = rand(0.3, 0.9);
+
+    if (isSpark) {
+      el.style.width = size + 'px';
+      el.style.background = `linear-gradient(90deg, ${color}, transparent)`;
+      el.style.transform = `rotate(${angle}rad)`;
+    } else {
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.style.background = color;
+      el.style.boxShadow = `0 0 ${size * 2}px ${color}`;
+    }
+
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.opacity = '1';
+    stage.appendChild(el);
+
+    particles.push({
+      el, x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life, maxLife: life,
+      gravity: rand(0.05, 0.15),
+    });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) {
+      p.el.remove();
+      particles.splice(i, 1);
+      continue;
+    }
+    p.vy += p.gravity;
+    p.x += p.vx;
+    p.y += p.vy;
+    const progress = 1 - (p.life / p.maxLife);
+    const opacity = 1 - progress;
+    const scale = 1 - progress * 0.5;
+    p.el.style.left = p.x + 'px';
+    p.el.style.top = p.y + 'px';
+    p.el.style.opacity = opacity;
+    p.el.style.transform = (p.el.className === 'spark-line'
+      ? `rotate(${Math.atan2(p.vy, p.vx)}rad) scaleX(${scale})`
+      : `scale(${scale})`);
+  }
+}
+
+function clearParticles() {
+  particles.forEach(p => p.el.remove());
+  particles.length = 0;
+}
+
+// --- Ambient Background Dust ---
+const ambientParticles = [];
+
+function initAmbient() {
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    const size = rand(1, 3);
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.background = 'rgba(255,255,255,0.15)';
+    el.style.opacity = rand(0.05, 0.2);
+    const x = rand(0, W());
+    const y = rand(0, H());
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    stage.appendChild(el);
+    ambientParticles.push({
+      el, x, y,
+      vx: rand(-0.3, 0.3),
+      vy: rand(-0.5, -0.1),
+    });
+  }
+}
+
+function updateAmbient() {
+  ambientParticles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.y < -10) { p.y = H() + 10; p.x = rand(0, W()); }
+    if (p.x < -10) p.x = W() + 10;
+    if (p.x > W() + 10) p.x = -10;
+    p.el.style.left = p.x + 'px';
+    p.el.style.top = p.y + 'px';
+  });
+}
+
+// --- Screen Flash on Impact ---
+let flashOpacity = 0;
+const flashEl = document.createElement('div');
+flashEl.style.cssText =
+  'position:fixed;top:0;left:0;width:100%;height:100%;' +
+  'pointer-events:none;z-index:9999;background:white;opacity:0;will-change:opacity;';
+document.body.appendChild(flashEl);
+
+function triggerFlash() {
+  flashOpacity = 0.4;
+}
+
+function updateFlash() {
+  if (flashOpacity > 0.01) {
+    flashOpacity *= 0.8;
+    flashEl.style.opacity = flashOpacity;
+  } else {
+    flashOpacity = 0;
+    flashEl.style.opacity = '0';
+  }
+}
+
+// --- Word Animation System ---
+const wordElements = [];
+let animationQueue = [];
+let holdTimer = 0;
+let cycleStart = 0;
+let phase = 'intro'; // 'intro' | 'hold' | 'fadeout' | 'waiting'
+
+const holdDuration = CONFIG.cycleDuration * 0.2;
+const fadeOutDuration = CONFIG.cycleDuration * 0.1;
+
+// 10 entrance directions for variety
+const entranceTypes = [
+  'fromLeft', 'fromRight', 'fromTop', 'fromBottom',
+  'fromTopLeft', 'fromTopRight', 'fromBottomLeft', 'fromBottomRight',
+  'zoomIn', 'spinIn',
+];
+
+function getEntranceOffset(type) {
+  const off = 600;
+  switch (type) {
+    case 'fromLeft':        return { x: -off, y: 0, rot: rand(-30, 30) };
+    case 'fromRight':       return { x: off,  y: 0, rot: rand(-30, 30) };
+    case 'fromTop':         return { x: 0,    y: -off, rot: rand(-20, 20) };
+    case 'fromBottom':      return { x: 0,    y: off,  rot: rand(-20, 20) };
+    case 'fromTopLeft':     return { x: -off, y: -off, rot: rand(-45, -15) };
+    case 'fromTopRight':    return { x: off,  y: -off, rot: rand(15, 45) };
+    case 'fromBottomLeft':  return { x: -off, y: off,  rot: rand(15, 45) };
+    case 'fromBottomRight': return { x: off,  y: off,  rot: rand(-45, -15) };
+    case 'zoomIn':          return { x: 0,    y: 0,    rot: rand(-15, 15) };
+    case 'spinIn':          return { x: 0,    y: 0,    rot: rand(-360, 360) };
+    default:                return { x: 0, y: 0, rot: 0 };
+  }
+}
+
+function clearWords() {
+  wordElements.forEach(w => w.el.remove());
+  wordElements.length = 0;
+}
+
+function buildCycle(ts) {
+  clearWords();
+  clearParticles();
+  animationQueue = [];
+
+  const wordCount = CONFIG.words.length;
+  const introTime = CONFIG.cycleDuration * 0.65;
+  const delayPerWord = introTime / wordCount;
+
+  CONFIG.words.forEach((text, i) => {
+    const el = document.createElement('div');
+    el.className = 'word';
+    el.textContent = text;
+
+    const fontSize = Math.min(rand(CONFIG.minFontSize, CONFIG.maxFontSize), W() * 0.28, H() * 0.12);
+    const color = CONFIG.colors[i % CONFIG.colors.length];
+    const entrance = pick(entranceTypes);
+    const offset = getEntranceOffset(entrance);
+
+    // Scatter positions ensuring words stay mostly visible
+    const maxTextWidth = fontSize * text.length * 0.55;
+    const targetX = rand(W() * 0.05, Math.max(W() * 0.05, W() * 0.92 - maxTextWidth));
+    const targetY = rand(H() * 0.08, Math.max(H() * 0.08, H() * 0.88 - fontSize));
+    const targetRot = rand(-15, 15);
+
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = color;
+    el.style.left = targetX + 'px';
+    el.style.top = targetY + 'px';
+    el.style.zIndex = i + 1;
+
+    stage.appendChild(el);
+
+    wordElements.push({
+      el, targetX, targetY, targetRot, fontSize, color, entrance, offset,
+      startTime: i * delayPerWord,
+      duration: 450 + rand(0, 150),
+      started: false,
+      done: false,
+    });
+  });
+
+  animationQueue = [...wordElements];
+  cycleStart = ts;
+  holdTimer = 0;
+  phase = 'intro';
+}
+
+function animateWord(w, elapsed) {
+  const localTime = elapsed - w.startTime;
+  if (localTime < 0) return;
+
+  if (!w.started) {
+    w.started = true;
+    // Shake intensity scales with font size
+    triggerShake(CONFIG.shakeIntensity * (w.fontSize / CONFIG.maxFontSize));
+    triggerFlash();
+    // Spawn impact particles at word center
+    const rect = w.el.getBoundingClientRect();
+    const cx = w.targetX + rect.width / 2;
+    const cy = w.targetY + w.fontSize / 2;
+    spawnParticles(cx, cy, w.color, randInt(12, 25));
+  }
+
+  const t = clamp(localTime / w.duration, 0, 1);
+  const eased = elasticOut(t);
+
+  const offX = w.offset.x * (1 - eased);
+  const offY = w.offset.y * (1 - eased);
+  const rot = w.targetRot + w.offset.rot * (1 - eased);
+
+  let scale;
+  if (w.entrance === 'zoomIn' || w.entrance === 'spinIn') {
+    scale = eased;
+  } else {
+    scale = 0.3 + eased * 0.7;
+  }
+
+  w.el.style.opacity = clamp(eased * 2, 0, 1);
+  w.el.style.transform = `translate(${offX}px, ${offY}px) rotate(${rot}deg) scale(${scale})`;
+
+  if (t >= 1) w.done = true;
+}
+
+function fadeOutAll(progress) {
+  const eased = progress * progress;
+  wordElements.forEach(w => {
+    w.el.style.opacity = 1 - eased;
+    // Slight zoom-out on exit
+    w.el.style.transform = w.el.style.transform.replace(
+      /scale\([^)]+\)/,
+      `scale(${1 + eased * 0.3})`
+    );
+  });
+}
+
+// --- Main Animation Loop ---
+let started = false;
+let lastTime = 0;
+
+function run(timestamp) {
+  if (!started) {
+    started = true;
+    lastTime = timestamp;
+    initAmbient();
+    buildCycle(timestamp);
+  }
+
+  const dt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+
+  updateShake();
+  updateFlash();
+  updateParticles(dt);
+  updateAmbient();
+
+  if (phase === 'intro') {
+    const elapsed = timestamp - cycleStart;
+    animationQueue.forEach(w => animateWord(w, elapsed));
+    if (animationQueue.every(w => w.done)) {
+      phase = 'hold';
+      holdTimer = 0;
+    }
+  } else if (phase === 'hold') {
+    holdTimer += dt * 1000;
+    if (holdTimer >= holdDuration) {
+      phase = 'fadeout';
+      holdTimer = 0;
+    }
+  } else if (phase === 'fadeout') {
+    holdTimer += dt * 1000;
+    const progress = clamp(holdTimer / fadeOutDuration, 0, 1);
+    fadeOutAll(progress);
+    if (progress >= 1) {
+      phase = 'waiting';
+      holdTimer = 0;
+    }
+  } else if (phase === 'waiting') {
+    holdTimer += dt * 1000;
+    if (holdTimer >= 400) {
+      buildCycle(timestamp);
+    }
+  }
+
+  requestAnimationFrame(run);
+}
+
+requestAnimationFrame(run);
+</script>
+</body>
+</html>

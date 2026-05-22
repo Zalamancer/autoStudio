@@ -1,0 +1,28 @@
+﻿do you hear me
+I sure do. Loud and clear. What's on your mind? Anything ElevenLabs related I can help you with?
+is forced alignment used for auto captions?
+Actually, forced alignment is more about taking an existing transcript and matching it up perfectly with the audio to get precise timestamps for every single word. While you could technically use those timestamps to build captions, if you're looking for a more direct "auto-caption" experience, you'd probably want to check out our Speech to Text or Dubbing features.
+Are you looking to build something specific with captions, or just curious how the tech works?
+basically we have an application, and users will send their transcripts over to elevenlabs, then I need elevenlabs to both speak it out and make auto captions out of it. also tell me phonemes for lipsync features
+That sounds like a cool project. So, to get both the audio and the timing data you need for captions and lip-sync, you'll want to look at our Text to Speech endpoints that support timestamps.
+When you use the stream-with-timestamps or convert-with-timestamps endpoints, the API returns the audio along with the precise start and end times for every character. You can easily turn those character-level timings into word-level timings for your auto-captions.
+As for the lip-sync part, our API actually provides alignment data that includes the characters being spoken. While we don't output standard IPA phonemes directly in the basic TTS response, many developers use the character-level timing data to drive their lip-sync engines.
+Just so I don't get too deep into the weeds—are you comfortable working with WebSockets and JSON responses, or would you prefer a high-level overview of how the data is structured?
+yes
+Got it, that makes things easier. Since you're comfortable with the technical side, you'll want to check out the v1/text-to-speech/{voice_id}/stream-with-timestamps endpoint.
+When you hit that, the response is chunked. Each chunk contains the audio (base64 encoded) and an alignment object. That alignment object is the key for you—it gives you the characters, character_start_times_seconds, and character_end_times_seconds.
+For your auto-captions, you just aggregate those character timings into words. For the lip-sync, you'll have the exact timing for every character as it's being spoken, which you can map to your visemes.
+Would you like me to pull up the specific API documentation page for those timestamped endpoints so you can see the exact request schema?
+yes
+Alright, I've pulled up the documentation for the stream-with-timestamps endpoint for you. You should find all the details about the request and response structure there.
+Let me know if you have any other questions after taking a look!
+where, i don't see
+Oh, my bad! I just sent a command to redirect your browser to that specific page in our documentation. It should have opened up or refreshed to the "Stream speech with timing" section.
+If it didn't pop up for some reason, you can find it under the API Reference section, then Creative Platform, then Text to Speech, and look for Stream speech with timing.
+Basically, you're looking for the /v1/text-to-speech/{voice_id}/stream-with-timestamps endpoint. Does that help, or should I try to explain the JSON structure right here for you?
+sure
+No problem. When you call that endpoint, the API sends back a stream of JSON objects. Each one looks roughly like this:
+You'll get an audio_base64 string, which is the actual sound, and then an alignment object. Inside that alignment, you'll see three arrays: chars, char_start_times_ms, and char_end_times_ms.
+So, if the word is "Hi", the chars array would be ["H", "i"], and the timing arrays will tell you exactly when that "H" starts and when the "i" ends in milliseconds relative to the start of the request.
+For your lip-sync, you'd map those characters to your visemes in real-time as you play the audio. For captions, you just group the characters until you hit a space, and then you've got your word timing.
+Does that structure make sense for your app's setup?

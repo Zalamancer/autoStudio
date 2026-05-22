@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Speed Test</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', 'Consolas', monospace;
+    color: #e0e0e0;
+  }
+  .bg {
+    width: 100%; height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .scanlines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 0.3vh,
+      rgba(0,0,0,0.03) 0.3vh,
+      rgba(0,0,0,0.03) 0.6vh
+    );
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  .top-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2.5vh 4vw;
+    border-bottom: 0.2vh solid rgba(255,255,255,0.08);
+    z-index: 5;
+  }
+  .stat-card {
+    text-align: center;
+    opacity: 0;
+    transform: translateY(-2vh);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .stat-card.visible { opacity: 1; transform: translateY(0); }
+  .stat-label {
+    font-size: 1.2vh;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 0.5vh;
+  }
+  .stat-val {
+    font-size: 4vh;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-unit {
+    font-size: 1.4vh;
+    color: rgba(255,255,255,0.5);
+    margin-left: 0.3vw;
+  }
+
+  .gauge-wrap {
+    width: 14vw; height: 14vw;
+    min-width: 10vh; min-height: 10vh;
+    position: relative;
+  }
+  .gauge-ring {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    position: relative;
+  }
+  .gauge-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    transform: rotate(-135deg);
+  }
+  .gauge-track {
+    fill: none;
+    stroke: rgba(255,255,255,0.08);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+  .gauge-progress {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 190;
+    stroke-dashoffset: 190;
+    transition: stroke-dashoffset 2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .gauge-center {
+    position: absolute;
+    inset: 15%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .gauge-value {
+    font-size: 3.5vh;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+  .gauge-label {
+    font-size: 1vh;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .timer-display {
+    font-size: 2.5vh;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    padding: 0.6vh 2vw;
+    border-radius: 1vh;
+    background: rgba(255,255,255,0.05);
+    border: 0.2vh solid rgba(255,255,255,0.1);
+  }
+
+  .text-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3vh 6vw;
+    position: relative;
+    z-index: 5;
+  }
+  .text-display {
+    font-size: 3.2vh;
+    line-height: 1.8;
+    letter-spacing: 0.03em;
+    word-spacing: 0.5vw;
+    max-width: 85vw;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.6s 0.3s;
+  }
+  .text-display.visible { opacity: 1; }
+  .char {
+    display: inline;
+    transition: color 0.1s, background-color 0.15s;
+    border-radius: 0.2vh;
+    padding: 0 0.05em;
+  }
+  .char.pending { color: rgba(255,255,255,0.3); }
+  .char.correct { color: inherit; }
+  .char.error {
+    color: #ff4444;
+    background: rgba(255,68,68,0.15);
+  }
+  .char.current {
+    position: relative;
+  }
+  .char.current::after {
+    content: '';
+    position: absolute;
+    left: -0.1em; top: 0;
+    width: 0.15em; height: 100%;
+    border-radius: 0.1vh;
+  }
+  @keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .char.current::after {
+    animation: cursorBlink 0.8s step-end infinite;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 0.6vh;
+    background: rgba(255,255,255,0.06);
+    position: relative;
+    z-index: 5;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.15s linear;
+  }
+
+  .keyboard-area {
+    padding: 2vh 4vw 3vh;
+    display: flex;
+    justify-content: center;
+    z-index: 5;
+    opacity: 0;
+    transform: translateY(3vh);
+    transition: opacity 0.6s 0.5s, transform 0.6s 0.5s;
+  }
+  .keyboard-area.visible { opacity: 1; transform: translateY(0); }
+  .keyboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5vh;
+  }
+  .kb-row {
+    display: flex;
+    gap: 0.4vw;
+  }
+  .key {
+    width: 3.8vw; height: 4vh;
+    min-width: 2.5vh; min-height: 2.5vh;
+    border-radius: 0.5vh;
+    background: rgba(255,255,255,0.06);
+    border: 0.15vh solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3vh;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: background 0.08s, box-shadow 0.08s, transform 0.08s;
+    color: rgba(255,255,255,0.5);
+  }
+  .key.active {
+    transform: scale(0.92);
+    border-color: transparent;
+  }
+  .key.space { width: 22vw; }
+  .key-heat-0 { background: rgba(255,255,255,0.06); }
+  .key-heat-1 { background: rgba(100,200,100,0.15); }
+  .key-heat-2 { background: rgba(100,200,100,0.3); }
+  .key-heat-3 { background: rgba(255,200,0,0.35); }
+  .key-heat-4 { background: rgba(255,120,0,0.4); }
+  .key-heat-5 { background: rgba(255,50,50,0.45); }
+
+  .char-counter {
+    position: absolute;
+    bottom: 1vh; right: 4vw;
+    font-size: 1.3vh;
+    color: rgba(255,255,255,0.35);
+    font-variant-numeric: tabular-nums;
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+<div class="bg" id="bg">
+  <div class="scanlines"></div>
+
+  <div class="top-stats">
+    <div class="stat-card" id="wpmCard">
+      <div class="gauge-wrap">
+        <div class="gauge-ring">
+          <svg class="gauge-svg" viewBox="0 0 100 100">
+            <circle class="gauge-track" cx="50" cy="50" r="42" stroke-dasharray="190" stroke-dashoffset="0" />
+            <circle class="gauge-progress" id="gaugeProgress" cx="50" cy="50" r="42" />
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-value" id="wpmValue">0</div>
+            <div class="gauge-label">WPM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card" id="accCard">
+      <div class="stat-label">Accuracy</div>
+      <div class="stat-val" id="accValue">0<span class="stat-unit">%</span></div>
+    </div>
+    <div class="stat-card" id="timerCard">
+      <div class="stat-label">Elapsed</div>
+      <div class="timer-display" id="timerValue">0:00</div>
+    </div>
+    <div class="stat-card" id="charsCard">
+      <div class="stat-label">Characters</div>
+      <div class="stat-val" id="charsValue">0<span class="stat-unit"> / 0</span></div>
+    </div>
+  </div>
+
+  <div class="text-area">
+    <div class="text-display" id="textDisplay"></div>
+    <div class="char-counter" id="charCounter">0 / 0</div>
+  </div>
+
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="keyboard-area" id="keyboardArea">
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+</div>
+
+<script>
+  const CONFIG = {
+    textToType: 'The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.',
+    wpm: 85,
+    accuracy: 96,
+    bgColor: '#111118',
+    correctColor: '#4ade80',
+    errorColor: '#ef4444',
+    accentColor: '#60a5fa',
+    cycleDuration: 12000
+  };
+
+  // Apply CONFIG colors
+  document.getElementById('bg').style.background = CONFIG.bgColor;
+
+  const rows = [
+    ['q','w','e','r','t','y','u','i','o','p'],
+    ['a','s','d','f','g','h','j','k','l'],
+    ['z','x','c','v','b','n','m']
+  ];
+
+  // Build keyboard
+  const kbEl = document.getElementById('keyboard');
+  const keyMap = {};
+  rows.forEach((row, ri) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kb-row';
+    if (ri === 1) rowEl.style.paddingLeft = '1vw';
+    if (ri === 2) rowEl.style.paddingLeft = '3vw';
+    row.forEach(k => {
+      const key = document.createElement('div');
+      key.className = 'key';
+      key.textContent = k;
+      key.dataset.key = k;
+      rowEl.appendChild(key);
+      keyMap[k] = { el: key, count: 0 };
+    });
+    kbEl.appendChild(rowEl);
+  });
+  // Space bar row
+  const spaceRow = document.createElement('div');
+  spaceRow.className = 'kb-row';
+  const spaceKey = document.createElement('div');
+  spaceKey.className = 'key space';
+  spaceKey.dataset.key = ' ';
+  spaceRow.appendChild(spaceKey);
+  kbEl.appendChild(spaceRow);
+  keyMap[' '] = { el: spaceKey, count: 0 };
+
+  // Build text display
+  const textEl = document.getElementById('textDisplay');
+  let chars = [];
+
+  function buildText() {
+    textEl.innerHTML = '';
+    chars = [];
+    for (let i = 0; i < CONFIG.textToType.length; i++) {
+      const span = document.createElement('span');
+      span.className = 'char pending';
+      span.textContent = CONFIG.textToType[i];
+      if (i === 0) span.classList.add('current');
+      textEl.appendChild(span);
+      chars.push(span);
+    }
+  }
+
+  // Cursor color from accent
+  function setCursorColor() {
+    const style = document.createElement('style');
+    style.textContent = `.char.current::after { background: ${CONFIG.accentColor}; }`;
+    document.head.appendChild(style);
+  }
+  setCursorColor();
+
+  // Set gauge and progress colors
+  document.getElementById('gaugeProgress').style.stroke = CONFIG.accentColor;
+  document.getElementById('progressFill').style.background = `linear-gradient(90deg, ${CONFIG.accentColor}, ${CONFIG.correctColor})`;
+
+  // Update heatmap
+  function updateHeatmap() {
+    const maxCount = Math.max(...Object.values(keyMap).map(v => v.count), 1);
+    for (const [k, v] of Object.entries(keyMap)) {
+      const level = Math.min(5, Math.round((v.count / maxCount) * 5));
+      v.el.className = `key key-heat-${level}` + (k === ' ' ? ' space' : '');
+    }
+  }
+
+  // Animate counter
+  function animateVal(el, target, duration, suffix) {
+    suffix = suffix || '';
+    const start = performance.now();
+    function step(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.innerHTML = Math.round(ease * target) + (suffix ? `<span class="stat-unit">${suffix}</span>` : '');
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Main cycle
+  let currentIdx = 0;
+  let typingTimer = null;
+  let clockTimer = null;
+  let elapsed = 0;
+
+  function runCycle() {
+    // Reset
+    currentIdx = 0;
+    elapsed = 0;
+    clearInterval(typingTimer);
+    clearInterval(clockTimer);
+    buildText();
+
+    // Reset heatmap
+    for (const v of Object.values(keyMap)) v.count = 0;
+    updateHeatmap();
+
+    // Reset stats display
+    document.getElementById('wpmValue').textContent = '0';
+    document.getElementById('accValue').innerHTML = '0<span class="stat-unit">%</span>';
+    document.getElementById('charsValue').innerHTML = '0<span class="stat-unit"> / ' + CONFIG.textToType.length + '</span>';
+    document.getElementById('charCounter').textContent = '0 / ' + CONFIG.textToType.length;
+    document.getElementById('timerValue').textContent = '0:00';
+    document.getElementById('gaugeProgress').style.strokeDashoffset = '190';
+    document.getElementById('progressFill').style.width = '0%';
+
+    // Remove visible
+    document.querySelectorAll('.visible').forEach(el => el.classList.remove('visible'));
+
+    // Entrance
+    setTimeout(() => {
+      document.querySelectorAll('.stat-card').forEach((c, i) => {
+        setTimeout(() => c.classList.add('visible'), i * 100);
+      });
+    }, 200);
+    setTimeout(() => textEl.classList.add('visible'), 400);
+    setTimeout(() => document.getElementById('keyboardArea').classList.add('visible'), 600);
+
+    // Determine errors: ~(100 - accuracy)% of chars
+    const errorRate = (100 - CONFIG.accuracy) / 100;
+    const totalChars = CONFIG.textToType.length;
+    const errorIndices = new Set();
+    const numErrors = Math.round(totalChars * errorRate);
+    while (errorIndices.size < numErrors) {
+      errorIndices.add(Math.floor(Math.random() * totalChars));
+    }
+
+    // Typing interval: wpm -> chars per minute -> ms per char
+    const cpm = CONFIG.wpm * 5;
+    const msPerChar = 60000 / cpm;
+    const jitter = msPerChar * 0.4;
+
+    // Start clock
+    const timerEl = document.getElementById('timerValue');
+    clockTimer = setInterval(() => {
+      elapsed++;
+      const m = Math.floor(elapsed / 60);
+      const s = String(elapsed % 60).padStart(2, '0');
+      timerEl.textContent = m + ':' + s;
+    }, 1000);
+
+    // Start typing
+    setTimeout(() => {
+      function typeNext() {
+        if (currentIdx >= totalChars) {
+          clearInterval(clockTimer);
+          return;
+        }
+
+        const c = CONFIG.textToType[currentIdx].toLowerCase();
+        const isError = errorIndices.has(currentIdx);
+
+        // Key press visual
+        if (keyMap[c]) {
+          keyMap[c].el.classList.add('active');
+          keyMap[c].count++;
+          setTimeout(() => keyMap[c].el.classList.remove('active'), 120);
+        }
+
+        // Update char
+        chars[currentIdx].classList.remove('current', 'pending');
+        if (isError) {
+          chars[currentIdx].classList.add('error');
+          chars[currentIdx].style.color = CONFIG.errorColor;
+          // Flash and correct
+          setTimeout(() => {
+            chars[currentIdx - (currentIdx > 0 ? 0 : 0)];
+          }, 200);
+        } else {
+          chars[currentIdx].classList.add('correct');
+          chars[currentIdx].style.color = CONFIG.correctColor;
+        }
+
+        currentIdx++;
+
+        // Move cursor
+        if (currentIdx < totalChars) {
+          chars[currentIdx].classList.add('current');
+        }
+
+        // Update stats
+        const pct = currentIdx / totalChars;
+        document.getElementById('progressFill').style.width = (pct * 100) + '%';
+        document.getElementById('charCounter').textContent = currentIdx + ' / ' + totalChars;
+        document.getElementById('charsValue').innerHTML = currentIdx + '<span class="stat-unit"> / ' + totalChars + '</span>';
+
+        // WPM display - ramp up
+        const currentWpm = Math.round(CONFIG.wpm * Math.min(1, pct * 2 + 0.3));
+        document.getElementById('wpmValue').textContent = currentWpm;
+        const gaugeOffset = 190 - (190 * (currentWpm / 150));
+        document.getElementById('gaugeProgress').style.strokeDashoffset = gaugeOffset;
+
+        // Accuracy
+        const correctSoFar = currentIdx - errorIndices.size;
+        const accSoFar = currentIdx > 0 ? Math.round((correctSoFar / currentIdx) * 100) : 100;
+        document.getElementById('accValue').innerHTML = Math.max(0, accSoFar) + '<span class="stat-unit">%</span>';
+
+        updateHeatmap();
+
+        // Schedule next
+        if (currentIdx < totalChars) {
+          const delay = msPerChar + (Math.random() - 0.5) * jitter;
+          typingTimer = setTimeout(typeNext, Math.max(30, delay));
+        }
+      }
+      typeNext();
+    }, 1000);
+
+    // Cycle reset
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  // postMessage bridge
+  window.addEventListener('message', (e) => {
+    if (e.data && typeof e.data === 'object') {
+      Object.assign(CONFIG, e.data);
+    }
+  });
+
+  runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Equation Steps</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,700;1,400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1c1c2e;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'STIX Two Text', 'Times New Roman', serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #container {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    padding: 40px 60px;
+  }
+
+  .title-text {
+    text-align: center;
+    color: #eee;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 40px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .title-text.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .step-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+  .step-row.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .step-row.dimmed {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+
+  .step-number {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #58C4DD;
+    background: rgba(88, 196, 221, 0.12);
+    border: 1px solid rgba(88, 196, 221, 0.2);
+  }
+
+  .step-content {
+    flex: 1;
+  }
+
+  .equation-box {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+  }
+  .equation-box .katex {
+    color: #eee;
+    font-size: 1.3em;
+  }
+  .step-row.current .equation-box .katex {
+    font-size: 1.5em;
+  }
+
+  .step-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+    font-style: italic;
+  }
+
+  .connector {
+    position: absolute;
+    left: 13px;
+    top: 40px;
+    width: 2px;
+    height: 0;
+    background: rgba(88, 196, 221, 0.15);
+    transition: height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .connector.visible {
+    height: 24px;
+  }
+
+  .arrow-down {
+    position: absolute;
+    left: 7px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    color: rgba(88, 196, 221, 0.25);
+    font-size: 10px;
+  }
+  .arrow-down.visible {
+    opacity: 1;
+  }
+
+  .progress-dots {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    transition: all 0.4s ease;
+  }
+  .dot.active {
+    background: #58C4DD;
+    box-shadow: 0 0 8px rgba(88,196,221,0.4);
+  }
+  .dot.past {
+    background: rgba(88,196,221,0.3);
+  }
+
+  /* Highlight animation */
+  .highlight-box {
+    position: absolute;
+    background: rgba(252, 98, 85, 0.08);
+    border: 1px solid rgba(252, 98, 85, 0.2);
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .highlight-box.visible {
+    opacity: 1;
+  }
+
+  /* Write-on cursor */
+  .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background: #58C4DD;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 0.6s step-end infinite;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* Ambient particles */
+  .particle {
+    position: fixed;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(88, 196, 221, 0.15);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="container"></div>
+<div class="progress-dots" id="dots"></div>
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  title: '',
+  steps: [
+    { equation: 'x^2 + y^2 = r^2', label: 'Circle equation', highlight: '' },
+    { equation: 'y^2 = r^2 - x^2', label: 'Isolate y²', highlight: 'y^2' },
+    { equation: 'y = \\sqrt{r^2 - x^2}', label: 'Take square root', highlight: '\\sqrt' },
+    { equation: 'y = \\pm\\sqrt{r^2 - x^2}', label: 'Both solutions', highlight: '\\pm' }
+  ],
+  backgroundColor: '#1c1c2e',
+  highlightColor: '#FC6255',
+  accentColor: '#58C4DD',
+  fontSize: 1.5,
+  showStepNumbers: true,
+  showStepLabels: true,
+  showProgressDots: true,
+  animationStyle: 'write-on',
+  secondsPerStep: 3,
+  maxVisiblePrevious: 4
+};
+// =========================================
+
+const container = document.getElementById('container');
+const dotsEl = document.getElementById('dots');
+let currentStep = -1;
+let stepElements = [];
+let totalFrames = 0;
+let animTimer = null;
+
+function init() {
+  document.body.style.background = CONFIG.backgroundColor;
+  container.innerHTML = '';
+  dotsEl.innerHTML = '';
+  stepElements = [];
+
+  // Title
+  if (CONFIG.title) {
+    const titleEl = document.createElement('div');
+    titleEl.className = 'title-text';
+    titleEl.textContent = CONFIG.title;
+    container.appendChild(titleEl);
+    requestAnimationFrame(() => titleEl.classList.add('visible'));
+  }
+
+  // Create step rows (hidden initially)
+  CONFIG.steps.forEach((step, i) => {
+    const row = document.createElement('div');
+    row.className = 'step-row';
+    row.dataset.index = i;
+
+    if (CONFIG.showStepNumbers) {
+      const num = document.createElement('div');
+      num.className = 'step-number';
+      num.textContent = (i + 1).toString();
+      row.appendChild(num);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'step-content';
+
+    const eqBox = document.createElement('div');
+    eqBox.className = 'equation-box';
+    content.appendChild(eqBox);
+
+    if (CONFIG.showStepLabels && step.label) {
+      const label = document.createElement('div');
+      label.className = 'step-label';
+      label.textContent = step.label;
+      content.appendChild(label);
+    }
+
+    row.appendChild(content);
+
+    // Connector line to next step
+    if (i < CONFIG.steps.length - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'connector';
+      row.appendChild(conn);
+
+      const arrow = document.createElement('div');
+      arrow.className = 'arrow-down';
+      arrow.innerHTML = '▼';
+      row.appendChild(arrow);
+    }
+
+    container.appendChild(row);
+    stepElements.push({ row, eqBox });
+  });
+
+  // Progress dots
+  if (CONFIG.showProgressDots) {
+    CONFIG.steps.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.dataset.index = i;
+      dotsEl.appendChild(dot);
+    });
+  }
+
+  // Ambient particles
+  for (let i = 0; i < 6; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = (Math.random() * 100) + '%';
+    p.style.top = (Math.random() * 100) + '%';
+    p.style.animationDuration = (3 + Math.random() * 4) + 's';
+    p.style.opacity = 0.05 + Math.random() * 0.1;
+    document.body.appendChild(p);
+    animateParticle(p);
+  }
+
+  // Start animation
+  showStep(0);
+}
+
+function animateParticle(el) {
+  const x = Math.random() * window.innerWidth;
+  const y = Math.random() * window.innerHeight;
+  el.style.transition = 'all ' + (4 + Math.random() * 3) + 's linear';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.opacity = Math.random() * 0.08;
+  setTimeout(() => animateParticle(el), (4 + Math.random() * 3) * 1000);
+}
+
+function renderEquation(eqBox, latex, animate) {
+  eqBox.innerHTML = '';
+
+  if (animate && CONFIG.animationStyle === 'write-on') {
+    // Write-on: reveal characters progressively
+    writeOnRender(eqBox, latex);
+  } else {
+    try {
+      katex.render(latex, eqBox, { displayMode: true, throwOnError: false });
+    } catch {
+      eqBox.textContent = latex;
+    }
+  }
+}
+
+function writeOnRender(eqBox, latex) {
+  // For write-on, we render the full equation but use a clip mask to reveal progressively
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.display = 'inline-block';
+
+  try {
+    katex.render(latex, wrapper, { displayMode: true, throwOnError: false });
+  } catch {
+    wrapper.textContent = latex;
+  }
+
+  // Clip reveal
+  wrapper.style.clipPath = 'inset(0 100% 0 0)';
+  wrapper.style.transition = `clip-path ${0.8 + latex.length * 0.02}s cubic-bezier(0.16, 1, 0.3, 1)`;
+  eqBox.appendChild(wrapper);
+
+  // Cursor
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  eqBox.appendChild(cursor);
+
+  requestAnimationFrame(() => {
+    wrapper.style.clipPath = 'inset(0 0% 0 0)';
+  });
+
+  // Remove cursor after write completes
+  const writeTime = (0.8 + latex.length * 0.02) * 1000;
+  setTimeout(() => {
+    cursor.remove();
+  }, writeTime + 200);
+}
+
+function showStep(idx) {
+  if (idx >= CONFIG.steps.length) return;
+  currentStep = idx;
+
+  const step = CONFIG.steps[idx];
+  const { row, eqBox } = stepElements[idx];
+
+  // Update all step states
+  stepElements.forEach((s, i) => {
+    s.row.classList.remove('current', 'dimmed');
+    if (i < idx) {
+      s.row.classList.add('visible');
+      if (idx - i > CONFIG.maxVisiblePrevious) {
+        s.row.style.display = 'none';
+      } else {
+        s.row.style.display = '';
+        s.row.classList.add('dimmed');
+      }
+    } else if (i === idx) {
+      s.row.classList.add('visible', 'current');
+      s.row.style.display = '';
+    } else {
+      s.row.classList.remove('visible');
+      s.row.style.display = '';
+    }
+  });
+
+  // Render equation
+  renderEquation(eqBox, step.equation, true);
+
+  // Show connector from previous step
+  if (idx > 0) {
+    const prevRow = stepElements[idx - 1].row;
+    const conn = prevRow.querySelector('.connector');
+    const arrow = prevRow.querySelector('.arrow-down');
+    if (conn) {
+      setTimeout(() => conn.classList.add('visible'), 100);
+    }
+    if (arrow) {
+      arrow.style.top = (40 + 24) + 'px';
+      setTimeout(() => arrow.classList.add('visible'), 300);
+    }
+  }
+
+  // Update dots
+  if (CONFIG.showProgressDots) {
+    dotsEl.querySelectorAll('.dot').forEach((dot, i) => {
+      dot.classList.remove('active', 'past');
+      if (i === idx) dot.classList.add('active');
+      else if (i < idx) dot.classList.add('past');
+    });
+  }
+
+  // Auto-advance
+  if (totalFrames === 0) {
+    animTimer = setTimeout(() => {
+      if (idx < CONFIG.steps.length - 1) {
+        showStep(idx + 1);
+      }
+    }, CONFIG.secondsPerStep * 1000);
+  }
+}
+
+// Frame sync
+window.__onFrameUpdate = function(frame, isPlaying, fps, total) {
+  totalFrames = total || 1;
+  if (total > 0) {
+    const progress = frame / total;
+    const targetStep = Math.min(CONFIG.steps.length - 1, Math.floor(progress * CONFIG.steps.length));
+    if (targetStep !== currentStep) {
+      if (animTimer) clearTimeout(animTimer);
+      showStep(targetStep);
+    }
+  }
+};
+
+// Wait for KaTeX
+function tryInit() {
+  if (typeof katex !== 'undefined') {
+    init();
+  } else {
+    setTimeout(tryInit, 100);
+  }
+}
+tryInit();
+</script>
+</body>
+</html>

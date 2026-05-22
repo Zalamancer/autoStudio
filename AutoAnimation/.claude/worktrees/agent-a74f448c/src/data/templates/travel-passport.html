@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Passport</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5efe6;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #333;
+  }
+  .scene {
+    width: 100%; height: 100%;
+    position: relative;
+    background:
+      radial-gradient(circle at 30% 70%, rgba(200,180,150,0.15), transparent 50%),
+      radial-gradient(circle at 70% 30%, rgba(180,160,130,0.1), transparent 50%),
+      #f5efe6;
+  }
+
+  /* Paper texture overlay */
+  .paper-texture {
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* Passport book */
+  .passport {
+    position: absolute;
+    top: 10vh; left: 50%;
+    transform: translateX(-50%);
+    width: 55vw; height: 70vh;
+    max-width: 350px;
+    background: linear-gradient(135deg, #1a3a5c 0%, #0f2640 100%);
+    border-radius: 1vh;
+    padding: 2vh 3vw;
+    box-shadow: 4px 6px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .passport-emblem {
+    width: 8vh; height: 8vh;
+    border: 2px solid rgba(200,170,100,0.4);
+    border-radius: 50%;
+    margin: 2vh 0 1vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  .passport-emblem.visible { opacity: 1; }
+  .emblem-inner {
+    width: 5vh; height: 5vh;
+    border: 1px solid rgba(200,170,100,0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5vh;
+    color: rgba(200,170,100,0.6);
+  }
+  .passport-title {
+    font-size: 1.8vh;
+    color: rgba(200,170,100,0.7);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.5vh;
+    opacity: 0;
+    transition: opacity 0.6s;
+  }
+  .passport-title.visible { opacity: 1; }
+  .passport-subtitle {
+    font-size: 1vh;
+    color: rgba(200,170,100,0.4);
+    letter-spacing: 0.15em;
+    opacity: 0;
+    transition: opacity 0.6s;
+  }
+  .passport-subtitle.visible { opacity: 1; }
+
+  /* Stamps area */
+  .stamps-area {
+    position: absolute;
+    top: 22vh; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+  }
+
+  /* Stamp */
+  .stamp {
+    position: absolute;
+    border: 2px solid;
+    border-radius: 50%;
+    padding: 0.8vh 1.5vw;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+    transition: opacity 0.4s, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-family: 'Arial', sans-serif;
+  }
+  .stamp.visible {
+    opacity: 0.75;
+  }
+  .stamp-country {
+    font-size: 1.1vh;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .stamp-date {
+    font-size: 0.8vh;
+    opacity: 0.7;
+    margin-top: 0.2vh;
+  }
+
+  /* Rectangular stamps */
+  .stamp.rect {
+    border-radius: 0.3vh;
+  }
+
+  /* Boarding pass */
+  .boarding-pass {
+    position: absolute;
+    bottom: 5vh;
+    right: -50vw;
+    width: 40vw; max-width: 280px;
+    background: #fff;
+    border-radius: 0.5vh;
+    padding: 1.5vh 2vw;
+    box-shadow: 2px 4px 12px rgba(0,0,0,0.1);
+    transition: right 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    border-left: 4px solid #2962ff;
+  }
+  .boarding-pass.visible { right: 3vw; }
+  .bp-header {
+    font-size: 0.9vh;
+    color: #999;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.5vh;
+  }
+  .bp-route {
+    display: flex;
+    align-items: center;
+    gap: 2vw;
+    margin-bottom: 0.8vh;
+  }
+  .bp-code {
+    font-size: 2.5vh;
+    font-weight: 900;
+    color: #333;
+    font-family: 'Arial', sans-serif;
+  }
+  .bp-arrow {
+    font-size: 1.5vh;
+    color: #2962ff;
+  }
+  .bp-detail {
+    font-size: 0.9vh;
+    color: #888;
+  }
+
+  /* Airplane */
+  .airplane {
+    position: absolute;
+    top: 8vh;
+    left: -10vw;
+    font-size: 3vh;
+    opacity: 0;
+    transition: left 3s ease-in-out, opacity 0.5s;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  }
+  .airplane.flying {
+    left: 110vw;
+    opacity: 1;
+  }
+
+  /* Luggage tag */
+  .luggage-tag {
+    position: absolute;
+    top: 15vh; left: 5vw;
+    width: 12vw; max-width: 80px;
+    background: #e8dcc8;
+    border-radius: 0.3vh;
+    padding: 1vh 1vw;
+    text-align: center;
+    opacity: 0;
+    transform: rotate(-5deg);
+    transition: opacity 0.5s;
+    box-shadow: 1px 2px 6px rgba(0,0,0,0.1);
+    border: 1px solid #d0c0a0;
+  }
+  .luggage-tag.visible { opacity: 1; }
+  @keyframes swing {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+  }
+  .luggage-tag.swinging { animation: swing 2s ease-in-out infinite; }
+  .tag-text {
+    font-size: 1.5vh;
+    font-weight: 900;
+    color: #555;
+    font-family: 'Arial', sans-serif;
+  }
+  .tag-detail {
+    font-size: 0.8vh;
+    color: #888;
+  }
+  .tag-hole {
+    width: 1vh; height: 1vh;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    margin: 0 auto 0.3vh;
+  }
+
+  /* Landmarks silhouette */
+  .landmarks {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 15vh;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  .landmarks.visible { opacity: 0.08; }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="paper-texture"></div>
+
+  <!-- Passport -->
+  <div class="passport" id="passport">
+    <div class="passport-emblem" id="emblem">
+      <div class="emblem-inner">\u2606</div>
+    </div>
+    <div class="passport-title" id="passTitle">PASSPORT</div>
+    <div class="passport-subtitle" id="passSub">UNITED NATIONS</div>
+    <div class="stamps-area" id="stampsArea"></div>
+  </div>
+
+  <!-- Airplane -->
+  <div class="airplane" id="airplane">\u2708</div>
+
+  <!-- Luggage tag -->
+  <div class="luggage-tag" id="luggageTag">
+    <div class="tag-hole"></div>
+    <div class="tag-text" id="tagDest">JFK</div>
+    <div class="tag-detail" id="tagFlight">FL-847</div>
+  </div>
+
+  <!-- Boarding pass -->
+  <div class="boarding-pass" id="boardingPass">
+    <div class="bp-header">BOARDING PASS</div>
+    <div class="bp-route">
+      <span class="bp-code" id="bpFrom">LAX</span>
+      <span class="bp-arrow">\u2794</span>
+      <span class="bp-code" id="bpTo">CDG</span>
+    </div>
+    <div class="bp-detail" id="bpDetails">Gate B42 | Seat 14A | Economy</div>
+  </div>
+
+  <!-- Landmarks silhouette -->
+  <svg class="landmarks" id="landmarks" viewBox="0 0 1000 150" preserveAspectRatio="none">
+    <!-- Eiffel Tower -->
+    <polygon points="200,150 210,50 215,10 220,50 230,150" fill="#333"/>
+    <line x1="205" y1="80" x2="225" y2="80" stroke="#333" stroke-width="3"/>
+    <line x1="208" y1="120" x2="222" y2="120" stroke="#333" stroke-width="3"/>
+    <!-- Pyramid -->
+    <polygon points="350,150 400,30 450,150" fill="#333"/>
+    <!-- Statue of Liberty -->
+    <rect x="550" y="60" width="20" height="90" fill="#333"/>
+    <polygon points="545,60 560,20 575,60" fill="#333"/>
+    <line x1="560" y1="30" x2="580" y2="15" stroke="#333" stroke-width="3"/>
+    <!-- Big Ben -->
+    <rect x="700" y="40" width="25" height="110" fill="#333"/>
+    <polygon points="700,40 712,15 725,40" fill="#333"/>
+    <!-- Taj Mahal dome -->
+    <ellipse cx="870" cy="60" rx="30" ry="40" fill="#333"/>
+    <rect x="840" y="60" width="60" height="90" fill="#333"/>
+  </svg>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    passportTitle: 'PASSPORT',
+    passportSubtitle: 'UNITED NATIONS',
+    stamps: [
+      { country: 'JAPAN', date: '15 MAR 2024', color: '#cc3333', rotation: -12, x: 15, y: 10, shape: 'circle' },
+      { country: 'FRANCE', date: '22 JUN 2024', color: '#2244aa', rotation: 8, x: 55, y: 5, shape: 'rect' },
+      { country: 'BRAZIL', date: '04 AUG 2024', color: '#228833', rotation: -5, x: 10, y: 45, shape: 'circle' },
+      { country: 'EGYPT', date: '18 SEP 2024', color: '#bb8800', rotation: 15, x: 50, y: 42, shape: 'rect' },
+      { country: 'AUSTRALIA', date: '02 NOV 2024', color: '#cc5500', rotation: -8, x: 30, y: 25, shape: 'circle' },
+      { country: 'ICELAND', date: '11 DEC 2024', color: '#4466aa', rotation: 20, x: 65, y: 28, shape: 'rect' },
+      { country: 'MOROCCO', date: '25 JAN 2025', color: '#aa2244', rotation: -15, x: 20, y: 65, shape: 'circle' },
+      { country: 'PERU', date: '08 FEB 2025', color: '#666633', rotation: 10, x: 55, y: 62, shape: 'rect' }
+    ],
+    boardingPass: { from: 'LAX', to: 'CDG', gate: 'B42', seat: '14A', class: 'Economy' },
+    luggageTag: { code: 'JFK', flight: 'FL-847' },
+    cycleDuration: 14000
+  };
+
+  document.getElementById('passTitle').textContent = CONFIG.passportTitle;
+  document.getElementById('passSub').textContent = CONFIG.passportSubtitle;
+  document.getElementById('bpFrom').textContent = CONFIG.boardingPass.from;
+  document.getElementById('bpTo').textContent = CONFIG.boardingPass.to;
+  document.getElementById('bpDetails').textContent =
+    `Gate ${CONFIG.boardingPass.gate} | Seat ${CONFIG.boardingPass.seat} | ${CONFIG.boardingPass.class}`;
+  document.getElementById('tagDest').textContent = CONFIG.luggageTag.code;
+  document.getElementById('tagFlight').textContent = CONFIG.luggageTag.flight;
+
+  const stampsArea = document.getElementById('stampsArea');
+
+  function createStamps() {
+    stampsArea.innerHTML = '';
+    CONFIG.stamps.forEach((s, i) => {
+      const stamp = document.createElement('div');
+      stamp.className = 'stamp' + (s.shape === 'rect' ? ' rect' : '');
+      stamp.style.left = s.x + '%';
+      stamp.style.top = s.y + '%';
+      stamp.style.borderColor = s.color;
+      stamp.style.color = s.color;
+      stamp.dataset.rotation = s.rotation;
+      stamp.innerHTML = `
+        <div class="stamp-country">${s.country}</div>
+        <div class="stamp-date">${s.date}</div>
+      `;
+      stampsArea.appendChild(stamp);
+    });
+  }
+
+  function runCycle() {
+    const emblem = document.getElementById('emblem');
+    const passTitle = document.getElementById('passTitle');
+    const passSub = document.getElementById('passSub');
+    const airplane = document.getElementById('airplane');
+    const luggageTag = document.getElementById('luggageTag');
+    const boardingPass = document.getElementById('boardingPass');
+    const landmarks = document.getElementById('landmarks');
+
+    // Reset
+    emblem.classList.remove('visible');
+    passTitle.classList.remove('visible');
+    passSub.classList.remove('visible');
+    airplane.classList.remove('flying');
+    airplane.style.transition = 'none';
+    airplane.style.left = '-10vw';
+    airplane.style.opacity = '0';
+    luggageTag.classList.remove('visible', 'swinging');
+    boardingPass.classList.remove('visible');
+    landmarks.classList.remove('visible');
+
+    createStamps();
+    const stamps = document.querySelectorAll('.stamp');
+    stamps.forEach(s => {
+      s.classList.remove('visible');
+      s.style.transform = 'scale(0) rotate(0deg)';
+    });
+
+    void emblem.offsetWidth;
+
+    // Sequence
+    setTimeout(() => emblem.classList.add('visible'), 300);
+    setTimeout(() => passTitle.classList.add('visible'), 600);
+    setTimeout(() => passSub.classList.add('visible'), 900);
+
+    // Stamps appear one by one
+    stamps.forEach((s, i) => {
+      setTimeout(() => {
+        s.classList.add('visible');
+        s.style.transform = `scale(1) rotate(${s.dataset.rotation}deg)`;
+      }, 1500 + i * 500);
+    });
+
+    // Airplane fly
+    setTimeout(() => {
+      airplane.style.transition = 'left 3s ease-in-out, opacity 0.5s';
+      airplane.style.opacity = '1';
+      airplane.classList.add('flying');
+    }, 3000);
+
+    // Luggage tag
+    setTimeout(() => {
+      luggageTag.classList.add('visible');
+      setTimeout(() => luggageTag.classList.add('swinging'), 200);
+    }, 4000);
+
+    // Boarding pass
+    setTimeout(() => boardingPass.classList.add('visible'), 6000);
+
+    // Landmarks
+    setTimeout(() => landmarks.classList.add('visible'), 7000);
+
+    // Date stamps add extra visual
+    setTimeout(() => {
+      stamps.forEach((s, i) => {
+        if (i % 2 === 0) {
+          setTimeout(() => {
+            s.style.transition = 'transform 0.3s';
+            const rot = parseInt(s.dataset.rotation);
+            s.style.transform = `scale(1.1) rotate(${rot + 3}deg)`;
+            setTimeout(() => {
+              s.style.transform = `scale(1) rotate(${rot}deg)`;
+            }, 200);
+          }, i * 200);
+        }
+      });
+    }, 8500);
+
+    // Fade out
+    setTimeout(() => {
+      emblem.classList.remove('visible');
+      passTitle.classList.remove('visible');
+      passSub.classList.remove('visible');
+      stamps.forEach(s => {
+        s.classList.remove('visible');
+        s.style.transform = 'scale(0) rotate(0deg)';
+      });
+      luggageTag.classList.remove('visible', 'swinging');
+      boardingPass.classList.remove('visible');
+      landmarks.classList.remove('visible');
+    }, CONFIG.cycleDuration - 1800);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

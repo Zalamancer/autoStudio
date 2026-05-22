@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treemap</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Budget Allocation',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  showValues: true,
+  padding: 4,
+  colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'],
+  data: [
+    { name: 'Engineering', value: 450000, children: [
+      { name: 'Frontend', value: 200000 },
+      { name: 'Backend', value: 150000 },
+      { name: 'DevOps', value: 100000 }
+    ]},
+    { name: 'Marketing', value: 300000, children: [
+      { name: 'Digital', value: 180000 },
+      { name: 'Content', value: 120000 }
+    ]},
+    { name: 'Sales', value: 250000 },
+    { name: 'Operations', value: 180000 },
+    { name: 'HR', value: 120000 },
+    { name: 'Legal', value: 80000 }
+  ]
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function formatValue(v) {
+  if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+  return '$' + v.toString();
+}
+
+function getNodeValue(node) {
+  if (node.children && node.children.length > 0) {
+    return node.children.reduce((s, c) => s + getNodeValue(c), 0);
+  }
+  return node.value || 0;
+}
+
+// Squarified treemap layout
+function layoutTreemap(nodes, rect, pad) {
+  const totalVal = nodes.reduce((s, n) => s + getNodeValue(n), 0);
+  if (totalVal <= 0 || nodes.length === 0) return [];
+
+  const results = [];
+  let remaining = [...nodes];
+  let currentRect = { ...rect };
+
+  while (remaining.length > 0) {
+    const isWide = (currentRect.w >= currentRect.h);
+    const side = isWide ? currentRect.h : currentRect.w;
+    const totalRemaining = remaining.reduce((s, n) => s + getNodeValue(n), 0);
+
+    // Find best row
+    let row = [remaining[0]];
+    let rowVal = getNodeValue(remaining[0]);
+    let bestAspect = Infinity;
+
+    for (let i = 1; i < remaining.length; i++) {
+      const testRow = [...row, remaining[i]];
+      const testVal = rowVal + getNodeValue(remaining[i]);
+      const rowFraction = testVal / totalRemaining;
+      const rowSize = (isWide ? currentRect.w : currentRect.h) * rowFraction;
+
+      // Calculate worst aspect ratio in this row
+      let worstAspect = 0;
+      for (const n of testRow) {
+        const nFrac = getNodeValue(n) / testVal;
+        const nSize = side * nFrac;
+        const aspect = Math.max(rowSize / nSize, nSize / rowSize);
+        worstAspect = Math.max(worstAspect, aspect);
+      }
+
+      if (worstAspect < bestAspect) {
+        bestAspect = worstAspect;
+        row = testRow;
+        rowVal = testVal;
+      } else {
+        break;
+      }
+    }
+
+    // Layout this row
+    const rowFraction = rowVal / totalRemaining;
+    const rowSize = (isWide ? currentRect.w : currentRect.h) * rowFraction;
+    let offset = 0;
+
+    for (const n of row) {
+      const nFrac = getNodeValue(n) / rowVal;
+      const nSize = side * nFrac;
+      let r;
+      if (isWide) {
+        r = { x: currentRect.x, y: currentRect.y + offset, w: rowSize, h: nSize };
+      } else {
+        r = { x: currentRect.x + offset, y: currentRect.y, w: nSize, h: rowSize };
+      }
+      results.push({ node: n, rect: r });
+
+      // Layout children inside
+      if (n.children && n.children.length > 0) {
+        const innerRect = { x: r.x + pad * 2, y: r.y + pad * 4, w: r.w - pad * 4, h: r.h - pad * 6 };
+        if (innerRect.w > pad * 4 && innerRect.h > pad * 4) {
+          const childResults = layoutTreemap(n.children, innerRect, pad);
+          results.push(...childResults);
+        }
+      }
+
+      offset += nSize;
+    }
+
+    // Shrink remaining rect
+    if (isWide) {
+      currentRect = { x: currentRect.x + rowSize, y: currentRect.y, w: currentRect.w - rowSize, h: currentRect.h };
+    } else {
+      currentRect = { x: currentRect.x, y: currentRect.y + rowSize, w: currentRect.w, h: currentRect.h - rowSize };
+    }
+
+    remaining = remaining.filter(n => !row.includes(n));
+  }
+
+  return results;
+}
+
+function roundRect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  if (r <= 0) { ctx.fillRect(x, y, w, h); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const pad = CONFIG.padding * (W / 500);
+  const area = { x: W * 0.06, y: H * 0.14, w: W * 0.88, h: H * 0.8 };
+  const layout = layoutTreemap(CONFIG.data, area, pad);
+
+  // Draw cells
+  const topLevel = CONFIG.data.map(d => d.name);
+  for (let i = 0; i < layout.length; i++) {
+    const { node, rect } = layout[i];
+    const isTop = topLevel.includes(node.name);
+    const colorIdx = topLevel.indexOf(isTop ? node.name : '');
+    const parentIdx = CONFIG.data.findIndex(d => d.children && d.children.some(c => c.name === node.name));
+    const ci = isTop ? topLevel.indexOf(node.name) : (parentIdx >= 0 ? parentIdx : i);
+    const color = CONFIG.colors[ci % CONFIG.colors.length];
+
+    // Animation: scale from center
+    const cellDelay = i * 0.02;
+    const cellProgress = Math.min(Math.max((progress - cellDelay) / 0.6, 0), 1);
+    const cellEase = easeOutCubic(cellProgress);
+    if (cellEase <= 0) continue;
+
+    const cx = rect.x + rect.w / 2;
+    const cy = rect.y + rect.h / 2;
+    const sw = rect.w * cellEase;
+    const sh = rect.h * cellEase;
+
+    ctx.globalAlpha = cellEase;
+    ctx.fillStyle = isTop ? color : (color + 'CC');
+    ctx.shadowColor = color; ctx.shadowBlur = W * 0.004;
+    roundRect(cx - sw / 2, cy - sh / 2, sw, sh, pad);
+    ctx.shadowBlur = 0;
+
+    // Border
+    ctx.strokeStyle = T.bg;
+    ctx.lineWidth = pad * 0.5;
+    ctx.beginPath();
+    ctx.rect(cx - sw / 2, cy - sh / 2, sw, sh);
+    ctx.stroke();
+
+    // Text
+    if (cellEase > 0.5 && sw > W * 0.04 && sh > H * 0.03) {
+      const fontSize = Math.min(sw * 0.15, sh * 0.25, W * 0.018);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${fontSize}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(node.name, cx, cy - (CONFIG.showValues ? fontSize * 0.5 : 0));
+
+      if (CONFIG.showValues) {
+        ctx.font = `${fontSize * 0.75}px system-ui`;
+        ctx.globalAlpha = cellEase * 0.8;
+        ctx.fillText(formatValue(getNodeValue(node)), cx, cy + fontSize * 0.6);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

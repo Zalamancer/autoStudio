@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Countdown</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.glow { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(120px); pointer-events: none; }
+.glow1 { top: -30vw; left: -10vw; background: rgba(139,92,246,0.12); }
+.glow2 { bottom: -30vw; right: -10vw; background: rgba(236,72,153,0.08); }
+.particles { position: absolute; inset: 0; pointer-events: none; }
+.particle { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.event-badge { font-size: 1.2vh; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 2vh; opacity: 0; transition: opacity 0.6s; }
+.event-badge.visible { opacity: 1; }
+.event-name { font-size: 5vh; font-weight: 800; color: #fff; text-align: center; margin-bottom: 0.5vh; letter-spacing: -0.02em; opacity: 0; transform: translateY(15px); transition: all 0.8s cubic-bezier(0.22,1,0.36,1); }
+.event-name.visible { opacity: 1; transform: translateY(0); }
+.event-location { font-size: 1.6vh; color: rgba(255,255,255,0.4); margin-bottom: 5vh; opacity: 0; transition: opacity 0.6s; }
+.event-location.visible { opacity: 1; }
+.countdown-row { display: flex; gap: 3vw; margin-bottom: 4vh; }
+.count-unit { display: flex; flex-direction: column; align-items: center; opacity: 0; transform: scale(0.8); transition: all 0.6s cubic-bezier(0.22,1,0.36,1); }
+.count-unit.visible { opacity: 1; transform: scale(1); }
+.count-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5vh; padding: 2vh 2.5vw; min-width: 10vw; text-align: center; position: relative; overflow: hidden; }
+.count-box::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.04); }
+.count-num { font-size: 6vh; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; line-height: 1; }
+.count-label { font-size: 1.1vh; color: rgba(255,255,255,0.3); letter-spacing: 0.2em; text-transform: uppercase; margin-top: 1vh; }
+.separator { font-size: 5vh; color: rgba(255,255,255,0.15); align-self: flex-start; margin-top: 2vh; animation: sepPulse 1s infinite; }
+@keyframes sepPulse { 0%,100% { opacity: 0.15; } 50% { opacity: 0.5; } }
+.event-date { font-size: 1.4vh; color: rgba(255,255,255,0.3); letter-spacing: 0.1em; opacity: 0; transition: opacity 0.5s; }
+.event-date.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="glow glow1"></div>
+  <div class="glow glow2"></div>
+  <div class="particles" id="particles"></div>
+  <div class="event-badge" id="badge">COMING SOON</div>
+  <div class="event-name" id="eventName">Product Launch 2026</div>
+  <div class="event-location" id="eventLocation">📍 San Francisco, CA</div>
+  <div class="countdown-row" id="countdownRow">
+    <div class="count-unit"><div class="count-box"><div class="count-num" id="days">00</div></div><div class="count-label">Days</div></div>
+    <div class="separator">:</div>
+    <div class="count-unit"><div class="count-box"><div class="count-num" id="hours">00</div></div><div class="count-label">Hours</div></div>
+    <div class="separator">:</div>
+    <div class="count-unit"><div class="count-box"><div class="count-num" id="minutes">00</div></div><div class="count-label">Minutes</div></div>
+    <div class="separator">:</div>
+    <div class="count-unit"><div class="count-box"><div class="count-num" id="seconds">00</div></div><div class="count-label">Seconds</div></div>
+  </div>
+  <div class="event-date" id="eventDate">March 15, 2026 • 10:00 AM PST</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  eventName: 'Product Launch 2026',
+  eventDate: 'March 15, 2026 • 10:00 AM PST',
+  eventLocation: '📍 San Francisco, CA',
+  startDays: 42, startHours: 18, startMinutes: 37, startSeconds: 52,
+  particleCount: 40,
+  cycleDuration: 12000,
+  bgColor: '#0a0518',
+  accentColor: '#8b5cf6',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('eventName').textContent = CONFIG.eventName;
+document.getElementById('eventDate').textContent = CONFIG.eventDate;
+document.getElementById('eventLocation').textContent = CONFIG.eventLocation;
+
+var particlesEl = document.getElementById('particles');
+for (var i = 0; i < CONFIG.particleCount; i++) {
+  var p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.top = Math.random() * 100 + 'vh';
+  p.style.animationDuration = (3 + Math.random() * 5) + 's';
+  p.style.opacity = Math.random() * 0.2;
+  particlesEl.appendChild(p);
+}
+
+var totalSeconds;
+
+function updateCountdown() {
+  totalSeconds--;
+  if (totalSeconds < 0) totalSeconds = CONFIG.startDays * 86400 + CONFIG.startHours * 3600 + CONFIG.startMinutes * 60 + CONFIG.startSeconds;
+  var d = Math.floor(totalSeconds / 86400);
+  var h = Math.floor((totalSeconds % 86400) / 3600);
+  var m = Math.floor((totalSeconds % 3600) / 60);
+  var s = totalSeconds % 60;
+  document.getElementById('days').textContent = String(d).padStart(2, '0');
+  document.getElementById('hours').textContent = String(h).padStart(2, '0');
+  document.getElementById('minutes').textContent = String(m).padStart(2, '0');
+  document.getElementById('seconds').textContent = String(s).padStart(2, '0');
+}
+
+function runCycle() {
+  var badge = document.getElementById('badge');
+  var eventName = document.getElementById('eventName');
+  var eventLocation = document.getElementById('eventLocation');
+  var eventDate = document.getElementById('eventDate');
+  var units = document.querySelectorAll('.count-unit');
+
+  [badge, eventName, eventLocation, eventDate].forEach(function(el) { el.classList.remove('visible'); });
+  units.forEach(function(u) { u.classList.remove('visible'); });
+  totalSeconds = CONFIG.startDays * 86400 + CONFIG.startHours * 3600 + CONFIG.startMinutes * 60 + CONFIG.startSeconds;
+
+  setTimeout(function() { badge.classList.add('visible'); }, 300);
+  setTimeout(function() { eventName.classList.add('visible'); }, 600);
+  setTimeout(function() { eventLocation.classList.add('visible'); }, 1000);
+  units.forEach(function(u, i) { setTimeout(function() { u.classList.add('visible'); }, 1400 + i * 200); });
+  setTimeout(function() { eventDate.classList.add('visible'); }, 2500);
+
+  updateCountdown();
+  var countInterval = setInterval(updateCountdown, 1000);
+
+  setTimeout(function() {
+    clearInterval(countInterval);
+    [badge, eventName, eventLocation, eventDate].forEach(function(el) { el.classList.remove('visible'); });
+    units.forEach(function(u) { u.classList.remove('visible'); });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

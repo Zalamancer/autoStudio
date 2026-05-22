@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movie Poster Reveal</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: var(--bg, #000);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative; color: #fff;
+  }
+
+  /* Film grain overlay */
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 128px 128px;
+    animation: grainShift 0.3s steps(3) infinite;
+  }
+  @keyframes grainShift {
+    0%   { transform: translate(0, 0); }
+    33%  { transform: translate(-5px, 5px); }
+    66%  { transform: translate(5px, -5px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* Letterbox bars */
+  .letterbox-top, .letterbox-bottom {
+    position: fixed; left: 0; right: 0; height: 0;
+    background: #000; z-index: 50;
+    transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .letterbox-top { top: 0; }
+  .letterbox-bottom { bottom: 0; }
+  .letterbox-top.active, .letterbox-bottom.active { height: 10vh; }
+
+  /* Light streak */
+  .light-streak {
+    position: fixed; top: 50%; left: -100%;
+    width: 200%; height: 2px;
+    background: linear-gradient(90deg, transparent 0%, transparent 30%, rgba(255,215,0,0.8) 45%, #fff 50%, rgba(255,215,0,0.8) 55%, transparent 70%, transparent 100%);
+    box-shadow: 0 0 40px rgba(255,215,0,0.4), 0 0 80px rgba(255,215,0,0.2);
+    transform: translateY(-50%) rotate(-3deg);
+    opacity: 0;
+    animation: streakSlash 1s cubic-bezier(0.4, 0, 0.2, 1) 0.5s forwards;
+    z-index: 10;
+  }
+  @keyframes streakSlash {
+    0%   { left: -100%; opacity: 1; }
+    60%  { left: 0%; opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+  }
+
+  /* Lens flare */
+  .lens-flare {
+    position: fixed; top: 35%; left: 50%;
+    width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    animation: flareIn 0.8s ease 1.2s forwards, flarePulse 3s ease-in-out 2s infinite;
+    pointer-events: none; z-index: 5;
+  }
+  @keyframes flareIn { to { opacity: 1; } }
+  @keyframes flarePulse {
+    0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  }
+
+  /* Stars (cast) */
+  .stars-row {
+    position: relative; z-index: 20;
+    font-size: 11px; letter-spacing: 6px; text-transform: uppercase;
+    color: rgba(255,255,255,0.6); margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeInDown 0.6s ease 1.5s forwards;
+  }
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Title */
+  .title-container {
+    position: relative; z-index: 20;
+    overflow: hidden; margin-bottom: 16px;
+  }
+  .title {
+    font-size: 64px; font-weight: 700; letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--title-color, #d4a847);
+    text-shadow: 0 0 30px rgba(212,168,71,0.5), 0 0 60px rgba(212,168,71,0.2);
+    display: flex; gap: 4px;
+  }
+  .title .letter {
+    opacity: 0; transform: translateY(30px);
+    display: inline-block;
+  }
+
+  /* Tagline */
+  .tagline {
+    position: relative; z-index: 20;
+    font-size: 16px; font-style: italic;
+    color: rgba(255,255,255,0.7); letter-spacing: 3px;
+    opacity: 0;
+    animation: fadeIn 0.8s ease 3.5s forwards;
+    margin-bottom: 60px;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Release text */
+  .release {
+    position: relative; z-index: 20;
+    font-size: 14px; letter-spacing: 6px; text-transform: uppercase;
+    color: rgba(255,255,255,0.8);
+    opacity: 0;
+    animation: fadeIn 0.6s ease 4s forwards, releasePulse 2s ease-in-out 4.5s infinite;
+  }
+  @keyframes releasePulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; text-shadow: 0 0 15px rgba(255,255,255,0.3); }
+  }
+
+  /* Scene exit */
+  .scene { position: relative; z-index: 20; text-align: center; }
+  .scene.exit {
+    animation: sceneExit 0.8s ease-in forwards;
+  }
+  @keyframes sceneExit {
+    to { opacity: 0; transform: scale(1.05); filter: blur(4px); }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="letterbox-top" id="lbTop"></div>
+<div class="letterbox-bottom" id="lbBottom"></div>
+<div class="light-streak" id="streak"></div>
+<div class="lens-flare" id="flare"></div>
+
+<div class="scene" id="scene">
+  <div class="stars-row" id="stars"></div>
+  <div class="title-container">
+    <div class="title" id="title"></div>
+  </div>
+  <div class="tagline" id="tagline"></div>
+  <div class="release" id="release"></div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  title: 'ECLIPSE',
+  tagline: 'When darkness falls, heroes rise.',
+  stars: ['Chris Evans', 'Ana de Armas', 'Idris Elba'],
+  releaseText: 'Coming Soon',
+  titleColor: '#d4a847',
+  bgColor: '#000000',
+  cycleDuration: 10
+};
+
+function applyConfig() {
+  document.body.style.setProperty('--bg', CONFIG.bgColor);
+  document.documentElement.style.setProperty('--title-color', CONFIG.titleColor);
+
+  // Stars
+  document.getElementById('stars').textContent = CONFIG.stars.join('   ·   ');
+
+  // Title letters
+  const titleEl = document.getElementById('title');
+  titleEl.innerHTML = '';
+  CONFIG.title.split('').forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.className = 'letter';
+    span.textContent = ch === ' ' ? '\u00A0' : ch;
+    span.style.animation = `letterIn 0.4s cubic-bezier(0.16,1,0.3,1) ${2 + i * 0.12}s forwards`;
+    titleEl.appendChild(span);
+  });
+
+  // Tagline and release
+  document.getElementById('tagline').textContent = CONFIG.tagline;
+  document.getElementById('release').textContent = CONFIG.releaseText;
+}
+
+// Letter-in keyframes
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes letterIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
+document.head.appendChild(style);
+
+function runCycle() {
+  const scene = document.getElementById('scene');
+  const streak = document.getElementById('streak');
+  const flare = document.getElementById('flare');
+  const lbTop = document.getElementById('lbTop');
+  const lbBottom = document.getElementById('lbBottom');
+
+  // Reset
+  scene.classList.remove('exit');
+  [scene, streak, flare].forEach(el => {
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = '';
+  });
+  lbTop.classList.remove('active');
+  lbBottom.classList.remove('active');
+
+  applyConfig();
+
+  // Letterbox bars
+  setTimeout(() => {
+    lbTop.classList.add('active');
+    lbBottom.classList.add('active');
+  }, 300);
+
+  // Streak re-animate
+  streak.style.animation = 'none';
+  streak.offsetHeight;
+  streak.style.animation = 'streakSlash 1s cubic-bezier(0.4,0,0.2,1) 0.5s forwards';
+
+  // Flare
+  flare.style.animation = 'none';
+  flare.offsetHeight;
+  flare.style.animation = 'flareIn 0.8s ease 1.2s forwards, flarePulse 3s ease-in-out 2s infinite';
+
+  // Stars
+  const starsEl = document.getElementById('stars');
+  starsEl.style.animation = 'none';
+  starsEl.offsetHeight;
+  starsEl.style.animation = 'fadeInDown 0.6s ease 1.5s forwards';
+
+  // Tagline
+  const tagEl = document.getElementById('tagline');
+  tagEl.style.animation = 'none';
+  tagEl.offsetHeight;
+  tagEl.style.animation = 'fadeIn 0.8s ease 3.5s forwards';
+
+  // Release
+  const relEl = document.getElementById('release');
+  relEl.style.animation = 'none';
+  relEl.offsetHeight;
+  relEl.style.animation = 'fadeIn 0.6s ease 4s forwards, releasePulse 2s ease-in-out 4.5s infinite';
+
+  // Exit
+  const exitTime = (CONFIG.cycleDuration - 1.2) * 1000;
+  setTimeout(() => {
+    scene.classList.add('exit');
+    lbTop.classList.remove('active');
+    lbBottom.classList.remove('active');
+  }, exitTime);
+
+  setTimeout(runCycle, CONFIG.cycleDuration * 1000);
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+    applyConfig();
+  }
+});
+
+applyConfig();
+setTimeout(runCycle, 100);
+</script>
+</body>
+</html>

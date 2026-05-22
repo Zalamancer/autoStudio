@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser Window - Web UI</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #2b2b2b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  bgColor: '#2b2b2b',
+  chromeTabBg: '#323232',
+  chromeActiveTab: '#1e1e1e',
+  chromeBarBg: '#3c3c3c',
+  urlBarBg: '#1e1e1e',
+  urlBarText: '#cccccc',
+  urlBarBorder: '#555555',
+  pageBg: '#ffffff',
+  skeletonBg: '#e5e7eb',
+  skeletonShine: '#f3f4f6',
+  textColor: '#1f2937',
+  dimText: '#6b7280',
+  accentColor: '#3b82f6',
+  buttonColor: '#3b82f6',
+  buttonHover: '#2563eb',
+  cardBg: '#ffffff',
+  cardBorder: '#e5e7eb',
+  headerBg: '#1f2937',
+  headerText: '#ffffff',
+  spinnerColor: '#3b82f6',
+  tabNames: ['Dashboard', 'Settings', 'Analytics'],
+  url: 'https://app.proanimate.io/dashboard',
+  loadDuration: 3,
+  scrollSpeed: 0.8,
+  cycleDuration: 12
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+let phase = 'loading'; // loading, reveal, scroll, tabswitch, responsive
+let phaseTime = 0;
+let activeTab = 0;
+let scrollY = 0;
+let urlTyped = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawChromeFrame() {
+  const margin = W * 0.03;
+  const frameX = margin;
+  const frameW = W - margin * 2;
+  const tabH = H * 0.04;
+  const barH = H * 0.045;
+
+  // Window shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 30;
+  roundRect(frameX, 0, frameW, H, 8);
+  ctx.fillStyle = CONFIG.chromeTabBg;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Tab bar
+  ctx.fillStyle = CONFIG.chromeTabBg;
+  ctx.fillRect(frameX, 0, frameW, tabH);
+
+  // Traffic lights
+  const btnY = tabH / 2;
+  const btnR = tabH * 0.18;
+  const btnX = frameX + tabH * 0.5;
+  ['#ff5f57', '#febc2e', '#28c840'].forEach((color, i) => {
+    ctx.beginPath();
+    ctx.arc(btnX + i * tabH * 0.55, btnY, btnR, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+
+  // Tabs
+  const tabStartX = frameX + tabH * 2.5;
+  const tabW = W * 0.14;
+
+  CONFIG.tabNames.forEach((name, i) => {
+    const tx = tabStartX + i * (tabW + 4);
+    const isActive = i === activeTab;
+
+    roundRect(tx, 4, tabW, tabH - 2, 6);
+    ctx.fillStyle = isActive ? CONFIG.chromeActiveTab : CONFIG.chromeTabBg;
+    ctx.fill();
+
+    if (isActive) {
+      ctx.fillStyle = CONFIG.chromeActiveTab;
+      ctx.fillRect(tx, tabH - 4, tabW, 6);
+    }
+
+    ctx.fillStyle = isActive ? '#ffffff' : '#999999';
+    ctx.font = `${W * 0.01}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(name, tx + tabW / 2, tabH * 0.65);
+
+    // Close button
+    ctx.fillStyle = '#888888';
+    ctx.font = `${W * 0.009}px sans-serif`;
+    ctx.fillText('\u00d7', tx + tabW - W * 0.01, tabH * 0.6);
+  });
+
+  // URL bar
+  const barY = tabH;
+  ctx.fillStyle = CONFIG.chromeBarBg;
+  ctx.fillRect(frameX, barY, frameW, barH);
+
+  // Nav buttons
+  ctx.fillStyle = '#888888';
+  ctx.font = `${W * 0.014}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('\u2190', frameX + barH * 0.6, barY + barH * 0.6);
+  ctx.fillText('\u2192', frameX + barH * 1.3, barY + barH * 0.6);
+  ctx.fillText('\u21BB', frameX + barH * 2.0, barY + barH * 0.6);
+
+  // URL input
+  const urlX = frameX + barH * 2.8;
+  const urlW = frameW - barH * 4;
+  const urlY2 = barY + barH * 0.18;
+  const urlH = barH * 0.64;
+
+  roundRect(urlX, urlY2, urlW, urlH, 14);
+  ctx.fillStyle = CONFIG.urlBarBg;
+  ctx.fill();
+
+  // URL typing animation
+  const cyclePeriod = CONFIG.cycleDuration;
+  const cycleTime = (time * 0.8) % cyclePeriod;
+
+  if (cycleTime < 1.5) {
+    urlTyped = Math.min(Math.floor(cycleTime / 1.5 * CONFIG.url.length), CONFIG.url.length);
+  } else {
+    urlTyped = CONFIG.url.length;
+  }
+
+  // Lock icon
+  ctx.fillStyle = '#22c55e';
+  ctx.font = `${W * 0.009}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('\uD83D\uDD12', urlX + W * 0.008, barY + barH * 0.6);
+
+  // URL text
+  ctx.fillStyle = CONFIG.urlBarText;
+  ctx.font = `${W * 0.01}px sans-serif`;
+  ctx.fillText(CONFIG.url.substring(0, urlTyped), urlX + W * 0.025, barY + barH * 0.62);
+
+  // Cursor blink
+  if (urlTyped < CONFIG.url.length && Math.sin(time * 6) > 0) {
+    const textW = ctx.measureText(CONFIG.url.substring(0, urlTyped)).width;
+    ctx.fillStyle = CONFIG.urlBarText;
+    ctx.fillRect(urlX + W * 0.025 + textW, barY + barH * 0.25, 1.5, barH * 0.5);
+  }
+
+  return tabH + barH;
+}
+
+function drawSkeleton(contentY, contentX, contentW, contentH) {
+  const cycleTime = (time * 0.8) % CONFIG.cycleDuration;
+  const loadP = Math.min(cycleTime / CONFIG.loadDuration, 1);
+
+  if (loadP >= 1) return false;
+
+  // Shimmer effect
+  const shimmerX = (cycleTime * 0.5 % 1) * contentW * 2 - contentW * 0.5;
+
+  function drawSkeletonRect(x, y, w, h) {
+    roundRect(x, y, w, h, 4);
+    ctx.fillStyle = CONFIG.skeletonBg;
+    ctx.fill();
+
+    // Shimmer
+    ctx.save();
+    ctx.clip();
+    const grad = ctx.createLinearGradient(shimmerX, 0, shimmerX + contentW * 0.3, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+  }
+
+  // Header skeleton
+  drawSkeletonRect(contentX, contentY + contentH * 0.02, contentW, contentH * 0.07);
+
+  // Content skeletons
+  const cardW = contentW * 0.3;
+  const cardH = contentH * 0.2;
+  for (let i = 0; i < 3; i++) {
+    const cx = contentX + i * (cardW + contentW * 0.03);
+    drawSkeletonRect(cx, contentY + contentH * 0.12, cardW, cardH);
+    drawSkeletonRect(cx, contentY + contentH * 0.34, cardW * 0.7, contentH * 0.015);
+    drawSkeletonRect(cx, contentY + contentH * 0.37, cardW * 0.5, contentH * 0.012);
+  }
+
+  // Text lines
+  for (let i = 0; i < 5; i++) {
+    const w = contentW * (0.4 + Math.random() * 0.5);
+    drawSkeletonRect(contentX, contentY + contentH * (0.45 + i * 0.04), w, contentH * 0.02);
+  }
+
+  // Loading spinner
+  if (loadP < 0.8) {
+    const spinX = contentX + contentW / 2;
+    const spinY = contentY + contentH * 0.8;
+    const spinR = contentH * 0.025;
+
+    ctx.strokeStyle = CONFIG.spinnerColor;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(spinX, spinY, spinR, time * 5, time * 5 + Math.PI * 1.5);
+    ctx.stroke();
+  }
+
+  return true;
+}
+
+function drawPageContent(contentY, contentX, contentW, contentH) {
+  const cycleTime = (time * 0.8) % CONFIG.cycleDuration;
+  const revealP = Math.min((cycleTime - CONFIG.loadDuration) / 1.0, 1);
+
+  if (revealP <= 0) return;
+
+  const eased = easeOutCubic(revealP);
+  ctx.globalAlpha = eased;
+
+  // Page header
+  const headerH = contentH * 0.07;
+  ctx.fillStyle = CONFIG.headerBg;
+  ctx.fillRect(contentX, contentY, contentW, headerH);
+
+  ctx.fillStyle = CONFIG.headerText;
+  ctx.font = `bold ${W * 0.013}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('Dashboard', contentX + contentW * 0.03, contentY + headerH * 0.6);
+
+  // Nav items
+  const navItems = ['Overview', 'Analytics', 'Projects', 'Team'];
+  ctx.font = `${W * 0.009}px sans-serif`;
+  navItems.forEach((item, i) => {
+    ctx.fillStyle = i === 0 ? CONFIG.accentColor : 'rgba(255,255,255,0.7)';
+    ctx.fillText(item, contentX + contentW * (0.25 + i * 0.1), contentY + headerH * 0.6);
+  });
+
+  // Scroll logic
+  const scrollPhaseStart = CONFIG.loadDuration + 2;
+  if (cycleTime > scrollPhaseStart) {
+    scrollY = Math.sin((cycleTime - scrollPhaseStart) * CONFIG.scrollSpeed) * contentH * 0.15;
+  } else {
+    scrollY = 0;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(contentX, contentY + headerH, contentW, contentH - headerH);
+  ctx.clip();
+
+  const scrollOffset = -Math.max(0, scrollY);
+  const baseY = contentY + headerH + scrollOffset;
+
+  // Stats cards
+  const cardColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+  const cardLabels = ['Total Users', 'Revenue', 'Active', 'Issues'];
+  const cardValues = ['12,847', '$48.2K', '3,291', '23'];
+  const cardW2 = contentW * 0.22;
+  const cardH2 = contentH * 0.12;
+
+  cardColors.forEach((color, i) => {
+    const delay = i * 0.1;
+    const cardReveal = Math.min(Math.max((revealP - delay) / 0.5, 0), 1);
+    const eased2 = easeOutCubic(cardReveal);
+
+    const cx = contentX + contentW * 0.02 + i * (cardW2 + contentW * 0.02);
+    const cy = baseY + contentH * 0.03;
+
+    ctx.globalAlpha = eased2 * eased;
+
+    roundRect(cx, cy, cardW2, cardH2, 8);
+    ctx.fillStyle = CONFIG.cardBg;
+    ctx.fill();
+    ctx.strokeStyle = CONFIG.cardBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Color accent bar
+    ctx.fillStyle = color;
+    ctx.fillRect(cx, cy, cardW2, 3);
+
+    // Label
+    ctx.fillStyle = CONFIG.dimText;
+    ctx.font = `${W * 0.008}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(cardLabels[i], cx + contentW * 0.015, cy + cardH2 * 0.4);
+
+    // Value
+    ctx.fillStyle = CONFIG.textColor;
+    ctx.font = `bold ${W * 0.016}px sans-serif`;
+    ctx.fillText(cardValues[i], cx + contentW * 0.015, cy + cardH2 * 0.75);
+  });
+
+  ctx.globalAlpha = eased;
+
+  // Chart area
+  const chartY = baseY + contentH * 0.2;
+  const chartH = contentH * 0.3;
+  const chartW2 = contentW * 0.6;
+
+  roundRect(contentX + contentW * 0.02, chartY, chartW2, chartH, 8);
+  ctx.fillStyle = CONFIG.cardBg;
+  ctx.fill();
+  ctx.strokeStyle = CONFIG.cardBorder;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Chart title
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.font = `600 ${W * 0.01}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillText('Revenue Overview', contentX + contentW * 0.04, chartY + chartH * 0.12);
+
+  // Simple line chart
+  ctx.strokeStyle = CONFIG.accentColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const chartAreaX = contentX + contentW * 0.06;
+  const chartAreaW = chartW2 - contentW * 0.08;
+  const chartAreaY = chartY + chartH * 0.2;
+  const chartAreaH = chartH * 0.65;
+
+  const dataPoints = [0.3, 0.5, 0.4, 0.7, 0.6, 0.8, 0.75, 0.9, 0.85, 0.95];
+  dataPoints.forEach((v, i) => {
+    const px = chartAreaX + (i / (dataPoints.length - 1)) * chartAreaW;
+    const py = chartAreaY + chartAreaH * (1 - v);
+    const drawP = Math.min(Math.max((revealP - 0.3 - i * 0.05) / 0.3, 0), 1);
+    if (drawP <= 0) return;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  // Fill under line
+  ctx.lineTo(chartAreaX + chartAreaW, chartAreaY + chartAreaH);
+  ctx.lineTo(chartAreaX, chartAreaY + chartAreaH);
+  ctx.closePath();
+  ctx.fillStyle = CONFIG.accentColor + '15';
+  ctx.fill();
+
+  // Side panel
+  const sideX = contentX + contentW * 0.66;
+  const sideW = contentW * 0.32;
+
+  roundRect(sideX, chartY, sideW, chartH, 8);
+  ctx.fillStyle = CONFIG.cardBg;
+  ctx.fill();
+  ctx.strokeStyle = CONFIG.cardBorder;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.font = `600 ${W * 0.01}px sans-serif`;
+  ctx.fillText('Recent Activity', sideX + sideW * 0.06, chartY + chartH * 0.12);
+
+  // Activity items
+  const activities = ['New user signup', 'Payment received', 'Export completed', 'Bug reported'];
+  activities.forEach((act, i) => {
+    const ay = chartY + chartH * (0.22 + i * 0.18);
+    const dotColor = cardColors[i];
+
+    ctx.beginPath();
+    ctx.arc(sideX + sideW * 0.08, ay, W * 0.003, 0, Math.PI * 2);
+    ctx.fillStyle = dotColor;
+    ctx.fill();
+
+    ctx.fillStyle = CONFIG.textColor;
+    ctx.font = `${W * 0.008}px sans-serif`;
+    ctx.fillText(act, sideX + sideW * 0.15, ay + W * 0.003);
+
+    ctx.fillStyle = CONFIG.dimText;
+    ctx.font = `${W * 0.007}px sans-serif`;
+    ctx.fillText(`${i + 1}m ago`, sideX + sideW * 0.15, ay + W * 0.015);
+  });
+
+  // Button with click effect
+  const btnX = contentX + contentW * 0.02;
+  const btnY = baseY + contentH * 0.55;
+  const btnW2 = contentW * 0.12;
+  const btnH2 = contentH * 0.04;
+
+  const clickPhase = ((cycleTime - CONFIG.loadDuration - 3) * 0.5 + 1) % 2;
+  const isPressed = clickPhase > 0.9 && clickPhase < 1.1;
+
+  roundRect(btnX, btnY + (isPressed ? 1 : 0), btnW2, btnH2, 6);
+  ctx.fillStyle = isPressed ? CONFIG.buttonHover : CONFIG.buttonColor;
+  ctx.fill();
+
+  if (isPressed) {
+    // Click ripple
+    const rippleR = (clickPhase - 0.9) * 5 * btnW2;
+    ctx.beginPath();
+    ctx.arc(btnX + btnW2 / 2, btnY + btnH2 / 2, rippleR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `600 ${W * 0.009}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('View All', btnX + btnW2 / 2, btnY + btnH2 * 0.65);
+  ctx.textAlign = 'left';
+
+  // More content below fold
+  const tableY = baseY + contentH * 0.63;
+  roundRect(contentX + contentW * 0.02, tableY, contentW * 0.96, contentH * 0.3, 8);
+  ctx.fillStyle = CONFIG.cardBg;
+  ctx.fill();
+  ctx.strokeStyle = CONFIG.cardBorder;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = CONFIG.textColor;
+  ctx.font = `600 ${W * 0.01}px sans-serif`;
+  ctx.fillText('Recent Projects', contentX + contentW * 0.04, tableY + contentH * 0.04);
+
+  // Table rows
+  const rows = ['ProAnimate v2.0', 'Marketing Video', 'Product Demo', 'Social Campaign'];
+  const statuses = ['In Progress', 'Completed', 'Review', 'Draft'];
+  const statusClrs = [CONFIG.accentColor, '#10b981', '#f59e0b', CONFIG.dimText];
+
+  rows.forEach((row, i) => {
+    const ry = tableY + contentH * (0.08 + i * 0.055);
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(0,0,0,0.02)' : 'transparent';
+    ctx.fillRect(contentX + contentW * 0.03, ry - contentH * 0.015, contentW * 0.92, contentH * 0.05);
+
+    ctx.fillStyle = CONFIG.textColor;
+    ctx.font = `${W * 0.009}px sans-serif`;
+    ctx.fillText(row, contentX + contentW * 0.05, ry + contentH * 0.01);
+
+    // Status badge
+    const badgeX = contentX + contentW * 0.75;
+    roundRect(badgeX, ry - contentH * 0.008, contentW * 0.12, contentH * 0.03, 10);
+    ctx.fillStyle = statusClrs[i] + '20';
+    ctx.fill();
+    ctx.fillStyle = statusClrs[i];
+    ctx.font = `${W * 0.007}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(statuses[i], badgeX + contentW * 0.06, ry + contentH * 0.01);
+    ctx.textAlign = 'left';
+  });
+
+  ctx.restore();
+
+  // Scrollbar
+  const totalContent = contentH * 1.3;
+  const visibleRatio = (contentH - headerH) / totalContent;
+  const scrollBarH = Math.max((contentH - headerH) * visibleRatio, contentH * 0.1);
+  const scrollBarY = contentY + headerH + (Math.max(0, scrollY) / totalContent) * (contentH - headerH);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  roundRect(contentX + contentW - 6, scrollBarY, 4, scrollBarH, 2);
+  ctx.fill();
+
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const chromeH = drawChromeFrame();
+
+  const margin = W * 0.03;
+  const contentX = margin;
+  const contentW = W - margin * 2;
+  const contentH = H - chromeH;
+
+  // Page background
+  ctx.fillStyle = '#f9fafb';
+  ctx.fillRect(contentX, chromeH, contentW, contentH);
+
+  const isLoading = drawSkeleton(chromeH, contentX, contentW, contentH);
+  drawPageContent(chromeH, contentX, contentW, contentH);
+
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

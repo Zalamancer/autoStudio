@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histogram</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #0F172A; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  title: 'Score Distribution',
+  theme: 'dark',
+  loop: false,
+  animationSpeed: 1.0,
+  barColor: '#3B82F6',
+  highlightColor: '#60A5FA',
+  meanColor: '#EF4444',
+  medianColor: '#F59E0B',
+  values: [23, 45, 67, 34, 89, 56, 78, 12, 90, 43, 65, 72, 38, 51, 84, 29, 61, 74, 47, 82, 55, 63, 41, 76, 58, 33, 69, 87, 50, 71, 44, 66, 39, 80, 53, 27, 73, 60, 48, 85, 36, 68, 77, 42, 57, 31, 75, 62, 46, 83],
+  binCount: 10,
+  showMean: true,
+  showMedian: true,
+  xLabel: 'Score',
+  yLabel: 'Frequency'
+};
+
+function getTheme() {
+  if (CONFIG.theme === 'light') return { bg: '#FFFFFF', text: '#334155', title: '#0F172A', grid: 'rgba(51,65,85,0.12)', subtle: '#F1F5F9' };
+  return { bg: '#0F172A', text: '#94A3B8', title: '#F1F5F9', grid: 'rgba(148,163,184,0.15)', subtle: '#1E293B' };
+}
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+function computeBins() {
+  const vals = CONFIG.values;
+  const mn = Math.min(...vals);
+  const mx = Math.max(...vals);
+  const range = mx - mn || 1;
+  const binW = range / CONFIG.binCount;
+  const bins = [];
+  for (let i = 0; i < CONFIG.binCount; i++) {
+    bins.push({ lo: mn + i * binW, hi: mn + (i + 1) * binW, count: 0 });
+  }
+  for (const v of vals) {
+    let idx = Math.floor((v - mn) / binW);
+    if (idx >= CONFIG.binCount) idx = CONFIG.binCount - 1;
+    bins[idx].count++;
+  }
+  return bins;
+}
+
+function draw() {
+  const T = getTheme();
+  const dur = 2.0 / CONFIG.animationSpeed;
+  const progress = Math.min(time / dur, 1);
+  const ease = easeOutCubic(progress);
+  const bins = computeBins();
+  const maxCount = Math.max(...bins.map(b => b.count)) * 1.15;
+  const vals = CONFIG.values;
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const sorted = [...vals].sort((a, b) => a - b);
+  const median = sorted.length % 2 === 0 ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 : sorted[Math.floor(sorted.length / 2)];
+  const dataMin = Math.min(...vals);
+  const dataMax = Math.max(...vals);
+
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.fillStyle = T.title;
+  ctx.font = `bold ${W * 0.032}px system-ui`;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.title, W * 0.06, H * 0.05);
+
+  const area = { x: W * 0.14, y: H * 0.15, w: W * 0.78, h: H * 0.65 };
+
+  // Grid
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  ctx.fillStyle = T.text;
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) {
+    const y = area.y + (area.h / steps) * i;
+    ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+    const val = Math.round(maxCount - (maxCount / steps) * i);
+    ctx.font = `${W * 0.016}px system-ui`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(val.toString(), area.x - W * 0.012, y);
+  }
+
+  // Y label
+  ctx.save();
+  ctx.translate(W * 0.03, area.y + area.h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = T.text; ctx.font = `${W * 0.016}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(CONFIG.yLabel, 0, 0);
+  ctx.restore();
+
+  // X label
+  ctx.fillStyle = T.text; ctx.font = `${W * 0.016}px system-ui`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText(CONFIG.xLabel, area.x + area.w / 2, area.y + area.h + H * 0.08);
+
+  // Bars
+  const barW = area.w / bins.length;
+  const barGap = barW * 0.08;
+
+  for (let i = 0; i < bins.length; i++) {
+    const b = bins[i];
+    const barEase = easeOutCubic(Math.min(Math.max((progress - i * 0.05) / (1 - bins.length * 0.03), 0), 1));
+    const barH = (b.count / maxCount) * area.h * barEase;
+    const bx = area.x + i * barW + barGap / 2;
+    const by = area.y + area.h - barH;
+    const bw = barW - barGap;
+
+    ctx.fillStyle = CONFIG.barColor;
+    ctx.shadowColor = CONFIG.barColor; ctx.shadowBlur = W * 0.005;
+    ctx.fillRect(bx, by, bw, barH);
+    ctx.shadowBlur = 0;
+
+    // Bin label
+    ctx.fillStyle = T.text;
+    ctx.font = `${W * 0.013}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(Math.round(b.lo).toString(), bx, area.y + area.h + W * 0.008);
+    if (i === bins.length - 1) {
+      ctx.fillText(Math.round(b.hi).toString(), bx + bw, area.y + area.h + W * 0.008);
+    }
+
+    // Count label
+    if (barEase > 0.3 && b.count > 0) {
+      ctx.fillStyle = T.title;
+      ctx.font = `bold ${W * 0.014}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(b.count.toString(), bx + bw / 2, by - W * 0.005);
+    }
+  }
+
+  // Mean line
+  if (CONFIG.showMean && ease > 0.5) {
+    const meanX = area.x + ((mean - dataMin) / (dataMax - dataMin)) * area.w;
+    const lineAlpha = Math.min((ease - 0.5) * 4, 1);
+    ctx.strokeStyle = CONFIG.meanColor;
+    ctx.lineWidth = W * 0.003;
+    ctx.globalAlpha = lineAlpha;
+    ctx.setLineDash([W * 0.008, W * 0.005]);
+    ctx.beginPath(); ctx.moveTo(meanX, area.y); ctx.lineTo(meanX, area.y + area.h); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = CONFIG.meanColor;
+    ctx.font = `bold ${W * 0.014}px system-ui`; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText(`Mean: ${mean.toFixed(1)}`, meanX + W * 0.008, area.y + W * 0.02);
+    ctx.globalAlpha = 1;
+  }
+
+  // Median line
+  if (CONFIG.showMedian && ease > 0.6) {
+    const medX = area.x + ((median - dataMin) / (dataMax - dataMin)) * area.w;
+    const lineAlpha = Math.min((ease - 0.6) * 5, 1);
+    ctx.strokeStyle = CONFIG.medianColor;
+    ctx.lineWidth = W * 0.003;
+    ctx.globalAlpha = lineAlpha;
+    ctx.setLineDash([W * 0.012, W * 0.005]);
+    ctx.beginPath(); ctx.moveTo(medX, area.y); ctx.lineTo(medX, area.y + area.h); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = CONFIG.medianColor;
+    ctx.font = `bold ${W * 0.014}px system-ui`; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText(`Median: ${median.toFixed(1)}`, medX + W * 0.008, area.y + W * 0.045);
+    ctx.globalAlpha = 1;
+  }
+
+  if (progress >= 1 && CONFIG.loop) { time = 0; }
+  else if (progress < 1) { time += 0.016; }
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

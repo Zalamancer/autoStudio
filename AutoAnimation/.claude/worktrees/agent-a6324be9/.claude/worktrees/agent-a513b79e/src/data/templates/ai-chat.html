@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Chat Interface</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+}
+
+.container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Header */
+.chat-header {
+  width: 100%;
+  padding: 2.5vh 3vw;
+  display: flex;
+  align-items: center;
+  gap: 1.5vw;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  opacity: 0;
+  transform: translateY(-2vh);
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chat-header.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ai-avatar {
+  width: 5vh;
+  height: 5vh;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2vh;
+  font-weight: 700;
+}
+.ai-name {
+  font-size: 2vh;
+  font-weight: 700;
+  color: #fff;
+}
+.model-badge {
+  font-size: 1.2vh;
+  padding: 0.4vh 1vw;
+  border-radius: 1vh;
+  background: rgba(99,102,241,0.15);
+  color: #818cf8;
+  font-weight: 600;
+  letter-spacing: 0.05vw;
+}
+.online-dot {
+  width: 0.8vh;
+  height: 0.8vh;
+  border-radius: 50%;
+  background: #34d399;
+  margin-left: auto;
+  animation: onlinePulse 2s ease-in-out infinite;
+}
+@keyframes onlinePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Messages area */
+.messages {
+  flex: 1;
+  padding: 3vh 3vw;
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+  overflow: hidden;
+}
+
+/* Message bubbles */
+.message {
+  max-width: 72%;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(2vh);
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.message.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.message.user {
+  align-self: flex-end;
+}
+.message.ai {
+  align-self: flex-start;
+}
+.bubble {
+  padding: 1.8vh 2vw;
+  border-radius: 2vh;
+  font-size: 1.7vh;
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+.message.user .bubble {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border-bottom-right-radius: 0.5vh;
+  color: #fff;
+}
+.message.ai .bubble {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-bottom-left-radius: 0.5vh;
+  backdrop-filter: blur(10px);
+}
+.msg-label {
+  font-size: 1.1vh;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 0.5vh;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1vw;
+}
+.message.user .msg-label { text-align: right; }
+
+/* Code block */
+.code-block {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 1vh;
+  padding: 1.5vh 1.5vw;
+  margin-top: 1vh;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 1.4vh;
+  line-height: 1.8;
+  color: #a5b4fc;
+  overflow: hidden;
+  white-space: pre;
+}
+.code-block .keyword { color: #c084fc; }
+.code-block .string { color: #34d399; }
+.code-block .comment { color: rgba(255,255,255,0.25); }
+
+/* Typing indicator */
+.typing-indicator {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 1.5vh 2vw;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 2vh;
+  border-bottom-left-radius: 0.5vh;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.typing-indicator.visible { opacity: 1; }
+.typing-dot {
+  width: 0.9vh;
+  height: 0.9vh;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+}
+.typing-dot:nth-child(1) { animation: typingBounce 1.2s ease-in-out 0s infinite; }
+.typing-dot:nth-child(2) { animation: typingBounce 1.2s ease-in-out 0.2s infinite; }
+.typing-dot:nth-child(3) { animation: typingBounce 1.2s ease-in-out 0.4s infinite; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-0.8vh); opacity: 1; }
+}
+
+/* Input area */
+.input-area {
+  padding: 2vh 3vw 3vh;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.input-area.visible { opacity: 1; }
+.input-box {
+  width: 100%;
+  padding: 1.8vh 2vw;
+  border-radius: 1.5vh;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.input-placeholder {
+  font-size: 1.5vh;
+  color: rgba(255,255,255,0.25);
+}
+.send-btn {
+  width: 3.5vh;
+  height: 3.5vh;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.send-arrow {
+  width: 0;
+  height: 0;
+  border-left: 0.8vh solid #fff;
+  border-top: 0.5vh solid transparent;
+  border-bottom: 0.5vh solid transparent;
+  margin-left: 0.2vh;
+}
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="chat-header" id="chatHeader">
+    <div class="ai-avatar" id="aiAvatar"></div>
+    <div>
+      <div class="ai-name" id="aiName"></div>
+    </div>
+    <div class="model-badge" id="modelBadge"></div>
+    <div class="online-dot"></div>
+  </div>
+
+  <div class="messages" id="messagesArea"></div>
+
+  <div class="input-area" id="inputArea">
+    <div class="input-box">
+      <span class="input-placeholder">Type a message...</span>
+      <div class="send-btn"><div class="send-arrow"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  aiName: "Atlas AI",
+  modelBadge: "GPT-4o",
+  conversation: [
+    { role: "user", text: "Can you show me how to center a div with CSS Grid?" },
+    { role: "ai", text: "Of course! CSS Grid makes centering incredibly simple. Here's the most elegant approach:" },
+    { role: "ai", text: "code::.container {\n  display: grid;\n  place-items: center;\n  height: 100vh;\n}" },
+    { role: "user", text: "That's so clean! What about Flexbox?" },
+    { role: "ai", text: "Flexbox works great too! You need two properties on the parent — display: flex to activate flexbox, then use the alignment utilities:" },
+    { role: "ai", text: "code::.container {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n}" }
+  ],
+  cycleDuration: 14000,
+  bgColor: "#0f0f15",
+  accentColor: "#6366f1"
+};
+
+/* --- Init --- */
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('aiAvatar').style.background = 'linear-gradient(135deg,' + CONFIG.accentColor + ',' + CONFIG.accentColor + 'aa)';
+document.getElementById('aiAvatar').textContent = CONFIG.aiName.charAt(0);
+document.getElementById('aiName').textContent = CONFIG.aiName;
+document.getElementById('modelBadge').textContent = CONFIG.modelBadge;
+
+var messagesArea = document.getElementById('messagesArea');
+
+function clearMessages() {
+  messagesArea.innerHTML = '';
+}
+
+function createMessage(item) {
+  var wrapper = document.createElement('div');
+  wrapper.className = 'message ' + item.role;
+
+  var label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = item.role === 'user' ? 'You' : CONFIG.aiName;
+  wrapper.appendChild(label);
+
+  if (item.text.startsWith('code::')) {
+    var codeContent = item.text.substring(6);
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = '';
+
+    var codeBlock = document.createElement('div');
+    codeBlock.className = 'code-block';
+    /* Simple syntax highlight */
+    var highlighted = codeContent
+      .replace(/(display|align-items|justify-content|place-items|height):/g, '<span class="keyword">$1</span>:')
+      .replace(/(grid|flex|center|100vh)/g, '<span class="string">$1</span>')
+      .replace(/(\/\*.*?\*\/)/g, '<span class="comment">$1</span>');
+    codeBlock.innerHTML = highlighted;
+    bubble.appendChild(codeBlock);
+    wrapper.appendChild(bubble);
+  } else {
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = item.text;
+    wrapper.appendChild(bubble);
+  }
+
+  return wrapper;
+}
+
+function createTypingIndicator() {
+  var el = document.createElement('div');
+  el.className = 'typing-indicator';
+  el.id = 'typingIndicator';
+  el.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+  return el;
+}
+
+/* Helpers */
+function showEl(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.add('visible');
+}
+
+function hideAll() {
+  document.querySelectorAll('.visible').forEach(function(el) { el.classList.remove('visible'); });
+}
+
+function fadeOutMessages() {
+  document.querySelectorAll('.message.visible').forEach(function(el) {
+    el.style.transition = 'opacity 0.6s ease';
+    el.style.opacity = '0';
+  });
+}
+
+/* Main cycle */
+function runCycle() {
+  hideAll();
+  clearMessages();
+  var dur = CONFIG.cycleDuration;
+  var conv = CONFIG.conversation;
+  var totalMessages = conv.length;
+
+  /* Show header + input */
+  setTimeout(function() { showEl('chatHeader'); }, dur * 0.02);
+  setTimeout(function() { showEl('inputArea'); }, dur * 0.05);
+
+  /* Show messages one by one (10-80%) */
+  var msgStart = dur * 0.10;
+  var msgEnd = dur * 0.80;
+  var perMsg = (msgEnd - msgStart) / totalMessages;
+
+  conv.forEach(function(item, idx) {
+    var baseDelay = msgStart + idx * perMsg;
+
+    if (item.role === 'ai') {
+      /* Show typing indicator first */
+      setTimeout(function() {
+        var existing = document.getElementById('typingIndicator');
+        if (existing) existing.remove();
+        var typing = createTypingIndicator();
+        messagesArea.appendChild(typing);
+        requestAnimationFrame(function() { typing.classList.add('visible'); });
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      }, baseDelay);
+
+      /* Replace typing with actual message */
+      setTimeout(function() {
+        var typing = document.getElementById('typingIndicator');
+        if (typing) typing.remove();
+        var msg = createMessage(item);
+        messagesArea.appendChild(msg);
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() { msg.classList.add('visible'); });
+        });
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      }, baseDelay + perMsg * 0.55);
+    } else {
+      setTimeout(function() {
+        var typing = document.getElementById('typingIndicator');
+        if (typing) typing.remove();
+        var msg = createMessage(item);
+        messagesArea.appendChild(msg);
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() { msg.classList.add('visible'); });
+        });
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      }, baseDelay);
+    }
+  });
+
+  /* Phase out (85-95%) */
+  setTimeout(function() {
+    fadeOutMessages();
+  }, dur * 0.87);
+
+  setTimeout(function() {
+    hideAll();
+  }, dur * 0.93);
+
+  /* Restart */
+  setTimeout(runCycle, dur);
+}
+
+runCycle();
+</script>
+</body>
+</html>

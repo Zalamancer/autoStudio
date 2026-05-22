@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lightning Storm</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+  canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  .center-text { position: fixed; top: 35%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 2; text-align: center; color: #C8D8F0; pointer-events: none; }
+  .center-text h1 { font-size: 52px; font-weight: 800; letter-spacing: 6px; text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(140,180,255,0.4); animation: stormPulse 4s ease-in-out infinite; }
+  .center-text .subtitle { font-size: 13px; letter-spacing: 6px; opacity: 0.4; margin-top: 8px; text-transform: uppercase; }
+  @keyframes stormPulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="center-text">
+  <h1 id="titleEl">THUNDER</h1>
+  <div class="subtitle" id="subEl">Electric Skies</div>
+</div>
+<script>
+const CONFIG = {
+  titleText: 'THUNDER',
+  subtitleText: 'Electric Skies',
+  bgTop: '#050510',
+  bgMid: '#0a0a25',
+  bgBottom: '#151535',
+  boltColor: '#88BBFF',
+  flashColor: '#AACCFF',
+  cloudColor: '#1a1a3a',
+  rainCount: 300,
+  boltFrequency: 0.015,
+};
+
+window.addEventListener('message', e => {
+  if (e.data?.type === 'CONFIG_UPDATE') { Object.assign(CONFIG, e.data.config); applyConfig(); }
+});
+function applyConfig() {
+  document.getElementById('titleEl').textContent = CONFIG.titleText;
+  document.getElementById('subEl').textContent = CONFIG.subtitleText;
+}
+applyConfig();
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+resize();
+addEventListener('resize', resize);
+
+function hexRgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+
+// Rain drops
+const rain = [];
+for (let i = 0; i < CONFIG.rainCount; i++) {
+  rain.push({
+    x: Math.random() * 2000, y: Math.random() * -200,
+    len: Math.random() * 15 + 8,
+    speed: Math.random() * 8 + 6,
+    opacity: Math.random() * 0.3 + 0.1,
+    windOffset: Math.random() * 3 + 1,
+  });
+}
+
+// Lightning state
+let flashIntensity = 0;
+let activeBolts = [];
+
+function generateBolt(startX, startY, endY) {
+  const segments = [];
+  let x = startX, y = startY;
+  const step = 15;
+  while (y < endY) {
+    const nx = x + (Math.random() - 0.5) * 40;
+    const ny = y + step + Math.random() * 10;
+    segments.push({ x1: x, y1: y, x2: nx, y2: ny });
+    // Branch chance
+    if (Math.random() < 0.2) {
+      const bx = nx + (Math.random() - 0.5) * 80;
+      const by = ny + 30 + Math.random() * 40;
+      segments.push({ x1: nx, y1: ny, x2: bx, y2: by, branch: true });
+    }
+    x = nx; y = ny;
+  }
+  return segments;
+}
+
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, CONFIG.bgTop);
+  g.addColorStop(0.5, CONFIG.bgMid);
+  g.addColorStop(1, CONFIG.bgBottom);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawClouds(t) {
+  const c = hexRgb(CONFIG.cloudColor);
+  for (let i = 0; i < 6; i++) {
+    const cx = (W * (i / 5) + Math.sin(t * 0.0003 + i * 2) * 30) % (W + 200) - 100;
+    const cy = H * 0.08 + Math.sin(i * 3) * H * 0.06;
+    const rw = 150 + i * 30;
+    const rh = 40 + i * 10;
+    const grad = ctx.createRadialGradient(cx, cy, rw * 0.2, cx, cy, rw);
+    const lit = flashIntensity * 0.3;
+    grad.addColorStop(0, `rgba(${c[0] + lit * 100},${c[1] + lit * 100},${c[2] + lit * 120},0.4)`);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawRain() {
+  rain.forEach(r => {
+    r.y += r.speed;
+    r.x += r.windOffset;
+    if (r.y > H + 20) { r.y = -20; r.x = Math.random() * W; }
+    if (r.x > W + 30) r.x = -30;
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y);
+    ctx.lineTo(r.x + r.windOffset * 0.8, r.y + r.len);
+    ctx.strokeStyle = `rgba(150,180,220,${r.opacity})`;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
+}
+
+function drawBolts() {
+  const bc = hexRgb(CONFIG.boltColor);
+  activeBolts.forEach(bolt => {
+    bolt.life -= 0.05;
+    if (bolt.life <= 0) return;
+    const a = bolt.life;
+    bolt.segments.forEach(seg => {
+      const w = seg.branch ? 1 : 2.5;
+      // Glow
+      ctx.beginPath();
+      ctx.moveTo(seg.x1, seg.y1);
+      ctx.lineTo(seg.x2, seg.y2);
+      ctx.strokeStyle = `rgba(${bc[0]},${bc[1]},${bc[2]},${a * 0.3})`;
+      ctx.lineWidth = w + 6;
+      ctx.stroke();
+      // Core
+      ctx.beginPath();
+      ctx.moveTo(seg.x1, seg.y1);
+      ctx.lineTo(seg.x2, seg.y2);
+      ctx.strokeStyle = `rgba(255,255,255,${a * 0.9})`;
+      ctx.lineWidth = w;
+      ctx.stroke();
+    });
+  });
+  activeBolts = activeBolts.filter(b => b.life > 0);
+}
+
+function drawFlash() {
+  if (flashIntensity > 0) {
+    const fc = hexRgb(CONFIG.flashColor);
+    ctx.fillStyle = `rgba(${fc[0]},${fc[1]},${fc[2]},${flashIntensity * 0.15})`;
+    ctx.fillRect(0, 0, W, H);
+    flashIntensity *= 0.85;
+    if (flashIntensity < 0.01) flashIntensity = 0;
+  }
+}
+
+// Ground with wet reflection
+function drawGround(t) {
+  const gy = H * 0.9;
+  const g = ctx.createLinearGradient(0, gy, 0, H);
+  g.addColorStop(0, 'rgba(20,20,50,0.3)');
+  g.addColorStop(1, 'rgba(10,10,30,0.6)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, gy, W, H - gy);
+  // Reflection sheen
+  if (flashIntensity > 0.1) {
+    ctx.fillStyle = `rgba(140,180,255,${flashIntensity * 0.06})`;
+    ctx.fillRect(0, gy, W, H - gy);
+  }
+}
+
+function animate(t) {
+  drawBackground();
+  drawClouds(t);
+  drawRain();
+
+  // Random lightning trigger
+  if (Math.random() < CONFIG.boltFrequency) {
+    const sx = Math.random() * W;
+    activeBolts.push({
+      segments: generateBolt(sx, 0, H * (0.5 + Math.random() * 0.3)),
+      life: 1,
+    });
+    flashIntensity = 0.8 + Math.random() * 0.2;
+  }
+
+  drawBolts();
+  drawGround(t);
+  drawFlash();
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

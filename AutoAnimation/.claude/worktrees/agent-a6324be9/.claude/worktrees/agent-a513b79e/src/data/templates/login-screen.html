@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login Screen Animation</title>
+<style>
+  /* === EDITABLE CONFIG === */
+  :root {
+    --accent: #6366f1;
+    --card-bg: rgba(255,255,255,0.08);
+    --bg-from: #0f172a;
+    --bg-to: #1e293b;
+  }
+
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: linear-gradient(135deg, var(--bg-from), var(--bg-to));
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+
+  /* Particles */
+  .particles { position: absolute; inset: 0; pointer-events: none; }
+  .particle {
+    position: absolute; width: 3px; height: 3px; border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    animation: drift linear infinite;
+  }
+  @keyframes drift {
+    0%   { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(-10vh) translateX(40px); opacity: 0; }
+  }
+
+  /* Card */
+  .card {
+    position: relative; z-index: 2;
+    width: 380px; padding: 40px 36px;
+    background: var(--card-bg);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+    opacity: 0; transform: translateY(40px) scale(0.96);
+    animation: cardIn 0.8s cubic-bezier(0.16,1,0.3,1) forwards,
+               cardFloat 4s ease-in-out 1s infinite;
+  }
+  @keyframes cardIn {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes cardFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* Logo */
+  .logo {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 700; color: #fff;
+    opacity: 0; transform: scale(0.5);
+    animation: popIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.3s forwards;
+  }
+  @keyframes popIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .heading {
+    text-align: center; color: #fff; font-size: 22px; font-weight: 600;
+    margin-bottom: 4px; opacity: 0; transform: translateY(15px);
+    animation: slideUp 0.5s ease-out 0.45s forwards;
+  }
+  .tagline {
+    text-align: center; color: rgba(255,255,255,0.5); font-size: 13px;
+    margin-bottom: 28px; opacity: 0; transform: translateY(15px);
+    animation: slideUp 0.5s ease-out 0.55s forwards;
+  }
+  @keyframes slideUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Inputs */
+  .input-group {
+    margin-bottom: 16px; opacity: 0; transform: translateY(15px);
+  }
+  .input-group:nth-child(4) { animation: slideUp 0.5s ease-out 0.65s forwards; }
+  .input-group:nth-child(5) { animation: slideUp 0.5s ease-out 0.75s forwards; }
+
+  .input-group label {
+    display: block; color: rgba(255,255,255,0.6); font-size: 12px;
+    margin-bottom: 6px; font-weight: 500;
+  }
+  .input-group input {
+    width: 100%; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; background: rgba(255,255,255,0.05);
+    color: #fff; font-size: 14px; outline: none; transition: all 0.3s;
+  }
+  .input-group input:focus,
+  .input-group input.glow {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(99,102,241,0.25);
+  }
+
+  /* Button */
+  .btn-signin {
+    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    margin-top: 4px; opacity: 0; transform: translateY(15px);
+    animation: slideUp 0.5s ease-out 0.85s forwards;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .btn-signin.pulse {
+    animation: slideUp 0.5s ease-out 0.85s forwards, btnPulse 2s ease-in-out 1.5s infinite;
+  }
+  @keyframes btnPulse {
+    0%, 100% { box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+    50% { box-shadow: 0 4px 30px rgba(99,102,241,0.6); transform: translateY(-1px); }
+  }
+
+  /* Divider */
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 20px 0; opacity: 0;
+    animation: fadeIn 0.5s ease-out 0.95s forwards;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1);
+  }
+  .divider span { color: rgba(255,255,255,0.4); font-size: 12px; }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Social */
+  .social-row {
+    display: flex; justify-content: center; gap: 16px;
+    margin-bottom: 20px;
+  }
+  .social-icon {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.7); font-size: 16px; font-weight: 600;
+    opacity: 0; transform: scale(0.5);
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .social-icon:nth-child(1) { animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) 1.05s forwards; }
+  .social-icon:nth-child(2) { animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) 1.15s forwards; }
+  .social-icon:nth-child(3) { animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) 1.25s forwards; }
+
+  .forgot {
+    text-align: center; opacity: 0;
+    animation: fadeIn 0.5s ease-out 1.35s forwards;
+  }
+  .forgot a {
+    color: var(--accent); font-size: 13px; text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  /* Exit animation */
+  .card.exit {
+    animation: cardOut 0.6s cubic-bezier(0.55,0,1,0.45) forwards;
+  }
+  @keyframes cardOut {
+    to { opacity: 0; transform: translateY(-30px) scale(0.96); }
+  }
+</style>
+</head>
+<body>
+<div class="particles" id="particles"></div>
+<div class="card" id="card">
+  <div class="logo" id="logo">P</div>
+  <div class="heading" id="heading">Welcome Back</div>
+  <div class="tagline" id="tagline">Sign in to continue</div>
+  <div class="input-group">
+    <label>Email</label>
+    <input type="text" id="emailInput" value="user@example.com" readonly>
+  </div>
+  <div class="input-group">
+    <label>Password</label>
+    <input type="password" id="passInput" value="••••••••" readonly>
+  </div>
+  <button class="btn-signin" id="btnSignin">Sign In</button>
+  <div class="divider"><span>or continue with</span></div>
+  <div class="social-row">
+    <div class="social-icon">G</div>
+    <div class="social-icon">A</div>
+    <div class="social-icon">F</div>
+  </div>
+  <div class="forgot"><a href="#">Forgot password?</a></div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  appName: 'ProAnimate',
+  tagline: 'Sign in to continue',
+  bgGradient: ['#0f172a', '#1e293b'],
+  accentColor: '#6366f1',
+  cardBgColor: 'rgba(255,255,255,0.08)',
+  cycleDuration: 8
+};
+
+function applyConfig() {
+  document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+  document.documentElement.style.setProperty('--card-bg', CONFIG.cardBgColor);
+  document.documentElement.style.setProperty('--bg-from', CONFIG.bgGradient[0]);
+  document.documentElement.style.setProperty('--bg-to', CONFIG.bgGradient[1]);
+  document.getElementById('logo').textContent = CONFIG.appName.charAt(0);
+  document.getElementById('heading').textContent = 'Welcome Back';
+  document.getElementById('tagline').textContent = CONFIG.tagline;
+}
+
+function createParticles() {
+  const container = document.getElementById('particles');
+  container.innerHTML = '';
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (6 + Math.random() * 10) + 's';
+    p.style.animationDelay = Math.random() * 10 + 's';
+    p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+    container.appendChild(p);
+  }
+}
+
+function runCycle() {
+  const card = document.getElementById('card');
+  const emailInput = document.getElementById('emailInput');
+  const passInput = document.getElementById('passInput');
+  const btn = document.getElementById('btnSignin');
+
+  // Reset
+  card.classList.remove('exit');
+  card.style.animation = 'none';
+  card.offsetHeight; // trigger reflow
+  card.style.animation = '';
+
+  // Re-trigger all child animations by cloning
+  const parent = card.parentNode;
+  const clone = card.cloneNode(true);
+  parent.replaceChild(clone, card);
+
+  // Input glow sequence
+  setTimeout(() => {
+    const em = clone.querySelector('#emailInput');
+    if (em) em.classList.add('glow');
+  }, 1800);
+  setTimeout(() => {
+    const em = clone.querySelector('#emailInput');
+    if (em) em.classList.remove('glow');
+    const ps = clone.querySelector('#passInput');
+    if (ps) ps.classList.add('glow');
+  }, 2600);
+  setTimeout(() => {
+    const ps = clone.querySelector('#passInput');
+    if (ps) ps.classList.remove('glow');
+  }, 3200);
+
+  // Button pulse
+  setTimeout(() => {
+    const b = clone.querySelector('#btnSignin');
+    if (b) b.classList.add('pulse');
+  }, 3500);
+
+  // Exit
+  const exitTime = (CONFIG.cycleDuration - 1) * 1000;
+  setTimeout(() => {
+    clone.classList.add('exit');
+  }, exitTime);
+
+  // Loop
+  setTimeout(runCycle, CONFIG.cycleDuration * 1000);
+}
+
+applyConfig();
+createParticles();
+
+// Listen for postMessage config updates
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+    applyConfig();
+  }
+});
+
+setTimeout(runCycle, 100);
+</script>
+</body>
+</html>

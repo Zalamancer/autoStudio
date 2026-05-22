@@ -1,0 +1,322 @@
+/**
+ * Style Panel — AI style effects and visual filters.
+ */
+
+import { useCallback, useRef, useState } from 'react'
+import { Sparkles, Upload, Loader2, X, Download, Plus } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
+import { useStyleStore, STYLE_PRESETS } from '@/stores/useStyleStore'
+import { useStyleTransferStore } from '@/stores/useStyleTransferStore'
+import { transferVideoStyle, STYLE_OPTIONS } from '@/services/styleTransfer'
+import { useMediaStore } from '@/stores/useMediaStore'
+import { saveMediaBlob } from '@/services/mediaDB'
+import { PanelSection, PanelToggle, PanelDropZone, PanelSlider } from '@/components/ui/panel-controls'
+import { cn } from '@/lib/utils'
+import { logger } from '@/utils/logger'
+
+const CATEGORIES = ['cinematic', 'vintage', 'mood', 'color', 'artistic'] as const
+
+export function StylePanel() {
+  const {
+    enabled,
+    activePresetId,
+    intensity,
+    setEnabled,
+    applyPreset,
+    setIntensity,
+    clearPreset,
+  } = useStyleStore(
+    useShallow((s) => ({
+      enabled: s.enabled,
+      activePresetId: s.activePresetId,
+      intensity: s.intensity,
+      setEnabled: s.setEnabled,
+      applyPreset: s.applyPreset,
+      setIntensity: s.setIntensity,
+      clearPreset: s.clearPreset,
+    }))
+  )
+
+  return (
+    <div className="flex flex-col flex-1">
+      {/* ── Enable + Intensity ─────────────────────────────────── */}
+      <div className="p-4">
+        <PanelSection title="Style Effects">
+          <PanelToggle
+            label="Enable Effects"
+            checked={enabled}
+            onChange={(v) => setEnabled(v)}
+          />
+
+          {/* Intensity */}
+          {enabled && (
+            <PanelSlider
+              label="Intensity"
+              value={Math.round(intensity * 100)}
+              onChange={(v) => setIntensity(Math.min(1, Math.max(0, v / 100)))}
+              min={0} max={100} step={5}
+              suffix="%"
+            />
+          )}
+        </PanelSection>
+      </div>
+
+      {/* ── Presets ────────────────────────────────────────────── */}
+      {enabled && (
+        <div className="p-4">
+          <PanelSection title="Presets">
+          {CATEGORIES.map((category) => {
+            const presets = STYLE_PRESETS.filter((p) => p.category === category)
+            return (
+              <div key={category} className="mb-3 last:mb-0">
+                <span className="text-xs text-zinc-400 mb-1.5 block capitalize">{category}</span>
+                <div className="grid grid-cols-2 gap-1">
+                  {presets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => {
+                        if (activePresetId === preset.id) {
+                          clearPreset()
+                        } else {
+                          applyPreset(preset.id)
+                        }
+                      }}
+                      className={cn(
+                        'flex items-center gap-2 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-colors text-left',
+                        activePresetId === preset.id
+                          ? 'bg-[#4a7eff] text-white'
+                          : 'bg-[#2a2a2a] text-gray-400 hover:text-white'
+                      )}
+                    >
+                      <div
+                        className="w-3.5 h-3.5 rounded shrink-0 border border-white/10"
+                        style={{ backgroundColor: preset.previewColor }}
+                      />
+                      <span className="truncate">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          </PanelSection>
+        </div>
+      )}
+
+      {/* ── Video Style Transfer ───────────────────────────────── */}
+      <div className="p-4">
+        <VideoStyleTransferSection />
+      </div>
+    </div>
+  )
+}
+
+// ── Video Style Transfer Sub-component ─────────────────────────────────────
+
+function VideoStyleTransferSection() {
+  const videoInputRef = useRef<HTMLInputElement>(null)
+
+  const sourceVideoUrl = useStyleTransferStore((s) => s.sourceVideoUrl)
+  const sourceVideoBlob = useStyleTransferStore((s) => s.sourceVideoBlob)
+  const targetStyle = useStyleTransferStore((s) => s.targetStyle)
+  const intensity = useStyleTransferStore((s) => s.intensity)
+  const isProcessing = useStyleTransferStore((s) => s.isProcessing)
+  const progress = useStyleTransferStore((s) => s.progress)
+  const statusMessage = useStyleTransferStore((s) => s.statusMessage)
+  const resultVideoUrl = useStyleTransferStore((s) => s.resultVideoUrl)
+  const resultVideoBlob = useStyleTransferStore((s) => s.resultVideoBlob)
+  const error = useStyleTransferStore((s) => s.error)
+
+  const setSourceVideo = useStyleTransferStore((s) => s.setSourceVideo)
+  const clearSourceVideo = useStyleTransferStore((s) => s.clearSourceVideo)
+  const setTargetStyle = useStyleTransferStore((s) => s.setTargetStyle)
+  const setIntensity = useStyleTransferStore((s) => s.setIntensity)
+  const setProcessing = useStyleTransferStore((s) => s.setProcessing)
+  const setResult = useStyleTransferStore((s) => s.setResult)
+  const setError = useStyleTransferStore((s) => s.setError)
+
+  const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setSourceVideo(file)
+  }, [setSourceVideo])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (!file || !file.type.startsWith('video/')) return
+    setSourceVideo(file)
+  }, [setSourceVideo])
+
+  const handleStartTransfer = useCallback(async () => {
+    if (!sourceVideoBlob || isProcessing) return
+
+    setProcessing(true)
+    setError(null)
+
+    try {
+      const result = await transferVideoStyle({
+        videoBlob: sourceVideoBlob,
+        style: targetStyle,
+        intensity,
+      })
+      setResult(result.videoBlob)
+    } catch (err) {
+      logger.error('[StyleTransfer] Error:', err)
+      setError(err instanceof Error ? err.message : 'Style transfer failed')
+    }
+  }, [sourceVideoBlob, isProcessing, targetStyle, intensity, setProcessing, setError, setResult])
+
+  const handleAddToTimeline = useCallback(async () => {
+    if (!resultVideoBlob) return
+    const assetId = `styled-video-${Date.now()}`
+    const blobUrl = URL.createObjectURL(resultVideoBlob)
+
+    await saveMediaBlob(assetId, resultVideoBlob)
+    const mediaStore = useMediaStore.getState()
+    mediaStore.addAsset({
+      id: assetId,
+      name: `Style Transfer (${targetStyle})`,
+      type: 'video/mp4',
+      size: resultVideoBlob.size,
+      category: 'video',
+      url: blobUrl,
+      addedAt: Date.now(),
+    }, resultVideoBlob)
+    mediaStore.addToCanvas(assetId)
+  }, [resultVideoBlob, targetStyle])
+
+  const [isDragging, setIsDragging] = useState(false)
+
+  return (
+    <PanelSection title="Video Style Transfer" noBorder>
+      {/* Video upload zone */}
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/mp4,video/webm"
+        onChange={handleVideoSelect}
+        className="hidden"
+      />
+
+      {sourceVideoUrl ? (
+        <div className="relative rounded-lg overflow-hidden border border-[#3a3a3a] mb-3">
+          <video src={sourceVideoUrl} controls className="w-full max-h-32 object-contain bg-black" />
+          <button
+            onClick={clearSourceVideo}
+            className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-gray-300 hover:text-white"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ) : (
+        <div className="mb-3">
+          <PanelDropZone
+            icon={Upload}
+            label="Drop a video or click to upload"
+            isDragging={isDragging}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => { setIsDragging(false); handleDrop(e) }}
+            onClick={() => videoInputRef.current?.click()}
+          />
+        </div>
+      )}
+
+      {/* Style picker + controls */}
+      {sourceVideoUrl && (
+        <>
+          {/* Target Style */}
+          <div className="mb-3">
+            <span className="text-xs text-zinc-400 mb-1.5 block">Target Style</span>
+            <div className="grid grid-cols-2 gap-1">
+              {STYLE_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setTargetStyle(s.value)}
+                  className={cn(
+                    'flex items-center gap-2 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-colors',
+                    targetStyle === s.value
+                      ? 'bg-[#4a7eff] text-white'
+                      : 'bg-[#2a2a2a] text-gray-400 hover:text-white',
+                  )}
+                >
+                  <div
+                    className="w-3 h-3 rounded shrink-0 border border-white/10"
+                    style={{ backgroundColor: s.preview }}
+                  />
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Intensity */}
+          <PanelSlider
+            label="Intensity"
+            value={Math.round(intensity * 100)}
+            onChange={(v) => setIntensity(Math.min(1, Math.max(0, v / 100)))}
+            min={0} max={100} step={5}
+            suffix="%"
+          />
+
+          {/* Start button */}
+          <button
+            onClick={handleStartTransfer}
+            disabled={isProcessing}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors mb-3',
+              isProcessing
+                ? 'bg-[#4a7eff]/20 text-[#4a7eff]'
+                : 'bg-[#4a7eff] text-white hover:bg-[#5a8eff]',
+            )}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                {statusMessage || `${progress}%`}
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                Transform Video
+              </>
+            )}
+          </button>
+
+          {/* Error */}
+          {error && (
+            <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg mb-3">
+              <span className="text-xs text-red-400">{error}</span>
+            </div>
+          )}
+
+          {/* Result */}
+          {resultVideoUrl && !isProcessing && (
+            <div className="bg-[#1e1e1e] rounded-lg p-3 space-y-2">
+              <video src={resultVideoUrl} controls loop className="w-full rounded border border-[#3a3a3a]" />
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={resultVideoUrl}
+                  download={`styled-${targetStyle}.mp4`}
+                  className="py-1.5 rounded-lg bg-[#2a2a2a] text-xs text-white flex items-center justify-center gap-1.5 hover:bg-[#3a3a3a] transition-colors"
+                >
+                  <Download size={12} />
+                  Download
+                </a>
+                <button
+                  onClick={handleAddToTimeline}
+                  className="py-1.5 rounded-lg bg-[#4a7eff] text-xs text-white flex items-center justify-center gap-1.5 hover:bg-[#5a8eff] transition-colors"
+                >
+                  <Plus size={12} />
+                  To Timeline
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </PanelSection>
+  )
+}

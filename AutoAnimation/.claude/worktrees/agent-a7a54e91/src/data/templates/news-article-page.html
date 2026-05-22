@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Article Page</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #ffffff;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #121212;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .nav-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.5vh 4vw;
+    border-bottom: 2px solid #121212;
+    opacity: 0;
+  }
+  .nav-logo {
+    font-size: 2.5vh; font-weight: 900;
+    letter-spacing: -0.02em;
+    font-family: 'Georgia', serif;
+  }
+  .nav-date {
+    font-size: 1vh;
+    color: #666;
+    font-family: -apple-system, sans-serif;
+  }
+  .nav-links {
+    display: flex; gap: 2vw;
+    font-size: 1.1vh;
+    font-family: -apple-system, sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #333;
+    opacity: 0;
+  }
+  .section-bar {
+    padding: 0.8vh 4vw;
+    border-bottom: 1px solid #e0e0e0;
+    font-family: -apple-system, sans-serif;
+    font-size: 1.1vh;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0;
+  }
+  .section-bar .section-name { color: #121212; font-weight: 700; }
+  .article-hero {
+    width: 100%; height: 22vh;
+    position: relative;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .hero-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 2vh 4vw;
+  }
+  .hero-category {
+    font-family: -apple-system, sans-serif;
+    font-size: 1vh;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #fff;
+    margin-bottom: 0.5vh;
+  }
+  .article-content {
+    padding: 2.5vh 4vw;
+    flex: 1;
+  }
+  .article-headline {
+    font-size: 3.5vh; font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 1vh;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .article-deck {
+    font-size: 1.8vh;
+    color: #555;
+    line-height: 1.4;
+    margin-bottom: 2vh;
+    font-style: italic;
+    opacity: 0;
+  }
+  .article-byline {
+    font-family: -apple-system, sans-serif;
+    font-size: 1.2vh;
+    margin-bottom: 0.5vh;
+    opacity: 0;
+  }
+  .byline-name { font-weight: 700; }
+  .byline-role { color: #666; }
+  .article-dateline {
+    font-family: -apple-system, sans-serif;
+    font-size: 1vh; color: #999;
+    margin-bottom: 2vh;
+    opacity: 0;
+  }
+  .share-bar {
+    display: flex; gap: 2vw;
+    padding: 1vh 0;
+    margin-bottom: 2vh;
+    border-top: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    opacity: 0;
+  }
+  .share-btn {
+    width: 3.5vh; height: 3.5vh;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4vh;
+  }
+  .article-lead {
+    font-size: 1.6vh; line-height: 1.8;
+    margin-bottom: 2vh;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .article-lead .drop-cap {
+    float: left;
+    font-size: 5vh;
+    line-height: 0.8;
+    padding-right: 1.5vw;
+    font-weight: 700;
+    color: #121212;
+  }
+  .article-body-p {
+    font-size: 1.5vh; line-height: 1.8;
+    margin-bottom: 1.5vh;
+    color: #333;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .pullquote {
+    border-top: 2px solid #121212;
+    border-bottom: 2px solid #121212;
+    padding: 2vh 0;
+    margin: 2vh 0;
+    font-size: 2.2vh;
+    font-style: italic;
+    line-height: 1.4;
+    text-align: center;
+    color: #121212;
+    opacity: 0;
+  }
+  .related-section {
+    border-top: 2px solid #121212;
+    padding-top: 1.5vh;
+    margin-top: 2vh;
+    opacity: 0;
+  }
+  .related-label {
+    font-family: -apple-system, sans-serif;
+    font-size: 1vh;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #666;
+    margin-bottom: 1vh;
+  }
+  .related-item {
+    font-size: 1.3vh;
+    color: #121212;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 0.8vh;
+    padding-left: 2vw;
+    border-left: 2px solid #e0e0e0;
+    opacity: 0;
+    transform: translateX(-5px);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="nav-bar" id="navBar">
+    <div class="nav-logo" id="pubName">The Chronicle</div>
+    <div class="nav-date" id="navDate">Friday, January 17, 2025</div>
+  </div>
+
+  <div class="nav-links" id="navLinks">
+    <span>World</span><span>Politics</span><span>Business</span><span>Technology</span><span>Science</span>
+  </div>
+
+  <div class="section-bar" id="sectionBar">
+    <span class="section-name" id="sectionName">Technology</span> &rsaquo; Artificial Intelligence
+  </div>
+
+  <div class="article-hero" id="articleHero" style="background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);">
+    <div class="hero-overlay">
+      <div class="hero-category" id="heroCategory">EXCLUSIVE REPORT</div>
+    </div>
+  </div>
+
+  <div class="article-content">
+    <div class="article-headline" id="headline">Inside the Race to Build AI That Thinks Like a Human</div>
+    <div class="article-deck" id="deck">A new generation of artificial intelligence systems is pushing the boundaries of machine cognition, raising profound questions about the nature of intelligence itself.</div>
+
+    <div class="article-byline" id="bylineArea">
+      <span class="byline-name" id="authorName">By Alexandra Chen</span>
+      <span class="byline-role" id="authorRole">, Technology Correspondent</span>
+    </div>
+    <div class="article-dateline" id="dateline">Published Jan. 17, 2025 &middot; Updated 2:34 PM ET &middot; 12 min read</div>
+
+    <div class="share-bar" id="shareBar">
+      <div class="share-btn" style="background:#1877f2;color:#fff;">f</div>
+      <div class="share-btn" style="background:#000;color:#fff;">&#x1D54F;</div>
+      <div class="share-btn" style="background:#e4e4e4;color:#333;">&#x2709;</div>
+      <div class="share-btn" style="background:#e4e4e4;color:#333;">&#x1F517;</div>
+    </div>
+
+    <div class="article-lead" id="articleLead">
+      <span class="drop-cap" id="dropCap">T</span>he laboratory hummed with the quiet intensity of discovery. Inside a nondescript building in San Francisco, a team of researchers watched as their latest AI model solved a problem that had stumped computer scientists for over a decade.
+    </div>
+
+    <div class="article-body-p" id="bodyP1">The breakthrough, which multiple experts confirmed to The Chronicle, represents a fundamental shift in how artificial intelligence systems process and reason about complex information. Unlike previous models that relied heavily on pattern matching, this new approach demonstrates something closer to genuine understanding.</div>
+
+    <div class="pullquote" id="pullquote">"We're not just building better tools — we're witnessing the emergence of a new form of intelligence."</div>
+
+    <div class="article-body-p" id="bodyP2">Industry analysts estimate the global impact could reach trillions of dollars over the next decade, transforming sectors from healthcare to education while creating entirely new categories of work that didn't exist before.</div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    publicationName: 'The Chronicle',
+    navDate: 'Friday, January 17, 2025',
+    sectionName: 'Technology',
+    heroCategory: 'EXCLUSIVE REPORT',
+    headline: 'Inside the Race to Build AI That Thinks Like a Human',
+    deck: 'A new generation of artificial intelligence systems is pushing the boundaries of machine cognition, raising profound questions about the nature of intelligence itself.',
+    authorName: 'By Alexandra Chen',
+    authorRole: ', Technology Correspondent',
+    dateline: 'Published Jan. 17, 2025 \u00B7 Updated 2:34 PM ET \u00B7 12 min read',
+    leadText: 'he laboratory hummed with the quiet intensity of discovery. Inside a nondescript building in San Francisco, a team of researchers watched as their latest AI model solved a problem that had stumped computer scientists for over a decade.',
+    dropCap: 'T',
+    bodyParagraph1: 'The breakthrough, which multiple experts confirmed to The Chronicle, represents a fundamental shift in how artificial intelligence systems process and reason about complex information. Unlike previous models that relied heavily on pattern matching, this new approach demonstrates something closer to genuine understanding.',
+    pullquote: '"We\'re not just building better tools — we\'re witnessing the emergence of a new form of intelligence."',
+    bodyParagraph2: 'Industry analysts estimate the global impact could reach trillions of dollars over the next decade, transforming sectors from healthcare to education while creating entirely new categories of work that didn\'t exist before.',
+    heroGradient1: '#1a1a2e',
+    heroGradient2: '#0f3460',
+    bgColor: '#ffffff',
+    textColor: '#121212',
+    cycleDuration: 16000
+  };
+
+  document.getElementById('pubName').textContent = CONFIG.publicationName;
+  document.getElementById('navDate').textContent = CONFIG.navDate;
+  document.getElementById('sectionName').textContent = CONFIG.sectionName;
+  document.getElementById('heroCategory').textContent = CONFIG.heroCategory;
+  document.getElementById('headline').textContent = CONFIG.headline;
+  document.getElementById('deck').textContent = CONFIG.deck;
+  document.getElementById('authorName').textContent = CONFIG.authorName;
+  document.getElementById('authorRole').textContent = CONFIG.authorRole;
+  document.getElementById('dateline').textContent = CONFIG.dateline;
+  document.getElementById('dropCap').textContent = CONFIG.dropCap;
+  document.getElementById('articleLead').innerHTML = '<span class="drop-cap">' + CONFIG.dropCap + '</span>' + CONFIG.leadText;
+  document.getElementById('bodyP1').textContent = CONFIG.bodyParagraph1;
+  document.getElementById('pullquote').textContent = CONFIG.pullquote;
+  document.getElementById('bodyP2').textContent = CONFIG.bodyParagraph2;
+  document.getElementById('articleHero').style.background = 'linear-gradient(135deg, ' + CONFIG.heroGradient1 + ', ' + CONFIG.heroGradient2 + ')';
+  document.body.style.background = CONFIG.bgColor;
+  document.body.style.color = CONFIG.textColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.7s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    ['navBar','navLinks','sectionBar','articleHero','headline','deck','bylineArea','dateline','shareBar','articleLead','bodyP1','pullquote','bodyP2'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      if (['articleHero','headline','articleLead','bodyP1','bodyP2'].includes(id)) el.style.transform = 'translateY(10px)';
+    });
+    void document.getElementById('navBar').offsetWidth;
+
+    anim(document.getElementById('navBar'), { opacity: '1' }, 200);
+    anim(document.getElementById('navLinks'), { opacity: '1' }, 400);
+    anim(document.getElementById('sectionBar'), { opacity: '1' }, 600);
+    anim(document.getElementById('articleHero'), { opacity: '1', transform: 'translateY(0)' }, 900);
+    anim(document.getElementById('headline'), { opacity: '1', transform: 'translateY(0)' }, 1500);
+    anim(document.getElementById('deck'), { opacity: '1' }, 2200);
+    anim(document.getElementById('bylineArea'), { opacity: '1' }, 2800);
+    anim(document.getElementById('dateline'), { opacity: '1' }, 3000);
+    anim(document.getElementById('shareBar'), { opacity: '1' }, 3300);
+    anim(document.getElementById('articleLead'), { opacity: '1', transform: 'translateY(0)' }, 3800);
+    anim(document.getElementById('bodyP1'), { opacity: '1', transform: 'translateY(0)' }, 5000);
+    anim(document.getElementById('pullquote'), { opacity: '1' }, 6500);
+    anim(document.getElementById('bodyP2'), { opacity: '1', transform: 'translateY(0)' }, 8000);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Sea Trench</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #020812; font-family: 'Courier New', monospace; }
+canvas { display: block; width: 100vw; height: 100vh; }
+.depth-hud {
+  position: absolute;
+  top: 3vh;
+  right: 3vw;
+  color: rgba(100, 200, 255, 0.7);
+  font-size: 1.8vw;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 10px rgba(100, 200, 255, 0.4);
+  z-index: 10;
+  pointer-events: none;
+  text-align: right;
+}
+.depth-value {
+  font-size: 3.5vw;
+  font-weight: bold;
+  color: rgba(80, 180, 255, 0.9);
+  text-shadow: 0 0 15px rgba(80, 180, 255, 0.5);
+}
+.depth-unit {
+  font-size: 1.4vw;
+  opacity: 0.6;
+}
+.pressure-bar {
+  position: absolute;
+  top: 3vh;
+  left: 3vw;
+  width: 0.8vw;
+  height: 30vh;
+  background: rgba(100, 200, 255, 0.1);
+  border: 1px solid rgba(100, 200, 255, 0.2);
+  border-radius: 1vw;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+.pressure-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(255, 80, 80, 0.7), rgba(80, 180, 255, 0.5));
+  border-radius: 1vw;
+  transition: height 0.5s ease;
+}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="depth-hud">
+  <div>DEPTH</div>
+  <div class="depth-value" id="depthDisplay">0</div>
+  <div class="depth-unit">meters</div>
+</div>
+<div class="pressure-bar">
+  <div class="pressure-fill" id="pressureFill"></div>
+</div>
+<script>
+const CONFIG = {
+  bgColor: '#020a18',
+  depthMeters: 11000,
+  biolumColors: ['#00ffcc', '#ff00ff', '#00aaff', '#ffaa00', '#ff4466'],
+  searchlightColor: '#aaddff',
+  ventColor: '#ff6633',
+  cycleDuration: 18000
+};
+
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+const depthDisplay = document.getElementById('depthDisplay');
+const pressureFill = document.getElementById('pressureFill');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+const bgRgb = hexToRgb(CONFIG.bgColor);
+
+// Marine snow (tiny particles drifting down)
+class MarineSnow {
+  constructor() { this.reset(true); }
+  reset(init) {
+    this.x = Math.random() * W;
+    this.y = init ? Math.random() * H : -Math.random() * 20;
+    this.size = 0.5 + Math.random() * 2;
+    this.speed = 0.3 + Math.random() * 0.8;
+    this.drift = (Math.random() - 0.5) * 0.3;
+    this.opacity = 0.1 + Math.random() * 0.25;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = 0.005 + Math.random() * 0.01;
+  }
+  update(dt) {
+    this.y += this.speed * dt;
+    this.x += this.drift * dt + Math.sin(this.wobble) * 0.2;
+    this.wobble += this.wobbleSpeed * dt * 16;
+    if (this.y > H + 10) this.reset(false);
+  }
+  draw() {
+    ctx.globalAlpha = this.opacity;
+    ctx.fillStyle = 'rgba(200, 220, 255, 0.8)';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Bubble
+class Bubble {
+  constructor() { this.reset(true); }
+  reset(init) {
+    this.x = Math.random() * W;
+    this.y = init ? Math.random() * H : H + Math.random() * 50;
+    this.size = 1 + Math.random() * 6;
+    this.speed = 0.8 + Math.random() * 2;
+    this.wobbleAmp = 5 + Math.random() * 15;
+    this.wobbleSpeed = 0.003 + Math.random() * 0.005;
+    this.phase = Math.random() * Math.PI * 2;
+    this.opacity = 0.15 + Math.random() * 0.3;
+  }
+  update(dt) {
+    this.y -= this.speed * dt;
+    this.phase += this.wobbleSpeed * dt * 16;
+    this.x += Math.sin(this.phase) * this.wobbleAmp * 0.02;
+    if (this.y < -20) this.reset(false);
+  }
+  draw() {
+    ctx.globalAlpha = this.opacity;
+    ctx.strokeStyle = 'rgba(150, 200, 255, 0.5)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.stroke();
+    // Highlight
+    ctx.globalAlpha = this.opacity * 0.5;
+    ctx.fillStyle = 'rgba(200, 240, 255, 0.4)';
+    ctx.beginPath();
+    ctx.arc(this.x - this.size * 0.3, this.y - this.size * 0.3, this.size * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Bioluminescent jellyfish
+class Jellyfish {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = H * 0.15 + Math.random() * H * 0.6;
+    this.size = 15 + Math.random() * 30;
+    this.color = CONFIG.biolumColors[Math.floor(Math.random() * CONFIG.biolumColors.length)];
+    this.colorRgb = hexToRgb(this.color);
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.pulseSpeed = 0.003 + Math.random() * 0.004;
+    this.driftX = (Math.random() - 0.5) * 0.4;
+    this.driftY = -0.1 + Math.random() * 0.3;
+    this.tentacles = 4 + Math.floor(Math.random() * 5);
+    this.opacity = 0.5 + Math.random() * 0.4;
+    this.flashTimer = 0;
+    this.flashInterval = 5000 + Math.random() * 10000;
+  }
+  update(dt) {
+    this.pulsePhase += this.pulseSpeed * dt * 16;
+    this.x += this.driftX * dt;
+    this.y += this.driftY * dt + Math.sin(this.pulsePhase * 2) * 0.3;
+    this.flashTimer += dt * 16;
+    if (this.x < -80 || this.x > W + 80 || this.y < -80 || this.y > H + 80) this.reset();
+  }
+  draw() {
+    const pulse = (Math.sin(this.pulsePhase) + 1) * 0.5;
+    const bellWidth = this.size * (0.8 + pulse * 0.2);
+    const bellHeight = this.size * (0.6 + pulse * 0.15);
+    const { r, g, b } = this.colorRgb;
+
+    // Flash effect
+    let flashBoost = 0;
+    if (this.flashTimer > this.flashInterval && this.flashTimer < this.flashInterval + 300) {
+      flashBoost = Math.sin((this.flashTimer - this.flashInterval) / 300 * Math.PI) * 0.5;
+    }
+    if (this.flashTimer > this.flashInterval + 300) {
+      this.flashTimer = 0;
+      this.flashInterval = 5000 + Math.random() * 10000;
+    }
+
+    // Glow
+    const glowR = this.size * 3;
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowR);
+    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${(0.12 + flashBoost * 0.3) * this.opacity})`);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bell (dome)
+    ctx.globalAlpha = (this.opacity * 0.6 + flashBoost) * 0.7;
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, bellWidth, bellHeight, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Bell edge
+    ctx.globalAlpha = (this.opacity + flashBoost) * 0.8;
+    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.6)`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, bellWidth, bellHeight, 0, Math.PI, Math.PI * 2);
+    ctx.stroke();
+
+    // Tentacles
+    ctx.globalAlpha = (this.opacity * 0.5 + flashBoost * 0.3);
+    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.4)`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < this.tentacles; i++) {
+      const tx = this.x + (i - (this.tentacles - 1) / 2) * (bellWidth * 2 / this.tentacles);
+      ctx.beginPath();
+      ctx.moveTo(tx, this.y);
+      const tentLen = this.size * (1 + Math.random() * 0.5);
+      const segs = 8;
+      for (let s = 1; s <= segs; s++) {
+        const t = s / segs;
+        const sy = this.y + tentLen * t;
+        const sx = tx + Math.sin(t * 3 + time * 0.003 + i * 1.5) * 8 * t;
+        ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+  }
+}
+
+// Anglerfish (rare, with lantern)
+class Anglerfish {
+  constructor() { this.reset(); }
+  reset() {
+    this.direction = Math.random() < 0.5 ? 1 : -1;
+    this.x = this.direction > 0 ? -60 : W + 60;
+    this.y = H * 0.5 + Math.random() * H * 0.35;
+    this.size = 25 + Math.random() * 20;
+    this.speed = 0.3 + Math.random() * 0.5;
+    this.lanternPhase = Math.random() * Math.PI * 2;
+    this.color = CONFIG.biolumColors[Math.floor(Math.random() * CONFIG.biolumColors.length)];
+    this.colorRgb = hexToRgb(this.color);
+    this.swimPhase = 0;
+    this.active = false;
+    this.nextAppearance = 3000 + Math.random() * 8000;
+    this.timer = 0;
+  }
+  update(dt) {
+    this.timer += dt * 16;
+    if (!this.active && this.timer > this.nextAppearance) {
+      this.active = true;
+      this.timer = 0;
+    }
+    if (this.active) {
+      this.x += this.speed * this.direction * dt;
+      this.swimPhase += 0.04 * dt;
+      this.lanternPhase += 0.05 * dt;
+      if ((this.direction > 0 && this.x > W + 80) || (this.direction < 0 && this.x < -80)) {
+        this.reset();
+      }
+    }
+  }
+  draw() {
+    if (!this.active) return;
+    const { r, g, b } = this.colorRgb;
+    const dir = this.direction;
+    const bodyWobble = Math.sin(this.swimPhase) * 3;
+
+    // Lantern glow
+    const lanternX = this.x + dir * this.size * 0.8;
+    const lanternY = this.y - this.size * 0.4 + Math.sin(this.lanternPhase * 3) * 3;
+    const lanternGlow = (Math.sin(this.lanternPhase * 5) + 1) * 0.5;
+    const glowR = this.size * (1.5 + lanternGlow * 1.5);
+    const grad = ctx.createRadialGradient(lanternX, lanternY, 0, lanternX, lanternY, glowR);
+    grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.25 + lanternGlow * 0.15})`);
+    grad.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.05)`);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(lanternX, lanternY, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Lantern bulb
+    ctx.globalAlpha = 0.8 + lanternGlow * 0.2;
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.beginPath();
+    ctx.arc(lanternX, lanternY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Antenna
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.5)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(this.x + dir * this.size * 0.3, this.y - this.size * 0.2);
+    ctx.quadraticCurveTo(
+      this.x + dir * this.size * 0.6, this.y - this.size * 0.5,
+      lanternX, lanternY
+    );
+    ctx.stroke();
+
+    // Body silhouette
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = `rgba(${Math.max(0, r - 150)}, ${Math.max(0, g - 150)}, ${Math.max(0, b - 150)}, 0.8)`;
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y + bodyWobble, this.size * 0.6, this.size * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.7)`;
+    ctx.beginPath();
+    ctx.arc(this.x + dir * this.size * 0.25, this.y - this.size * 0.05 + bodyWobble, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tail fin
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = `rgba(${Math.max(0, r - 120)}, ${Math.max(0, g - 120)}, ${Math.max(0, b - 120)}, 0.6)`;
+    ctx.beginPath();
+    ctx.moveTo(this.x - dir * this.size * 0.6, this.y + bodyWobble);
+    ctx.lineTo(this.x - dir * this.size * 0.9, this.y - this.size * 0.25 + bodyWobble + Math.sin(this.swimPhase * 2) * 5);
+    ctx.lineTo(this.x - dir * this.size * 0.9, this.y + this.size * 0.25 + bodyWobble + Math.sin(this.swimPhase * 2 + 1) * 5);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// Hydrothermal vent
+class HydrothermalVent {
+  constructor(x) {
+    this.x = x;
+    this.baseY = H * 0.92;
+    this.width = 20 + Math.random() * 30;
+    this.particles = [];
+    for (let i = 0; i < 50; i++) {
+      this.particles.push(this.makeParticle());
+    }
+  }
+  makeParticle() {
+    return {
+      x: this.x + (Math.random() - 0.5) * this.width * 0.4,
+      y: this.baseY,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: -(1 + Math.random() * 3),
+      size: 1 + Math.random() * 3,
+      life: 1,
+      decay: 0.003 + Math.random() * 0.005,
+      hue: Math.random() < 0.5 ? 15 : 30
+    };
+  }
+  update(dt) {
+    this.particles.forEach(p => {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx += (Math.random() - 0.5) * 0.1;
+      p.life -= p.decay * dt * 16;
+      if (p.life <= 0) {
+        Object.assign(p, this.makeParticle());
+      }
+    });
+  }
+  draw() {
+    const ventRgb = hexToRgb(CONFIG.ventColor);
+    // Vent glow at base
+    const baseGrad = ctx.createRadialGradient(this.x, this.baseY, 0, this.x, this.baseY, this.width * 1.5);
+    baseGrad.addColorStop(0, `rgba(${ventRgb.r}, ${ventRgb.g}, ${ventRgb.b}, 0.2)`);
+    baseGrad.addColorStop(0.5, `rgba(${ventRgb.r}, ${ventRgb.g}, ${ventRgb.b}, 0.05)`);
+    baseGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = baseGrad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.baseY, this.width * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Vent chimney
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = `rgb(30, 25, 20)`;
+    ctx.beginPath();
+    ctx.moveTo(this.x - this.width * 0.3, this.baseY);
+    ctx.lineTo(this.x - this.width * 0.15, this.baseY - this.width * 0.5);
+    ctx.lineTo(this.x + this.width * 0.15, this.baseY - this.width * 0.5);
+    ctx.lineTo(this.x + this.width * 0.3, this.baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Particles
+    this.particles.forEach(p => {
+      ctx.globalAlpha = p.life * 0.5;
+      ctx.fillStyle = `hsl(${p.hue}, 80%, ${40 + p.life * 30}%)`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+}
+
+// Searchlight
+class Searchlight {
+  constructor() {
+    this.angle = 0;
+    this.sweepSpeed = 0.0008;
+    this.originX = W * 0.15;
+    this.originY = H * 0.45;
+  }
+  update(dt) {
+    this.angle = Math.sin(time * this.sweepSpeed) * 0.6 + 0.3;
+  }
+  draw() {
+    const slRgb = hexToRgb(CONFIG.searchlightColor);
+    const length = Math.max(W, H) * 0.9;
+    const endX = this.originX + Math.cos(this.angle) * length;
+    const endY = this.originY + Math.sin(this.angle) * length;
+    const spreadAngle = 0.08;
+
+    // Beam cone
+    const leftX = this.originX + Math.cos(this.angle - spreadAngle) * length;
+    const leftY = this.originY + Math.sin(this.angle - spreadAngle) * length;
+    const rightX = this.originX + Math.cos(this.angle + spreadAngle) * length;
+    const rightY = this.originY + Math.sin(this.angle + spreadAngle) * length;
+
+    ctx.globalAlpha = 1;
+    const beamGrad = ctx.createRadialGradient(this.originX, this.originY, 5, this.originX, this.originY, length);
+    beamGrad.addColorStop(0, `rgba(${slRgb.r}, ${slRgb.g}, ${slRgb.b}, 0.15)`);
+    beamGrad.addColorStop(0.3, `rgba(${slRgb.r}, ${slRgb.g}, ${slRgb.b}, 0.06)`);
+    beamGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = beamGrad;
+    ctx.beginPath();
+    ctx.moveTo(this.originX, this.originY);
+    ctx.lineTo(leftX, leftY);
+    ctx.lineTo(rightX, rightY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Origin glow
+    const originGrad = ctx.createRadialGradient(this.originX, this.originY, 0, this.originX, this.originY, 20);
+    originGrad.addColorStop(0, `rgba(${slRgb.r}, ${slRgb.g}, ${slRgb.b}, 0.5)`);
+    originGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = originGrad;
+    ctx.beginPath();
+    ctx.arc(this.originX, this.originY, 20, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Initialize
+const marineSnow = [];
+for (let i = 0; i < 150; i++) marineSnow.push(new MarineSnow());
+
+const bubbles = [];
+for (let i = 0; i < 40; i++) bubbles.push(new Bubble());
+
+const jellyfish = [];
+for (let i = 0; i < 6; i++) jellyfish.push(new Jellyfish());
+
+const anglerfish = [new Anglerfish(), new Anglerfish()];
+
+const vents = [
+  new HydrothermalVent(W * 0.3),
+  new HydrothermalVent(W * 0.6),
+  new HydrothermalVent(W * 0.85)
+];
+
+const searchlight = new Searchlight();
+
+// Ocean floor terrain
+function drawOceanFloor() {
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgb(12, 10, 8)';
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W; x += 5) {
+    const base = H * 0.92;
+    const ridge = Math.sin(x * 0.008 + 1) * H * 0.02 +
+                  Math.sin(x * 0.02 + 3) * H * 0.008 +
+                  Math.sin(x * 0.05 + 0.5) * H * 0.003;
+    ctx.lineTo(x, base + ridge);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // Trench crack line
+  ctx.globalAlpha = 0.15;
+  ctx.strokeStyle = 'rgba(50, 40, 30, 0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 5) {
+    const y = H * 0.93 + Math.sin(x * 0.01) * 5 + Math.sin(x * 0.04) * 2;
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+let lastTime = performance.now();
+let currentDepth = 0;
+
+function animate(now) {
+  const dt = Math.min((now - lastTime) / 16.67, 3);
+  lastTime = now;
+  time += dt * 16;
+
+  const cycleProgress = (time % CONFIG.cycleDuration) / CONFIG.cycleDuration;
+
+  // Depth animation: descend then ascend
+  let depthFraction;
+  if (cycleProgress < 0.4) {
+    depthFraction = cycleProgress / 0.4;
+  } else if (cycleProgress < 0.6) {
+    depthFraction = 1;
+  } else {
+    depthFraction = 1 - (cycleProgress - 0.6) / 0.4;
+  }
+  depthFraction = depthFraction * depthFraction * (3 - 2 * depthFraction); // smoothstep
+  currentDepth = Math.floor(depthFraction * CONFIG.depthMeters);
+  depthDisplay.textContent = currentDepth.toLocaleString();
+  pressureFill.style.height = (depthFraction * 100) + '%';
+
+  // Background gradient (darker with depth)
+  const darkness = depthFraction * 0.7;
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, `rgb(${Math.max(1, bgRgb.r + 15 - darkness * 20)}, ${Math.max(2, bgRgb.g + 25 - darkness * 30)}, ${Math.max(5, bgRgb.b + 40 - darkness * 45)})`);
+  grad.addColorStop(0.5, `rgb(${Math.max(1, bgRgb.r + 5 - darkness * 10)}, ${Math.max(2, bgRgb.g + 10 - darkness * 15)}, ${Math.max(5, bgRgb.b + 20 - darkness * 25)})`);
+  grad.addColorStop(1, `rgb(${Math.max(1, bgRgb.r - darkness * 5)}, ${Math.max(1, bgRgb.g - darkness * 5)}, ${Math.max(2, bgRgb.b - darkness * 5)})`);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Water caustics at shallow depths
+  if (depthFraction < 0.3) {
+    const causticAlpha = (1 - depthFraction / 0.3) * 0.06;
+    for (let i = 0; i < 5; i++) {
+      const cx = W * (0.1 + i * 0.2) + Math.sin(time * 0.001 + i) * 30;
+      const cy = H * 0.1 + Math.sin(time * 0.0015 + i * 2) * 20;
+      const cGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 80);
+      cGrad.addColorStop(0, `rgba(80, 150, 255, ${causticAlpha})`);
+      cGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = cGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // Searchlight
+  searchlight.update(dt);
+  searchlight.draw();
+
+  // Marine snow
+  marineSnow.forEach(s => { s.update(dt); s.draw(); });
+
+  // Jellyfish
+  jellyfish.forEach(j => { j.update(dt); j.draw(); });
+
+  // Anglerfish
+  anglerfish.forEach(a => { a.update(dt); a.draw(); });
+
+  // Ocean floor
+  drawOceanFloor();
+
+  // Hydrothermal vents
+  vents.forEach(v => { v.update(dt); v.draw(); });
+
+  // Bubbles
+  bubbles.forEach(b => { b.update(dt); b.draw(); });
+
+  // Deep water pressure overlay
+  ctx.globalAlpha = darkness * 0.15;
+  ctx.fillStyle = 'rgb(0, 0, 5)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Vignette
+  const vigGrad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.65);
+  vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vigGrad.addColorStop(1, `rgba(0, 0, 5, ${0.4 + darkness * 0.3})`);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Scanline overlay (submarine viewport feel)
+  ctx.globalAlpha = 0.02;
+  for (let y = 0; y < H; y += 3) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(0, y, W, 1);
+  }
+
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+window.addEventListener('resize', () => {
+  resize();
+  vents.length = 0;
+  vents.push(new HydrothermalVent(W * 0.3));
+  vents.push(new HydrothermalVent(W * 0.6));
+  vents.push(new HydrothermalVent(W * 0.85));
+});
+
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.config);
+  }
+});
+</script>
+</body>
+</html>

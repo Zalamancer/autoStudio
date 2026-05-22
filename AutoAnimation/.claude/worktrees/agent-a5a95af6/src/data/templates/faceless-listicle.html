@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faceless Listicle</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a0a; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+.container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8%; }
+.title { font-size: 5vmin; font-weight: 800; color: #fff; text-align: center; margin-bottom: 4vmin; opacity: 0; transform: translateY(-20px); }
+.title.show { opacity: 1; transform: translateY(0); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.items { width: 100%; max-width: 80%; display: flex; flex-direction: column; gap: 2vmin; }
+.item { display: flex; align-items: center; gap: 3vmin; padding: 2.5vmin 3vmin; background: rgba(255,255,255,0.04); border-radius: 2vmin; border-left: 0.6vmin solid var(--accent); opacity: 0; transform: translateX(-40px); }
+.item.show { opacity: 1; transform: translateX(0); transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.number { font-size: 6vmin; font-weight: 900; color: var(--accent); min-width: 6vmin; text-align: center; font-variant-numeric: tabular-nums; }
+.text { font-size: 3vmin; color: rgba(255,255,255,0.9); font-weight: 500; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title" id="title"></div>
+  <div class="items" id="items"></div>
+</div>
+<script>
+const CONFIG = {
+  title: 'Top 5 Things You Should Know',
+  items: ['First important point', 'Second key insight', 'Third surprising fact', 'Fourth useful tip', 'Fifth game-changer'],
+  accentColor: '#6366f1',
+  bgColor: '#0a0a0a',
+  revealIntervalMs: 2000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+
+const titleEl = document.getElementById('title');
+const itemsEl = document.getElementById('items');
+
+titleEl.textContent = CONFIG.title;
+CONFIG.items.forEach((text, i) => {
+  const item = document.createElement('div');
+  item.className = 'item';
+  item.innerHTML = `<span class="number">${i + 1}</span><span class="text">${text}</span>`;
+  itemsEl.appendChild(item);
+});
+
+const allItems = document.querySelectorAll('.item');
+let revealIndex = -1;
+
+setTimeout(() => titleEl.classList.add('show'), 300);
+
+function revealNext() {
+  revealIndex++;
+  if (revealIndex < allItems.length) {
+    allItems[revealIndex].classList.add('show');
+    setTimeout(revealNext, CONFIG.revealIntervalMs);
+  }
+}
+setTimeout(revealNext, 800);
+
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    document.body.style.background = CONFIG.bgColor;
+    document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+    titleEl.textContent = CONFIG.title;
+  }
+});
+</script>
+</body>
+</html>

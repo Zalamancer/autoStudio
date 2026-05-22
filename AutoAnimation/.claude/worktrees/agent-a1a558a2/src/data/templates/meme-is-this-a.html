@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; }
+.scene { width: 100%; height: 100%; background: linear-gradient(135deg, #dfe6e9, #b2bec3); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+.person { font-size: 160px; filter: drop-shadow(0 8px 20px rgba(0,0,0,0.2)); opacity: 0; transform: translateX(-30px); margin-bottom: 20px; }
+.person.show { opacity: 1; transform: translateX(0); transition: all 0.5s ease; }
+.butterfly { position: absolute; top: 25%; right: 20%; font-size: 100px; opacity: 0; transform: translateY(-20px); }
+.butterfly.show { opacity: 1; transform: translateY(0); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); animation: flutter 2s ease-in-out infinite; }
+@keyframes flutter { 0%, 100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
+.butterfly-label { position: absolute; top: 22%; right: 5%; background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 10px; font-size: 24px; text-align: center; max-width: 250px; opacity: 0; }
+.butterfly-label.show { opacity: 1; transition: opacity 0.4s ease; }
+.person-label { position: absolute; bottom: 30%; left: 10%; background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 10px; font-size: 24px; opacity: 0; }
+.person-label.show { opacity: 1; transition: opacity 0.4s ease; }
+.question { position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); font-size: 48px; color: #2d3436; text-align: center; text-transform: uppercase; letter-spacing: 2px; opacity: 0; max-width: 800px; padding: 20px 40px; background: rgba(255,255,255,0.9); border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.question.show { opacity: 1; transition: opacity 0.5s ease; }
+.pointing { position: absolute; top: 40%; right: 30%; font-size: 50px; opacity: 0; transform: rotate(-45deg); }
+.pointing.show { opacity: 1; transition: opacity 0.3s ease; }
+.flower1 { position: absolute; bottom: 5%; left: 5%; font-size: 40px; opacity: 0.4; }
+.flower2 { position: absolute; bottom: 8%; right: 8%; font-size: 35px; opacity: 0.3; }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  personLabel: 'Me',
+  butterflyLabel: 'Any minor inconvenience',
+  questionText: 'Is this a reason to give up?',
+  personEmoji: '\u{1F468}',
+  butterflyEmoji: '\u{1F98B}',
+  bgColor1: '#dfe6e9',
+  bgColor2: '#b2bec3',
+  textColor: '#2d3436',
+  labelBgColor: 'rgba(0,0,0,0.85)',
+  labelTextColor: '#ffffff',
+  fontSize: 48,
+  animationSpeed: 400
+};
+</script>
+<div class="scene" id="scene">
+  <span class="flower1">\u{1F33B}</span>
+  <span class="flower2">\u{1F33C}</span>
+  <span class="person" id="person"></span>
+  <span class="butterfly" id="butterfly"></span>
+  <span class="pointing" id="pointing">\u{1F449}</span>
+  <div class="butterfly-label" id="butterflyLabel"></div>
+  <div class="person-label" id="personLabel"></div>
+  <div class="question" id="question"></div>
+</div>
+<script>
+document.getElementById('person').textContent = CONFIG.personEmoji;
+document.getElementById('butterfly').textContent = CONFIG.butterflyEmoji;
+document.getElementById('personLabel').textContent = CONFIG.personLabel;
+document.getElementById('butterflyLabel').textContent = CONFIG.butterflyLabel;
+document.getElementById('question').textContent = CONFIG.questionText;
+document.getElementById('question').style.color = CONFIG.textColor;
+document.getElementById('question').style.fontSize = CONFIG.fontSize + 'px';
+document.querySelectorAll('.butterfly-label, .person-label').forEach(function(el) {
+  el.style.background = CONFIG.labelBgColor;
+  el.style.color = CONFIG.labelTextColor;
+});
+document.getElementById('scene').style.background = 'linear-gradient(135deg,' + CONFIG.bgColor1 + ',' + CONFIG.bgColor2 + ')';
+
+var speed = CONFIG.animationSpeed;
+setTimeout(function() { document.getElementById('person').classList.add('show'); }, speed);
+setTimeout(function() { document.getElementById('personLabel').classList.add('show'); }, speed * 2);
+setTimeout(function() {
+  document.getElementById('butterfly').classList.add('show');
+  document.getElementById('pointing').classList.add('show');
+}, speed * 3);
+setTimeout(function() { document.getElementById('butterflyLabel').classList.add('show'); }, speed * 4);
+setTimeout(function() { document.getElementById('question').classList.add('show'); }, speed * 5);
+</script>
+</body>
+</html>

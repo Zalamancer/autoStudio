@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Before/After Comparison</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg-color);
+  }
+  .container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .side {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .side-before {
+    left: 0;
+    background: var(--before-color);
+    z-index: 1;
+  }
+  .side-after {
+    left: 0;
+    background: var(--after-color);
+    z-index: 0;
+  }
+  .grid-pattern {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.12;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+    background-size: 4vw 4vw;
+  }
+  .grid-pattern.dots {
+    background-image: radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px);
+    background-size: 3vw 3vw;
+  }
+  .side-label {
+    position: absolute;
+    font-size: 3.5vw;
+    font-weight: 800;
+    letter-spacing: 0.5vw;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.15);
+    z-index: 2;
+    user-select: none;
+  }
+  .side-before .side-label {
+    top: 8vh;
+    left: 5vw;
+  }
+  .side-after .side-label {
+    bottom: 8vh;
+    right: 5vw;
+  }
+  .content-block {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    color: white;
+    opacity: 0;
+    transform: translateY(2vh);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .content-block.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .content-icon {
+    font-size: 8vw;
+    margin-bottom: 2vh;
+    filter: grayscale(0);
+  }
+  .side-before .content-icon {
+    filter: grayscale(1) brightness(0.6);
+  }
+  .content-text {
+    font-size: 2.2vw;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+  .divider {
+    position: absolute;
+    top: 0;
+    width: 0.5vw;
+    height: 100%;
+    background: var(--divider-color);
+    z-index: 10;
+    box-shadow: 0 0 3vw var(--divider-color), 0 0 6vw rgba(255,255,255,0.1);
+    transform: translateX(-50%);
+  }
+  .divider-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 5vw;
+    height: 5vw;
+    border-radius: 50%;
+    background: var(--divider-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 2vw rgba(0,0,0,0.4), 0 0 4vw var(--divider-color);
+  }
+  .divider-arrows {
+    font-size: 1.8vw;
+    color: white;
+    font-weight: bold;
+    letter-spacing: 0.3vw;
+  }
+  .divider-line-top, .divider-line-bottom {
+    position: absolute;
+    left: 50%;
+    width: 0.3vw;
+    background: var(--divider-color);
+    transform: translateX(-50%);
+    opacity: 0.6;
+  }
+  .divider-line-top { top: 0; height: calc(50% - 3vw); }
+  .divider-line-bottom { bottom: 0; height: calc(50% - 3vw); }
+  .title-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 20;
+    text-align: center;
+    padding: 3vh 0;
+    opacity: 0;
+    transform: translateY(-3vh);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .title-bar.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .title-text {
+    font-size: 2.8vw;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.4vw;
+    text-shadow: 0 0.3vh 1vh rgba(0,0,0,0.5);
+  }
+  .scan-line {
+    position: absolute;
+    width: 100%;
+    height: 0.2vh;
+    background: linear-gradient(90deg, transparent, var(--divider-color), transparent);
+    z-index: 15;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .sparkle {
+    position: absolute;
+    width: 0.4vw;
+    height: 0.4vw;
+    background: white;
+    border-radius: 50%;
+    z-index: 12;
+    pointer-events: none;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-bar" id="titleBar">
+    <div class="title-text" id="titleText"></div>
+  </div>
+  <div class="side side-after" id="sideAfter">
+    <div class="grid-pattern dots"></div>
+    <div class="side-label" id="afterLabel"></div>
+    <div class="content-block" id="afterContent">
+      <div class="content-icon">&#10024;</div>
+      <div class="content-text">Enhanced</div>
+    </div>
+  </div>
+  <div class="side side-before" id="sideBefore">
+    <div class="grid-pattern"></div>
+    <div class="side-label" id="beforeLabel"></div>
+    <div class="content-block" id="beforeContent">
+      <div class="content-icon">&#9881;</div>
+      <div class="content-text">Original</div>
+    </div>
+  </div>
+  <div class="divider" id="divider">
+    <div class="divider-line-top"></div>
+    <div class="divider-handle">
+      <div class="divider-arrows">&larr; &rarr;</div>
+    </div>
+    <div class="divider-line-bottom"></div>
+  </div>
+  <div class="scan-line" id="scanLine"></div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  beforeLabel: "BEFORE",
+  afterLabel: "AFTER",
+  beforeColor: "#1a1a2e",
+  afterColor: "#0f3460",
+  dividerColor: "#e94560",
+  title: "COMPARISON",
+  bgColor: "#0a0a1a",
+  cycleDuration: 8
+};
+
+// Apply config
+document.body.style.setProperty('--bg-color', CONFIG.bgColor);
+document.body.style.setProperty('--before-color', CONFIG.beforeColor);
+document.body.style.setProperty('--after-color', CONFIG.afterColor);
+document.body.style.setProperty('--divider-color', CONFIG.dividerColor);
+
+document.getElementById('beforeLabel').textContent = CONFIG.beforeLabel;
+document.getElementById('afterLabel').textContent = CONFIG.afterLabel;
+document.getElementById('titleText').textContent = CONFIG.title;
+
+const divider = document.getElementById('divider');
+const sideBefore = document.getElementById('sideBefore');
+const titleBar = document.getElementById('titleBar');
+const beforeContent = document.getElementById('beforeContent');
+const afterContent = document.getElementById('afterContent');
+const scanLine = document.getElementById('scanLine');
+const container = document.querySelector('.container');
+
+// Create sparkles along divider path
+const sparkles = [];
+for (let i = 0; i < 8; i++) {
+  const s = document.createElement('div');
+  s.className = 'sparkle';
+  container.appendChild(s);
+  sparkles.push(s);
+}
+
+const totalMs = CONFIG.cycleDuration * 1000;
+let startTime = null;
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function animate(timestamp) {
+  if (!startTime) startTime = timestamp;
+  const elapsed = (timestamp - startTime) % totalMs;
+  const progress = elapsed / totalMs;
+
+  // Phase breakdown:
+  // 0.00 - 0.08: intro (title + elements appear, divider at 50%)
+  // 0.08 - 0.15: hold center
+  // 0.15 - 0.40: slide to reveal AFTER (divider goes left to ~15%)
+  // 0.40 - 0.50: hold AFTER
+  // 0.50 - 0.75: slide to reveal BEFORE (divider goes right to ~85%)
+  // 0.75 - 0.85: hold BEFORE
+  // 0.85 - 0.95: return to center
+  // 0.95 - 1.00: exit fade
+
+  let dividerPos = 50; // percentage from left
+  let titleOpacity = 0;
+  let contentVisible = false;
+  let exitPhase = false;
+
+  if (progress < 0.08) {
+    // Intro
+    const t = progress / 0.08;
+    dividerPos = 50;
+    titleOpacity = easeOutBack(Math.min(t * 1.5, 1));
+    contentVisible = t > 0.4;
+  } else if (progress < 0.15) {
+    dividerPos = 50;
+    titleOpacity = 1;
+    contentVisible = true;
+  } else if (progress < 0.40) {
+    // Slide left to reveal AFTER
+    const t = (progress - 0.15) / 0.25;
+    dividerPos = 50 - 35 * easeInOutCubic(t);
+    titleOpacity = 1;
+    contentVisible = true;
+  } else if (progress < 0.50) {
+    dividerPos = 15;
+    titleOpacity = 1;
+    contentVisible = true;
+  } else if (progress < 0.75) {
+    // Slide right to reveal BEFORE
+    const t = (progress - 0.50) / 0.25;
+    dividerPos = 15 + 70 * easeInOutCubic(t);
+    titleOpacity = 1;
+    contentVisible = true;
+  } else if (progress < 0.85) {
+    dividerPos = 85;
+    titleOpacity = 1;
+    contentVisible = true;
+  } else if (progress < 0.95) {
+    // Return to center
+    const t = (progress - 0.85) / 0.10;
+    dividerPos = 85 - 35 * easeInOutCubic(t);
+    titleOpacity = 1;
+    contentVisible = true;
+  } else {
+    // Exit
+    const t = (progress - 0.95) / 0.05;
+    dividerPos = 50;
+    titleOpacity = 1 - t;
+    exitPhase = true;
+    contentVisible = false;
+  }
+
+  // Apply divider position
+  divider.style.left = dividerPos + '%';
+
+  // Clip the BEFORE side to reveal AFTER underneath
+  sideBefore.style.clipPath = `inset(0 ${100 - dividerPos}% 0 0)`;
+
+  // Title bar
+  if (titleOpacity > 0) {
+    titleBar.classList.add('visible');
+    titleBar.style.opacity = titleOpacity;
+  } else {
+    titleBar.classList.remove('visible');
+  }
+
+  // Content blocks
+  if (contentVisible) {
+    if (dividerPos < 40) {
+      afterContent.classList.add('visible');
+      beforeContent.classList.remove('visible');
+    } else if (dividerPos > 60) {
+      beforeContent.classList.add('visible');
+      afterContent.classList.remove('visible');
+    } else {
+      beforeContent.classList.add('visible');
+      afterContent.classList.add('visible');
+    }
+  } else {
+    beforeContent.classList.remove('visible');
+    afterContent.classList.remove('visible');
+  }
+
+  // Scan line follows divider vertically
+  const scanY = (Math.sin(progress * Math.PI * 6) * 0.5 + 0.5) * 100;
+  scanLine.style.top = scanY + '%';
+  scanLine.style.opacity = contentVisible ? 0.4 : 0;
+
+  // Sparkles along divider
+  sparkles.forEach((s, i) => {
+    const sparkleProgress = (progress * 3 + i * 0.12) % 1;
+    const yPos = sparkleProgress * 100;
+    s.style.left = dividerPos + '%';
+    s.style.top = yPos + '%';
+    const sparkleOpacity = Math.sin(sparkleProgress * Math.PI) * 0.8;
+    s.style.opacity = contentVisible ? sparkleOpacity : 0;
+    s.style.transform = `translate(-50%, -50%) scale(${0.5 + Math.sin(sparkleProgress * Math.PI) * 1.5})`;
+  });
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+// Listen for config updates via postMessage
+window.addEventListener('message', (e) => {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+    document.body.style.setProperty('--bg-color', CONFIG.bgColor);
+    document.body.style.setProperty('--before-color', CONFIG.beforeColor);
+    document.body.style.setProperty('--after-color', CONFIG.afterColor);
+    document.body.style.setProperty('--divider-color', CONFIG.dividerColor);
+    document.getElementById('beforeLabel').textContent = CONFIG.beforeLabel;
+    document.getElementById('afterLabel').textContent = CONFIG.afterLabel;
+    document.getElementById('titleText').textContent = CONFIG.title;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fluorescent Rave Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #0a0014;
+  }
+
+  /* UV light gradient overlay */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%, rgba(80, 0, 180, 0.12) 0%, transparent 70%);
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 6px 14px;
+    position: relative;
+    text-shadow:
+      0 0 10px var(--glow, #ff00ff),
+      0 0 30px var(--glow, #ff00ff),
+      0 0 60px var(--glow, #ff00ff);
+  }
+
+  /* Rotating border */
+  .word-block.rotating-border .word-inner {
+    border: 3px solid;
+    border-image: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff) 1;
+    padding: 10px 18px;
+  }
+
+  /* Dotted outline */
+  .word-block.dotted-outline .word-inner {
+    border: 3px dotted currentColor;
+    padding: 10px 18px;
+  }
+
+  @keyframes pulseIn {
+    0% { opacity: 0; transform: var(--pulse-start); filter: brightness(0) blur(8px); }
+    20% { opacity: 0.8; filter: brightness(3) blur(2px); }
+    40% { opacity: 0.4; filter: brightness(0.8) blur(0); }
+    60% { opacity: 1; filter: brightness(2) blur(0); }
+    80% { opacity: 0.9; filter: brightness(1.3) blur(0); }
+    100% { opacity: var(--final-opacity); transform: var(--pulse-end); filter: brightness(1) blur(0); }
+  }
+
+  @keyframes strobeOut {
+    0% { opacity: var(--final-opacity); filter: brightness(1); }
+    15% { opacity: 0; filter: brightness(0); }
+    30% { opacity: 0.8; filter: brightness(3); }
+    45% { opacity: 0; filter: brightness(0); }
+    60% { opacity: 0.5; filter: brightness(2); }
+    75% { opacity: 0; filter: brightness(0); }
+    90% { opacity: 0.2; filter: brightness(1); }
+    100% { opacity: 0; filter: brightness(0); }
+  }
+
+  /* UV glow spots */
+  .uv-spot {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.12;
+    animation: uvPulse 4s ease-in-out infinite;
+  }
+
+  @keyframes uvPulse {
+    0%, 100% { opacity: 0.08; transform: scale(1); }
+    50% { opacity: 0.15; transform: scale(1.1); }
+  }
+
+  /* Sound wave lines */
+  .sound-wave {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.08;
+  }
+
+  .sound-wave div {
+    display: inline-block;
+    width: 3px;
+    margin: 0 2px;
+    background: #00ffff;
+    animation: waveBar 1.5s ease-in-out infinite;
+  }
+
+  @keyframes waveBar {
+    0%, 100% { height: 10px; }
+    50% { height: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['BASS', 'DROP', 'RAVE', 'ACID', 'PULSE', 'HYPE'],
+  colors: ['#ff00ff', '#00ffff', '#ffff00', '#ff3300', '#00ff88', '#ff00ff'],
+  glowColors: ['#ff00ff', '#00ffff', '#ffff00', '#ff3300', '#00ff88', '#ff00ff'],
+  bgColor: '#0a0014',
+  maxRotation: 10,
+  overlapAmount: 0.2,
+  cycleDuration: 8000,
+  strobeEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '14px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '8px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '12px' },
+];
+
+const fontSizes = [180, 100, 160, 90, 200, 110];
+const wordStyles = ['rotating-border', '', 'dotted-outline', '', 'rotating-border', 'dotted-outline'];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  // UV glow spots
+  const spots = [
+    { top: '-10%', left: '20%', color: '#8800ff', size: 400 },
+    { bottom: '-10%', right: '15%', color: '#ff00ff', size: 350 },
+    { top: '40%', left: '-5%', color: '#00ffff', size: 300 },
+    { top: '30%', right: '-5%', color: '#ffff00', size: 280 },
+  ];
+  spots.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'uv-spot';
+    el.style.width = s.size + 'px';
+    el.style.height = s.size + 'px';
+    el.style.background = s.color;
+    if (s.top) el.style.top = s.top;
+    if (s.bottom) el.style.bottom = s.bottom;
+    if (s.left) el.style.left = s.left;
+    if (s.right) el.style.right = s.right;
+    el.style.animationDelay = (Math.random() * 4) + 's';
+    stage.appendChild(el);
+  });
+
+  // Sound wave bars
+  const wavePositions = [
+    { bottom: '5%', left: '5%' },
+    { bottom: '5%', right: '5%' },
+  ];
+  wavePositions.forEach(wp => {
+    const container = document.createElement('div');
+    container.className = 'sound-wave';
+    if (wp.bottom) container.style.bottom = wp.bottom;
+    if (wp.left) container.style.left = wp.left;
+    if (wp.right) container.style.right = wp.right;
+    for (let b = 0; b < 8; b++) {
+      const bar = document.createElement('div');
+      bar.style.animationDelay = (b * 0.15) + 's';
+      bar.style.height = (10 + Math.random() * 30) + 'px';
+      container.appendChild(bar);
+    }
+    stage.appendChild(container);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.72;
+  const baseTop = vh * 0.14;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyles[i % wordStyles.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.style.setProperty('--glow', CONFIG.glowColors[i % CONFIG.glowColors.length]);
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * vw * 0.3;
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.85 + rng() * 0.15;
+
+    el.style.setProperty('--pulse-start', `translate(0, 0) rotate(${rotation}deg) scale(1.15)`);
+    el.style.setProperty('--pulse-end', `translate(0, 0) rotate(${rotation}deg) scale(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const pulseStagger = 300;
+  const pulseDuration = 700;
+  const holdDuration = 2000;
+  const strobeStagger = 180;
+  const strobeDuration = 500;
+  const pauseBeforeLoop = 600;
+
+  const totalPulseTime = (count - 1) * pulseStagger + pulseDuration;
+  const totalStrobeTime = (count - 1) * strobeStagger + strobeDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalPulseTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * pulseStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `pulseIn ${pulseDuration}ms ease-out forwards`;
+        }
+      });
+    } else if (elapsed < totalPulseTime + holdDuration) {
+    } else if (elapsed < totalPulseTime + holdDuration + totalStrobeTime) {
+      const strobeElapsed = elapsed - totalPulseTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const wordStart = i * strobeStagger;
+        if (strobeElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `strobeOut ${strobeDuration}ms linear forwards`;
+        }
+      });
+    } else if (elapsed < totalPulseTime + holdDuration + totalStrobeTime + pauseBeforeLoop) {
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

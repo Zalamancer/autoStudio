@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Woodblock Stamp - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #f5ece0; font-family: 'Georgia', 'Times New Roman', serif; position: relative; }
+  body::before { content:''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+    background-size: 200px 200px; }
+  #stage { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .word-block { position: absolute; white-space: nowrap; line-height: 1; opacity: 0; will-change: transform, opacity; user-select: none; }
+  .word-inner { display: inline-block; padding: 8px 16px; border: 3px solid currentColor; position: relative; }
+  .ink-mark { position: absolute; border-radius: 50%; pointer-events: none; z-index: 3; background: rgba(60,30,10,0.15); }
+
+  @keyframes stampDown { 0% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); } 40% { opacity: 0.9; transform: translate(-50%,-50%) scale(0.96); } 60% { transform: translate(-50%,-50%) scale(1.02); } 100% { opacity: 0.85; transform: translate(-50%,-50%) scale(1); } }
+  @keyframes stampFade { 0% { opacity: 0.85; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(0.95); } }
+  @keyframes inkBlot { 0% { opacity: 0.3; transform: scale(0.5); } 100% { opacity: 0; transform: scale(1.2); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  words: ['ARTISAN','CRAFT','HERITAGE','TIMBER','PRESS','FORGE','GUILD','MAKER'],
+  bgColor: '#f5ece0',
+  fontFamily: "'Georgia', 'Times New Roman', serif",
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+const W = () => window.innerWidth, H = () => window.innerHeight;
+
+function seededRandom(seed) {
+  let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+const inkColors = ['#3c1e0a','#5c2e1a','#4a2510','#2d1608','#6b3822','#3e200c','#4c2812','#342010'];
+
+function spawnInk(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const m = document.createElement('div'); m.className = 'ink-mark';
+    const sz = 8 + Math.random() * 12;
+    m.style.cssText = `left:${x+(Math.random()-0.5)*50}px;top:${y+(Math.random()-0.5)*20}px;width:${sz}px;height:${sz}px;animation:inkBlot ${400+Math.random()*300}ms ease-out forwards;`;
+    document.body.appendChild(m);
+    setTimeout(() => m.remove(), 800);
+  }
+}
+
+function build() {
+  stage.innerHTML = '';
+  const els = [], n = CONFIG.words.length;
+  // Adaptive grid: works for both landscape and portrait
+    const pad = { x: W() * 0.05, y: H() * 0.05 };
+    const usableW = W() - pad.x * 2, usableH = H() - pad.y * 2;
+    const aspect = usableW / usableH;
+    const cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
+    const rows = Math.ceil(n / cols);
+    const cellW = usableW / cols, cellH = usableH / rows;
+
+  CONFIG.words.forEach((word, i) => {
+    const rng = seededRandom(i * 53 + 19);
+    const col = i % cols, row = Math.floor(i / cols);
+    const size = Math.min(30 + rng() * 22, cellW * 0.38, cellH * 0.5);
+    const color = inkColors[i % inkColors.length];
+    const rot = (rng() - 0.5) * 4;
+    const el = document.createElement('div'); el.className = 'word-block';
+    const inner = document.createElement('div'); inner.className = 'word-inner';
+    inner.textContent = word;
+    el.style.cssText = `font-size:${size}px;font-family:${CONFIG.fontFamily};font-weight:700;color:${color};letter-spacing:6px;text-transform:uppercase;left:${pad.x+col*cellW+cellW/2}px;top:${pad.y+row*cellH+cellH/2}px;transform:translate(-50%,-50%) rotate(${rot}deg);`;
+    el.appendChild(inner); stage.appendChild(el); els.push({ el, x: col*cellW+cellW/2, y: row*cellH+cellH/2 });
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=300, inD=450, hold=3000, outS=200, outD=500, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.el.style.animation='none';e.el.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((item,i)=>{if(e>=i*inS&&!item.el.dataset.i){item.el.dataset.i='1';item.el.style.animation=`stampDown ${inD}ms ease-out forwards`;spawnInk(item.x,item.y);}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((item,i)=>{if(oe>=i*outS&&!item.el.dataset.o){item.el.dataset.o='1';item.el.style.animation=`stampFade ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(item=>{delete item.el.dataset.i;delete item.el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

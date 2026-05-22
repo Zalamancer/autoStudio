@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organic Modern Motion Template</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f5f0e6;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #3d3d3d;
+  }
+
+  .grain-overlay {
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grainShift 0.8s steps(4) infinite;
+  }
+  @keyframes grainShift {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(-1%, 1%); }
+    50% { transform: translate(1%, -1%); }
+    75% { transform: translate(-1%, -1%); }
+    100% { transform: translate(0, 0); }
+  }
+
+  canvas#bgCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  .content {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+  }
+
+  .heading-block {
+    position: absolute;
+    transition: opacity 1.2s ease, transform 1.2s ease;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .heading-block.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .main-heading {
+    font-size: 56px;
+    font-weight: 400;
+    line-height: 1.15;
+    color: #2d2d2d;
+    letter-spacing: -0.5px;
+  }
+
+  .main-heading .terracotta {
+    color: #c67a4b;
+  }
+
+  .main-heading .sage {
+    color: #7a8e6e;
+  }
+
+  .sub-label {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #a0967e;
+    margin-bottom: 16px;
+  }
+
+  .organic-shape {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .leaf {
+    position: absolute;
+    pointer-events: none;
+    z-index: 8;
+    opacity: 0.15;
+  }
+
+  .warm-gradient-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.2;
+    z-index: 1;
+  }
+
+  .dot-accent {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #c67a4b;
+    opacity: 0.4;
+  }
+
+  .thin-line {
+    position: absolute;
+    height: 1px;
+    background: rgba(160, 150, 126, 0.3);
+    transform-origin: left;
+  }
+</style>
+</head>
+<body>
+
+<div class="grain-overlay"></div>
+<canvas id="bgCanvas"></canvas>
+
+<div class="warm-gradient-blob" style="width:400px;height:400px;background:radial-gradient(circle,#e8c9a0,transparent);top:-5%;left:-5%;animation:blobDrift1 14s ease-in-out infinite;"></div>
+<div class="warm-gradient-blob" style="width:350px;height:350px;background:radial-gradient(circle,#c5d4b5,transparent);bottom:-5%;right:-5%;animation:blobDrift2 12s ease-in-out infinite;"></div>
+<div class="warm-gradient-blob" style="width:300px;height:300px;background:radial-gradient(circle,#dbb896,transparent);top:40%;left:40%;animation:blobDrift3 16s ease-in-out infinite;"></div>
+
+<div class="content" id="content"></div>
+
+<style>
+  @keyframes blobDrift1 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(40px, 30px); }
+  }
+  @keyframes blobDrift2 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-35px, -25px); }
+  }
+  @keyframes blobDrift3 {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(25px, -20px); }
+    66% { transform: translate(-15px, 25px); }
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0.15; }
+    50% { opacity: 0.2; }
+    100% { transform: translateY(-100vh) rotate(30deg); opacity: 0; }
+  }
+  @keyframes lineGrow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+</style>
+
+<script>
+  // === EDITABLE VARIABLES ===
+  const CONFIG = {
+    bgColor: '#f5f0e6',
+    terracotta: '#c67a4b',
+    sage: '#7a8e6e',
+    cream: '#f5f0e6',
+    textColor: '#2d2d2d',
+    labelColor: '#a0967e',
+    sectionDuration: 5000,
+    headlines: [
+      { text: 'Rooted in <span class="sage">Nature</span>', label: 'ORGANIC COLLECTION' },
+      { text: 'Warm <span class="terracotta">Earth</span> Tones', label: 'INSPIRED BY NATURE' },
+      { text: 'Modern <span class="sage">Simplicity</span>', label: 'MINIMAL AESTHETIC' },
+      { text: '<span class="terracotta">Handcrafted</span> Details', label: 'ARTISAN SERIES' },
+    ],
+  };
+
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  const content = document.getElementById('content');
+  let W, H, time = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Draw organic shapes on canvas
+  function drawOrganicShapes(t) {
+    ctx.clearRect(0, 0, W, H);
+
+    // Soft organic blobs
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      const cx = W * (0.15 + i * 0.18);
+      const cy = H * (0.3 + Math.sin(t * 0.3 + i) * 0.15);
+      const points = 8;
+
+      for (let j = 0; j <= points; j++) {
+        const angle = (j / points) * Math.PI * 2;
+        const r = 40 + Math.sin(t * 0.4 + i * 2 + j) * 15 + Math.cos(t * 0.3 + j * 3) * 10;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (j === 0) ctx.moveTo(x, y);
+        else {
+          const prevAngle = ((j - 1) / points) * Math.PI * 2;
+          const midAngle = (prevAngle + angle) / 2;
+          const cpR = r * 1.2;
+          ctx.quadraticCurveTo(
+            cx + Math.cos(midAngle) * cpR,
+            cy + Math.sin(midAngle) * cpR,
+            x, y
+          );
+        }
+      }
+      ctx.closePath();
+      ctx.fillStyle = i % 2 === 0
+        ? 'rgba(198, 122, 75, 0.04)'
+        : 'rgba(122, 142, 110, 0.04)';
+      ctx.fill();
+    }
+
+    // Decorative leaf shapes
+    for (let i = 0; i < 3; i++) {
+      const lx = W * (0.2 + i * 0.3) + Math.sin(t * 0.2 + i * 1.5) * 20;
+      const ly = H * (0.6 + i * 0.1) + Math.cos(t * 0.25 + i) * 15;
+      const rot = Math.sin(t * 0.15 + i) * 0.3;
+
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(rot);
+
+      // Leaf shape
+      ctx.beginPath();
+      ctx.moveTo(0, -30);
+      ctx.quadraticCurveTo(20, -15, 0, 30);
+      ctx.quadraticCurveTo(-20, -15, 0, -30);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(122, 142, 110, 0.06)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(122, 142, 110, 0.12)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+
+      // Leaf vein
+      ctx.beginPath();
+      ctx.moveTo(0, -25);
+      ctx.lineTo(0, 25);
+      ctx.strokeStyle = 'rgba(122, 142, 110, 0.1)';
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  }
+
+  // Create heading blocks
+  let currentHeading = 0;
+  const headingBlocks = [];
+
+  CONFIG.headlines.forEach((item, i) => {
+    const block = document.createElement('div');
+    block.className = 'heading-block';
+    block.style.cssText = `top:50%;left:10%;transform:translateY(-50%) translateY(20px);width:80%;`;
+    block.innerHTML = `
+      <div class="sub-label">${item.label}</div>
+      <div class="main-heading">${item.text}</div>
+    `;
+    content.appendChild(block);
+    headingBlocks.push(block);
+  });
+
+  // Add decorative elements
+  for (let i = 0; i < 8; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot-accent';
+    dot.style.cssText = `
+      left: ${10 + Math.random() * 80}%;
+      top: ${10 + Math.random() * 80}%;
+      animation: blobDrift${(i % 3) + 1} ${8 + Math.random() * 6}s ease-in-out infinite;
+      animation-delay: ${-Math.random() * 5}s;
+    `;
+    content.appendChild(dot);
+  }
+
+  // Thin decorative lines
+  for (let i = 0; i < 4; i++) {
+    const line = document.createElement('div');
+    line.className = 'thin-line';
+    line.style.cssText = `
+      top: ${20 + i * 20}%;
+      left: ${5 + Math.random() * 10}%;
+      width: ${20 + Math.random() * 30}%;
+      animation: lineGrow 2s ease-out forwards;
+      animation-delay: ${i * 0.5}s;
+    `;
+    content.appendChild(line);
+  }
+
+  function showHeading(index) {
+    headingBlocks.forEach((b, i) => {
+      if (i === index) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+  }
+
+  showHeading(0);
+  setInterval(() => {
+    currentHeading = (currentHeading + 1) % CONFIG.headlines.length;
+    showHeading(currentHeading);
+  }, CONFIG.sectionDuration);
+
+  // Floating leaf particles
+  function spawnLeaf() {
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    const size = 15 + Math.random() * 20;
+    const startX = Math.random() * 100;
+    leaf.style.cssText = `
+      left: ${startX}%;
+      bottom: -30px;
+      width: ${size}px;
+      height: ${size * 1.5}px;
+      border-radius: 50% 0 50% 0;
+      background: ${Math.random() > 0.5 ? 'rgba(122, 142, 110, 0.15)' : 'rgba(198, 122, 75, 0.12)'};
+      animation: floatUp ${12 + Math.random() * 8}s linear forwards;
+    `;
+    content.appendChild(leaf);
+    setTimeout(() => leaf.remove(), 20000);
+  }
+
+  setInterval(spawnLeaf, 2000);
+
+  function animate() {
+    time += 0.016;
+    drawOrganicShapes(time);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>

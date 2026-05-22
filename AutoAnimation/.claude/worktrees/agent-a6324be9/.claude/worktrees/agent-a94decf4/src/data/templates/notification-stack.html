@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notification Stack</title>
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, sans-serif;
+    background: #000;
+    color: #fff;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Lock screen background */
+  .lock-screen {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .bg-layer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, #0a0a1a 0%, #0d1b2a 30%, #1b263b 60%, #0d1b2a 100%);
+    z-index: 0;
+  }
+
+  .bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(8vh);
+    opacity: 0.3;
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+
+  .bg-orb.orb-1 {
+    width: 40vw;
+    height: 40vw;
+    top: -5vh;
+    left: -10vw;
+    background: radial-gradient(circle, #1a3a5c, transparent);
+    animation-delay: 0s;
+  }
+
+  .bg-orb.orb-2 {
+    width: 35vw;
+    height: 35vw;
+    bottom: 10vh;
+    right: -8vw;
+    background: radial-gradient(circle, #2d1b4e, transparent);
+    animation-delay: -7s;
+  }
+
+  .bg-orb.orb-3 {
+    width: 25vw;
+    height: 25vw;
+    top: 30vh;
+    left: 20vw;
+    background: radial-gradient(circle, #0d3b4e, transparent);
+    animation-delay: -14s;
+  }
+
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(2vw, -2vh) scale(1.05); }
+    50% { transform: translate(-1vw, 3vh) scale(0.95); }
+    75% { transform: translate(3vw, 1vh) scale(1.02); }
+  }
+
+  /* Status bar */
+  .status-bar {
+    position: relative;
+    z-index: 10;
+    width: 88vw;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.8vh 0 0 0;
+  }
+
+  .status-left {
+    font-size: 1.6vh;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+  }
+
+  .status-right {
+    display: flex;
+    align-items: center;
+    gap: 1vw;
+  }
+
+  /* Signal bars */
+  .signal-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.3vw;
+    height: 1.6vh;
+  }
+
+  .signal-bar {
+    width: 0.5vw;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 0.2vw;
+  }
+
+  .signal-bar:nth-child(1) { height: 25%; }
+  .signal-bar:nth-child(2) { height: 50%; }
+  .signal-bar:nth-child(3) { height: 75%; }
+  .signal-bar:nth-child(4) { height: 100%; }
+
+  /* WiFi icon */
+  .wifi-icon {
+    width: 2vw;
+    height: 1.6vh;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .wifi-dot {
+    width: 0.5vw;
+    height: 0.5vw;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .wifi-arc {
+    position: absolute;
+    border: 0.25vw solid transparent;
+    border-top-color: rgba(255, 255, 255, 0.8);
+    border-radius: 50% 50% 0 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .wifi-arc:nth-child(2) {
+    width: 1.2vw;
+    height: 0.6vw;
+    bottom: 0.5vw;
+  }
+
+  .wifi-arc:nth-child(3) {
+    width: 2vw;
+    height: 1vw;
+    bottom: 0.7vw;
+  }
+
+  /* Battery */
+  .battery {
+    display: flex;
+    align-items: center;
+    gap: 0.2vw;
+  }
+
+  .battery-body {
+    width: 3.5vw;
+    height: 1.6vh;
+    border: 0.2vw solid rgba(255, 255, 255, 0.8);
+    border-radius: 0.4vw;
+    padding: 0.15vw;
+    position: relative;
+  }
+
+  .battery-fill {
+    height: 100%;
+    width: 80%;
+    background: #34c759;
+    border-radius: 0.2vw;
+  }
+
+  .battery-tip {
+    width: 0.3vw;
+    height: 0.8vh;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 0 0.2vw 0.2vw 0;
+  }
+
+  .battery-percent {
+    font-size: 1.4vh;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-right: 0.5vw;
+  }
+
+  /* Lock icon */
+  .lock-icon {
+    position: relative;
+    z-index: 10;
+    margin-top: 3vh;
+    width: 2.2vw;
+    height: 2.6vh;
+    opacity: 0.6;
+  }
+
+  .lock-body-shape {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2.2vw;
+    height: 1.6vh;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 0.4vw;
+  }
+
+  .lock-shackle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1.4vw;
+    height: 1.2vh;
+    border: 0.25vw solid rgba(255, 255, 255, 0.7);
+    border-bottom: none;
+    border-radius: 1vw 1vw 0 0;
+  }
+
+  /* Time display */
+  .time-display {
+    position: relative;
+    z-index: 10;
+    margin-top: 1.5vh;
+    text-align: center;
+  }
+
+  .time-text {
+    font-size: 10vh;
+    font-weight: 700;
+    letter-spacing: 0.3vw;
+    line-height: 1;
+    background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.85) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .date-text {
+    font-size: 2.2vh;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-top: 0.8vh;
+    letter-spacing: 0.08em;
+  }
+
+  /* Notification container */
+  .notification-container {
+    position: relative;
+    z-index: 10;
+    width: 88vw;
+    margin-top: 4vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4vh;
+  }
+
+  /* Individual notification card */
+  .notification-card {
+    width: 100%;
+    padding: 1.8vh 2.5vw;
+    border-radius: 2vh;
+    background: rgba(45, 45, 55, 0.55);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 0.5vh 2vh rgba(0, 0, 0, 0.3),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: flex-start;
+    gap: 2vw;
+    opacity: 0;
+    transform: translateY(-6vh) scale(0.95);
+    transition: none;
+    will-change: transform, opacity;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .notification-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  }
+
+  .notification-card.entering {
+    animation: slideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .notification-card.dismissing {
+    animation: swipeRight 0.45s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  }
+
+  @keyframes slideIn {
+    0% {
+      opacity: 0;
+      transform: translateY(-6vh) scale(0.95);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes swipeRight {
+    0% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+    30% {
+      opacity: 1;
+      transform: translateX(2vw) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(110vw) scale(0.9) rotateZ(4deg);
+    }
+  }
+
+  /* App icon */
+  .notif-icon-wrap {
+    flex-shrink: 0;
+    width: 5.5vh;
+    height: 5.5vh;
+    border-radius: 1.2vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.8vh;
+    position: relative;
+    box-shadow: 0 0.3vh 1vh rgba(0, 0, 0, 0.25);
+  }
+
+  .notif-icon-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 1.2vh;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Notification content */
+  .notif-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3vh;
+  }
+
+  .notif-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .notif-app-name {
+    font-size: 1.5vh;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.55;
+  }
+
+  .notif-time {
+    font-size: 1.4vh;
+    font-weight: 400;
+    opacity: 0.4;
+  }
+
+  .notif-title {
+    font-size: 1.9vh;
+    font-weight: 600;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .notif-message {
+    font-size: 1.7vh;
+    font-weight: 400;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.6);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bottom indicator bar */
+  .home-indicator {
+    position: absolute;
+    bottom: 1.2vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18vw;
+    height: 0.6vh;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 0.3vh;
+    z-index: 10;
+  }
+
+  /* Flashlight and camera bottom buttons */
+  .bottom-actions {
+    position: absolute;
+    bottom: 4vh;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 6vw;
+  }
+
+  .bottom-btn {
+    width: 6vh;
+    height: 6vh;
+    border-radius: 50%;
+    background: rgba(55, 55, 65, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6vh;
+    opacity: 0.7;
+  }
+
+  /* Subtle ambient light pulse */
+  .ambient-glow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60vw;
+    height: 30vh;
+    background: radial-gradient(ellipse, rgba(100, 120, 200, 0.06) 0%, transparent 70%);
+    z-index: 1;
+    animation: ambientPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes ambientPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* Thin separator for notification group label */
+  .notif-group-label {
+    font-size: 1.6vh;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0;
+    color: rgba(255, 255, 255, 0.4);
+    padding-left: 0.5vw;
+    transform: translateY(-1vh);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .notif-group-label.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Subtle notification count badge */
+  .notif-count-badge {
+    position: absolute;
+    top: -0.4vh;
+    right: -0.4vw;
+    width: 2.2vh;
+    height: 2.2vh;
+    border-radius: 50%;
+    background: #ff3b30;
+    font-size: 1.2vh;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 0.2vh 0.5vh rgba(255, 59, 48, 0.4);
+  }
+</style>
+</head>
+<body>
+<div class="lock-screen" id="lockScreen">
+  <!-- Background layer -->
+  <div class="bg-layer">
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+  </div>
+
+  <div class="ambient-glow"></div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-left" id="carrierText">9:41</div>
+    <div class="status-right">
+      <div class="signal-bars">
+        <div class="signal-bar"></div>
+        <div class="signal-bar"></div>
+        <div class="signal-bar"></div>
+        <div class="signal-bar"></div>
+      </div>
+      <div class="wifi-icon">
+        <div class="wifi-dot"></div>
+        <div class="wifi-arc"></div>
+        <div class="wifi-arc"></div>
+      </div>
+      <div class="battery">
+        <span class="battery-percent">87%</span>
+        <div class="battery-body">
+          <div class="battery-fill"></div>
+        </div>
+        <div class="battery-tip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lock icon -->
+  <div class="lock-icon">
+    <div class="lock-shackle"></div>
+    <div class="lock-body-shape"></div>
+  </div>
+
+  <!-- Time and date -->
+  <div class="time-display">
+    <div class="time-text" id="timeText"></div>
+    <div class="date-text" id="dateText"></div>
+  </div>
+
+  <!-- Notification stack -->
+  <div class="notification-container">
+    <div class="notif-group-label" id="groupLabel">Notification Center</div>
+    <div id="notificationStack"></div>
+  </div>
+
+  <!-- Bottom actions -->
+  <div class="bottom-actions">
+    <div class="bottom-btn">&#128294;</div>
+    <div class="bottom-btn">&#128247;</div>
+  </div>
+
+  <!-- Home indicator -->
+  <div class="home-indicator"></div>
+</div>
+
+<script>
+  const CONFIG = {
+    notifications: [
+      {
+        app: 'Messages',
+        icon: '💬',
+        title: 'Sarah Chen',
+        message: 'Hey! Did you see the new design mockups? I think we should go with option B, the layout is much cleaner.',
+        time: '2m ago',
+        color: '#34c759'
+      },
+      {
+        app: 'Instagram',
+        icon: '📸',
+        title: 'New Followers',
+        message: '3 people started following you today. Check out their profiles and connect!',
+        time: '5m ago',
+        color: '#e1306c'
+      },
+      {
+        app: 'Slack',
+        icon: '💼',
+        title: '#design-team',
+        message: 'Mike posted: "Sprint review is at 3 PM today. Please have your demos ready."',
+        time: '12m ago',
+        color: '#4a154b'
+      },
+      {
+        app: 'YouTube',
+        icon: '▶️',
+        title: 'New Upload',
+        message: 'MKBHD just uploaded: "The Future of Foldable Phones — 2025 Edition"',
+        time: '18m ago',
+        color: '#ff0000'
+      },
+      {
+        app: 'Weather',
+        icon: '🌤️',
+        title: 'Afternoon Forecast',
+        message: 'Partly cloudy with a high of 72°F. UV index moderate — sunscreen recommended.',
+        time: '25m ago',
+        color: '#5ac8fa'
+      }
+    ],
+    timeText: '9:41',
+    dateText: 'Thursday, February 20',
+    bgColor: '#0a0a1a',
+    cycleDuration: 14
+  };
+
+  /* ── Initialization ─────────────────────────────────────── */
+
+  function init() {
+    applyConfig();
+    startAnimation();
+    window.addEventListener('message', onMessage);
+  }
+
+  function onMessage(e) {
+    if (e.data && typeof e.data === 'object') {
+      Object.assign(CONFIG, e.data);
+      applyConfig();
+    }
+  }
+
+  function applyConfig() {
+    document.getElementById('timeText').textContent = CONFIG.timeText;
+    document.getElementById('dateText').textContent = CONFIG.dateText;
+    document.querySelector('.bg-layer').style.background =
+      'linear-gradient(160deg, ' + CONFIG.bgColor + ' 0%, #0d1b2a 30%, #1b263b 60%, #0d1b2a 100%)';
+    buildCards();
+  }
+
+  /* ── Build notification DOM ─────────────────────────────── */
+
+  function buildCards() {
+    const stack = document.getElementById('notificationStack');
+    stack.innerHTML = '';
+
+    CONFIG.notifications.forEach(function(n, i) {
+      const card = document.createElement('div');
+      card.className = 'notification-card';
+      card.id = 'notif-' + i;
+      card.innerHTML =
+        '<div class="notif-icon-wrap" style="background:' + n.color + ';">' +
+          '<span>' + n.icon + '</span>' +
+          (i === 0 ? '<div class="notif-count-badge">1</div>' : '') +
+        '</div>' +
+        '<div class="notif-content">' +
+          '<div class="notif-header">' +
+            '<span class="notif-app-name">' + escapeHtml(n.app) + '</span>' +
+            '<span class="notif-time">' + escapeHtml(n.time) + '</span>' +
+          '</div>' +
+          '<div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+          '<div class="notif-message">' + escapeHtml(n.message) + '</div>' +
+        '</div>';
+      stack.appendChild(card);
+    });
+  }
+
+  function escapeHtml(str) {
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  /* ── Animation loop ─────────────────────────────────────── */
+
+  var animFrameId = null;
+  var cycleStart = 0;
+
+  function startAnimation() {
+    cycleStart = performance.now();
+    tick();
+  }
+
+  function tick() {
+    var now = performance.now();
+    var elapsed = (now - cycleStart) / 1000;
+    var cycleDur = CONFIG.cycleDuration;
+
+    if (elapsed >= cycleDur) {
+      cycleStart = now;
+      elapsed = 0;
+      resetCards();
+    }
+
+    var n = CONFIG.notifications.length;
+
+    /* Timing budget (in seconds):
+       - 0.0s         : group label fades in
+       - 0.3s–Xin     : notifications enter one-by-one (0.35s stagger)
+       - Xin+1.0s hold
+       - Xout          : notifications dismiss one-by-one (0.3s stagger)
+       - rest          : cleared screen hold before loop
+    */
+
+    var staggerIn = 0.4;
+    var staggerOut = 0.35;
+    var introEnd = 0.3 + n * staggerIn + 0.5; /* last card animation finishes */
+    var holdEnd = introEnd + 2.0;
+    var outroEnd = holdEnd + n * staggerOut + 0.45;
+
+    /* Scale timings to fit cycle */
+    var timeScale = 1;
+    if (outroEnd + 0.5 > cycleDur) {
+      timeScale = (cycleDur - 0.5) / outroEnd;
+    }
+
+    var scaledElapsed = elapsed / timeScale;
+
+    /* Group label */
+    var label = document.getElementById('groupLabel');
+    if (scaledElapsed >= 0.1) {
+      label.classList.add('visible');
+    } else {
+      label.classList.remove('visible');
+    }
+
+    /* Entrance phase */
+    for (var i = 0; i < n; i++) {
+      var card = document.getElementById('notif-' + i);
+      if (!card) continue;
+
+      var enterTime = 0.3 + i * staggerIn;
+      var dismissTime = holdEnd + i * staggerOut;
+
+      /* Enter */
+      if (scaledElapsed >= enterTime && !card.classList.contains('entering') && !card.classList.contains('dismissing') && !card.dataset.entered) {
+        card.classList.add('entering');
+        card.dataset.entered = '1';
+      }
+
+      /* Dismiss */
+      if (scaledElapsed >= dismissTime && !card.classList.contains('dismissing') && card.dataset.entered === '1') {
+        card.classList.remove('entering');
+        card.classList.add('dismissing');
+      }
+    }
+
+    /* Hide group label during dismiss */
+    if (scaledElapsed >= holdEnd + (n - 1) * staggerOut + 0.2) {
+      label.classList.remove('visible');
+    }
+
+    animFrameId = requestAnimationFrame(tick);
+  }
+
+  function resetCards() {
+    var n = CONFIG.notifications.length;
+    var label = document.getElementById('groupLabel');
+    label.classList.remove('visible');
+
+    for (var i = 0; i < n; i++) {
+      var card = document.getElementById('notif-' + i);
+      if (!card) continue;
+      card.classList.remove('entering', 'dismissing');
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(-6vh) scale(0.95)';
+      delete card.dataset.entered;
+    }
+  }
+
+  /* ── Start ──────────────────────────────────────────────── */
+  init();
+</script>
+</body>
+</html>

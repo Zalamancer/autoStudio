@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; background: #0a0a2e; }
+.scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+.grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(0,255,136,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.08) 1px, transparent 1px); background-size: 40px 40px; }
+.chart-container { position: absolute; bottom: 15%; left: 5%; right: 5%; height: 55%; }
+.chart-line { fill: none; stroke: #00ff88; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 8px rgba(0,255,136,0.5)); }
+.chart-area { fill: url(#gradient); opacity: 0.3; }
+.character { position: absolute; bottom: 30%; right: 10%; font-size: 120px; opacity: 0; filter: drop-shadow(0 0 20px rgba(0,255,136,0.3)); }
+.character.show { opacity: 1; transition: opacity 0.5s ease; }
+.stonks-text { position: absolute; top: 8%; left: 50%; transform: translateX(-50%); font-size: 72px; color: #00ff88; text-transform: uppercase; letter-spacing: 10px; text-shadow: 0 0 20px rgba(0,255,136,0.5); opacity: 0; }
+.stonks-text.show { opacity: 1; transition: opacity 0.5s ease; }
+.arrow { position: absolute; top: 20%; right: 18%; font-size: 80px; opacity: 0; color: #00ff88; transform: rotate(-45deg); }
+.arrow.show { opacity: 1; animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { transform: rotate(-45deg) scale(1); } 50% { transform: rotate(-45deg) scale(1.1); } }
+.ticker { position: absolute; bottom: 5%; left: 0; right: 0; height: 50px; background: rgba(0,0,0,0.6); display: flex; align-items: center; overflow: hidden; border-top: 2px solid #00ff88; }
+.ticker-content { display: flex; gap: 40px; animation: scroll 15s linear infinite; white-space: nowrap; padding-left: 100%; }
+@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.ticker-item { color: #00ff88; font-size: 18px; letter-spacing: 2px; }
+.ticker-item.red { color: #ff6b6b; }
+.number { position: absolute; top: 15%; left: 8%; font-size: 48px; color: #00ff88; opacity: 0; font-family: monospace; }
+.number.show { opacity: 1; transition: opacity 0.3s ease; }
+.percent { color: #55efc4; font-size: 36px; }
+svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  titleText: 'STONKS',
+  captionText: 'When you buy high and it goes higher',
+  accentColor: '#00ff88',
+  bgColor: '#0a0a2e',
+  fontSize: 72,
+  chartColor: '#00ff88',
+  showTicker: true,
+  animationSpeed: 100
+};
+</script>
+<div class="scene" id="scene">
+  <div class="grid"></div>
+  <div class="chart-container">
+    <svg viewBox="0 0 900 400" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" id="gradStop1" stop-color="#00ff88" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path class="chart-area" id="chartArea" d=""/>
+      <path class="chart-line" id="chartLine" d=""/>
+    </svg>
+  </div>
+  <div class="stonks-text" id="title"></div>
+  <div class="number" id="number"><span id="numVal">+420.69%</span></div>
+  <span class="arrow" id="arrow">\u2191</span>
+  <span class="character" id="character">\u{1F913}</span>
+  <div class="ticker" id="ticker">
+    <div class="ticker-content">
+      <span class="ticker-item">MEME +69.42%</span>
+      <span class="ticker-item">DOGE +420.00%</span>
+      <span class="ticker-item red">BEAR -12.34%</span>
+      <span class="ticker-item">HODL +99.99%</span>
+      <span class="ticker-item">MOON +1337%</span>
+      <span class="ticker-item red">SELL -5.67%</span>
+      <span class="ticker-item">MEME +69.42%</span>
+      <span class="ticker-item">DOGE +420.00%</span>
+      <span class="ticker-item red">BEAR -12.34%</span>
+      <span class="ticker-item">HODL +99.99%</span>
+      <span class="ticker-item">MOON +1337%</span>
+      <span class="ticker-item red">SELL -5.67%</span>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('title').textContent = CONFIG.titleText;
+document.getElementById('title').style.color = CONFIG.accentColor;
+document.getElementById('title').style.fontSize = CONFIG.fontSize + 'px';
+document.getElementById('scene').style.background = CONFIG.bgColor;
+document.getElementById('gradStop1').setAttribute('stop-color', CONFIG.chartColor);
+document.getElementById('chartLine').style.stroke = CONFIG.chartColor;
+document.getElementById('number').style.color = CONFIG.accentColor;
+if (!CONFIG.showTicker) document.getElementById('ticker').style.display = 'none';
+
+// Animate chart line drawing
+var points = [];
+var w = 900, h = 400;
+for (var i = 0; i <= 30; i++) {
+  var x = (i / 30) * w;
+  var progress = i / 30;
+  var y = h - (progress * progress * h * 0.85) - Math.random() * 30 - 20;
+  points.push([x, Math.max(10, y)]);
+}
+var lineD = 'M' + points.map(function(p) { return p[0] + ',' + p[1]; }).join(' L');
+var areaD = lineD + ' L' + w + ',' + h + ' L0,' + h + ' Z';
+
+var line = document.getElementById('chartLine');
+var area = document.getElementById('chartArea');
+line.setAttribute('d', lineD);
+area.setAttribute('d', areaD);
+var length = line.getTotalLength();
+line.style.strokeDasharray = length;
+line.style.strokeDashoffset = length;
+line.style.transition = 'stroke-dashoffset 2s ease-out';
+
+setTimeout(function() { line.style.strokeDashoffset = '0'; }, 300);
+setTimeout(function() { document.getElementById('title').classList.add('show'); }, 1000);
+setTimeout(function() {
+  document.getElementById('number').classList.add('show');
+  document.getElementById('arrow').classList.add('show');
+}, 1500);
+setTimeout(function() { document.getElementById('character').classList.add('show'); }, 2000);
+</script>
+</body>
+</html>

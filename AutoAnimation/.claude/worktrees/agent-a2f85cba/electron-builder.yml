@@ -1,0 +1,59 @@
+appId: com.proanimate.desktop
+productName: ProAnimate
+copyright: Copyright 2024-2026 ProAnimate
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+
+extraResources:
+  - from: server/
+    to: server/
+    filter:
+      - "**/*"
+      - "!node_modules/**"
+      - "!.env"
+  - from: server/node_modules/
+    to: server/node_modules/
+    filter:
+      - "**/*"
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  icon: build/icon.icns
+  category: public.app-category.video
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+
+publish: null

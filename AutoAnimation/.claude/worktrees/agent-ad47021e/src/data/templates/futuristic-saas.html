@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futuristic SaaS</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0B1120;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    font-family: 'Helvetica Neue', 'Segoe UI', sans-serif;
+    color: #fff;
+  }
+  canvas#gridCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+  .orbital-ring {
+    position: fixed;
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 50%;
+    z-index: 1;
+    animation: orbitalSpin linear infinite;
+  }
+  .or-1 {
+    width: 500px; height: 500px;
+    top: 50%; left: 50%;
+    margin-top: -250px; margin-left: -250px;
+    animation-duration: 30s;
+  }
+  .or-2 {
+    width: 700px; height: 700px;
+    top: 50%; left: 50%;
+    margin-top: -350px; margin-left: -350px;
+    animation-duration: 45s;
+    animation-direction: reverse;
+    border-style: dashed;
+    border-color: rgba(99,102,241,0.06);
+  }
+  .or-3 {
+    width: 300px; height: 300px;
+    top: 50%; left: 50%;
+    margin-top: -150px; margin-left: -150px;
+    animation-duration: 20s;
+    border-color: rgba(99,102,241,0.15);
+  }
+  @keyframes orbitalSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .orbital-dot {
+    position: absolute;
+    width: 6px; height: 6px;
+    background: #6366F1;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(99,102,241,0.6);
+  }
+  .or-1 .orbital-dot { top: -3px; left: 50%; margin-left: -3px; }
+  .or-2 .orbital-dot { top: 50%; right: -3px; margin-top: -3px; }
+  .or-3 .orbital-dot { bottom: -3px; left: 50%; margin-left: -3px; }
+  .glow-sphere {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .gs-1 {
+    width: 400px; height: 400px;
+    background: rgba(99,102,241,0.08);
+    top: 25%; left: 20%;
+    animation: sphereFloat 12s ease-in-out infinite;
+  }
+  .gs-2 {
+    width: 250px; height: 250px;
+    background: rgba(99,102,241,0.06);
+    bottom: 25%; right: 15%;
+    animation: sphereFloat 12s ease-in-out infinite 6s;
+  }
+  @keyframes sphereFloat {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(30px, -20px); }
+  }
+  .dashboard-layout {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    width: 88vw;
+    max-width: 650px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .glass-card {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(99,102,241,0.12);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    animation: cardSlideIn 8s ease-in-out infinite;
+  }
+  .card-row {
+    display: flex;
+    gap: 16px;
+  }
+  .card-row .glass-card {
+    flex: 1;
+  }
+  .gc-hero { animation-delay: 0s; }
+  .gc-1 { animation-delay: 0.3s; }
+  .gc-2 { animation-delay: 0.6s; }
+  .gc-3 { animation-delay: 0.9s; }
+  .gc-4 { animation-delay: 1.2s; }
+  @keyframes cardSlideIn {
+    0%, 100% { opacity: 0; transform: translateY(15px); }
+    12%, 88% { opacity: 1; transform: translateY(0); }
+  }
+  .card-glow {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, #6366F1, transparent);
+    opacity: 0.5;
+  }
+  .card-header {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(99,102,241,0.7);
+    margin-bottom: 12px;
+    font-family: 'Courier New', monospace;
+  }
+  .metric-value {
+    font-size: clamp(24px, 5vw, 40px);
+    font-weight: 700;
+    color: #fff;
+  }
+  .metric-change {
+    font-size: 12px;
+    color: #22C55E;
+    margin-top: 4px;
+  }
+  .metric-change.down { color: #EF4444; }
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 40px;
+    margin-top: 12px;
+  }
+  .chart-bar {
+    flex: 1;
+    background: rgba(99,102,241,0.3);
+    border-radius: 2px;
+    animation: barGrow 3s ease-in-out infinite;
+  }
+  @keyframes barGrow {
+    0%, 100% { transform: scaleY(0.5); }
+    50% { transform: scaleY(1); }
+  }
+  .hero-title {
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .hero-subtitle {
+    font-size: clamp(11px, 1.5vw, 14px);
+    color: rgba(255,255,255,0.4);
+    line-height: 1.6;
+  }
+  .feature-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 8px;
+  }
+  .feature-list li {
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feature-dot {
+    width: 5px; height: 5px;
+    background: #6366F1;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .corner-label {
+    position: fixed;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: rgba(99,102,241,0.3);
+    z-index: 20;
+  }
+  .cl-tl { top: 16px; left: 16px; }
+  .cl-br { bottom: 16px; right: 16px; text-align: right; }
+</style>
+</head>
+<body>
+<canvas id="gridCanvas"></canvas>
+
+<div class="glow-sphere gs-1"></div>
+<div class="glow-sphere gs-2"></div>
+
+<div class="orbital-ring or-1"><div class="orbital-dot"></div></div>
+<div class="orbital-ring or-2"><div class="orbital-dot"></div></div>
+<div class="orbital-ring or-3"><div class="orbital-dot"></div></div>
+
+<div class="dashboard-layout">
+  <div class="glass-card gc-hero">
+    <div class="card-glow"></div>
+    <div class="hero-title" id="heroTitle">Next-Gen<br>Analytics</div>
+    <div class="hero-subtitle" id="heroSub">Real-time insights powered by AI. Monitor, analyze, and predict with confidence.</div>
+  </div>
+
+  <div class="card-row">
+    <div class="glass-card gc-1">
+      <div class="card-glow"></div>
+      <div class="card-header" id="cardLabel1">REVENUE</div>
+      <div class="metric-value" id="metricVal1">$48.2K</div>
+      <div class="metric-change" id="metricChange1">+12.4%</div>
+      <div class="mini-chart" id="chart1"></div>
+    </div>
+    <div class="glass-card gc-2">
+      <div class="card-glow"></div>
+      <div class="card-header" id="cardLabel2">USERS</div>
+      <div class="metric-value" id="metricVal2">2,847</div>
+      <div class="metric-change" id="metricChange2">+8.1%</div>
+      <div class="mini-chart" id="chart2"></div>
+    </div>
+  </div>
+
+  <div class="card-row">
+    <div class="glass-card gc-3">
+      <div class="card-glow"></div>
+      <div class="card-header" id="cardLabel3">UPTIME</div>
+      <div class="metric-value" id="metricVal3">99.9%</div>
+      <div class="metric-change" id="metricChange3">STABLE</div>
+    </div>
+    <div class="glass-card gc-4">
+      <div class="card-glow"></div>
+      <div class="card-header">FEATURES</div>
+      <ul class="feature-list" id="featureList">
+        <li><span class="feature-dot"></span><span>AI Predictions</span></li>
+        <li><span class="feature-dot"></span><span>Real-time Sync</span></li>
+        <li><span class="feature-dot"></span><span>Team Dashboard</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="corner-label cl-tl" id="cornerTL">SAAS.DASHBOARD v2.0</div>
+<div class="corner-label cl-br" id="cornerBR">ENCRYPTED // LIVE</div>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var HERO_TITLE = 'Next-Gen<br>Analytics';
+  var HERO_SUB = 'Real-time insights powered by AI. Monitor, analyze, and predict with confidence.';
+  var CARD_1 = { label: 'REVENUE', value: '$48.2K', change: '+12.4%' };
+  var CARD_2 = { label: 'USERS', value: '2,847', change: '+8.1%' };
+  var CARD_3 = { label: 'UPTIME', value: '99.9%', change: 'STABLE' };
+  var FEATURES = ['AI Predictions', 'Real-time Sync', 'Team Dashboard'];
+  var CORNER_TL = 'SAAS.DASHBOARD v2.0';
+  var CORNER_BR = 'ENCRYPTED // LIVE';
+  // === END EDITABLE ===
+
+  document.getElementById('heroTitle').innerHTML = HERO_TITLE;
+  document.getElementById('heroSub').textContent = HERO_SUB;
+  document.getElementById('cardLabel1').textContent = CARD_1.label;
+  document.getElementById('metricVal1').textContent = CARD_1.value;
+  document.getElementById('metricChange1').textContent = CARD_1.change;
+  document.getElementById('cardLabel2').textContent = CARD_2.label;
+  document.getElementById('metricVal2').textContent = CARD_2.value;
+  document.getElementById('metricChange2').textContent = CARD_2.change;
+  document.getElementById('cardLabel3').textContent = CARD_3.label;
+  document.getElementById('metricVal3').textContent = CARD_3.value;
+  document.getElementById('metricChange3').textContent = CARD_3.change;
+  document.getElementById('cornerTL').textContent = CORNER_TL;
+  document.getElementById('cornerBR').textContent = CORNER_BR;
+
+  // Populate features
+  var featureListEl = document.getElementById('featureList');
+  featureListEl.innerHTML = '';
+  FEATURES.forEach(function(f) {
+    var li = document.createElement('li');
+    li.innerHTML = '<span class="feature-dot"></span><span>' + f + '</span>';
+    featureListEl.appendChild(li);
+  });
+
+  // Generate chart bars
+  function createChartBars(containerId) {
+    var container = document.getElementById(containerId);
+    for (var i = 0; i < 12; i++) {
+      var bar = document.createElement('div');
+      bar.className = 'chart-bar';
+      var h = 30 + Math.random() * 70;
+      bar.style.height = h + '%';
+      bar.style.animationDelay = (i * 0.2) + 's';
+      container.appendChild(bar);
+    }
+  }
+  createChartBars('chart1');
+  createChartBars('chart2');
+
+  // Tech grid background
+  var canvas = document.getElementById('gridCanvas');
+  var ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  var gridDots = [];
+  var GRID_SIZE = 50;
+
+  function initGrid() {
+    gridDots = [];
+    var cols = Math.ceil(canvas.width / GRID_SIZE) + 1;
+    var rows = Math.ceil(canvas.height / GRID_SIZE) + 1;
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        gridDots.push({
+          x: c * GRID_SIZE,
+          y: r * GRID_SIZE,
+          baseOpacity: 0.03 + Math.random() * 0.04,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+  }
+  initGrid();
+
+  var time = 0;
+  function renderGrid() {
+    time += 0.01;
+    ctx.fillStyle = '#0B1120';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (var i = 0; i < gridDots.length; i++) {
+      var d = gridDots[i];
+      var opacity = d.baseOpacity + Math.sin(time + d.phase) * 0.02;
+      ctx.fillStyle = 'rgba(99,102,241,' + Math.max(0, opacity) + ')';
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw some connecting lines between nearby dots
+    ctx.strokeStyle = 'rgba(99,102,241,0.02)';
+    ctx.lineWidth = 0.5;
+    for (var j = 0; j < gridDots.length; j += 3) {
+      var d1 = gridDots[j];
+      if (j + 1 < gridDots.length) {
+        var d2 = gridDots[j + 1];
+        var dist = Math.hypot(d2.x - d1.x, d2.y - d1.y);
+        if (dist < GRID_SIZE * 1.5) {
+          ctx.beginPath();
+          ctx.moveTo(d1.x, d1.y);
+          ctx.lineTo(d2.x, d2.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    requestAnimationFrame(renderGrid);
+  }
+  renderGrid();
+</script>
+</body>
+</html>

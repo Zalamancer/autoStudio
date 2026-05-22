@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxy Nebula</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #050508;
+  }
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="stars"></canvas>
+<canvas id="fg"></canvas>
+
+<script>
+  const CONFIG = {
+    bgColor: '#050508',
+    starCount: 400,
+    dustCount: 120,
+    nebulaColors: [
+      { r: 120, g: 40, b: 180 },  // purple
+      { r: 200, g: 60, b: 120 },  // pink
+      { r: 40, g: 80, b: 200 },   // blue
+      { r: 220, g: 120, b: 40 }   // orange
+    ],
+    shootingStarInterval: 3000,
+    twinkleSpeed: 0.03,
+    driftSpeed: 0.15,
+    bloomGlowSize: 60,
+    parallaxStrength: 0.3
+  };
+
+  const bgCanvas = document.getElementById('bg');
+  const starCanvas = document.getElementById('stars');
+  const fgCanvas = document.getElementById('fg');
+  const bgCtx = bgCanvas.getContext('2d');
+  const sCtx = starCanvas.getContext('2d');
+  const fCtx = fgCanvas.getContext('2d');
+
+  let W, H;
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    [bgCanvas, starCanvas, fgCanvas].forEach(c => { c.width = W; c.height = H; });
+    initNebula();
+  }
+
+  // Stars with depth layers
+  const stars = [];
+  function initStars() {
+    stars.length = 0;
+    for (let i = 0; i < CONFIG.starCount; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        size: 0.5 + Math.random() * 2,
+        brightness: 0.3 + Math.random() * 0.7,
+        twinkleOffset: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.01 + Math.random() * CONFIG.twinkleSpeed,
+        layer: Math.floor(Math.random() * 3) // 0=far, 1=mid, 2=near
+      });
+    }
+  }
+
+  // Nebula cloud blobs
+  const nebulaClouds = [];
+  function initNebula() {
+    nebulaClouds.length = 0;
+    for (let i = 0; i < 18; i++) {
+      const col = CONFIG.nebulaColors[i % CONFIG.nebulaColors.length];
+      nebulaClouds.push({
+        x: W * 0.2 + Math.random() * W * 0.6,
+        y: H * 0.2 + Math.random() * H * 0.6,
+        radiusX: 80 + Math.random() * 200,
+        radiusY: 60 + Math.random() * 150,
+        color: col,
+        alpha: 0.03 + Math.random() * 0.06,
+        driftX: (Math.random() - 0.5) * CONFIG.driftSpeed,
+        driftY: (Math.random() - 0.5) * CONFIG.driftSpeed * 0.5,
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.0005,
+        layer: Math.floor(Math.random() * 3)
+      });
+    }
+  }
+
+  // Dust particles
+  const dust = [];
+  function initDust() {
+    dust.length = 0;
+    for (let i = 0; i < CONFIG.dustCount; i++) {
+      dust.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        size: 1 + Math.random() * 3,
+        alpha: 0.1 + Math.random() * 0.3,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.2,
+        color: CONFIG.nebulaColors[Math.floor(Math.random() * CONFIG.nebulaColors.length)]
+      });
+    }
+  }
+
+  // Shooting stars
+  const shootingStars = [];
+  let lastShootTime = 0;
+
+  // Star cluster (bloom center)
+  const cluster = { x: 0, y: 0, stars: [] };
+  function initCluster() {
+    cluster.x = W * 0.35;
+    cluster.y = H * 0.3;
+    cluster.stars = [];
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * CONFIG.bloomGlowSize;
+      cluster.stars.push({
+        ox: Math.cos(angle) * dist,
+        oy: Math.sin(angle) * dist,
+        size: 0.5 + Math.random() * 2.5,
+        brightness: 0.5 + Math.random() * 0.5
+      });
+    }
+  }
+
+  resize();
+  initStars();
+  initDust();
+  initCluster();
+  window.addEventListener('resize', () => { resize(); initStars(); initDust(); initCluster(); });
+
+  let frame = 0;
+
+  function drawNebula(time) {
+    bgCtx.fillStyle = CONFIG.bgColor;
+    bgCtx.fillRect(0, 0, W, H);
+
+    nebulaClouds.forEach(cloud => {
+      cloud.x += cloud.driftX;
+      cloud.y += cloud.driftY;
+      cloud.rotation += cloud.rotSpeed;
+      // Wrap around
+      if (cloud.x < -cloud.radiusX * 2) cloud.x = W + cloud.radiusX;
+      if (cloud.x > W + cloud.radiusX * 2) cloud.x = -cloud.radiusX;
+      if (cloud.y < -cloud.radiusY * 2) cloud.y = H + cloud.radiusY;
+      if (cloud.y > H + cloud.radiusY * 2) cloud.y = -cloud.radiusY;
+
+      bgCtx.save();
+      bgCtx.translate(cloud.x, cloud.y);
+      bgCtx.rotate(cloud.rotation);
+      const grad = bgCtx.createRadialGradient(0, 0, 0, 0, 0, cloud.radiusX);
+      const c = cloud.color;
+      grad.addColorStop(0, `rgba(${c.r},${c.g},${c.b},${cloud.alpha * 1.5})`);
+      grad.addColorStop(0.4, `rgba(${c.r},${c.g},${c.b},${cloud.alpha})`);
+      grad.addColorStop(1, `rgba(${c.r},${c.g},${c.b},0)`);
+      bgCtx.fillStyle = grad;
+      bgCtx.scale(1, cloud.radiusY / cloud.radiusX);
+      bgCtx.beginPath();
+      bgCtx.arc(0, 0, cloud.radiusX, 0, Math.PI * 2);
+      bgCtx.fill();
+      bgCtx.restore();
+    });
+  }
+
+  function drawStars(time) {
+    sCtx.clearRect(0, 0, W, H);
+
+    stars.forEach(star => {
+      const twinkle = 0.5 + 0.5 * Math.sin(time * star.twinkleSpeed + star.twinkleOffset);
+      const alpha = star.brightness * twinkle;
+      const parallax = (star.layer + 1) * CONFIG.parallaxStrength;
+      const px = star.x + Math.sin(time * 0.0002 * parallax) * 2 * parallax;
+      const py = star.y + Math.cos(time * 0.00015 * parallax) * 1.5 * parallax;
+
+      sCtx.beginPath();
+      sCtx.arc(px, py, star.size * (0.7 + twinkle * 0.3), 0, Math.PI * 2);
+      sCtx.fillStyle = `rgba(255,255,255,${alpha})`;
+      sCtx.fill();
+
+      // Glow for brighter stars
+      if (star.brightness > 0.7 && star.size > 1.2) {
+        const glow = sCtx.createRadialGradient(px, py, 0, px, py, star.size * 4);
+        glow.addColorStop(0, `rgba(200,220,255,${alpha * 0.3})`);
+        glow.addColorStop(1, 'rgba(200,220,255,0)');
+        sCtx.fillStyle = glow;
+        sCtx.beginPath();
+        sCtx.arc(px, py, star.size * 4, 0, Math.PI * 2);
+        sCtx.fill();
+      }
+    });
+
+    // Star cluster bloom
+    const cx = cluster.x + Math.sin(time * 0.0003) * 5;
+    const cy = cluster.y + Math.cos(time * 0.0004) * 3;
+    // Bloom glow
+    const bloom = sCtx.createRadialGradient(cx, cy, 0, cx, cy, CONFIG.bloomGlowSize * 1.8);
+    bloom.addColorStop(0, 'rgba(180,200,255,0.12)');
+    bloom.addColorStop(0.5, 'rgba(140,160,220,0.04)');
+    bloom.addColorStop(1, 'rgba(100,120,200,0)');
+    sCtx.fillStyle = bloom;
+    sCtx.beginPath();
+    sCtx.arc(cx, cy, CONFIG.bloomGlowSize * 1.8, 0, Math.PI * 2);
+    sCtx.fill();
+
+    cluster.stars.forEach(s => {
+      const twinkle = 0.6 + 0.4 * Math.sin(time * 0.004 + s.ox);
+      sCtx.beginPath();
+      sCtx.arc(cx + s.ox, cy + s.oy, s.size * twinkle, 0, Math.PI * 2);
+      sCtx.fillStyle = `rgba(220,230,255,${s.brightness * twinkle})`;
+      sCtx.fill();
+    });
+  }
+
+  function drawForeground(time) {
+    fCtx.clearRect(0, 0, W, H);
+
+    // Dust particles
+    dust.forEach(d => {
+      d.x += d.vx;
+      d.y += d.vy;
+      if (d.x < 0) d.x = W;
+      if (d.x > W) d.x = 0;
+      if (d.y < 0) d.y = H;
+      if (d.y > H) d.y = 0;
+
+      const c = d.color;
+      fCtx.beginPath();
+      fCtx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+      fCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${d.alpha * (0.5 + 0.5 * Math.sin(time * 0.002 + d.x))})`;
+      fCtx.fill();
+    });
+
+    // Shooting stars
+    if (time - lastShootTime > CONFIG.shootingStarInterval) {
+      lastShootTime = time;
+      const startX = Math.random() * W * 0.8;
+      const startY = Math.random() * H * 0.3;
+      shootingStars.push({
+        x: startX, y: startY,
+        vx: 3 + Math.random() * 4,
+        vy: 2 + Math.random() * 3,
+        life: 1,
+        length: 40 + Math.random() * 60
+      });
+    }
+
+    for (let i = shootingStars.length - 1; i >= 0; i--) {
+      const ss = shootingStars[i];
+      ss.x += ss.vx;
+      ss.y += ss.vy;
+      ss.life -= 0.015;
+
+      if (ss.life <= 0) { shootingStars.splice(i, 1); continue; }
+
+      const grad = fCtx.createLinearGradient(
+        ss.x, ss.y,
+        ss.x - ss.vx * ss.length / ss.vx, ss.y - ss.vy * ss.length / ss.vy
+      );
+      grad.addColorStop(0, `rgba(255,255,255,${ss.life})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+      fCtx.strokeStyle = grad;
+      fCtx.lineWidth = 1.5;
+      fCtx.beginPath();
+      fCtx.moveTo(ss.x, ss.y);
+      fCtx.lineTo(ss.x - ss.vx * 15, ss.y - ss.vy * 15);
+      fCtx.stroke();
+
+      // Head glow
+      const hglow = fCtx.createRadialGradient(ss.x, ss.y, 0, ss.x, ss.y, 6);
+      hglow.addColorStop(0, `rgba(255,255,255,${ss.life * 0.8})`);
+      hglow.addColorStop(1, 'rgba(255,255,255,0)');
+      fCtx.fillStyle = hglow;
+      fCtx.beginPath();
+      fCtx.arc(ss.x, ss.y, 6, 0, Math.PI * 2);
+      fCtx.fill();
+    }
+  }
+
+  function animate(time) {
+    frame++;
+    drawNebula(time);
+    drawStars(time);
+    drawForeground(time);
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>

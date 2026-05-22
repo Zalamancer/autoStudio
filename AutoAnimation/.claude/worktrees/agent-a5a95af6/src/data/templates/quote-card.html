@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elegant Quote Card</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color, #0d1117);
+    color: var(--text-color, #e6edf3);
+  }
+  .scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Particles */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--accent-color, #c9a55a);
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Decorative quote marks */
+  .quote-mark {
+    position: absolute;
+    font-size: 20vw;
+    line-height: 1;
+    color: var(--accent-color, #c9a55a);
+    opacity: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    user-select: none;
+    transition: opacity 0.8s ease;
+  }
+  .quote-mark.open {
+    top: 8vh;
+    left: 8vw;
+  }
+  .quote-mark.close {
+    bottom: 2vh;
+    right: 8vw;
+    transform: rotate(180deg);
+  }
+  /* Quote text */
+  .quote-container {
+    position: relative;
+    z-index: 2;
+    max-width: 75vw;
+    text-align: center;
+    padding: 0 5vw;
+  }
+  .quote-text {
+    font-size: 3.2vw;
+    line-height: 1.6;
+    font-weight: 400;
+    letter-spacing: 0.05vw;
+  }
+  .quote-text.serif {
+    font-family: Georgia, 'Times New Roman', 'Palatino Linotype', serif;
+    font-style: italic;
+  }
+  .quote-text.sans {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-weight: 300;
+  }
+  .word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(1.5vh);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    margin-right: 0.6vw;
+  }
+  .word.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  /* Separator */
+  .separator {
+    width: 0;
+    height: 0.2vh;
+    background: var(--accent-color, #c9a55a);
+    margin: 3vh auto;
+    transition: width 0.8s ease;
+    border-radius: 1vh;
+  }
+  .separator.visible {
+    width: 8vw;
+  }
+  /* Author */
+  .author-block {
+    opacity: 0;
+    transform: translateY(1vh);
+    transition: opacity 0.6s ease 0.2s, transform 0.6s ease 0.2s;
+  }
+  .author-block.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .author-name {
+    font-size: 1.8vw;
+    font-weight: 700;
+    letter-spacing: 0.2vw;
+    text-transform: uppercase;
+    color: var(--accent-color, #c9a55a);
+  }
+  .author-title {
+    font-size: 1.2vw;
+    font-weight: 400;
+    opacity: 0.5;
+    margin-top: 0.5vh;
+    letter-spacing: 0.1vw;
+  }
+  /* Ambient glow */
+  .glow {
+    position: absolute;
+    width: 40vw;
+    height: 40vw;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-color, #c9a55a), transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+    filter: blur(8vw);
+    z-index: 0;
+  }
+  .glow.top { top: -15vw; right: -10vw; }
+  .glow.bottom { bottom: -15vw; left: -10vw; }
+  /* Corner accents */
+  .corner-line {
+    position: absolute;
+    background: var(--accent-color, #c9a55a);
+    opacity: 0;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .corner-line.top-left-h { top: 5vh; left: 5vw; width: 0; height: 0.15vh; }
+  .corner-line.top-left-v { top: 5vh; left: 5vw; width: 0.15vh; height: 0; }
+  .corner-line.bottom-right-h { bottom: 5vh; right: 5vw; width: 0; height: 0.15vh; }
+  .corner-line.bottom-right-v { bottom: 5vh; right: 5vw; width: 0.15vh; height: 0; }
+  .corner-line.visible {
+    opacity: 0.3;
+  }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="glow top" id="glowTop"></div>
+  <div class="glow bottom" id="glowBottom"></div>
+  <div class="corner-line top-left-h" id="clTLH"></div>
+  <div class="corner-line top-left-v" id="clTLV"></div>
+  <div class="corner-line bottom-right-h" id="clBRH"></div>
+  <div class="corner-line bottom-right-v" id="clBRV"></div>
+  <div class="quote-mark open" id="qmOpen">&ldquo;</div>
+  <div class="quote-mark close" id="qmClose">&ldquo;</div>
+  <div class="quote-container">
+    <div class="quote-text" id="quoteText"></div>
+    <div class="separator" id="separator"></div>
+    <div class="author-block" id="authorBlock">
+      <div class="author-name" id="authorName"></div>
+      <div class="author-title" id="authorTitle"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  quote: "The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.",
+  author: "Steve Jobs",
+  authorTitle: "Co-founder, Apple Inc.",
+  bgColor: "#0d1117",
+  textColor: "#e6edf3",
+  accentColor: "#c9a55a",
+  fontFamily: "serif",
+  cycleDuration: 10
+};
+
+// Apply config
+function applyConfig() {
+  document.body.style.setProperty('--bg-color', CONFIG.bgColor);
+  document.body.style.setProperty('--text-color', CONFIG.textColor);
+  document.body.style.setProperty('--accent-color', CONFIG.accentColor);
+
+  const quoteText = document.getElementById('quoteText');
+  quoteText.className = 'quote-text ' + CONFIG.fontFamily;
+
+  // Build words
+  const words = CONFIG.quote.split(' ');
+  quoteText.innerHTML = '';
+  words.forEach((word) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = word;
+    quoteText.appendChild(span);
+  });
+
+  document.getElementById('authorName').textContent = CONFIG.author;
+  document.getElementById('authorTitle').textContent = CONFIG.authorTitle;
+}
+
+applyConfig();
+
+// Create particles
+const scene = document.getElementById('scene');
+const particles = [];
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = 0.2 + Math.random() * 0.6;
+  p.style.width = size + 'vw';
+  p.style.height = size + 'vw';
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.top = Math.random() * 100 + 'vh';
+  scene.appendChild(p);
+  particles.push({
+    el: p,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    speed: 0.3 + Math.random() * 0.7,
+    phase: Math.random() * Math.PI * 2,
+    size: size
+  });
+}
+
+const totalMs = CONFIG.cycleDuration * 1000;
+let startTime = null;
+const wordElements = () => document.querySelectorAll('.word');
+
+function easeOutQuart(t) {
+  return 1 - Math.pow(1 - t, 4);
+}
+
+function animate(timestamp) {
+  if (!startTime) startTime = timestamp;
+  const elapsed = (timestamp - startTime) % totalMs;
+  const progress = elapsed / totalMs;
+
+  // Phase breakdown:
+  // 0.00 - 0.05: ambient glow fades in
+  // 0.05 - 0.12: quote marks appear, corner lines extend
+  // 0.12 - 0.55: words appear one by one
+  // 0.55 - 0.62: separator line extends
+  // 0.62 - 0.72: author fades in
+  // 0.72 - 0.88: hold
+  // 0.88 - 1.00: everything fades out
+
+  const words = wordElements();
+  const wordCount = words.length;
+
+  // Ambient glow
+  const glowOpacity = progress < 0.05 ? progress / 0.05 * 0.06
+    : progress > 0.92 ? (1 - progress) / 0.08 * 0.06
+    : 0.06;
+  document.getElementById('glowTop').style.opacity = glowOpacity;
+  document.getElementById('glowBottom').style.opacity = glowOpacity * 0.7;
+
+  // Corner lines
+  const cornerVisible = progress > 0.05 && progress < 0.92;
+  const cornerEls = [
+    document.getElementById('clTLH'),
+    document.getElementById('clTLV'),
+    document.getElementById('clBRH'),
+    document.getElementById('clBRV')
+  ];
+  cornerEls.forEach(el => {
+    if (cornerVisible) {
+      el.classList.add('visible');
+      if (el.id.endsWith('H')) el.style.width = '6vw';
+      else el.style.height = '6vh';
+    } else {
+      el.classList.remove('visible');
+      if (el.id.endsWith('H')) el.style.width = '0';
+      else el.style.height = '0';
+    }
+  });
+
+  // Quote marks
+  const qmOpen = document.getElementById('qmOpen');
+  const qmClose = document.getElementById('qmClose');
+  if (progress > 0.05 && progress < 0.90) {
+    const qmT = Math.min((progress - 0.05) / 0.08, 1);
+    qmOpen.style.opacity = easeOutQuart(qmT) * 0.12;
+    qmClose.style.opacity = easeOutQuart(qmT) * 0.08;
+  } else if (progress >= 0.90) {
+    const fadeT = (progress - 0.90) / 0.10;
+    qmOpen.style.opacity = 0.12 * (1 - fadeT);
+    qmClose.style.opacity = 0.08 * (1 - fadeT);
+  } else {
+    qmOpen.style.opacity = 0;
+    qmClose.style.opacity = 0;
+  }
+
+  // Words appear one by one
+  if (progress >= 0.12 && progress < 0.88) {
+    const wordPhaseLen = 0.43; // 0.12 to 0.55
+    words.forEach((w, i) => {
+      const wordStart = 0.12 + (i / wordCount) * wordPhaseLen;
+      if (progress >= wordStart) {
+        w.classList.add('visible');
+      }
+    });
+  }
+
+  // Separator
+  const separator = document.getElementById('separator');
+  if (progress > 0.55 && progress < 0.90) {
+    separator.classList.add('visible');
+  } else {
+    separator.classList.remove('visible');
+  }
+
+  // Author
+  const authorBlock = document.getElementById('authorBlock');
+  if (progress > 0.62 && progress < 0.90) {
+    authorBlock.classList.add('visible');
+  } else {
+    authorBlock.classList.remove('visible');
+  }
+
+  // Exit phase
+  if (progress >= 0.88) {
+    const exitT = (progress - 0.88) / 0.12;
+    const quoteContainer = document.querySelector('.quote-container');
+    quoteContainer.style.opacity = 1 - easeOutQuart(exitT);
+    quoteContainer.style.transform = `translateY(${-exitT * 3}vh)`;
+    // Reset words for next cycle
+    if (exitT > 0.95) {
+      words.forEach(w => w.classList.remove('visible'));
+    }
+  } else {
+    const quoteContainer = document.querySelector('.quote-container');
+    quoteContainer.style.opacity = 1;
+    quoteContainer.style.transform = 'translateY(0)';
+  }
+
+  // Particles float
+  particles.forEach((p) => {
+    const time = timestamp * 0.001;
+    const x = p.x + Math.sin(time * p.speed * 0.5 + p.phase) * 3;
+    const y = p.y - (time * p.speed * 0.8 % 120) + 10;
+    const normalizedY = ((y % 120) + 120) % 120 - 10;
+    p.el.style.left = x + 'vw';
+    p.el.style.top = normalizedY + 'vh';
+    const particleOpacity = progress > 0.03 && progress < 0.95
+      ? Math.sin(normalizedY / 100 * Math.PI) * 0.15
+      : 0;
+    p.el.style.opacity = particleOpacity;
+  });
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+// Listen for config updates via postMessage
+window.addEventListener('message', (e) => {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+    applyConfig();
+  }
+});
+</script>
+</body>
+</html>

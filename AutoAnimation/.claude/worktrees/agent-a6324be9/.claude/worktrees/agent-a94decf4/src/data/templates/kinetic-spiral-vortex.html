@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spiral Vortex - Kinetic Typography</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0A0A0A;
+    font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  #bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  #particle-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  #word-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .spiral-word {
+    position: absolute;
+    white-space: nowrap;
+    opacity: 0;
+    will-change: transform, opacity;
+    font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+    text-shadow: none;
+  }
+
+  .flash-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.0) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.1s ease-out;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="word-container"></div>
+<canvas id="particle-canvas"></canvas>
+<div id="flash-overlay" class="flash-overlay"></div>
+
+<script>
+// ── Configuration ──────────────────────────────────────────────────
+const CONFIG = {
+  words: ['CHASE', 'YOUR', 'DREAMS', 'MAKE', 'IT', 'HAPPEN'],
+  colors: ['#E040FB', '#00E5FF', '#FFEA00', '#E040FB', '#76FF03', '#FF6D00'],
+  bgColor: '#0A0A0A',
+  spiralSpeed: 0.02,
+  spiralTightness: 0.15,
+  glowIntensity: 20,
+  cycleDuration: 10000,
+  particleCount: 30,
+};
+
+// ── Globals ────────────────────────────────────────────────────────
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+const ptCanvas = document.getElementById('particle-canvas');
+const ptCtx = ptCanvas.getContext('2d');
+const wordContainer = document.getElementById('word-container');
+const flashOverlay = document.getElementById('flash-overlay');
+
+let W = window.innerWidth;
+let H = window.innerHeight;
+let CX = W / 2;
+let CY = H / 2;
+let maxRadius = Math.sqrt(CX * CX + CY * CY);
+
+// ── Resize handling ────────────────────────────────────────────────
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  CX = W / 2;
+  CY = H / 2;
+  maxRadius = Math.sqrt(CX * CX + CY * CY);
+  bgCanvas.width = W;
+  bgCanvas.height = H;
+  ptCanvas.width = W;
+  ptCanvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── Background renderer ────────────────────────────────────────────
+let bgPulsePhase = 0;
+
+function drawBackground(dt) {
+  bgPulsePhase += dt * 0.001;
+  const pulseAmount = 0.3 + 0.15 * Math.sin(bgPulsePhase * 1.2);
+
+  bgCtx.fillStyle = CONFIG.bgColor;
+  bgCtx.fillRect(0, 0, W, H);
+
+  // Radial gradient pulse
+  const grad = bgCtx.createRadialGradient(CX, CY, 0, CX, CY, maxRadius * 0.8);
+  grad.addColorStop(0, `rgba(80, 20, 120, ${pulseAmount * 0.12})`);
+  grad.addColorStop(0.4, `rgba(20, 10, 60, ${pulseAmount * 0.06})`);
+  grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  bgCtx.fillStyle = grad;
+  bgCtx.fillRect(0, 0, W, H);
+
+  // Subtle rotating spiral guide lines
+  bgCtx.save();
+  bgCtx.translate(CX, CY);
+  bgCtx.globalAlpha = 0.03;
+  bgCtx.strokeStyle = '#E040FB';
+  bgCtx.lineWidth = 1;
+  const guideAngle = bgPulsePhase * 0.3;
+  for (let arm = 0; arm < 3; arm++) {
+    bgCtx.beginPath();
+    const armOffset = (arm * Math.PI * 2) / 3;
+    for (let t = 0; t < 8; t += 0.02) {
+      const r = 15 * Math.exp(CONFIG.spiralTightness * t);
+      if (r > maxRadius) break;
+      const theta = t + guideAngle + armOffset;
+      const x = r * Math.cos(theta);
+      const y = r * Math.sin(theta);
+      if (t === 0) bgCtx.moveTo(x, y);
+      else bgCtx.lineTo(x, y);
+    }
+    bgCtx.stroke();
+  }
+  bgCtx.restore();
+}
+
+// ── Particle system ────────────────────────────────────────────────
+const particles = [];
+
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 4;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.life = 1.0;
+    this.decay = 0.008 + Math.random() * 0.015;
+    this.size = 2 + Math.random() * 4;
+    this.gravity = 0.02 + Math.random() * 0.03;
+    this.drag = 0.98;
+  }
+
+  update() {
+    this.vx *= this.drag;
+    this.vy *= this.drag;
+    this.vy += this.gravity;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life -= this.decay;
+    this.size *= 0.995;
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = this.life * this.life;
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x, y, color));
+  }
+}
+
+function updateParticles() {
+  ptCtx.clearRect(0, 0, W, H);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    particles[i].draw(ptCtx);
+    if (particles[i].life <= 0) {
+      particles.splice(i, 1);
+    }
+  }
+}
+
+// ── Flash effect ───────────────────────────────────────────────────
+function triggerFlash(color) {
+  flashOverlay.style.background =
+    `radial-gradient(circle at 50% 50%, ${color}44 0%, transparent 55%)`;
+  flashOverlay.style.opacity = '1';
+  flashOverlay.style.transition = 'opacity 0.08s ease-out';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      flashOverlay.style.transition = 'opacity 0.5s ease-out';
+      flashOverlay.style.opacity = '0';
+    });
+  });
+}
+
+// ── Spiral word object ─────────────────────────────────────────────
+class SpiralWord {
+  constructor(text, color, index, totalWords) {
+    this.text = text;
+    this.color = color;
+    this.index = index;
+    this.totalWords = totalWords;
+
+    // Create DOM element
+    this.el = document.createElement('div');
+    this.el.className = 'spiral-word';
+    this.el.textContent = text;
+    this.el.style.color = color;
+    wordContainer.appendChild(this.el);
+
+    // Spiral parameters: each word starts at a different angle offset
+    this.startAngle = (index / totalWords) * Math.PI * 2;
+    // spiralParam tracks position along the spiral: high = far out, 0 = center
+    this.spiralParam = 6.5 + (index / totalWords) * 2.5;
+    this.maxSpiralParam = this.spiralParam;
+
+    this.dissolved = false;
+    this.dissolveTime = 0;
+    this.flashTriggered = false;
+
+    // Stagger the start so words enter one after another
+    this.delay = (index / totalWords) * (CONFIG.cycleDuration * 0.5);
+    this.active = false;
+    this.elapsed = 0;
+  }
+
+  update(dt) {
+    this.elapsed += dt;
+
+    if (!this.active) {
+      if (this.elapsed >= this.delay) {
+        this.active = true;
+      } else {
+        this.el.style.opacity = '0';
+        return;
+      }
+    }
+
+    if (this.dissolved) {
+      this.dissolveTime += dt;
+      const dissolveProgress = this.dissolveTime / 600;
+      if (dissolveProgress >= 1) {
+        this.el.style.opacity = '0';
+        return;
+      }
+      this.el.style.opacity = String(Math.max(0, 1 - dissolveProgress * dissolveProgress));
+      const scale = 1.5 + dissolveProgress * 2;
+      this.el.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      this.el.style.filter = `blur(${dissolveProgress * 8}px)`;
+      return;
+    }
+
+    // Move inward along spiral
+    this.spiralParam -= CONFIG.spiralSpeed * (dt / 16.67);
+
+    // Check if reached center
+    if (this.spiralParam <= 0.3) {
+      this.dissolve();
+      return;
+    }
+
+    // Logarithmic spiral: r = a * e^(b*theta)
+    const a = 12;
+    const b = CONFIG.spiralTightness;
+    const t = this.spiralParam;
+    const r = a * Math.exp(b * t);
+    const theta = t + this.startAngle + (this.elapsed * 0.0005);
+
+    // Convert polar to cartesian
+    const x = CX + r * Math.cos(theta);
+    const y = CY + r * Math.sin(theta);
+
+    // Progress: 0 at edge, 1 at center
+    const progress = 1 - (this.spiralParam / this.maxSpiralParam);
+
+    // Scale grows as word approaches center
+    const minScale = 0.3;
+    const maxScale = 1.8;
+    const scale = minScale + (maxScale - minScale) * Math.pow(progress, 1.5);
+
+    // Opacity ramps up
+    const opacity = Math.min(1, progress * 2.5);
+
+    // Rotation tangent to spiral path
+    const tangentAngle = theta + Math.PI / 2 + (b * t);
+    const rotDeg = (tangentAngle * 180) / Math.PI;
+
+    // Glow intensity increases near center
+    const glowAmt = CONFIG.glowIntensity * Math.pow(progress, 2);
+
+    // Font size — cap relative to viewport so words fit on portrait screens
+    const baseFontSize = 18 + 32 * progress;
+    const fontSize = Math.min(baseFontSize, W * 0.08, H * 0.06);
+
+    this.el.style.left = `${x}px`;
+    this.el.style.top = `${y}px`;
+    this.el.style.opacity = String(opacity);
+    this.el.style.fontSize = `${fontSize}px`;
+    this.el.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${rotDeg}deg)`;
+    this.el.style.textShadow = `0 0 ${glowAmt}px ${this.color}, 0 0 ${glowAmt * 2}px ${this.color}40`;
+
+    // Store position for particle emission
+    this._x = x;
+    this._y = y;
+  }
+
+  dissolve() {
+    this.dissolved = true;
+    this.dissolveTime = 0;
+
+    if (!this.flashTriggered) {
+      this.flashTriggered = true;
+      triggerFlash(this.color);
+      spawnParticles(this._x || CX, this._y || CY, this.color, CONFIG.particleCount);
+    }
+  }
+
+  isComplete() {
+    return this.dissolved && this.dissolveTime > 600;
+  }
+
+  destroy() {
+    if (this.el && this.el.parentNode) {
+      this.el.parentNode.removeChild(this.el);
+    }
+  }
+}
+
+// ── Cycle manager ──────────────────────────────────────────────────
+let spiralWords = [];
+let cycleState = 'running'; // 'running' | 'pause'
+let pauseTimer = 0;
+const PAUSE_BETWEEN_CYCLES = 1200;
+
+function startCycle() {
+  // Clean up old words
+  spiralWords.forEach((w) => w.destroy());
+  spiralWords = [];
+
+  const words = CONFIG.words;
+  const colors = CONFIG.colors;
+
+  for (let i = 0; i < words.length; i++) {
+    const color = colors[i % colors.length];
+    spiralWords.push(new SpiralWord(words[i], color, i, words.length));
+  }
+
+  cycleState = 'running';
+}
+
+function updateCycle(dt) {
+  if (cycleState === 'pause') {
+    pauseTimer -= dt;
+    if (pauseTimer <= 0) {
+      startCycle();
+    }
+    return;
+  }
+
+  let allComplete = true;
+  for (const word of spiralWords) {
+    word.update(dt);
+    if (!word.isComplete()) {
+      allComplete = false;
+    }
+  }
+
+  if (allComplete && spiralWords.length > 0) {
+    cycleState = 'pause';
+    pauseTimer = PAUSE_BETWEEN_CYCLES;
+  }
+}
+
+// ── Trail dots (decorative orbiting dots) ──────────────────────────
+const trailDots = [];
+const TRAIL_DOT_COUNT = 40;
+
+function initTrailDots() {
+  for (let i = 0; i < TRAIL_DOT_COUNT; i++) {
+    trailDots.push({
+      angle: Math.random() * Math.PI * 2,
+      radius: 50 + Math.random() * (maxRadius * 0.7),
+      speed: 0.0003 + Math.random() * 0.001,
+      size: 0.5 + Math.random() * 1.5,
+      opacity: 0.1 + Math.random() * 0.25,
+      color: CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)],
+      drift: (Math.random() - 0.5) * 0.05,
+    });
+  }
+}
+
+function drawTrailDots(dt) {
+  for (const dot of trailDots) {
+    dot.angle += dot.speed * dt;
+    dot.radius += dot.drift;
+    if (dot.radius < 30) dot.drift = Math.abs(dot.drift);
+    if (dot.radius > maxRadius * 0.8) dot.drift = -Math.abs(dot.drift);
+
+    const x = CX + dot.radius * Math.cos(dot.angle);
+    const y = CY + dot.radius * Math.sin(dot.angle);
+
+    bgCtx.save();
+    bgCtx.globalAlpha = dot.opacity;
+    bgCtx.fillStyle = dot.color;
+    bgCtx.shadowColor = dot.color;
+    bgCtx.shadowBlur = 4;
+    bgCtx.beginPath();
+    bgCtx.arc(x, y, dot.size, 0, Math.PI * 2);
+    bgCtx.fill();
+    bgCtx.restore();
+  }
+}
+
+// ── Vortex lines (subtle concentric rings) ─────────────────────────
+let vortexPhase = 0;
+
+function drawVortexRings(dt) {
+  vortexPhase += dt * 0.0004;
+  bgCtx.save();
+  bgCtx.translate(CX, CY);
+  bgCtx.globalAlpha = 0.04;
+  bgCtx.strokeStyle = '#E040FB';
+  bgCtx.lineWidth = 0.5;
+
+  for (let ring = 0; ring < 6; ring++) {
+    const baseR = 40 + ring * 60;
+    const wobble = Math.sin(vortexPhase + ring * 0.8) * 10;
+    const r = baseR + wobble;
+    bgCtx.beginPath();
+    bgCtx.arc(0, 0, r, 0, Math.PI * 2);
+    bgCtx.stroke();
+  }
+  bgCtx.restore();
+}
+
+// ── Center glow (pulsing core) ─────────────────────────────────────
+let corePhase = 0;
+
+function drawCoreGlow(dt) {
+  corePhase += dt * 0.002;
+  const pulse = 0.4 + 0.3 * Math.sin(corePhase);
+  const size = 25 + 10 * Math.sin(corePhase * 0.7);
+
+  bgCtx.save();
+  const coreGrad = bgCtx.createRadialGradient(CX, CY, 0, CX, CY, size * 3);
+  coreGrad.addColorStop(0, `rgba(224, 64, 251, ${pulse * 0.15})`);
+  coreGrad.addColorStop(0.3, `rgba(224, 64, 251, ${pulse * 0.05})`);
+  coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  bgCtx.fillStyle = coreGrad;
+  bgCtx.fillRect(CX - size * 3, CY - size * 3, size * 6, size * 6);
+  bgCtx.restore();
+
+  // Tiny bright core dot
+  bgCtx.save();
+  bgCtx.globalAlpha = pulse * 0.6;
+  bgCtx.fillStyle = '#fff';
+  bgCtx.shadowColor = '#E040FB';
+  bgCtx.shadowBlur = 15;
+  bgCtx.beginPath();
+  bgCtx.arc(CX, CY, 2 + pulse * 2, 0, Math.PI * 2);
+  bgCtx.fill();
+  bgCtx.restore();
+}
+
+// ── Main animation loop ────────────────────────────────────────────
+let lastTime = 0;
+
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min(timestamp - lastTime, 50); // cap delta to avoid jumps
+  lastTime = timestamp;
+
+  // Draw background layers
+  drawBackground(dt);
+  drawVortexRings(dt);
+  drawTrailDots(dt);
+  drawCoreGlow(dt);
+
+  // Update words
+  updateCycle(dt);
+
+  // Update particles
+  updateParticles();
+
+  requestAnimationFrame(animate);
+}
+
+// ── Initialize ─────────────────────────────────────────────────────
+initTrailDots();
+startCycle();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controller Layout</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #0f0f1a;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #fff;
+  }
+  .scene {
+    width: 100%; height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #181830 0%, #0f0f1a 70%);
+  }
+  .grid-bg {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(100,100,255,0.03) 1px, transparent 1px),
+      linear-gradient(rgba(100,100,255,0.03) 1px, transparent 1px);
+    background-size: 3vw 3vw;
+  }
+  .controller-svg {
+    width: 70vw;
+    max-width: 600px;
+    position: relative;
+  }
+  .glow-filter {
+    filter: drop-shadow(0 0 8px rgba(100, 140, 255, 0.3));
+  }
+
+  /* Button highlights */
+  .btn-highlight {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .btn-highlight.active {
+    opacity: 1;
+  }
+
+  /* Combo display */
+  .combo-display {
+    position: absolute;
+    bottom: 12vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .combo-display.visible { opacity: 1; }
+  .combo-arrow {
+    font-size: 3vh;
+    color: #aab;
+    font-weight: 700;
+  }
+  .combo-arrow.active { color: #fff; text-shadow: 0 0 10px rgba(100,140,255,0.8); }
+  .combo-plus {
+    font-size: 2vh;
+    color: #667;
+  }
+
+  /* Combo text */
+  .combo-text {
+    position: absolute;
+    top: 10vh;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    font-size: 5vh;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: #ffcc00;
+    text-shadow: 0 0 20px rgba(255,204,0,0.5), 0 0 40px rgba(255,204,0,0.3);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+  }
+  .combo-text.visible {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+
+  /* Hit counter */
+  .hit-counter {
+    position: absolute;
+    top: 18vh;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.5vh;
+    font-weight: 700;
+    color: #ff6644;
+    opacity: 0;
+    transition: opacity 0.3s;
+    text-shadow: 0 0 10px rgba(255,102,68,0.5);
+  }
+  .hit-counter.visible { opacity: 1; }
+
+  /* Button labels */
+  .btn-label {
+    position: absolute;
+    font-size: 1.2vh;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: color 0.2s, text-shadow 0.2s;
+  }
+  .btn-label.active {
+    color: #fff;
+    text-shadow: 0 0 8px rgba(100,140,255,0.6);
+  }
+
+  /* Trigger bars */
+  .trigger-bar {
+    position: absolute;
+    width: 8vw;
+    height: 0.8vh;
+    background: rgba(255,255,255,0.1);
+    border-radius: 0.4vh;
+    overflow: hidden;
+  }
+  .trigger-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 0.4vh;
+    transition: width 0.15s ease;
+  }
+  .trigger-bar.left { top: 28vh; left: 14vw; }
+  .trigger-bar.right { top: 28vh; right: 14vw; }
+  .trigger-fill.lt { background: linear-gradient(90deg, #4488ff, #66aaff); }
+  .trigger-fill.rt { background: linear-gradient(90deg, #ff4488, #ff66aa); }
+
+  /* Neon pulse ring */
+  @keyframes neonPulse {
+    0%, 100% { box-shadow: 0 0 5px currentColor, 0 0 10px currentColor; }
+    50% { box-shadow: 0 0 15px currentColor, 0 0 30px currentColor, 0 0 45px currentColor; }
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="grid-bg"></div>
+
+  <svg class="controller-svg glow-filter" viewBox="0 0 500 350" id="controllerSvg">
+    <!-- Controller body outline -->
+    <path d="M250,30 C300,30 340,40 370,70 C400,100 430,140 460,200 C480,240 480,280 440,300 C400,320 370,310 340,280 C320,260 290,240 250,240 C210,240 180,260 160,280 C130,310 100,320 60,300 C20,280 20,240 40,200 C70,140 100,100 130,70 C160,40 200,30 250,30Z"
+      fill="none" stroke="rgba(100,140,255,0.25)" stroke-width="2"/>
+
+    <!-- D-Pad -->
+    <g id="dpad" transform="translate(130, 150)">
+      <rect x="-8" y="-25" width="16" height="50" rx="3" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <rect x="-25" y="-8" width="50" height="16" rx="3" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <!-- D-pad highlights -->
+      <rect class="btn-highlight" id="dpadUp" x="-6" y="-23" width="12" height="20" rx="2" fill="rgba(100,140,255,0.6)"/>
+      <rect class="btn-highlight" id="dpadDown" x="-6" y="3" width="12" height="20" rx="2" fill="rgba(100,140,255,0.6)"/>
+      <rect class="btn-highlight" id="dpadLeft" x="-23" y="-6" width="20" height="12" rx="2" fill="rgba(100,140,255,0.6)"/>
+      <rect class="btn-highlight" id="dpadRight" x="3" y="-6" width="20" height="12" rx="2" fill="rgba(100,140,255,0.6)"/>
+    </g>
+
+    <!-- Face buttons (A/B/X/Y) -->
+    <g id="faceButtons" transform="translate(370, 150)">
+      <!-- A (bottom) - Green -->
+      <circle cx="0" cy="20" r="12" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <circle class="btn-highlight" id="btnA" cx="0" cy="20" r="12" fill="rgba(0,200,80,0.7)" style="filter: drop-shadow(0 0 8px rgba(0,200,80,0.5));"/>
+      <text x="0" y="24" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-weight="700">A</text>
+
+      <!-- B (right) - Red -->
+      <circle cx="20" cy="0" r="12" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <circle class="btn-highlight" id="btnB" cx="20" cy="0" r="12" fill="rgba(220,40,40,0.7)" style="filter: drop-shadow(0 0 8px rgba(220,40,40,0.5));"/>
+      <text x="20" y="4" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-weight="700">B</text>
+
+      <!-- X (left) - Blue -->
+      <circle cx="-20" cy="0" r="12" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <circle class="btn-highlight" id="btnX" cx="-20" cy="0" r="12" fill="rgba(40,100,220,0.7)" style="filter: drop-shadow(0 0 8px rgba(40,100,220,0.5));"/>
+      <text x="-20" y="4" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-weight="700">X</text>
+
+      <!-- Y (top) - Yellow -->
+      <circle cx="0" cy="-20" r="12" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <circle class="btn-highlight" id="btnY" cx="0" cy="-20" r="12" fill="rgba(220,200,0,0.7)" style="filter: drop-shadow(0 0 8px rgba(220,200,0,0.5));"/>
+      <text x="0" y="-16" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-weight="700">Y</text>
+    </g>
+
+    <!-- Analog sticks -->
+    <circle cx="190" cy="200" r="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+    <circle id="leftStick" cx="190" cy="200" r="10" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+    <circle cx="310" cy="200" r="18" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+    <circle id="rightStick" cx="310" cy="200" r="10" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+    <!-- Center buttons -->
+    <rect x="230" y="130" width="16" height="8" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+    <rect x="254" y="130" width="16" height="8" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+    <circle cx="250" cy="110" r="8" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+
+    <!-- Bumpers -->
+    <path d="M150,55 C180,42 220,38 250,38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-linecap="round" id="lbBase"/>
+    <path class="btn-highlight" id="lb" d="M150,55 C180,42 220,38 250,38" fill="none" stroke="rgba(100,140,255,0.7)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M350,55 C320,42 280,38 250,38" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="4" stroke-linecap="round" id="rbBase"/>
+    <path class="btn-highlight" id="rb" d="M350,55 C320,42 280,38 250,38" fill="none" stroke="rgba(255,100,140,0.7)" stroke-width="4" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Trigger bars -->
+  <div class="trigger-bar left">
+    <div class="trigger-fill lt" id="ltFill"></div>
+  </div>
+  <div class="trigger-bar right">
+    <div class="trigger-fill rt" id="rtFill"></div>
+  </div>
+
+  <!-- Combo display -->
+  <div class="combo-display" id="comboDisplay">
+    <span class="combo-arrow" id="ca0">\u2192</span>
+    <span class="combo-arrow" id="ca1">\u2193</span>
+    <span class="combo-arrow" id="ca2">\u2192</span>
+    <span class="combo-plus">+</span>
+    <span class="combo-arrow" id="ca3" style="font-size:2.5vh; color:#00c850;">A</span>
+  </div>
+
+  <!-- Combo text -->
+  <div class="combo-text" id="comboText">COMBO!</div>
+  <div class="hit-counter" id="hitCounter">12 HITS!</div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    comboText: 'COMBO!',
+    comboSequence: [
+      { type: 'dpad', dir: 'Right', arrow: '\u2192' },
+      { type: 'dpad', dir: 'Down', arrow: '\u2193' },
+      { type: 'dpad', dir: 'Right', arrow: '\u2192' },
+      { type: 'face', btn: 'A' }
+    ],
+    buttonSequence: ['A', 'B', 'X', 'Y', 'A', 'X', 'B', 'Y'],
+    hitCount: 12,
+    sequenceSpeed: 400,
+    cycleDuration: 10000,
+    neonColor: '#4488ff'
+  };
+
+  const highlights = {
+    A: document.getElementById('btnA'),
+    B: document.getElementById('btnB'),
+    X: document.getElementById('btnX'),
+    Y: document.getElementById('btnY'),
+    Up: document.getElementById('dpadUp'),
+    Down: document.getElementById('dpadDown'),
+    Left: document.getElementById('dpadLeft'),
+    Right: document.getElementById('dpadRight'),
+    LB: document.getElementById('lb'),
+    RB: document.getElementById('rb')
+  };
+
+  const ltFill = document.getElementById('ltFill');
+  const rtFill = document.getElementById('rtFill');
+  const comboDisplay = document.getElementById('comboDisplay');
+  const comboText = document.getElementById('comboText');
+  const hitCounter = document.getElementById('hitCounter');
+  const leftStick = document.getElementById('leftStick');
+  const rightStick = document.getElementById('rightStick');
+
+  comboText.textContent = CONFIG.comboText;
+  hitCounter.textContent = CONFIG.hitCount + ' HITS!';
+
+  function clearAll() {
+    Object.values(highlights).forEach(h => h.classList.remove('active'));
+    comboDisplay.classList.remove('visible');
+    comboText.classList.remove('visible');
+    hitCounter.classList.remove('visible');
+    ltFill.style.width = '0%';
+    rtFill.style.width = '0%';
+  }
+
+  // Analog stick drift animation
+  let stickAngle = 0;
+  function animateSticks() {
+    stickAngle += 0.02;
+    const lx = 190 + Math.sin(stickAngle * 1.3) * 6;
+    const ly = 200 + Math.cos(stickAngle) * 6;
+    leftStick.setAttribute('cx', lx);
+    leftStick.setAttribute('cy', ly);
+
+    const rx = 310 + Math.cos(stickAngle * 0.8) * 5;
+    const ry = 200 + Math.sin(stickAngle * 1.1) * 5;
+    rightStick.setAttribute('cx', rx);
+    rightStick.setAttribute('cy', ry);
+
+    requestAnimationFrame(animateSticks);
+  }
+  animateSticks();
+
+  function pressButton(name, duration) {
+    return new Promise(resolve => {
+      highlights[name].classList.add('active');
+      setTimeout(() => {
+        highlights[name].classList.remove('active');
+        resolve();
+      }, duration || 200);
+    });
+  }
+
+  async function runSequence() {
+    clearAll();
+
+    // Phase 1: Random button presses
+    for (let i = 0; i < CONFIG.buttonSequence.length; i++) {
+      await pressButton(CONFIG.buttonSequence[i], 180);
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+
+    // Phase 2: Bumper and trigger sequence
+    pressButton('LB', 300);
+    ltFill.style.width = '100%';
+    await new Promise(r => setTimeout(r, 400));
+    ltFill.style.width = '0%';
+
+    pressButton('RB', 300);
+    rtFill.style.width = '100%';
+    await new Promise(r => setTimeout(r, 400));
+    rtFill.style.width = '0%';
+
+    await new Promise(r => setTimeout(r, 300));
+
+    // Phase 3: Combo sequence with arrows
+    comboDisplay.classList.add('visible');
+
+    for (let i = 0; i < CONFIG.comboSequence.length; i++) {
+      const step = CONFIG.comboSequence[i];
+      const arrowEl = document.getElementById('ca' + i);
+
+      if (step.type === 'dpad') {
+        pressButton(step.dir, 250);
+      } else if (step.type === 'face') {
+        pressButton(step.btn, 250);
+      }
+
+      arrowEl.classList.add('active');
+      await new Promise(r => setTimeout(r, CONFIG.sequenceSpeed));
+    }
+
+    // Show combo text
+    await new Promise(r => setTimeout(r, 200));
+    comboText.classList.add('visible');
+    hitCounter.classList.add('visible');
+
+    // Brief trigger press celebration
+    ltFill.style.width = '80%';
+    rtFill.style.width = '80%';
+
+    await new Promise(r => setTimeout(r, 2000));
+
+    // Fade out
+    clearAll();
+
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Loop
+    runSequence();
+  }
+
+  runSequence();
+</script>
+</body>
+</html>

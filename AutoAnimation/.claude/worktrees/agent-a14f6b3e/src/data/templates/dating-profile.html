@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dating Profile</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1vh); } }
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+  @keyframes confettiDrop { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+  @keyframes heartBeat { 0% { transform: scale(0); } 30% { transform: scale(1.4); } 50% { transform: scale(1); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: #333;
+  }
+  .bg {
+    width: 100%; height: 100%;
+    position: relative;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bg-orbs {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  }
+  .orb {
+    position: absolute; border-radius: 50%; opacity: 0.15; filter: blur(4vw);
+  }
+  .orb-1 { width: 40vw; height: 40vw; background: #ff6b9d; top: -10vw; left: -10vw; animation: float 8s ease-in-out infinite; }
+  .orb-2 { width: 30vw; height: 30vw; background: #c44dff; bottom: -5vw; right: -5vw; animation: float 6s ease-in-out infinite 1s; }
+  .orb-3 { width: 25vw; height: 25vw; background: #4dc9f6; top: 30%; right: 10%; animation: float 7s ease-in-out infinite 2s; }
+
+  .card {
+    width: 38vw; min-height: 75vh;
+    background: #fff;
+    border-radius: 3vw;
+    box-shadow: 0 2vh 6vh rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateX(30vw) rotate(8deg);
+    transition: all 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .card.visible {
+    opacity: 1;
+    transform: translateX(0) rotate(0deg);
+  }
+  .card-image {
+    width: 100%; height: 42vh;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    position: relative;
+  }
+  .avatar-placeholder {
+    position: absolute;
+    bottom: -4vh; left: 50%; transform: translateX(-50%);
+    width: 10vh; height: 10vh;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: 0.5vh solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 4vh; color: #fff; font-weight: 700;
+    box-shadow: 0 0.5vh 2vh rgba(0,0,0,0.2);
+  }
+  .verified-badge {
+    position: absolute; bottom: -1vh; right: -0.5vh;
+    width: 3vh; height: 3vh;
+    background: #4dc9f6;
+    border-radius: 50%;
+    border: 0.3vh solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5vh; color: #fff;
+  }
+  .card-body {
+    padding: 6vh 3vw 3vh;
+    text-align: center;
+  }
+  .name-row {
+    display: flex; align-items: baseline; justify-content: center; gap: 1vw;
+    opacity: 0; transform: translateY(2vh);
+    transition: all 0.5s ease;
+  }
+  .name-row.visible { opacity: 1; transform: translateY(0); }
+  .name { font-size: 3.2vh; font-weight: 700; color: #2d3436; }
+  .age { font-size: 2.8vh; color: #636e72; font-weight: 300; }
+  .location {
+    font-size: 1.8vh; color: #b2bec3;
+    margin-top: 0.5vh;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  .location.visible { opacity: 1; }
+  .location::before { content: '📍 '; }
+  .distance {
+    font-size: 1.5vh; color: #a29bfe;
+    margin-top: 0.5vh;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  .distance.visible { opacity: 1; }
+  .bio {
+    font-size: 1.8vh; color: #636e72;
+    line-height: 1.5;
+    margin-top: 2vh;
+    padding: 0 1vw;
+    opacity: 0; transform: translateY(1vh);
+    transition: all 0.5s ease;
+  }
+  .bio.visible { opacity: 1; transform: translateY(0); }
+  .interests {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8vh;
+    margin-top: 2vh;
+  }
+  .interest-tag {
+    padding: 0.8vh 1.5vw;
+    background: #f0f0ff;
+    border-radius: 2vh;
+    font-size: 1.5vh;
+    color: #6c5ce7;
+    opacity: 0; transform: scale(0.5);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  }
+  .interest-tag.visible { opacity: 1; transform: scale(1); }
+  .match-ring {
+    position: absolute; top: 2vh; right: 2vw;
+    width: 7vh; height: 7vh;
+  }
+  .match-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .match-ring-bg { fill: none; stroke: rgba(255,255,255,0.3); stroke-width: 3; }
+  .match-ring-fg { fill: none; stroke: #00b894; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 157; stroke-dashoffset: 157; transition: stroke-dashoffset 1.5s ease; }
+  .match-pct {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8vh; font-weight: 700; color: #fff;
+  }
+  .actions {
+    display: flex; justify-content: center; gap: 4vw;
+    margin-top: 3vh;
+    opacity: 0; transition: opacity 0.5s;
+  }
+  .actions.visible { opacity: 1; }
+  .action-btn {
+    width: 7vh; height: 7vh;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3vh;
+    box-shadow: 0 0.5vh 2vh rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .btn-nope { background: #fff; border: 0.3vh solid #ff6b6b; color: #ff6b6b; }
+  .btn-star { background: #fff; border: 0.3vh solid #4dc9f6; color: #4dc9f6; }
+  .btn-like { background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; border: none; }
+  .btn-like.tapped { animation: pulse 0.4s ease; }
+
+  .match-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(108,92,231,0.95), rgba(253,121,168,0.95));
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s;
+    z-index: 10;
+  }
+  .match-overlay.visible { opacity: 1; }
+  .match-text {
+    font-size: 6vh; font-weight: 800;
+    color: #fff;
+    text-shadow: 0 0.5vh 2vh rgba(0,0,0,0.2);
+    background: linear-gradient(90deg, #fff, #ffeaa7, #fff);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 2s linear infinite;
+  }
+  .match-heart {
+    font-size: 10vh;
+    animation: heartBeat 0.8s ease forwards;
+    margin-bottom: 2vh;
+  }
+  .match-sub {
+    font-size: 2vh; color: rgba(255,255,255,0.9);
+    margin-top: 1vh;
+  }
+
+  .confetti-container {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 11;
+  }
+  .confetti {
+    position: absolute;
+    width: 1.2vw; height: 2vh;
+    border-radius: 0.2vh;
+    opacity: 0;
+  }
+  .confetti.active { animation: confettiDrop 2s ease-in forwards; }
+</style>
+</head>
+<body>
+<div class="bg">
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="card" id="card">
+    <div class="card-image">
+      <div class="match-ring" id="matchRing">
+        <svg viewBox="0 0 56 56">
+          <circle class="match-ring-bg" cx="28" cy="28" r="25"/>
+          <circle class="match-ring-fg" id="ringFg" cx="28" cy="28" r="25"/>
+        </svg>
+        <div class="match-pct" id="matchPct">0%</div>
+      </div>
+      <div class="avatar-placeholder" id="avatar">
+        <span id="avatarInitial">A</span>
+        <div class="verified-badge">✓</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="name-row" id="nameRow">
+        <span class="name" id="nameEl">Alexandra</span>
+        <span class="age" id="ageEl">27</span>
+      </div>
+      <div class="location" id="locationEl">Brooklyn, New York</div>
+      <div class="distance" id="distanceEl">3 miles away</div>
+      <div class="bio" id="bioEl">Creative soul who loves sunset walks, good coffee, and spontaneous adventures. Let's explore the city together!</div>
+      <div class="interests" id="interests"></div>
+      <div class="actions" id="actions">
+        <div class="action-btn btn-nope">✕</div>
+        <div class="action-btn btn-star">★</div>
+        <div class="action-btn btn-like" id="likeBtn">♥</div>
+      </div>
+    </div>
+
+    <div class="match-overlay" id="matchOverlay">
+      <div class="match-heart" id="matchHeart">💕</div>
+      <div class="match-text">It's a Match!</div>
+      <div class="match-sub" id="matchSub">You and Alexandra liked each other</div>
+    </div>
+  </div>
+
+  <div class="confetti-container" id="confettiContainer"></div>
+</div>
+
+<script>
+  const CONFIG = {
+    name: 'Alexandra',
+    age: 27,
+    location: 'Brooklyn, New York',
+    distance: '3 miles away',
+    bio: 'Creative soul who loves sunset walks, good coffee, and spontaneous adventures. Let\'s explore the city together!',
+    interests: ['🎵 Music', '✈️ Travel', '📚 Books', '🎨 Art', '☕ Coffee', '🧘 Yoga'],
+    matchPercent: 92,
+    cycleDuration: 14000,
+    bgGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+    confettiColors: ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#00d2d3', '#54a0ff']
+  };
+
+  // Apply config
+  const avatarInitial = CONFIG.name.charAt(0);
+  document.getElementById('avatarInitial').textContent = avatarInitial;
+  document.getElementById('nameEl').textContent = CONFIG.name;
+  document.getElementById('ageEl').textContent = CONFIG.age;
+  document.getElementById('locationEl').textContent = CONFIG.location;
+  document.getElementById('distanceEl').textContent = CONFIG.distance;
+  document.getElementById('bioEl').textContent = CONFIG.bio;
+  document.getElementById('matchSub').textContent = 'You and ' + CONFIG.name + ' liked each other';
+
+  // Build interests
+  const interestsEl = document.getElementById('interests');
+  CONFIG.interests.forEach(tag => {
+    const el = document.createElement('div');
+    el.className = 'interest-tag';
+    el.textContent = tag;
+    interestsEl.appendChild(el);
+  });
+
+  // Confetti
+  const confettiContainer = document.getElementById('confettiContainer');
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = CONFIG.confettiColors[Math.floor(Math.random() * CONFIG.confettiColors.length)];
+    c.style.animationDelay = Math.random() * 1 + 's';
+    c.style.animationDuration = (1.5 + Math.random()) + 's';
+    c.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+    confettiContainer.appendChild(c);
+  }
+
+  // Match ring animation
+  function animateMatchRing(targetPct) {
+    const circumference = 2 * Math.PI * 25;
+    const offset = circumference * (1 - targetPct / 100);
+    document.getElementById('ringFg').style.strokeDashoffset = offset;
+
+    let current = 0;
+    const step = targetPct / 30;
+    const interval = setInterval(() => {
+      current += step;
+      if (current >= targetPct) {
+        current = targetPct;
+        clearInterval(interval);
+      }
+      document.getElementById('matchPct').textContent = Math.round(current) + '%';
+    }, 50);
+  }
+
+  function runCycle() {
+    const card = document.getElementById('card');
+    const nameRow = document.getElementById('nameRow');
+    const locationEl = document.getElementById('locationEl');
+    const distanceEl = document.getElementById('distanceEl');
+    const bioEl = document.getElementById('bioEl');
+    const tags = document.querySelectorAll('.interest-tag');
+    const actions = document.getElementById('actions');
+    const likeBtn = document.getElementById('likeBtn');
+    const matchOverlay = document.getElementById('matchOverlay');
+    const confetti = document.querySelectorAll('.confetti');
+    const ringFg = document.getElementById('ringFg');
+
+    // Reset
+    card.classList.remove('visible');
+    card.style.transition = 'none';
+    card.style.transform = 'translateX(30vw) rotate(8deg)';
+    card.style.opacity = '0';
+    nameRow.classList.remove('visible');
+    locationEl.classList.remove('visible');
+    distanceEl.classList.remove('visible');
+    bioEl.classList.remove('visible');
+    tags.forEach(t => t.classList.remove('visible'));
+    actions.classList.remove('visible');
+    likeBtn.classList.remove('tapped');
+    matchOverlay.classList.remove('visible');
+    confetti.forEach(c => c.classList.remove('active'));
+    ringFg.style.transition = 'none';
+    ringFg.style.strokeDashoffset = '157';
+    document.getElementById('matchPct').textContent = '0%';
+
+    void card.offsetWidth;
+
+    // Card slides in
+    setTimeout(() => {
+      card.style.transition = 'all 0.8s cubic-bezier(0.23, 1, 0.32, 1)';
+      card.classList.add('visible');
+    }, 200);
+
+    // Name + location
+    setTimeout(() => nameRow.classList.add('visible'), 1200);
+    setTimeout(() => locationEl.classList.add('visible'), 1600);
+    setTimeout(() => distanceEl.classList.add('visible'), 1800);
+
+    // Bio
+    setTimeout(() => bioEl.classList.add('visible'), 2200);
+
+    // Interests pop in
+    tags.forEach((tag, i) => {
+      setTimeout(() => tag.classList.add('visible'), 2800 + i * 200);
+    });
+
+    // Match ring
+    setTimeout(() => {
+      ringFg.style.transition = 'stroke-dashoffset 1.5s ease';
+      animateMatchRing(CONFIG.matchPercent);
+    }, 3000);
+
+    // Action buttons
+    setTimeout(() => actions.classList.add('visible'), 4500);
+
+    // Heart tap
+    setTimeout(() => likeBtn.classList.add('tapped'), 5500);
+
+    // Match overlay
+    setTimeout(() => matchOverlay.classList.add('visible'), 6200);
+
+    // Confetti
+    setTimeout(() => confetti.forEach(c => c.classList.add('active')), 6500);
+
+    // Fade out
+    setTimeout(() => {
+      card.style.transition = 'all 1s ease-in';
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(-5vh) scale(0.95)';
+    }, CONFIG.cycleDuration - 2000);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

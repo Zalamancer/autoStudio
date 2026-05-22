@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Geometric Mosaic Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a1a1a;
+  }
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .tile {
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: scale(0);
+    will-change: transform, opacity;
+  }
+
+  .tile-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tile-bg {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Triangle mask */
+  .tile.tri-tl .tile-bg { clip-path: polygon(0 0, 100% 0, 0 100%); }
+  .tile.tri-br .tile-bg { clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+  .tile.tri-tr .tile-bg { clip-path: polygon(0 0, 100% 0, 100% 100%); }
+  .tile.tri-bl .tile-bg { clip-path: polygon(0 0, 0 100%, 100% 100%); }
+
+  /* Circle mask */
+  .tile.circle .tile-bg { clip-path: circle(45% at 50% 50%); }
+
+  /* Diamond mask */
+  .tile.diamond .tile-bg { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+
+  /* Label overlay */
+  .tile-label {
+    position: absolute;
+    z-index: 2;
+    font-family: 'Arial', sans-serif;
+    font-weight: 900;
+    font-size: 14px;
+    color: rgba(255,255,255,0.8);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0) rotate(45deg); }
+    60% { opacity: 1; transform: scale(1.05) rotate(-2deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes shrinkOut {
+    0% { opacity: 1; transform: scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: scale(0) rotate(-45deg); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  cols: 5,
+  rows: 4,
+  colors: ['#c62828', '#1565c0', '#2e7d32', '#f57f17', '#6a1b9a', '#00838f', '#d84315', '#283593', '#558b2f', '#e91e63', '#ff6f00', '#0097a7', '#4527a0', '#ef6c00', '#2e7d32', '#ad1457', '#00695c', '#bf360c', '#1b5e20', '#4a148c'],
+  shapes: ['full', 'tri-tl', 'circle', 'full', 'diamond', 'tri-br', 'full', 'tri-tr', 'full', 'circle', 'diamond', 'tri-bl', 'full', 'full', 'tri-tl', 'circle', 'full', 'tri-br', 'diamond', 'full'],
+  labels: ['ART', 'FORM', 'SHAPE', 'COLOR', 'LINE', 'SPACE', 'TONE', 'GRID', 'FLOW', 'EDGE', 'BOLD', 'PURE', 'DEEP', 'WARM', 'COOL', 'SOFT', 'HARD', 'FLAT', 'RICH', 'OPEN'],
+  bgColor: '#1a1a1a',
+  gapSize: 3,
+  cycleDuration: 10000,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function buildMosaic() {
+  stage.innerHTML = '';
+  stage.style.gridTemplateColumns = `repeat(${CONFIG.cols}, 1fr)`;
+  stage.style.gridTemplateRows = `repeat(${CONFIG.rows}, 1fr)`;
+  stage.style.gap = CONFIG.gapSize + 'px';
+  stage.style.padding = CONFIG.gapSize + 'px';
+
+  const tiles = [];
+  const count = CONFIG.cols * CONFIG.rows;
+
+  for (let i = 0; i < count; i++) {
+    const shape = CONFIG.shapes[i % CONFIG.shapes.length];
+    const tile = document.createElement('div');
+    tile.className = `tile ${shape}`;
+
+    const inner = document.createElement('div');
+    inner.className = 'tile-inner';
+
+    const bg = document.createElement('div');
+    bg.className = 'tile-bg';
+    bg.style.background = CONFIG.colors[i % CONFIG.colors.length];
+    inner.appendChild(bg);
+
+    // Add label to some tiles
+    if (shape === 'full' || shape === 'circle') {
+      const label = document.createElement('div');
+      label.className = 'tile-label';
+      label.textContent = CONFIG.labels[i % CONFIG.labels.length];
+      inner.appendChild(label);
+    }
+
+    tile.appendChild(inner);
+    stage.appendChild(tile);
+    tiles.push(tile);
+  }
+
+  return tiles;
+}
+
+function runAnimation(tiles) {
+  const count = tiles.length;
+  const popStagger = 100;
+  const popDuration = 450;
+  const holdDuration = 3500;
+  const shrinkStagger = 80;
+  const shrinkDuration = 350;
+  const pause = 800;
+
+  const totalPopTime = (count - 1) * popStagger + popDuration;
+  const totalShrinkTime = (count - 1) * shrinkStagger + shrinkDuration;
+
+  // Spiral order for reveal
+  const order = [];
+  const visited = new Set();
+  let r = 0, c = 0, dr = 0, dc = 1;
+  for (let n = 0; n < count; n++) {
+    order.push(r * CONFIG.cols + c);
+    visited.add(r * CONFIG.cols + c);
+    const nr = r + dr, nc = c + dc;
+    if (nr < 0 || nr >= CONFIG.rows || nc < 0 || nc >= CONFIG.cols || visited.has(nr * CONFIG.cols + nc)) {
+      [dr, dc] = [dc, -dr]; // turn right
+    }
+    r += dr;
+    c += dc;
+  }
+
+  let af, st;
+
+  function resetAll() {
+    tiles.forEach(t => { t.style.animation = 'none'; t.style.opacity = '0'; t.style.transform = 'scale(0)'; });
+  }
+
+  function tick(ts) {
+    if (!st) st = ts;
+    const e = ts - st;
+
+    if (e < totalPopTime) {
+      order.forEach((tileIdx, i) => {
+        if (e >= i * popStagger && !tiles[tileIdx].dataset.in) {
+          tiles[tileIdx].dataset.in = '1';
+          tiles[tileIdx].style.animation = `popIn ${popDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (e < totalPopTime + holdDuration) {
+    } else if (e < totalPopTime + holdDuration + totalShrinkTime) {
+      const se = e - totalPopTime - holdDuration;
+      // Reverse spiral for exit
+      const revOrder = [...order].reverse();
+      revOrder.forEach((tileIdx, i) => {
+        if (se >= i * shrinkStagger && !tiles[tileIdx].dataset.out) {
+          tiles[tileIdx].dataset.out = '1';
+          tiles[tileIdx].style.animation = `shrinkOut ${shrinkDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (e < totalPopTime + holdDuration + totalShrinkTime + pause) {
+    } else {
+      resetAll();
+      tiles.forEach(t => { delete t.dataset.in; delete t.dataset.out; });
+      st = ts;
+    }
+    af = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  af = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(af);
+}
+
+let tiles = buildMosaic();
+runAnimation(tiles);
+
+let rt;
+window.addEventListener('resize', () => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    tiles = buildMosaic();
+    runAnimation(tiles);
+  }, 300);
+});
+</script>
+</body>
+</html>

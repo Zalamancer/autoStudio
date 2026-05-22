@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Science Laboratory</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:100vw;height:100vh;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;color:#e0e8f0}
+  .container{position:relative;width:100vw;height:100vh;overflow:hidden}
+  .ambient-glow{position:absolute;border-radius:50%;filter:blur(10vw);pointer-events:none;opacity:0}
+  .glow-1{width:40vw;height:40vw;top:10vh;left:5vw}
+  .glow-2{width:35vw;height:35vw;bottom:5vh;right:10vw}
+  .lab-bench{position:absolute;bottom:0;left:0;right:0;height:35vh;opacity:0}
+  .bench-surface{position:absolute;top:0;left:0;right:0;height:0.4vh;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
+  .bench-body{position:absolute;top:0.4vh;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(20,25,40,0.95),rgba(12,15,25,0.98))}
+  /* Flask styles */
+  .flask{position:absolute;opacity:0;transform:translateY(3vh)}
+  .flask-body{position:relative;overflow:hidden}
+  .flask-neck{position:relative;margin:0 auto;overflow:hidden}
+  .flask-rim{position:relative;margin:0 auto;border-radius:0.2vw 0.2vw 0 0}
+  .liquid{position:absolute;bottom:0;left:0;right:0;height:0%;transition:height 2s cubic-bezier(0.25,0.1,0.25,1)}
+  .bubbles-container{position:absolute;bottom:0;left:0;right:0;top:0;overflow:hidden}
+  .bubble{position:absolute;border-radius:50%;opacity:0}
+  /* Beaker */
+  .beaker{position:absolute;bottom:13vh;opacity:0;transform:translateY(3vh)}
+  .beaker-body{width:8vw;height:10vh;background:rgba(255,255,255,0.04);border:0.15vw solid rgba(255,255,255,0.1);border-top:none;border-radius:0 0 0.8vw 0.8vw;position:relative;overflow:hidden}
+  .beaker-rim{width:9.5vw;height:0.8vh;background:rgba(255,255,255,0.08);border:0.15vw solid rgba(255,255,255,0.12);border-radius:0.3vw;margin:0 auto;position:relative;left:-0.6vw}
+  .beaker-marks{position:absolute;right:0.5vw;top:1vh;bottom:1vh;width:0.8vw;display:flex;flex-direction:column;justify-content:space-between}
+  .beaker-mark{width:100%;height:0.1vh;background:rgba(255,255,255,0.15)}
+  .beaker-liquid{position:absolute;bottom:0;left:0;right:0;height:0%;transition:height 2s ease}
+  /* Erlenmeyer flask - CSS triangle body */
+  .erlenmeyer{position:absolute;bottom:13vh;opacity:0;transform:translateY(3vh)}
+  .erlenmeyer-body{width:0;height:0;border-left:5vw solid transparent;border-right:5vw solid transparent;border-bottom:11vh solid rgba(255,255,255,0.04);position:relative;filter:drop-shadow(0 0 0.5vw rgba(100,180,255,0.05))}
+  .erlenmeyer-outline{position:absolute;top:0;left:-5vw;width:0;height:0;border-left:5vw solid transparent;border-right:5vw solid transparent;border-bottom:11vh solid transparent;outline:none;pointer-events:none}
+  .erlenmeyer-neck{width:2.4vw;height:3vh;background:rgba(255,255,255,0.04);border-left:0.15vw solid rgba(255,255,255,0.1);border-right:0.15vw solid rgba(255,255,255,0.1);margin:0 auto;position:relative;top:-0.2vh}
+  .erlenmeyer-rim{width:3vw;height:0.6vh;background:rgba(255,255,255,0.08);border:0.15vw solid rgba(255,255,255,0.12);border-radius:0.2vw;margin:0 auto;position:relative;top:-0.3vh}
+  .erlenmeyer-liquid-wrap{position:absolute;bottom:0;left:-5vw;width:10vw;height:11vh;overflow:hidden;clip-path:polygon(50% 0%,100% 100%,0% 100%)}
+  .erlenmeyer-liquid{position:absolute;bottom:0;left:0;right:0;height:0%;transition:height 2s ease}
+  /* Test tubes */
+  .test-tube-rack{position:absolute;bottom:13vh;display:flex;gap:0.8vw;opacity:0;transform:translateY(3vh)}
+  .test-tube{width:1.6vw;display:flex;flex-direction:column;align-items:center}
+  .tube-body{width:1.6vw;height:7vh;background:rgba(255,255,255,0.04);border:0.1vw solid rgba(255,255,255,0.1);border-top:none;border-radius:0 0 0.8vw 0.8vw;position:relative;overflow:hidden}
+  .tube-rim{width:2vw;height:0.4vh;background:rgba(255,255,255,0.1);border-radius:0.2vw}
+  .tube-liquid{position:absolute;bottom:0;left:0;right:0;height:0%;transition:height 1.5s ease}
+  /* Formula display */
+  .formula-panel{position:absolute;top:6vh;right:6vw;text-align:right;opacity:0;transform:translateX(3vw)}
+  .formula-label{font-size:1.1vw;text-transform:uppercase;letter-spacing:0.2vw;opacity:0.4;margin-bottom:1vh}
+  .formula{font-size:4vw;font-weight:300;letter-spacing:0.1vw;margin-bottom:0.8vh;opacity:0;transform:translateX(1vw)}
+  .formula sub{font-size:0.6em;vertical-align:baseline;position:relative;top:0.3em}
+  .formula-name{font-size:1.3vw;opacity:0.4;margin-bottom:0.3vh}
+  /* Notebook */
+  .notebook{position:absolute;top:6vh;left:5vw;width:22vw;opacity:0;transform:translateX(-3vw)}
+  .notebook-header{font-size:1.3vw;font-weight:700;padding-bottom:1vh;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:1.5vh;display:flex;align-items:center;gap:0.8vw}
+  .notebook-dot{width:0.8vw;height:0.8vw;border-radius:50%}
+  .note-line{font-size:1.1vw;opacity:0;transform:translateY(0.5vh);margin-bottom:0.8vh;padding-left:1.5vw;border-left:2px solid transparent;line-height:1.4}
+  /* Temperature gauge */
+  .temp-gauge{position:absolute;bottom:14vh;right:8vw;display:flex;flex-direction:column;align-items:center;opacity:0;transform:translateY(3vh)}
+  .temp-label{font-size:0.9vw;text-transform:uppercase;letter-spacing:0.15vw;opacity:0.4;margin-bottom:0.5vh}
+  .temp-tube{width:1.2vw;height:12vh;background:rgba(255,255,255,0.05);border:0.1vw solid rgba(255,255,255,0.1);border-radius:0.6vw;position:relative;overflow:hidden}
+  .temp-mercury{position:absolute;bottom:0;left:0;right:0;height:15%;border-radius:0 0 0.6vw 0.6vw;transition:height 2s ease}
+  .temp-bulb{width:2.4vw;height:2.4vw;border-radius:50%;border:0.1vw solid rgba(255,255,255,0.1);position:relative;top:-0.5vh;display:flex;align-items:center;justify-content:center}
+  .temp-bulb-fill{width:1.6vw;height:1.6vw;border-radius:50%;transition:background 2s ease}
+  .temp-value{font-size:1.4vw;font-weight:700;margin-top:0.5vh;font-variant-numeric:tabular-nums}
+  .temp-scale{position:absolute;right:-1.5vw;top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-between;font-size:0.7vw;opacity:0.3}
+  /* pH scale */
+  .ph-panel{position:absolute;top:38vh;left:5vw;opacity:0;transform:translateX(-2vw)}
+  .ph-label{font-size:0.9vw;text-transform:uppercase;letter-spacing:0.15vw;opacity:0.4;margin-bottom:0.8vh}
+  .ph-scale{width:18vw;height:1.2vh;border-radius:0.6vh;background:linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#3b82f6,#6366f1,#8b5cf6);position:relative}
+  .ph-indicator{position:absolute;top:-0.6vh;width:0.3vw;height:2.4vh;background:#fff;border-radius:0.15vw;transition:left 2s ease;box-shadow:0 0 0.5vw rgba(255,255,255,0.5)}
+  .ph-numbers{display:flex;justify-content:space-between;font-size:0.7vw;opacity:0.3;margin-top:0.3vh}
+  .ph-value{font-size:1.8vw;font-weight:700;margin-top:0.5vh}
+  /* Reaction status */
+  .reaction-status{position:absolute;top:50vh;right:5vw;display:flex;align-items:center;gap:1vw;opacity:0}
+  .reaction-dot{width:1vw;height:1vw;border-radius:50%;animation:pulse-reaction 1.5s ease-in-out infinite}
+  .reaction-text{font-size:1.2vw;font-weight:600;letter-spacing:0.1vw;text-transform:uppercase}
+  /* Atom model */
+  .atom{position:absolute;top:52vh;left:50%;transform:translateX(-50%);width:16vw;height:16vw;opacity:0}
+  .atom-nucleus{position:absolute;top:50%;left:50%;width:2vw;height:2vw;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 2vw rgba(var(--accent-rgb),0.4)}
+  .atom-orbit{position:absolute;top:50%;left:50%;border:0.1vw solid rgba(255,255,255,0.08);border-radius:50%;transform:translate(-50%,-50%)}
+  .orbit-1{width:8vw;height:8vw;animation:orbit-rotate-1 3s linear infinite}
+  .orbit-2{width:11vw;height:11vw;animation:orbit-rotate-2 4s linear infinite reverse}
+  .orbit-3{width:14vw;height:14vw;animation:orbit-rotate-3 5s linear infinite}
+  .electron{position:absolute;width:0.6vw;height:0.6vw;border-radius:50%;top:-0.3vw;left:50%;transform:translateX(-50%)}
+  @keyframes orbit-rotate-1{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes orbit-rotate-2{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+  @keyframes orbit-rotate-3{from{transform:translate(-50%,-50%) rotate(30deg)}to{transform:translate(-50%,-50%) rotate(390deg)}}
+  @keyframes pulse-reaction{0%,100%{opacity:0.4;transform:scale(0.8)}50%{opacity:1;transform:scale(1.2)}}
+  @keyframes bubble-rise{0%{transform:translateY(0) scale(1);opacity:0.6}50%{opacity:0.8}100%{transform:translateY(-8vh) scale(0.3);opacity:0}}
+</style>
+</head>
+<body>
+<div class="container" id="main">
+  <div class="ambient-glow glow-1" id="glow1"></div>
+  <div class="ambient-glow glow-2" id="glow2"></div>
+  <div class="lab-bench" id="labBench">
+    <div class="bench-surface"></div>
+    <div class="bench-body"></div>
+  </div>
+
+  <!-- Beaker -->
+  <div class="beaker" id="beaker" style="left:12vw">
+    <div class="beaker-rim"></div>
+    <div class="beaker-body">
+      <div class="beaker-marks"><div class="beaker-mark"></div><div class="beaker-mark"></div><div class="beaker-mark"></div><div class="beaker-mark"></div></div>
+      <div class="beaker-liquid" id="beakerLiquid"></div>
+      <div class="bubbles-container" id="beakerBubbles"></div>
+    </div>
+  </div>
+
+  <!-- Erlenmeyer -->
+  <div class="erlenmeyer" id="erlenmeyer" style="left:28vw">
+    <div class="erlenmeyer-rim"></div>
+    <div class="erlenmeyer-neck"></div>
+    <div class="erlenmeyer-body">
+      <div class="erlenmeyer-liquid-wrap">
+        <div class="erlenmeyer-liquid" id="erlenmeyerLiquid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test tubes -->
+  <div class="test-tube-rack" id="testTubes" style="left:44vw"></div>
+
+  <!-- Temperature gauge -->
+  <div class="temp-gauge" id="tempGauge">
+    <div class="temp-label">Temp</div>
+    <div class="temp-tube">
+      <div class="temp-mercury" id="tempMercury"></div>
+      <div class="temp-scale"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div>
+    </div>
+    <div class="temp-bulb"><div class="temp-bulb-fill" id="tempBulbFill"></div></div>
+    <div class="temp-value" id="tempValue">22&deg;C</div>
+  </div>
+
+  <!-- Formula panel -->
+  <div class="formula-panel" id="formulaPanel"></div>
+
+  <!-- Notebook -->
+  <div class="notebook" id="notebook"></div>
+
+  <!-- pH panel -->
+  <div class="ph-panel" id="phPanel">
+    <div class="ph-label">pH Level</div>
+    <div class="ph-scale"><div class="ph-indicator" id="phIndicator" style="left:38%"></div></div>
+    <div class="ph-numbers"><span>0</span><span>7</span><span>14</span></div>
+    <div class="ph-value" id="phValue">7.0</div>
+  </div>
+
+  <!-- Reaction status -->
+  <div class="reaction-status" id="reactionStatus">
+    <div class="reaction-dot" id="reactionDot"></div>
+    <div class="reaction-text" id="reactionText">Reaction in Progress</div>
+  </div>
+
+  <!-- Atom model -->
+  <div class="atom" id="atom">
+    <div class="atom-nucleus" id="atomNucleus"></div>
+    <div class="atom-orbit orbit-1"><div class="electron" id="e1"></div></div>
+    <div class="atom-orbit orbit-2"><div class="electron" id="e2"></div></div>
+    <div class="atom-orbit orbit-3"><div class="electron" id="e3"></div></div>
+  </div>
+</div>
+<script>
+const CONFIG = {
+  backgroundColor: "#080c14",
+  accentColor: "#38bdf8",
+  accentColorRGB: "56,189,248",
+  glowColor1: "rgba(56,189,248,0.08)",
+  glowColor2: "rgba(139,92,246,0.06)",
+  beakerLiquidColor: "linear-gradient(180deg, rgba(56,189,248,0.3), rgba(56,189,248,0.6))",
+  erlenmeyerLiquidColor: "linear-gradient(180deg, rgba(168,85,247,0.3), rgba(168,85,247,0.6))",
+  testTubeColors: ["#34d399","#f59e0b","#f87171","#60a5fa","#a78bfa"],
+  mercuryColor: "linear-gradient(180deg, #ef4444, #f97316)",
+  nucleusColor: "#38bdf8",
+  electronColor: "#38bdf8",
+  formulas: [
+    { formula: "H<sub>2</sub>O", name: "Water" },
+    { formula: "NaCl", name: "Sodium Chloride" },
+    { formula: "C<sub>6</sub>H<sub>12</sub>O<sub>6</sub>", name: "Glucose" }
+  ],
+  notebookTitle: "Lab Notes",
+  notes: [
+    "Sample heated to 78\u00b0C - solution clear",
+    "Added 2ml NaOH catalyst at t=120s",
+    "Observed color change: blue \u2192 green",
+    "pH stabilized at 8.2 (alkaline)",
+    "Precipitate forming at flask base",
+    "Recording crystallization rate..."
+  ],
+  reactionLabel: "Reaction in Progress",
+  cycleDuration: 16000
+};
+
+document.body.style.background = CONFIG.backgroundColor;
+document.documentElement.style.setProperty('--accent-rgb', CONFIG.accentColorRGB);
+
+const glow1 = document.getElementById('glow1');
+const glow2 = document.getElementById('glow2');
+glow1.style.background = `radial-gradient(circle, ${CONFIG.glowColor1}, transparent)`;
+glow2.style.background = `radial-gradient(circle, ${CONFIG.glowColor2}, transparent)`;
+
+document.getElementById('beakerLiquid').style.background = CONFIG.beakerLiquidColor;
+document.getElementById('erlenmeyerLiquid').style.background = CONFIG.erlenmeyerLiquidColor;
+document.getElementById('tempMercury').style.background = CONFIG.mercuryColor;
+document.getElementById('tempBulbFill').style.background = CONFIG.mercuryColor;
+document.getElementById('atomNucleus').style.background = CONFIG.nucleusColor;
+document.getElementById('atomNucleus').style.boxShadow = `0 0 2vw rgba(${CONFIG.accentColorRGB},0.4)`;
+['e1','e2','e3'].forEach(id => {
+  document.getElementById(id).style.background = CONFIG.electronColor;
+  document.getElementById(id).style.boxShadow = `0 0 0.5vw ${CONFIG.electronColor}`;
+});
+
+document.getElementById('reactionDot').style.background = CONFIG.accentColor;
+document.getElementById('reactionText').textContent = CONFIG.reactionLabel;
+document.getElementById('phValue').style.color = CONFIG.accentColor;
+
+// Build test tubes
+const tubeRack = document.getElementById('testTubes');
+CONFIG.testTubeColors.forEach((color, i) => {
+  const tube = document.createElement('div');
+  tube.className = 'test-tube';
+  tube.innerHTML = `<div class="tube-rim"></div><div class="tube-body"><div class="tube-liquid" id="tubeLiquid-${i}" style="background:linear-gradient(180deg,${color}44,${color}aa)"></div></div>`;
+  tubeRack.appendChild(tube);
+});
+
+// Build formulas
+const fPanel = document.getElementById('formulaPanel');
+fPanel.innerHTML = `<div class="formula-label">Chemical Formula</div>`;
+CONFIG.formulas.forEach((f, i) => {
+  fPanel.innerHTML += `<div class="formula" id="formula-${i}">${f.formula}</div><div class="formula-name" id="fName-${i}" style="opacity:0">${f.name}</div>`;
+});
+
+// Build notebook
+const nb = document.getElementById('notebook');
+nb.innerHTML = `<div class="notebook-header"><div class="notebook-dot" style="background:${CONFIG.accentColor}"></div>${CONFIG.notebookTitle}</div>`;
+CONFIG.notes.forEach((note, i) => {
+  nb.innerHTML += `<div class="note-line" id="note-${i}" style="border-left-color:transparent">${note}</div>`;
+});
+
+function createBubble(containerId, color) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  const size = 0.3 + Math.random() * 0.5;
+  const left = 10 + Math.random() * 80;
+  bubble.style.cssText = `width:${size}vw;height:${size}vw;background:${color};left:${left}%;bottom:5%;animation:bubble-rise ${1.5 + Math.random() * 2}s ease-out forwards;opacity:0.6`;
+  container.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 4000);
+}
+
+let bubbleIntervals = [];
+
+function anim(el, props, dur, delay = 0) {
+  return new Promise(r => {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: `all ${dur}ms cubic-bezier(0.25,0.1,0.25,1)`, ...props });
+      setTimeout(r, dur);
+    }, delay);
+  });
+}
+
+function resetAll() {
+  bubbleIntervals.forEach(id => clearInterval(id));
+  bubbleIntervals = [];
+  const ids = ['glow1','glow2','labBench','beaker','erlenmeyer','testTubes','tempGauge','formulaPanel','notebook','phPanel','reactionStatus','atom'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+  });
+  document.getElementById('labBench').style.transform = 'translateY(5vh)';
+  ['beaker','erlenmeyer','testTubes','tempGauge'].forEach(id => {
+    document.getElementById(id).style.transform = 'translateY(3vh)';
+  });
+  document.getElementById('formulaPanel').style.transform = 'translateX(3vw)';
+  document.getElementById('notebook').style.transform = 'translateX(-3vw)';
+  document.getElementById('phPanel').style.transform = 'translateX(-2vw)';
+  document.getElementById('beakerLiquid').style.height = '0%';
+  document.getElementById('erlenmeyerLiquid').style.height = '0%';
+  document.getElementById('tempMercury').style.height = '15%';
+  CONFIG.testTubeColors.forEach((_, i) => {
+    const el = document.getElementById(`tubeLiquid-${i}`);
+    if (el) el.style.height = '0%';
+  });
+  CONFIG.formulas.forEach((_, i) => {
+    const el = document.getElementById(`formula-${i}`);
+    if (el) { el.style.opacity = '0'; el.style.transform = 'translateX(1vw)'; }
+    const n = document.getElementById(`fName-${i}`);
+    if (n) n.style.opacity = '0';
+  });
+  CONFIG.notes.forEach((_, i) => {
+    const el = document.getElementById(`note-${i}`);
+    if (el) { el.style.opacity = '0'; el.style.transform = 'translateY(0.5vh)'; el.style.borderLeftColor = 'transparent'; }
+  });
+  document.getElementById('phIndicator').style.left = '38%';
+  document.getElementById('phValue').textContent = '7.0';
+  document.getElementById('tempValue').textContent = '22\u00b0C';
+  document.getElementById('beakerBubbles').innerHTML = '';
+}
+
+async function runCycle() {
+  resetAll();
+  await new Promise(r => setTimeout(r, 50));
+
+  // Ambient glow
+  anim(glow1, { opacity: '1' }, 1500);
+  anim(glow2, { opacity: '1' }, 1500);
+
+  // Lab bench rises
+  await anim(document.getElementById('labBench'), { opacity: '1', transform: 'translateY(0)' }, 800, 200);
+
+  // Equipment appears
+  anim(document.getElementById('beaker'), { opacity: '1', transform: 'translateY(0)' }, 600);
+  anim(document.getElementById('erlenmeyer'), { opacity: '1', transform: 'translateY(0)' }, 600, 150);
+  anim(document.getElementById('testTubes'), { opacity: '1', transform: 'translateY(0)' }, 600, 300);
+  await anim(document.getElementById('tempGauge'), { opacity: '1', transform: 'translateY(0)' }, 600, 450);
+
+  // Liquids fill
+  document.getElementById('beakerLiquid').style.height = '65%';
+  document.getElementById('erlenmeyerLiquid').style.height = '55%';
+  CONFIG.testTubeColors.forEach((_, i) => {
+    const el = document.getElementById(`tubeLiquid-${i}`);
+    if (el) {
+      setTimeout(() => { el.style.height = (40 + Math.random() * 40) + '%'; }, i * 200);
+    }
+  });
+
+  // Start bubbles
+  const bInterval = setInterval(() => {
+    createBubble('beakerBubbles', `rgba(${CONFIG.accentColorRGB},0.4)`);
+  }, 400);
+  bubbleIntervals.push(bInterval);
+
+  await new Promise(r => setTimeout(r, 800));
+
+  // Formulas reveal
+  anim(document.getElementById('formulaPanel'), { opacity: '1', transform: 'translateX(0)' }, 600);
+  for (let i = 0; i < CONFIG.formulas.length; i++) {
+    const el = document.getElementById(`formula-${i}`);
+    if (el) {
+      await anim(el, { opacity: '1', transform: 'translateX(0)' }, 400, 200);
+      const n = document.getElementById(`fName-${i}`);
+      if (n) n.style.opacity = '0.4';
+    }
+  }
+
+  // Notebook
+  anim(document.getElementById('notebook'), { opacity: '1', transform: 'translateX(0)' }, 600);
+  await new Promise(r => setTimeout(r, 300));
+  for (let i = 0; i < CONFIG.notes.length; i++) {
+    const el = document.getElementById(`note-${i}`);
+    if (el) {
+      anim(el, { opacity: '0.7', transform: 'translateY(0)', borderLeftColor: `${CONFIG.accentColor}44` }, 350, i * 250);
+    }
+  }
+
+  // Temperature rises
+  await new Promise(r => setTimeout(r, 500));
+  document.getElementById('tempMercury').style.height = '72%';
+  document.getElementById('tempBulbFill').style.background = '#ef4444';
+  const tempAnim = [45, 58, 67, 72, 78];
+  for (const t of tempAnim) {
+    document.getElementById('tempValue').textContent = `${t}\u00b0C`;
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  // pH change
+  anim(document.getElementById('phPanel'), { opacity: '1', transform: 'translateX(0)' }, 500);
+  await new Promise(r => setTimeout(r, 600));
+  document.getElementById('phIndicator').style.left = '58%';
+  document.getElementById('phValue').textContent = '8.2';
+
+  // Reaction status
+  await anim(document.getElementById('reactionStatus'), { opacity: '1' }, 500, 300);
+
+  // Atom
+  await anim(document.getElementById('atom'), { opacity: '1' }, 800, 200);
+
+  await new Promise(r => setTimeout(r, 3000));
+
+  // Fade out
+  const mainEl = document.getElementById('main');
+  await anim(mainEl, { opacity: '0' }, 1200);
+  mainEl.style.transition = 'none';
+  mainEl.style.opacity = '1';
+
+  await new Promise(r => setTimeout(r, 300));
+  runCycle();
+}
+
+runCycle();
+</script>
+</body>
+</html>

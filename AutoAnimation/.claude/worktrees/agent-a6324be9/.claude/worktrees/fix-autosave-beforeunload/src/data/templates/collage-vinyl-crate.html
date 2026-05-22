@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vinyl Crate Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1612; font-family: 'Arial', sans-serif; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 16px; padding: 30px; }
+
+  .vinyl { width: 180px; opacity: 0; will-change: transform, opacity; }
+  .vinyl-cover { width: 100%; height: 180px; position: relative; overflow: hidden; box-shadow: 2px 3px 10px rgba(0,0,0,0.4); }
+  .vinyl-art { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .vinyl-disc { position: absolute; width: 50px; height: 50px; border-radius: 50%; border: 8px solid rgba(0,0,0,0.3); background: #111; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.3s; }
+  .vinyl-disc::after { content:''; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #ddd; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .vinyl-info { padding: 8px 4px; }
+  .vinyl-title { font-size: 13px; font-weight: 700; color: #e0d5c5; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vinyl-artist { font-size: 11px; color: #8a7e6e; margin-top: 2px; }
+
+  .vinyl-label { position: absolute; bottom: 6px; right: 6px; font-size: 8px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 2px; }
+
+  @keyframes slideRecord { 0% { opacity: 0; transform: translateX(-60px) rotate(-5deg); } 60% { transform: translateX(4px) rotate(0.5deg); } 100% { opacity: 1; transform: translateX(0) rotate(0); } }
+  @keyframes slideAway { 0% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(60px) rotate(5deg); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  records: [
+    { color: '#c62828', title: 'Midnight Drive', artist: 'The Neons', label: 'A-SIDE' },
+    { color: '#1565c0', title: 'Ocean Boulevard', artist: 'Blue Waves', label: '45 RPM' },
+    { color: '#f57f17', title: 'Golden Days', artist: 'Sunflower', label: 'STEREO' },
+    { color: '#2e7d32', title: 'Forest Floor', artist: 'Moss & Fern', label: 'LP' },
+    { color: '#6a1b9a', title: 'Purple Haze', artist: 'Electric Dream', label: 'MONO' },
+    { color: '#d84315', title: 'Ember Glow', artist: 'Fire Walk', label: '33 RPM' },
+    { color: '#00838f', title: 'Tidal Pool', artist: 'Aqua Marine', label: 'A-SIDE' },
+    { color: '#283593', title: 'Night Shift', artist: 'Indigo Moon', label: 'STEREO' },
+  ],
+  bgColor: '#1a1612',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.records.forEach(r => {
+    const el = document.createElement('div'); el.className = 'vinyl';
+    const cover = document.createElement('div'); cover.className = 'vinyl-cover';
+    const art = document.createElement('div'); art.className = 'vinyl-art'; art.style.background = r.color;
+    const disc = document.createElement('div'); disc.className = 'vinyl-disc';
+    const label = document.createElement('div'); label.className = 'vinyl-label'; label.textContent = r.label;
+    art.appendChild(disc); art.appendChild(label);
+    cover.appendChild(art);
+    const info = document.createElement('div'); info.className = 'vinyl-info';
+    const title = document.createElement('div'); title.className = 'vinyl-title'; title.textContent = r.title;
+    const artist = document.createElement('div'); artist.className = 'vinyl-artist'; artist.textContent = r.artist;
+    info.appendChild(title); info.appendChild(artist);
+    el.appendChild(cover); el.appendChild(info);
+    stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=280, inD=500, hold=3500, outS=200, outD=400, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`slideRecord ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{const ri=n-1-i;if(oe>=ri*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`slideAway ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

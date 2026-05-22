@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geometric Pulse</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  canvas#geoCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .center-text {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 2; text-align: center;
+  }
+  .center-text h1 {
+    font-size: 46px; font-weight: 800; letter-spacing: 10px;
+    text-transform: uppercase;
+    -webkit-text-stroke: 1.5px currentColor;
+    -webkit-text-fill-color: transparent;
+    animation: strokePulse 3s ease-in-out infinite;
+  }
+  .center-text .subtitle {
+    font-size: 12px; letter-spacing: 8px; opacity: 0.5; margin-top: 12px;
+    text-transform: uppercase;
+  }
+  @keyframes strokePulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<canvas id="geoCanvas"></canvas>
+<div class="center-text">
+  <h1 id="mainTitle">Pulse</h1>
+  <div class="subtitle" id="subTitle">Geometric Motion</div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TITLE_TEXT = 'Pulse';
+const SUBTITLE_TEXT = 'Geometric Motion';
+const BG_COLOR = '#0D0D0D';
+const ACCENT_COLOR = '#FF3366';
+const SECONDARY_COLOR = '#00CCFF';
+const SHAPE_COUNT = 12;
+const RING_COUNT = 4;
+// ==============================
+
+document.getElementById('mainTitle').textContent = TITLE_TEXT;
+document.getElementById('subTitle').textContent = SUBTITLE_TEXT;
+const h1 = document.querySelector('.center-text h1');
+const sub = document.querySelector('.center-text .subtitle');
+h1.style.color = ACCENT_COLOR;
+sub.style.color = SECONDARY_COLOR;
+
+const canvas = document.getElementById('geoCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, CX, CY;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  CX = W / 2; CY = H / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+function hexToRgb(hex) {
+  return { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16) };
+}
+const ac = hexToRgb(ACCENT_COLOR);
+const sc = hexToRgb(SECONDARY_COLOR);
+
+// Pulsing concentric rings
+class Ring {
+  constructor(i) {
+    this.baseRadius = 80 + i * 70;
+    this.thickness = 1 + Math.random();
+    this.speed = 0.001 + i * 0.0003;
+    this.phase = i * Math.PI * 0.5;
+    this.dashLen = 10 + i * 5;
+    this.gapLen = 5 + i * 3;
+    this.rotSpeed = (i % 2 === 0 ? 1 : -1) * (0.0002 + i * 0.0001);
+    this.color = i % 2 === 0 ? ac : sc;
+  }
+  draw(t) {
+    const pulse = 1 + 0.08 * Math.sin(t * this.speed + this.phase);
+    const r = this.baseRadius * pulse;
+    const rot = t * this.rotSpeed;
+    const a = 0.2 + 0.15 * Math.sin(t * this.speed * 2 + this.phase);
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${this.color.r},${this.color.g},${this.color.b},${a})`;
+    ctx.lineWidth = this.thickness;
+    ctx.setLineDash([this.dashLen, this.gapLen]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
+// Floating geometric shapes
+class GeoShape {
+  constructor() { this.reset(); }
+  reset() {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 100 + Math.random() * Math.min(W, H) * 0.35;
+    this.x = CX + Math.cos(angle) * dist;
+    this.y = CY + Math.sin(angle) * dist;
+    this.size = 10 + Math.random() * 30;
+    this.sides = [3, 4, 5, 6][Math.floor(Math.random() * 4)];
+    this.rotSpeed = (Math.random() - 0.5) * 0.002;
+    this.orbitSpeed = (Math.random() - 0.5) * 0.0003;
+    this.orbitAngle = angle;
+    this.orbitDist = dist;
+    this.phase = Math.random() * Math.PI * 2;
+    this.useAccent = Math.random() > 0.5;
+  }
+  update(t) {
+    this.orbitAngle += this.orbitSpeed;
+    this.x = CX + Math.cos(this.orbitAngle) * this.orbitDist;
+    this.y = CY + Math.sin(this.orbitAngle) * this.orbitDist;
+  }
+  draw(t) {
+    const rot = t * this.rotSpeed;
+    const pulse = 0.8 + 0.2 * Math.sin(t * 0.002 + this.phase);
+    const c = this.useAccent ? ac : sc;
+    const a = 0.15 + 0.1 * Math.sin(t * 0.001 + this.phase);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    for (let i = 0; i <= this.sides; i++) {
+      const ang = (Math.PI * 2 / this.sides) * i - Math.PI / 2;
+      const px = Math.cos(ang) * this.size * pulse;
+      const py = Math.sin(ang) * this.size * pulse;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${a})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+const rings = [];
+for (let i = 0; i < RING_COUNT; i++) rings.push(new Ring(i));
+const shapes = [];
+for (let i = 0; i < SHAPE_COUNT; i++) shapes.push(new GeoShape());
+
+// Connection lines between nearby shapes
+function drawConnections(t) {
+  for (let i = 0; i < shapes.length; i++) {
+    for (let j = i + 1; j < shapes.length; j++) {
+      const dx = shapes[i].x - shapes[j].x;
+      const dy = shapes[i].y - shapes[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 200) {
+        const a = (1 - dist / 200) * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(shapes[i].x, shapes[i].y);
+        ctx.lineTo(shapes[j].x, shapes[j].y);
+        ctx.strokeStyle = `rgba(255,255,255,${a})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animate(t) {
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0, 0, W, H);
+
+  rings.forEach(r => r.draw(t));
+  shapes.forEach(s => { s.update(t); s.draw(t); });
+  drawConnections(t);
+
+  requestAnimationFrame(animate);
+}
+animate(0);
+</script>
+</body>
+</html>

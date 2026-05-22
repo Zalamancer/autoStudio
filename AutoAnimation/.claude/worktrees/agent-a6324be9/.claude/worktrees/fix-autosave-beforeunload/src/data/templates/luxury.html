@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luxury</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #000;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #C9A84C;
+  }
+  canvas#luxCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .gold-lines {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1; pointer-events: none;
+  }
+  .h-line, .v-line {
+    position: absolute; background: rgba(201, 168, 76, 0.15);
+  }
+  .h-line { height: 1px; width: 100%; }
+  .v-line { width: 1px; height: 100%; }
+  .h-line-1 { top: 25%; animation: hLineGlow 5s ease-in-out infinite; }
+  .h-line-2 { top: 75%; animation: hLineGlow 5s ease-in-out infinite 2.5s; }
+  .v-line-1 { left: 20%; animation: vLineGlow 6s ease-in-out infinite; }
+  .v-line-2 { left: 80%; animation: vLineGlow 6s ease-in-out infinite 3s; }
+  @keyframes hLineGlow {
+    0%, 100% { opacity: 0.2; background: rgba(201,168,76,0.08); }
+    50% { opacity: 1; background: rgba(201,168,76,0.25); }
+  }
+  @keyframes vLineGlow {
+    0%, 100% { opacity: 0.2; background: rgba(201,168,76,0.08); }
+    50% { opacity: 1; background: rgba(201,168,76,0.25); }
+  }
+  /* Geometric shapes */
+  .geo-shapes {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 2; pointer-events: none;
+  }
+  .geo-diamond {
+    position: absolute; border: 1px solid rgba(201,168,76,0.2);
+    transform: rotate(45deg);
+  }
+  .diamond-1 {
+    width: 120px; height: 120px; top: 15%; left: 10%;
+    animation: diamondSpin 20s linear infinite;
+  }
+  .diamond-2 {
+    width: 80px; height: 80px; bottom: 20%; right: 12%;
+    animation: diamondSpin 25s linear infinite reverse;
+  }
+  .diamond-3 {
+    width: 200px; height: 200px; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-color: rgba(201,168,76,0.1);
+    animation: diamondPulse 8s ease-in-out infinite;
+  }
+  @keyframes diamondSpin {
+    0% { transform: rotate(45deg); }
+    100% { transform: rotate(405deg); }
+  }
+  @keyframes diamondPulse {
+    0%, 100% { transform: translate(-50%, -50%) rotate(45deg) scale(0.8); opacity: 0.3; }
+    50% { transform: translate(-50%, -50%) rotate(45deg) scale(1.2); opacity: 0.8; }
+  }
+  .geo-circle {
+    position: absolute; border: 1px solid rgba(201,168,76,0.12);
+    border-radius: 50%;
+  }
+  .circle-1 {
+    width: 300px; height: 300px; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    animation: circlePulse 10s ease-in-out infinite;
+  }
+  .circle-2 {
+    width: 200px; height: 200px; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    animation: circlePulse 10s ease-in-out infinite 5s;
+  }
+  @keyframes circlePulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+    50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+  }
+  /* Center content */
+  .center-content {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 5; text-align: center; width: 80%;
+  }
+  .luxury-title {
+    font-size: clamp(32px, 7vw, 80px); font-weight: 400;
+    letter-spacing: clamp(8px, 3vw, 30px);
+    text-transform: uppercase; color: #C9A84C;
+    animation: luxTitleFade 8s ease-in-out infinite;
+    line-height: 1.2;
+  }
+  @keyframes luxTitleFade {
+    0%, 100% { opacity: 0; letter-spacing: clamp(8px, 3vw, 30px); }
+    20%, 80% { opacity: 1; letter-spacing: clamp(12px, 4vw, 40px); }
+  }
+  .luxury-divider {
+    width: 80px; height: 1px; background: #C9A84C;
+    margin: 20px auto; opacity: 0.5;
+    animation: dividerExpand 8s ease-in-out infinite;
+  }
+  @keyframes dividerExpand {
+    0%, 100% { width: 0; opacity: 0; }
+    20%, 80% { width: 80px; opacity: 0.5; }
+  }
+  .luxury-subtitle {
+    font-size: clamp(10px, 1.5vw, 16px); font-weight: 400;
+    letter-spacing: clamp(4px, 1.5vw, 12px);
+    text-transform: uppercase; color: rgba(201,168,76,0.6);
+    animation: luxSubFade 8s ease-in-out infinite 0.5s;
+  }
+  @keyframes luxSubFade {
+    0%, 100% { opacity: 0; transform: translateY(10px); }
+    25%, 75% { opacity: 0.8; transform: translateY(0); }
+  }
+  /* Corner accents */
+  .corner-accent {
+    position: fixed; z-index: 3;
+    width: 60px; height: 60px;
+  }
+  .corner-accent::before, .corner-accent::after {
+    content: ''; position: absolute;
+    background: rgba(201,168,76,0.3);
+  }
+  .corner-tl { top: 5%; left: 5%; }
+  .corner-tl::before { top: 0; left: 0; width: 30px; height: 1px; }
+  .corner-tl::after { top: 0; left: 0; width: 1px; height: 30px; }
+  .corner-tr { top: 5%; right: 5%; }
+  .corner-tr::before { top: 0; right: 0; width: 30px; height: 1px; }
+  .corner-tr::after { top: 0; right: 0; width: 1px; height: 30px; }
+  .corner-bl { bottom: 5%; left: 5%; }
+  .corner-bl::before { bottom: 0; left: 0; width: 30px; height: 1px; }
+  .corner-bl::after { bottom: 0; left: 0; width: 1px; height: 30px; }
+  .corner-br { bottom: 5%; right: 5%; }
+  .corner-br::before { bottom: 0; right: 0; width: 30px; height: 1px; }
+  .corner-br::after { bottom: 0; right: 0; width: 1px; height: 30px; }
+  .corner-accent { animation: cornerFade 6s ease-in-out infinite; }
+  .corner-tr { animation-delay: 1.5s; }
+  .corner-bl { animation-delay: 3s; }
+  .corner-br { animation-delay: 4.5s; }
+  @keyframes cornerFade {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<canvas id="luxCanvas"></canvas>
+
+<div class="gold-lines">
+  <div class="h-line h-line-1"></div>
+  <div class="h-line h-line-2"></div>
+  <div class="v-line v-line-1"></div>
+  <div class="v-line v-line-2"></div>
+</div>
+
+<div class="geo-shapes">
+  <div class="geo-diamond diamond-1"></div>
+  <div class="geo-diamond diamond-2"></div>
+  <div class="geo-diamond diamond-3"></div>
+  <div class="geo-circle circle-1"></div>
+  <div class="geo-circle circle-2"></div>
+</div>
+
+<div class="corner-accent corner-tl"></div>
+<div class="corner-accent corner-tr"></div>
+<div class="corner-accent corner-bl"></div>
+<div class="corner-accent corner-br"></div>
+
+<div class="center-content">
+  <div class="luxury-title" id="mainTitle">Elegance</div>
+  <div class="luxury-divider"></div>
+  <div class="luxury-subtitle" id="subTitle">Timeless Sophistication</div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TITLE = 'Elegance';
+const SUBTITLE = 'Timeless Sophistication';
+const GOLD_COLOR = '#C9A84C';
+const BG_COLOR = '#000000';
+const PARTICLE_COUNT = 40;
+// ==============================
+
+document.getElementById('mainTitle').textContent = TITLE;
+document.getElementById('subTitle').textContent = SUBTITLE;
+document.body.style.background = BG_COLOR;
+
+const canvas = document.getElementById('luxCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class DiamondParticle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.size = Math.random() * 3 + 1;
+    this.speedY = -(Math.random() * 0.2 + 0.05);
+    this.speedX = (Math.random() - 0.5) * 0.1;
+    this.opacity = Math.random() * 0.4 + 0.1;
+    this.twinkle = Math.random() * Math.PI * 2;
+    this.twinkleSpeed = Math.random() * 0.03 + 0.01;
+    this.rotation = Math.random() * Math.PI;
+    this.rotSpeed = (Math.random() - 0.5) * 0.01;
+  }
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    this.twinkle += this.twinkleSpeed;
+    this.rotation += this.rotSpeed;
+    if (this.y < -10 || this.x < -10 || this.x > W + 10) {
+      this.reset();
+      this.y = H + 10;
+    }
+  }
+  draw() {
+    const a = this.opacity * (0.4 + 0.6 * Math.abs(Math.sin(this.twinkle)));
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    ctx.beginPath();
+    const s = this.size;
+    ctx.moveTo(0, -s);
+    ctx.lineTo(s * 0.6, 0);
+    ctx.lineTo(0, s);
+    ctx.lineTo(-s * 0.6, 0);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(201, 168, 76, ${a})`;
+    ctx.fill();
+    // glow
+    ctx.beginPath();
+    ctx.arc(0, 0, s * 4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(201, 168, 76, ${a * 0.08})`;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+const particles = [];
+for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new DiamondParticle());
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<h2>What should Cinema Studio show at first glance?</h2>
+<p class="subtitle">The user's primary action is picking a preset. Everything else is secondary.</p>
+
+<div class="cards">
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #1a1a2e;">
+      <div style="font-size: 11px; color: #999; margin-bottom: 8px;">CINEMA STUDIO</div>
+
+      <!-- Toggle -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px;">
+        <span style="color: #ccc; font-size: 12px;">Virtual Camera</span>
+        <div style="width: 32px; height: 16px; background: #4a7eff; border-radius: 8px;"></div>
+      </div>
+
+      <!-- Quick presets as chips -->
+      <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom: 10px;">
+        <div style="padding: 4px 8px; background: rgba(74,126,255,0.1); border: 1px solid rgba(74,126,255,0.3); border-radius: 6px; font-size: 9px; color: #4a7eff;">Zoom In</div>
+        <div style="padding: 4px 8px; background: #2a2a2a; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 9px; color: #999;">Pan Left</div>
+        <div style="padding: 4px 8px; background: #2a2a2a; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 9px; color: #999;">Ken Burns</div>
+        <div style="padding: 4px 8px; background: #2a2a2a; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 9px; color: #999;">Zoom Out</div>
+      </div>
+
+      <!-- Cinema presets as list -->
+      <div style="font-size: 10px; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">CINEMA PRESETS</div>
+      <div style="display:flex; gap:4px; margin-bottom: 8px; overflow:hidden;">
+        <div style="padding: 2px 6px; background: rgba(74,126,255,0.1); border-radius: 4px; font-size: 9px; color: #4a7eff;">All</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Dialogue</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Action</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Emotion</div>
+      </div>
+      <div style="space-y: 4px;">
+        <div style="padding: 6px 8px; background: #2a2a2a; border-radius: 6px; margin-bottom: 4px;">
+          <div style="font-size: 11px; color: #ddd;">Wide Establishing</div>
+          <div style="font-size: 9px; color: #666;">Classic wide shot with slow zoom in</div>
+        </div>
+        <div style="padding: 6px 8px; background: #2a2a2a; border-radius: 6px; margin-bottom: 4px;">
+          <div style="font-size: 11px; color: #ddd;">Aerial Descend</div>
+          <div style="font-size: 9px; color: #666;">High angle descending reveal</div>
+        </div>
+      </div>
+
+      <!-- Genre collapsed -->
+      <div style="margin-top: 8px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; color: #666; font-size: 10px;">
+        <span>▸ Genre Auto-Motion</span>
+      </div>
+      <!-- Camera settings collapsed -->
+      <div style="padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; color: #666; font-size: 10px;">
+        <span>▸ Camera &amp; Lens</span>
+      </div>
+      <div style="padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; color: #666; font-size: 10px;">
+        <span>▸ Optical Controls</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A: Presets First, Settings Collapsed</h3>
+      <p>Quick presets as chips at top. Cinema presets with category tabs visible. Genre, Camera/Lens, and Optical all collapsed by default. User sees presets immediately, drills into settings only when needed.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #1a1a2e;">
+      <div style="font-size: 11px; color: #999; margin-bottom: 8px;">CINEMA STUDIO</div>
+
+      <!-- Top tabs -->
+      <div style="display:flex; gap:0; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <div style="flex:1; text-align:center; padding: 8px 0; font-size: 11px; color: #4a7eff; border-bottom: 2px solid #4a7eff;">Presets</div>
+        <div style="flex:1; text-align:center; padding: 8px 0; font-size: 11px; color: #666;">Camera</div>
+      </div>
+
+      <!-- Toggle -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 0; margin-bottom: 10px;">
+        <span style="color: #ccc; font-size: 12px;">Virtual Camera</span>
+        <div style="width: 32px; height: 16px; background: #4a7eff; border-radius: 8px;"></div>
+      </div>
+
+      <!-- Quick moves row -->
+      <div style="font-size: 10px; color: #666; margin-bottom: 4px;">QUICK MOVES</div>
+      <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom: 12px;">
+        <div style="padding: 4px 8px; background: rgba(74,126,255,0.1); border: 1px solid rgba(74,126,255,0.3); border-radius: 6px; font-size: 9px; color: #4a7eff;">Zoom In</div>
+        <div style="padding: 4px 8px; background: #2a2a2a; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 9px; color: #999;">Pan Left</div>
+        <div style="padding: 4px 8px; background: #2a2a2a; border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 9px; color: #999;">Ken Burns</div>
+      </div>
+
+      <!-- Genre as horizontal scroll -->
+      <div style="font-size: 10px; color: #666; margin-bottom: 4px;">GENRE FEEL</div>
+      <div style="display:flex; gap:6px; margin-bottom: 12px; overflow:hidden;">
+        <div style="padding: 8px 12px; background: #2a2a2a; border-radius: 8px; min-width: 70px; text-align:center;">
+          <div style="font-size: 10px; color: #ddd;">Action</div>
+          <div style="font-size: 8px; color: #666;">Shaky, fast</div>
+        </div>
+        <div style="padding: 8px 12px; background: #2a2a2a; border-radius: 8px; min-width: 70px; text-align:center;">
+          <div style="font-size: 10px; color: #ddd;">Horror</div>
+          <div style="font-size: 8px; color: #666;">Slow creep</div>
+        </div>
+        <div style="padding: 8px 12px; background: #2a2a2a; border-radius: 8px; min-width: 70px; text-align:center;">
+          <div style="font-size: 10px; color: #ddd;">Romance</div>
+          <div style="font-size: 8px; color: #666;">Soft, warm</div>
+        </div>
+      </div>
+
+      <!-- Cinema presets -->
+      <div style="font-size: 10px; color: #666; margin-bottom: 4px;">CINEMA SHOTS</div>
+      <div style="display:flex; gap:4px; margin-bottom: 8px;">
+        <div style="padding: 2px 6px; background: rgba(74,126,255,0.1); border-radius: 4px; font-size: 9px; color: #4a7eff;">All</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Dialogue</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Action</div>
+      </div>
+      <div style="padding: 6px 8px; background: #2a2a2a; border-radius: 6px; margin-bottom: 4px;">
+        <div style="font-size: 11px; color: #ddd;">Wide Establishing</div>
+        <div style="font-size: 9px; color: #666;">Classic wide shot</div>
+      </div>
+      <div style="padding: 6px 8px; background: #2a2a2a; border-radius: 6px;">
+        <div style="font-size: 11px; color: #ddd;">Medium Close-Up</div>
+        <div style="font-size: 9px; color: #666;">Standard dialogue framing</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B: Two-Tab Split (Presets | Camera)</h3>
+      <p>Top tabs separate "Presets" from "Camera" (body, lens, optical). Presets tab shows all three groups vertically: Quick Moves as chips, Genre as horizontal scroll cards, Cinema as searchable list. Camera tab has all the sliders. Clean separation.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px; background: #1a1a2e;">
+      <div style="font-size: 11px; color: #999; margin-bottom: 8px;">CINEMA STUDIO</div>
+
+      <!-- Toggle -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px;">
+        <span style="color: #ccc; font-size: 12px;">Virtual Camera</span>
+        <div style="width: 32px; height: 16px; background: #4a7eff; border-radius: 8px;"></div>
+      </div>
+
+      <!-- Single unified search -->
+      <div style="background: #2a2a2a; border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; display:flex; align-items:center; gap: 6px;">
+        <span style="color: #666; font-size: 12px;">🔍</span>
+        <span style="color: #666; font-size: 11px;">Search all presets...</span>
+      </div>
+
+      <!-- Smart suggestions based on content -->
+      <div style="font-size: 10px; color: #666; margin-bottom: 6px;">SUGGESTED FOR YOUR CLIP</div>
+      <div style="display:flex; gap:4px; margin-bottom: 12px;">
+        <div style="padding: 6px 10px; background: rgba(74,126,255,0.08); border: 1px solid rgba(74,126,255,0.2); border-radius: 8px;">
+          <div style="font-size: 10px; color: #4a7eff;">Dialogue Close-Up</div>
+          <div style="font-size: 8px; color: #666;">For talking scenes</div>
+        </div>
+        <div style="padding: 6px 10px; background: rgba(74,126,255,0.08); border: 1px solid rgba(74,126,255,0.2); border-radius: 8px;">
+          <div style="font-size: 10px; color: #4a7eff;">Ken Burns</div>
+          <div style="font-size: 8px; color: #666;">Popular choice</div>
+        </div>
+      </div>
+
+      <!-- All presets flat list -->
+      <div style="font-size: 10px; color: #666; margin-bottom: 6px;">ALL PRESETS</div>
+      <div style="display:flex; gap:4px; margin-bottom: 8px; flex-wrap: wrap;">
+        <div style="padding: 2px 6px; background: rgba(74,126,255,0.1); border-radius: 4px; font-size: 9px; color: #4a7eff;">All</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Quick</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Genre</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Establishing</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Dialogue</div>
+        <div style="padding: 2px 6px; border-radius: 4px; font-size: 9px; color: #666;">Action</div>
+      </div>
+      <div style="padding: 6px 8px; background: #2a2a2a; border-radius: 6px; margin-bottom: 4px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="font-size: 11px; color: #ddd;">Slow Zoom In</span>
+          <span style="font-size: 8px; color: #555; background: #333; padding: 1px 4px; border-radius: 3px;">Quick</span>
+        </div>
+      </div>
+      <div style="padding: 6px 8px; background: #2a2a2a; border-radius: 6px; margin-bottom: 4px;">
+        <div style="display:flex; justify-content:space-between;">
+          <span style="font-size: 11px; color: #ddd;">Horror</span>
+          <span style="font-size: 8px; color: #555; background: #333; padding: 1px 4px; border-radius: 3px;">Genre</span>
+        </div>
+        <div style="font-size: 9px; color: #666;">Slow creep, sudden snap</div>
+      </div>
+
+      <!-- Settings gear icon -->
+      <div style="margin-top: 10px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; color: #666; font-size: 10px;">
+        <span>⚙ Camera Settings</span>
+        <span>▸</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: Smart Search + Unified List</h3>
+      <p>One search bar finds any preset. Smart suggestions based on clip content. All presets in a single flat list with type badges (Quick/Genre/Establishing/etc). Camera settings behind a single gear icon. Simplest possible first glance — just search or browse.</p>
+    </div>
+  </div>
+</div>

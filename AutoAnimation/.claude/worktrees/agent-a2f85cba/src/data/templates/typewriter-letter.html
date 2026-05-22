@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typewriter Letter</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.paper { width: 70vw; max-width: 600px; height: 85vh; background: #faf8f0; border-radius: 0.5vh; box-shadow: 0 2vh 6vh rgba(0,0,0,0.2), inset 0 0 30px rgba(0,0,0,0.03); padding: 6vh 6vw; position: relative; overflow: hidden; }
+.paper::before { content: ''; position: absolute; top: 0; left: 8vw; bottom: 0; width: 1px; background: #e8c4c4; opacity: 0.4; }
+.paper-lines { position: absolute; inset: 0; background: repeating-linear-gradient(transparent, transparent 3.2vh, #e8e4d8 3.2vh, #e8e4d8 3.3vh); opacity: 0.4; pointer-events: none; }
+.date-line { font-family: 'Courier New', monospace; font-size: 1.4vh; color: #666; margin-bottom: 3vh; text-align: right; }
+.letter-text { font-family: 'Courier New', monospace; font-size: 1.8vh; line-height: 3.2vh; color: #333; white-space: pre-wrap; }
+.cursor { display: inline-block; width: 1.2vh; height: 2vh; background: #333; animation: blink 0.8s step-end infinite; vertical-align: text-bottom; margin-left: 1px; }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+.signature { font-family: 'Georgia', serif; font-size: 2.2vh; font-style: italic; color: #444; margin-top: 3vh; opacity: 0; transition: opacity 1s; }
+.ink-stamp { position: absolute; bottom: 5vh; right: 5vw; width: 8vh; height: 8vh; border: 3px solid rgba(180,40,40,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: serif; font-size: 1.2vh; color: rgba(180,40,40,0.4); text-transform: uppercase; letter-spacing: 0.1em; transform: rotate(-15deg); opacity: 0; transition: opacity 0.5s; }
+</style>
+</head>
+<body>
+<div class="paper" id="paper">
+  <div class="paper-lines"></div>
+  <div class="date-line" id="dateLine"></div>
+  <div class="letter-text" id="letterText"><span class="cursor"></span></div>
+  <div class="signature" id="signature"></div>
+  <div class="ink-stamp" id="stamp">SENT</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  date: 'December 15, 1952',
+  letterBody: 'Dear Friend,\n\nI hope this letter finds you well. I have been thinking about our conversation last week, and I wanted to share something remarkable.\n\nThe world is changing faster than we ever imagined. New ideas are emerging every day, and I believe we stand at the threshold of something extraordinary.\n\nLet us meet again soon to discuss these matters further. Perhaps over coffee at the usual place?\n\nWith warmest regards,',
+  signature: 'Arthur J. Pemberton',
+  bgColor: '#d4c5a9',
+  typeSpeed: 35,
+  cycleDuration: 18000
+};
+
+document.body.style.background = CONFIG.bgColor;
+document.getElementById('dateLine').textContent = CONFIG.date;
+
+var textEl = document.getElementById('letterText');
+var sigEl = document.getElementById('signature');
+var stampEl = document.getElementById('stamp');
+sigEl.textContent = CONFIG.signature;
+
+var charIdx = 0;
+var typing = false;
+
+function startTyping() {
+  charIdx = 0; typing = true;
+  textEl.innerHTML = '<span class="cursor"></span>';
+  sigEl.style.opacity = '0';
+  stampEl.style.opacity = '0';
+
+  function typeChar() {
+    if (charIdx < CONFIG.letterBody.length) {
+      var text = CONFIG.letterBody.slice(0, charIdx + 1);
+      textEl.innerHTML = text.replace(/\n/g, '<br>') + '<span class="cursor"></span>';
+      charIdx++;
+      var ch = CONFIG.letterBody[charIdx - 1];
+      var delay = ch === '\n' ? 200 : ch === '.' || ch === ',' ? 100 : CONFIG.typeSpeed + Math.random() * 20;
+      setTimeout(typeChar, delay);
+    } else {
+      textEl.innerHTML = CONFIG.letterBody.replace(/\n/g, '<br>');
+      setTimeout(function() { sigEl.style.opacity = '1'; }, 500);
+      setTimeout(function() { stampEl.style.opacity = '1'; }, 1200);
+      setTimeout(startTyping, 4000);
+    }
+  }
+  typeChar();
+}
+
+startTyping();
+</script>
+</body>
+</html>

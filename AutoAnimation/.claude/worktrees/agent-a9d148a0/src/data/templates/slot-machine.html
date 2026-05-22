@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slot Machine</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; font-family: 'Arial Black', 'Impact', sans-serif; }
+.machine { width: 55vh; position: relative; display: flex; flex-direction: column; align-items: center; padding: 3vh; border-radius: 3vh; z-index: 1; }
+.title-bar { font-size: 5vh; font-weight: 900; letter-spacing: 0.1em; text-align: center; margin-bottom: 2vh; text-shadow: 0 0 20px currentColor, 0 2px 4px rgba(0,0,0,0.5); animation: titleGlow 2s ease-in-out infinite; }
+@keyframes titleGlow { 0%,100% { opacity: 1; } 50% { opacity: 0.85; } }
+.lights-row { display: flex; gap: 1.2vw; margin-bottom: 1.5vh; }
+.light { width: 1.5vh; height: 1.5vh; border-radius: 50%; }
+.light:nth-child(odd) { animation: lightFlash 0.8s infinite; }
+.light:nth-child(even) { animation: lightFlash 0.8s 0.4s infinite; }
+@keyframes lightFlash { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.reels-frame { display: flex; gap: 1vh; background: #111; border-radius: 1.5vh; padding: 1.5vh; border: 3px solid #555; position: relative; overflow: hidden; }
+.reel { width: 12vh; height: 14vh; background: #fff; border-radius: 1vh; overflow: hidden; position: relative; }
+.reel-strip { position: absolute; width: 100%; transition: top 2s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.symbol { height: 14vh; display: flex; align-items: center; justify-content: center; font-size: 6vh; }
+.payline { position: absolute; left: 0; right: 0; top: 50%; height: 3px; transform: translateY(-50%); z-index: 2; opacity: 0.5; }
+.credit-bar { display: flex; justify-content: space-between; width: 100%; margin-top: 2vh; padding: 1vh 2vw; background: rgba(0,0,0,0.5); border-radius: 1vh; }
+.credit-item { text-align: center; }
+.credit-label { font-size: 1.2vh; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
+.credit-val { font-size: 2.5vh; font-weight: 900; color: #ffd700; font-variant-numeric: tabular-nums; }
+.spin-btn { margin-top: 2vh; width: 15vh; height: 5vh; border-radius: 2.5vh; border: none; font-size: 2.2vh; font-weight: 900; letter-spacing: 0.15em; cursor: default; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.win-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 6vh; font-weight: 900; text-shadow: 0 0 30px currentColor; opacity: 0; transition: opacity 0.5s; z-index: 10; pointer-events: none; }
+.win-display.show { opacity: 1; animation: winPulse 0.5s ease-in-out 3; }
+@keyframes winPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.2); } }
+.star { position: absolute; font-size: 3vh; opacity: 0; pointer-events: none; }
+@keyframes starBurst { 0% { opacity: 1; transform: scale(0) rotate(0deg); } 100% { opacity: 0; transform: scale(1.5) rotate(180deg); } }
+</style>
+</head>
+<body>
+<div class="machine" id="machine">
+  <div class="title-bar" id="titleBar">JACKPOT</div>
+  <div class="lights-row" id="lights"></div>
+  <div class="reels-frame">
+    <div class="reel"><div class="reel-strip" id="reel0"></div></div>
+    <div class="reel"><div class="reel-strip" id="reel1"></div></div>
+    <div class="reel"><div class="reel-strip" id="reel2"></div></div>
+    <div class="payline" id="payline"></div>
+  </div>
+  <div class="credit-bar">
+    <div class="credit-item"><div class="credit-label">Credits</div><div class="credit-val" id="credits">1000</div></div>
+    <div class="credit-item"><div class="credit-label">Bet</div><div class="credit-val" id="bet">25</div></div>
+    <div class="credit-item"><div class="credit-label">Win</div><div class="credit-val" id="winAmt">0</div></div>
+  </div>
+  <div class="spin-btn" id="spinBtn">SPIN</div>
+  <div class="win-display" id="winDisplay">WIN!</div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  title: 'JACKPOT',
+  symbols: ['\uD83C\uDF52','\uD83C\uDF4B','\uD83C\uDF4A','\uD83C\uDF53','\uD83D\uDC8E','\u2B50','\uD83C\uDF40'],
+  machineColor: '#8b0000',
+  accentColor: '#ffd700',
+  bgColor: '#1a0a2e',
+  cycleDuration: 6000
+};
+
+document.body.style.background = CONFIG.bgColor;
+var machine = document.getElementById('machine');
+machine.style.background = 'linear-gradient(180deg, ' + CONFIG.machineColor + ', ' + CONFIG.machineColor + 'cc)';
+machine.style.border = '3px solid ' + CONFIG.accentColor + '60';
+
+var titleBar = document.getElementById('titleBar');
+titleBar.textContent = CONFIG.title;
+titleBar.style.color = CONFIG.accentColor;
+
+document.getElementById('payline').style.background = CONFIG.accentColor;
+
+var spinBtn = document.getElementById('spinBtn');
+spinBtn.style.background = 'linear-gradient(180deg, ' + CONFIG.accentColor + ', #b8860b)';
+spinBtn.style.color = CONFIG.machineColor;
+
+var lightsEl = document.getElementById('lights');
+for (var i = 0; i < 12; i++) {
+  var l = document.createElement('div'); l.className = 'light';
+  l.style.background = i%3===0 ? CONFIG.accentColor : i%3===1 ? '#ff0000' : '#00ff00';
+  lightsEl.appendChild(l);
+}
+
+// Build reel strips
+var reelSymbols = 20;
+for (var r = 0; r < 3; r++) {
+  var strip = document.getElementById('reel'+r);
+  for (var s = 0; s < reelSymbols; s++) {
+    var sym = document.createElement('div'); sym.className = 'symbol';
+    sym.textContent = CONFIG.symbols[Math.floor(Math.random()*CONFIG.symbols.length)];
+    strip.appendChild(sym);
+  }
+}
+
+var credits = 1000;
+
+function spin() {
+  var winDisplay = document.getElementById('winDisplay');
+  winDisplay.classList.remove('show');
+  winDisplay.style.color = CONFIG.accentColor;
+
+  var results = [];
+  for (var r = 0; r < 3; r++) {
+    var stop = Math.floor(Math.random()*(reelSymbols-3))+1;
+    // Sometimes force a win
+    if (r > 0 && Math.random() < 0.3) stop = results[0];
+    results.push(stop);
+    var strip = document.getElementById('reel'+r);
+    strip.style.transition = 'none';
+    strip.style.top = '0px';
+    void strip.offsetWidth;
+    strip.style.transition = 'top ' + (1.5+r*0.3) + 's cubic-bezier(0.2,0.8,0.3,1)';
+    strip.style.top = (-stop * 14) + 'vh';
+  }
+
+  var bet = 25;
+  credits -= bet;
+  document.getElementById('credits').textContent = credits;
+  document.getElementById('winAmt').textContent = '0';
+
+  setTimeout(function() {
+    // Check if all three stopped on same position
+    var allSame = results[0] === results[1] && results[1] === results[2];
+    var twoSame = results[0] === results[1] || results[1] === results[2] || results[0] === results[2];
+    var win = 0;
+    if (allSame) win = bet * 10;
+    else if (twoSame) win = bet * 2;
+    if (win > 0) {
+      credits += win;
+      document.getElementById('credits').textContent = credits;
+      document.getElementById('winAmt').textContent = win;
+      winDisplay.textContent = allSame ? 'JACKPOT!' : 'WIN!';
+      winDisplay.classList.add('show');
+    }
+  }, 2500);
+}
+
+setInterval(spin, CONFIG.cycleDuration);
+setTimeout(spin, 500);
+</script>
+</body>
+</html>

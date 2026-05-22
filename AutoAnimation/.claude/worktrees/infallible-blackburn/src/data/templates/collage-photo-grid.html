@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Photo Grid Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #111111;
+    font-family: 'Arial', sans-serif;
+  }
+
+  #stage {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .cell {
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: none;
+    will-change: transform, opacity;
+  }
+
+  .cell-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cell-bg {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Overlay gradient on each cell */
+  .cell-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.6) 100%);
+  }
+
+  /* Text label */
+  .cell-label {
+    position: absolute;
+    bottom: 8%;
+    left: 8%;
+    z-index: 2;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+
+  .cell-number {
+    position: absolute;
+    top: 8%;
+    right: 8%;
+    z-index: 2;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    font-family: 'Courier New', monospace;
+  }
+
+  @keyframes revealCell {
+    0% { opacity: 0; transform: scale(0.85); }
+    60% { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes shrinkAway {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.8); }
+  }
+
+  /* Ken Burns slow zoom */
+  @keyframes kenBurns {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.15); }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  layout: '3x3',
+  labels: ['EXPLORE', 'CREATE', 'INSPIRE', 'DREAM', 'BUILD', 'GROW', 'MOVE', 'SHINE', 'THRIVE'],
+  cellColors: ['#c62828', '#1565c0', '#2e7d32', '#f57f17', '#6a1b9a', '#00838f', '#d84315', '#283593', '#558b2f'],
+  gapSize: 4,
+  bgColor: '#111111',
+  cycleDuration: 10000,
+  kenBurnsEnabled: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function buildGrid() {
+  stage.innerHTML = '';
+  const [cols, rows] = CONFIG.layout.split('x').map(Number);
+  stage.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  stage.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  stage.style.gap = CONFIG.gapSize + 'px';
+  stage.style.padding = CONFIG.gapSize + 'px';
+
+  const cells = [];
+  const count = cols * rows;
+
+  for (let i = 0; i < count; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+
+    const inner = document.createElement('div');
+    inner.className = 'cell-inner';
+
+    const bg = document.createElement('div');
+    bg.className = 'cell-bg';
+    bg.style.background = CONFIG.cellColors[i % CONFIG.cellColors.length];
+    if (CONFIG.kenBurnsEnabled) {
+      bg.style.animation = `kenBurns ${6 + Math.random() * 4}s ease-in-out infinite alternate`;
+      bg.style.animationDelay = (Math.random() * 3) + 's';
+    }
+    inner.appendChild(bg);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'cell-overlay';
+    inner.appendChild(overlay);
+
+    const label = document.createElement('div');
+    label.className = 'cell-label';
+    label.textContent = CONFIG.labels[i % CONFIG.labels.length];
+    inner.appendChild(label);
+
+    const num = document.createElement('div');
+    num.className = 'cell-number';
+    num.textContent = String(i + 1).padStart(2, '0');
+    inner.appendChild(num);
+
+    cell.appendChild(inner);
+    stage.appendChild(cell);
+    cells.push(cell);
+  }
+
+  return cells;
+}
+
+function runAnimation(cells) {
+  const count = cells.length;
+  const revealStagger = 200;
+  const revealDuration = 500;
+  const holdDuration = 3500;
+  const shrinkStagger = 150;
+  const shrinkDuration = 400;
+  const pauseBeforeLoop = 800;
+
+  const totalRevealTime = (count - 1) * revealStagger + revealDuration;
+  const totalShrinkTime = (count - 1) * shrinkStagger + shrinkDuration;
+
+  let animationFrame, startTime;
+
+  // Randomize reveal order
+  const revealOrder = Array.from({ length: count }, (_, i) => i);
+  for (let i = revealOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [revealOrder[i], revealOrder[j]] = [revealOrder[j], revealOrder[i]];
+  }
+
+  function resetAll() {
+    cells.forEach(c => { c.style.animation = 'none'; c.style.opacity = '0'; c.style.transform = 'scale(0.8)'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalRevealTime) {
+      revealOrder.forEach((cellIdx, i) => {
+        const wordStart = i * revealStagger;
+        if (elapsed >= wordStart && !cells[cellIdx].dataset.revealed) {
+          cells[cellIdx].dataset.revealed = '1';
+          cells[cellIdx].style.animation = `revealCell ${revealDuration}ms cubic-bezier(0.22, 0.68, 0.36, 1.0) forwards`;
+        }
+      });
+    } else if (elapsed < totalRevealTime + holdDuration) {
+      // hold
+    } else if (elapsed < totalRevealTime + holdDuration + totalShrinkTime) {
+      const shrinkElapsed = elapsed - totalRevealTime - holdDuration;
+      cells.forEach((cell, i) => {
+        const wordStart = i * shrinkStagger;
+        if (shrinkElapsed >= wordStart && !cell.dataset.shrunk) {
+          cell.dataset.shrunk = '1';
+          cell.style.animation = `shrinkAway ${shrinkDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalRevealTime + holdDuration + totalShrinkTime + pauseBeforeLoop) {
+      // pause
+    } else {
+      resetAll();
+      cells.forEach(c => { delete c.dataset.revealed; delete c.dataset.shrunk; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(animationFrame);
+}
+
+let cells = buildGrid();
+runAnimation(cells);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    cells = buildGrid();
+    runAnimation(cells);
+  }, 300);
+});
+</script>
+</body>
+</html>

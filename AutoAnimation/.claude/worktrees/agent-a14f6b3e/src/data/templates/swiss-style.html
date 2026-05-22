@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swiss Style</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #FFFFFF;
+    font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+    color: #000;
+  }
+  /* Grid system */
+  .grid-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+  .grid-rule-h {
+    position: absolute; height: 2px; background: #000; left: 5%; right: 5%;
+  }
+  .grid-rule-v {
+    position: absolute; width: 2px; background: #000; top: 5%; bottom: 5%;
+  }
+  .rule-h1 { top: 15%; }
+  .rule-h2 { top: 50%; }
+  .rule-h3 { top: 85%; }
+  .rule-v1 { left: 33%; }
+  .rule-v2 { left: 66%; }
+
+  /* Massive typography */
+  .big-number {
+    position: absolute; z-index: 5;
+    font-weight: 900; line-height: 1;
+    color: #000;
+  }
+  .number-1 {
+    font-size: clamp(80px, 22vw, 240px);
+    top: 16%; left: 6%;
+    animation: numSlide1 8s ease-in-out infinite;
+  }
+  @keyframes numSlide1 {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(15px); }
+  }
+  .number-2 {
+    font-size: clamp(50px, 14vw, 150px);
+    top: 52%; right: 6%;
+    color: #E30613;
+    animation: numSlide2 10s ease-in-out infinite;
+  }
+  @keyframes numSlide2 {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Text blocks */
+  .text-block {
+    position: absolute; z-index: 6;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .tb-1 {
+    font-size: clamp(24px, 5vw, 52px); letter-spacing: clamp(2px, 0.5vw, 6px);
+    top: 35%; left: 6%;
+    animation: tbSlide 6s ease-in-out infinite;
+  }
+  @keyframes tbSlide {
+    0% { transform: translateX(-110%); opacity: 0; }
+    15%, 85% { transform: translateX(0); opacity: 1; }
+    100% { transform: translateX(110%); opacity: 0; }
+  }
+  .tb-2 {
+    font-size: clamp(12px, 2vw, 22px); letter-spacing: clamp(3px, 1vw, 10px);
+    bottom: 20%; left: 6%; color: #E30613;
+    animation: tbSlide 6s ease-in-out infinite 3s;
+  }
+  .tb-3 {
+    font-size: clamp(10px, 1.5vw, 16px); letter-spacing: clamp(2px, 0.8vw, 8px);
+    top: 42%; left: 6%; color: #666;
+    animation: tbFade 4s ease-in-out infinite 1s;
+  }
+  @keyframes tbFade {
+    0%, 100% { opacity: 0; }
+    20%, 80% { opacity: 0.6; }
+  }
+
+  /* Clean geometric shapes */
+  .geo {
+    position: absolute; z-index: 3;
+  }
+  .red-bar {
+    width: clamp(80px, 20vw, 200px); height: clamp(12px, 2.5vw, 28px);
+    background: #E30613;
+    top: 46%; left: 6%;
+    animation: barGrow 5s ease-in-out infinite;
+  }
+  @keyframes barGrow {
+    0%, 100% { transform: scaleX(0); transform-origin: left; }
+    20%, 80% { transform: scaleX(1); transform-origin: left; }
+  }
+  .black-square {
+    width: clamp(40px, 8vw, 80px); height: clamp(40px, 8vw, 80px);
+    background: #000;
+    bottom: 25%; right: 25%;
+    animation: squareSpin 12s linear infinite;
+  }
+  @keyframes squareSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .red-circle {
+    width: clamp(30px, 6vw, 60px); height: clamp(30px, 6vw, 60px);
+    background: #E30613; border-radius: 50%;
+    top: 18%; right: 10%;
+    animation: circPulse 3s ease-in-out infinite;
+  }
+  @keyframes circPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+
+  /* Minimalist clock */
+  .swiss-clock {
+    position: absolute; top: 55%; left: 36%;
+    width: clamp(80px, 16vw, 160px); height: clamp(80px, 16vw, 160px);
+    z-index: 4;
+  }
+  .clock-face {
+    width: 100%; height: 100%; border: 3px solid #000;
+    border-radius: 50%; position: relative;
+  }
+  .clock-center {
+    position: absolute; top: 50%; left: 50%;
+    width: 8px; height: 8px; background: #E30613;
+    border-radius: 50%; transform: translate(-50%, -50%);
+    z-index: 3;
+  }
+  .clock-hand {
+    position: absolute; bottom: 50%; left: 50%;
+    transform-origin: bottom center; background: #000;
+  }
+  .hour-hand {
+    width: 3px; height: 25%; margin-left: -1.5px;
+    animation: hourSpin 43200s linear infinite;
+  }
+  .minute-hand {
+    width: 2px; height: 35%; margin-left: -1px;
+    animation: minuteSpin 3600s linear infinite;
+  }
+  .second-hand {
+    width: 1px; height: 40%; margin-left: -0.5px;
+    background: #E30613;
+    animation: secondSpin 60s linear infinite;
+  }
+  @keyframes hourSpin { to { transform: rotate(360deg); } }
+  @keyframes minuteSpin { to { transform: rotate(360deg); } }
+  @keyframes secondSpin { to { transform: rotate(360deg); } }
+  /* Clock tick marks */
+  .tick {
+    position: absolute; width: 2px; height: 8px; background: #000;
+    top: 4px; left: 50%; margin-left: -1px;
+    transform-origin: center calc(50% + 50% - 4px);
+  }
+
+  /* Counter */
+  .counter-area {
+    position: absolute; bottom: 8%; left: 6%; z-index: 7;
+    font-size: clamp(36px, 8vw, 80px); font-weight: 900;
+    letter-spacing: -2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .counter-label {
+    font-size: clamp(9px, 1.2vw, 13px); letter-spacing: clamp(3px, 1vw, 8px);
+    text-transform: uppercase; color: #999; font-weight: 400;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<!-- Grid rules -->
+<div class="grid-overlay">
+  <div class="grid-rule-h rule-h1"></div>
+  <div class="grid-rule-h rule-h2"></div>
+  <div class="grid-rule-h rule-h3"></div>
+  <div class="grid-rule-v rule-v1"></div>
+  <div class="grid-rule-v rule-v2"></div>
+</div>
+
+<!-- Numbers -->
+<div class="big-number number-1" id="bigNum1">48</div>
+<div class="big-number number-2" id="bigNum2">07</div>
+
+<!-- Text blocks -->
+<div class="text-block tb-1" id="mainText">Design</div>
+<div class="text-block tb-2" id="subText">International Style</div>
+<div class="text-block tb-3" id="detailText">Form Follows Function</div>
+
+<!-- Geometric shapes -->
+<div class="geo red-bar"></div>
+<div class="geo black-square"></div>
+<div class="geo red-circle"></div>
+
+<!-- Clock -->
+<div class="swiss-clock">
+  <div class="clock-face" id="clockFace">
+    <div class="clock-hand hour-hand" id="hourHand"></div>
+    <div class="clock-hand minute-hand" id="minuteHand"></div>
+    <div class="clock-hand second-hand" id="secondHand"></div>
+    <div class="clock-center"></div>
+  </div>
+</div>
+
+<!-- Counter -->
+<div class="counter-area">
+  <div id="counterValue">000000</div>
+  <div class="counter-label" id="counterLabel">Sequence</div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const MAIN_TEXT = 'Design';
+const SUB_TEXT = 'International Style';
+const DETAIL_TEXT = 'Form Follows Function';
+const COUNTER_LABEL = 'Sequence';
+const ACCENT_RED = '#E30613';
+// ==============================
+
+document.getElementById('mainText').textContent = MAIN_TEXT;
+document.getElementById('subText').textContent = SUB_TEXT;
+document.getElementById('detailText').textContent = DETAIL_TEXT;
+document.getElementById('counterLabel').textContent = COUNTER_LABEL;
+
+// Clock tick marks
+const clockFace = document.getElementById('clockFace');
+for (let i = 0; i < 12; i++) {
+  const tick = document.createElement('div');
+  tick.className = 'tick';
+  tick.style.transform = `rotate(${i * 30}deg)`;
+  tick.style.transformOrigin = `center ${clockFace.offsetWidth ? clockFace.offsetWidth / 2 : 50}px`;
+  clockFace.appendChild(tick);
+}
+
+// Set clock hands to real time
+function setClock() {
+  const now = new Date();
+  const s = now.getSeconds();
+  const m = now.getMinutes();
+  const h = now.getHours() % 12;
+  document.getElementById('secondHand').style.transform = `rotate(${s * 6}deg)`;
+  document.getElementById('minuteHand').style.transform = `rotate(${m * 6 + s * 0.1}deg)`;
+  document.getElementById('hourHand').style.transform = `rotate(${h * 30 + m * 0.5}deg)`;
+}
+setClock();
+setInterval(setClock, 1000);
+
+// Counter
+let count = 0;
+function updateCounter() {
+  count++;
+  if (count > 999999) count = 0;
+  document.getElementById('counterValue').textContent = String(count).padStart(6, '0');
+}
+setInterval(updateCounter, 50);
+
+// Big numbers update
+function updateBigNumbers() {
+  const now = new Date();
+  document.getElementById('bigNum1').textContent = String(now.getHours()).padStart(2, '0');
+  document.getElementById('bigNum2').textContent = String(now.getMinutes()).padStart(2, '0');
+}
+updateBigNumbers();
+setInterval(updateBigNumbers, 1000);
+</script>
+</body>
+</html>

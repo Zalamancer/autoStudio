@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJ Deck</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #0a0a18;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .bpm {
+    position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+    color: #fff; font-size: 3.5vmin; z-index: 3; text-align: center;
+    font-weight: 700; letter-spacing: 0.15em;
+    text-shadow: 0 0 20px rgba(0,200,255,0.5);
+  }
+  .bpm .val { font-size: 6vmin; display: block; margin-top: 0.5vmin; }
+  .deck-label {
+    position: absolute; top: 25%; z-index: 3;
+    color: #fff; font-size: 2vmin; font-weight: 600;
+    letter-spacing: 0.2em; opacity: 0.6;
+  }
+  .deck-label.left { left: 14%; }
+  .deck-label.right { right: 14%; }
+  .crossfader-label {
+    position: absolute; bottom: 24%; left: 50%; transform: translateX(-50%);
+    color: #888; font-size: 1.4vmin; letter-spacing: 0.3em; z-index: 3;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="bpm">BPM<span class="val" id="bpmVal">128</span></div>
+<div class="deck-label left">DECK A</div>
+<div class="deck-label right">DECK B</div>
+<div class="crossfader-label">CROSSFADER</div>
+<script>
+const CONFIG = {
+  bgColor: '#0a0a18',
+  deckAColor: '#ff3366',
+  deckBColor: '#00ccff',
+  vinylColor: '#111118',
+  grooveColor: '#1a1a28',
+  ledColors: ['#ff3366', '#ff6633', '#ffcc00', '#33ff66', '#00ccff', '#6633ff'],
+  bpm: 128,
+  vinylSpeed: 0.8,
+  spectrumBars: 24,
+  smokeParticles: 60,
+  waveformSegments: 80
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy, time = 0;
+const smokePs = [];
+const beatPhase = () => (time * CONFIG.bpm / 60) % 1;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2; cy = H / 2;
+  initSmoke();
+}
+
+function initSmoke() {
+  smokePs.length = 0;
+  for (let i = 0; i < CONFIG.smokeParticles; i++) {
+    smokePs.push({
+      x: Math.random() * W, y: H * (0.85 + Math.random() * 0.15),
+      vx: (Math.random() - 0.5) * 0.5, vy: -Math.random() * 0.3,
+      r: 20 + Math.random() * 40, life: Math.random()
+    });
+  }
+}
+
+resize();
+window.addEventListener('resize', resize);
+
+function drawVinyl(x, y, radius, angle, color) {
+  // Glow
+  const glow = ctx.createRadialGradient(x, y, radius * 0.8, x, y, radius * 1.3);
+  glow.addColorStop(0, color + '15');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - radius * 1.3, y - radius * 1.3, radius * 2.6, radius * 2.6);
+
+  // Vinyl disc
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = CONFIG.vinylColor;
+  ctx.fill();
+
+  // Grooves
+  for (let i = 0; i < 12; i++) {
+    const r = radius * (0.3 + i * 0.055);
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = CONFIG.grooveColor;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  // Label
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.22, 0, Math.PI * 2);
+  ctx.fillStyle = color + '44';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.22, 0, Math.PI * 2);
+  ctx.strokeStyle = color + '88';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Spindle
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.04, 0, Math.PI * 2);
+  ctx.fillStyle = '#333';
+  ctx.fill();
+
+  // Highlight streak (spinning indicator)
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(radius * 0.25, 0);
+  ctx.lineTo(radius * 0.85, 0);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+
+  // Tonearm
+  const armAngle = -0.3 + Math.sin(time * 0.5) * 0.05;
+  ctx.save();
+  ctx.translate(x + radius * 0.85, y - radius * 0.85);
+  ctx.rotate(armAngle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-radius * 0.5, radius * 0.7);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#666';
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawWaveform(x, y, w, h, color, offset) {
+  ctx.beginPath();
+  for (let i = 0; i < CONFIG.waveformSegments; i++) {
+    const px = x + (i / CONFIG.waveformSegments) * w;
+    const amp = Math.sin(i * 0.3 + time * 4 + offset) * Math.sin(i * 0.1 + time * 1.5) * h * 0.4;
+    if (i === 0) ctx.moveTo(px, y + amp);
+    else ctx.lineTo(px, y + amp);
+  }
+  ctx.strokeStyle = color + 'aa';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Mirror
+  ctx.beginPath();
+  for (let i = 0; i < CONFIG.waveformSegments; i++) {
+    const px = x + (i / CONFIG.waveformSegments) * w;
+    const amp = Math.sin(i * 0.3 + time * 4 + offset) * Math.sin(i * 0.1 + time * 1.5) * h * 0.4;
+    if (i === 0) ctx.moveTo(px, y - amp);
+    else ctx.lineTo(px, y - amp);
+  }
+  ctx.strokeStyle = color + '55';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawSpectrum(x, y, w, h) {
+  const barW = w / (CONFIG.spectrumBars * 1.5);
+  for (let i = 0; i < CONFIG.spectrumBars; i++) {
+    const val = (0.2 + 0.8 * Math.abs(Math.sin(time * 5 + i * 0.5) * Math.cos(time * 2.3 + i * 0.3)));
+    const barH = val * h;
+    const bx = x + i * barW * 1.5;
+    const t = i / CONFIG.spectrumBars;
+    const color = t < 0.5 ? CONFIG.deckAColor : CONFIG.deckBColor;
+    const gradient = ctx.createLinearGradient(bx, y, bx, y - barH);
+    gradient.addColorStop(0, color + '88');
+    gradient.addColorStop(1, color + '22');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(bx, y - barH, barW, barH);
+  }
+}
+
+function drawCrossfader(y) {
+  const trackW = W * 0.35;
+  const trackX = cx - trackW / 2;
+  const trackH = H * 0.008;
+
+  // Track
+  ctx.fillStyle = '#222';
+  ctx.fillRect(trackX, y, trackW, trackH);
+
+  // Knob position
+  const knobX = trackX + trackW * (0.5 + Math.sin(time * 0.7) * 0.35);
+  ctx.beginPath();
+  ctx.arc(knobX, y + trackH / 2, H * 0.015, 0, Math.PI * 2);
+  ctx.fillStyle = '#444';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(knobX, y + trackH / 2, H * 0.01, 0, Math.PI * 2);
+  ctx.fillStyle = '#666';
+  ctx.fill();
+
+  // LED strip above
+  const ledY = y - H * 0.025;
+  const ledCount = 20;
+  for (let i = 0; i < ledCount; i++) {
+    const lx = trackX + (i / (ledCount - 1)) * trackW;
+    const ci = Math.floor((i / ledCount) * CONFIG.ledColors.length);
+    const pulse = Math.sin(time * 8 + i * 0.4) > 0.3 ? 1 : 0.2;
+    ctx.beginPath();
+    ctx.arc(lx, ledY, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = CONFIG.ledColors[ci % CONFIG.ledColors.length];
+    ctx.globalAlpha = pulse;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawSmoke() {
+  smokePs.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= 0.002;
+    if (p.life <= 0 || p.y < H * 0.6) {
+      p.x = Math.random() * W;
+      p.y = H * (0.88 + Math.random() * 0.12);
+      p.life = 0.8 + Math.random() * 0.2;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(100,120,180,${p.life * 0.04})`;
+    ctx.fill();
+  });
+}
+
+function drawBeatPulse() {
+  const beat = beatPhase();
+  if (beat < 0.15) {
+    const alpha = (1 - beat / 0.15) * 0.08;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawLightBeams() {
+  for (let i = 0; i < 5; i++) {
+    const angle = Math.sin(time * 0.5 + i * 1.2) * 0.3;
+    const bx = W * (0.15 + i * 0.175);
+    ctx.save();
+    ctx.translate(bx, 0);
+    ctx.rotate(angle);
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    const color = CONFIG.ledColors[i % CONFIG.ledColors.length];
+    grad.addColorStop(0, color + '08');
+    grad.addColorStop(0.5, color + '03');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-W * 0.05, 0, W * 0.1, H);
+    ctx.restore();
+  }
+}
+
+function animate() {
+  time += 0.016;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  drawLightBeams();
+  drawBeatPulse();
+  drawSmoke();
+
+  // Deck surface
+  ctx.fillStyle = '#0f0f1e';
+  const deckY = H * 0.22;
+  const deckH = H * 0.65;
+  ctx.fillRect(W * 0.03, deckY, W * 0.94, deckH);
+  ctx.strokeStyle = '#1a1a30';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(W * 0.03, deckY, W * 0.94, deckH);
+
+  // Vinyl records
+  const vinylR = W * 0.16;
+  const vinylY = H * 0.45;
+  const angle = time * CONFIG.vinylSpeed;
+  drawVinyl(cx - W * 0.22, vinylY, vinylR, angle, CONFIG.deckAColor);
+  drawVinyl(cx + W * 0.22, vinylY, vinylR, -angle * 1.02, CONFIG.deckBColor);
+
+  // Waveforms
+  const wfW = W * 0.3;
+  drawWaveform(cx - W * 0.37, H * 0.62, wfW, H * 0.04, CONFIG.deckAColor, 0);
+  drawWaveform(cx + W * 0.07, H * 0.62, wfW, H * 0.04, CONFIG.deckBColor, 2);
+
+  // Spectrum between decks
+  drawSpectrum(cx - W * 0.12, H * 0.58, W * 0.24, H * 0.12);
+
+  // Crossfader
+  drawCrossfader(H * 0.72);
+
+  // BPM update
+  const bpmFlicker = CONFIG.bpm + Math.floor(Math.sin(time * 0.3) * 2);
+  document.getElementById('bpmVal').textContent = bpmFlicker;
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>

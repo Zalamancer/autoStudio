@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Visualization</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+.container { width: 100%; height: 100%; display: grid; grid-template-rows: 8vh 1fr; grid-template-columns: 1fr 1fr; padding: 2vh 3vw; gap: 2vh; position: relative; }
+.bg-grid { position: absolute; inset: 0; background: linear-gradient(rgba(99,102,241,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.02) 1px, transparent 1px); background-size: 5vw 5vh; pointer-events: none; }
+.header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; opacity: 0; transition: opacity 0.6s; }
+.header.visible { opacity: 1; }
+.dash-title { font-size: 2.5vh; font-weight: 800; color: #e2e8f0; }
+.dash-date { font-size: 1.4vh; color: #64748b; }
+.panel { background: rgba(15,23,42,0.6); border: 1px solid rgba(100,116,139,0.1); border-radius: 1.5vh; padding: 2vh 2vw; position: relative; overflow: hidden; opacity: 0; transform: translateY(20px); transition: all 0.7s cubic-bezier(0.22,1,0.36,1); backdrop-filter: blur(8px); }
+.panel.visible { opacity: 1; transform: translateY(0); }
+.panel-title { font-size: 1.3vh; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 1.5vh; }
+.donut-area { display: flex; align-items: center; justify-content: center; height: 80%; }
+.donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-40%); text-align: center; }
+.donut-total { font-size: 3.5vh; font-weight: 800; color: #fff; }
+.donut-label { font-size: 1.1vh; color: #64748b; }
+.legend { display: flex; flex-wrap: wrap; gap: 1vw; margin-top: 1vh; }
+.legend-item { display: flex; align-items: center; gap: 0.5vw; font-size: 1.2vh; color: #94a3b8; }
+.legend-dot { width: 0.8vh; height: 0.8vh; border-radius: 50%; }
+.counters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5vh; height: 100%; }
+.counter-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 1vh; padding: 1.5vh 1.5vw; display: flex; flex-direction: column; justify-content: center; opacity: 0; transition: opacity 0.5s; }
+.counter-card.visible { opacity: 1; }
+.counter-value { font-size: 3vh; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; }
+.counter-label { font-size: 1.1vh; color: #64748b; margin-top: 0.3vh; }
+.counter-change { font-size: 1.2vh; font-weight: 700; margin-top: 0.5vh; }
+.counter-change.up { color: #10b981; }
+.counter-change.down { color: #ef4444; }
+.line-chart-area { height: 80%; position: relative; }
+.line-chart-area svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="bg-grid"></div>
+  <div class="header" id="header">
+    <div class="dash-title" id="dashTitle">Analytics Dashboard</div>
+    <div class="dash-date" id="dashDate">Feb 2026</div>
+  </div>
+  <div class="panel" id="donutPanel">
+    <div class="panel-title">Revenue Breakdown</div>
+    <div class="donut-area"><svg id="donut" viewBox="0 0 200 200" width="100%" height="100%"></svg></div>
+    <div class="donut-center"><div class="donut-total" id="donutTotal">$0</div><div class="donut-label">Total Revenue</div></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="panel" id="countersPanel">
+    <div class="panel-title">Key Metrics</div>
+    <div class="counters-grid" id="counters"></div>
+  </div>
+  <div class="panel" id="linePanel" style="grid-column: 1 / -1;">
+    <div class="panel-title">Monthly Trend</div>
+    <div class="line-chart-area" id="lineChart"></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  title: 'Analytics Dashboard',
+  date: 'Feb 2026',
+  donutSegments: [
+    { label: 'SaaS', value: 42, color: '#6366f1' },
+    { label: 'Enterprise', value: 28, color: '#8b5cf6' },
+    { label: 'API', value: 18, color: '#06b6d4' },
+    { label: 'Consulting', value: 12, color: '#10b981' },
+  ],
+  counters: [
+    { label: 'Total Users', value: 284000, suffix: '', change: '+12.4%', up: true },
+    { label: 'Revenue', value: 2400000, suffix: '', change: '+8.2%', up: true },
+    { label: 'Churn Rate', value: 2.1, suffix: '%', change: '-0.3%', up: true },
+    { label: 'NPS Score', value: 72, suffix: '', change: '+5', up: true },
+  ],
+  lineData: [12, 19, 15, 25, 22, 30, 28, 35, 32, 40, 38, 45],
+  cycleDuration: 12000,
+  bgColor: '#0d1117',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('dashTitle').textContent = CONFIG.title;
+document.getElementById('dashDate').textContent = CONFIG.date;
+
+function drawDonut(progress) {
+  var svg = document.getElementById('donut');
+  svg.innerHTML = '';
+  var total = CONFIG.donutSegments.reduce(function(s, seg) { return s + seg.value; }, 0);
+  var angle = -90;
+  CONFIG.donutSegments.forEach(function(seg) {
+    var sweep = (seg.value / total) * 360 * progress;
+    var r = 70, cx = 100, cy = 100;
+    var startRad = angle * Math.PI / 180;
+    var endRad = (angle + sweep) * Math.PI / 180;
+    var x1 = cx + r * Math.cos(startRad);
+    var y1 = cy + r * Math.sin(startRad);
+    var x2 = cx + r * Math.cos(endRad);
+    var y2 = cy + r * Math.sin(endRad);
+    var large = sweep > 180 ? 1 : 0;
+    var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x2 + ' ' + y2);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', seg.color);
+    path.setAttribute('stroke-width', '18');
+    path.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(path);
+    angle += sweep;
+  });
+}
+
+var legendEl = document.getElementById('legend');
+CONFIG.donutSegments.forEach(function(seg) {
+  var el = document.createElement('div');
+  el.className = 'legend-item';
+  el.innerHTML = '<div class="legend-dot" style="background:' + seg.color + '"></div>' + seg.label + ' (' + seg.value + '%)';
+  legendEl.appendChild(el);
+});
+
+var countersEl = document.getElementById('counters');
+CONFIG.counters.forEach(function(c) {
+  var el = document.createElement('div');
+  el.className = 'counter-card';
+  var formatted = c.value >= 1000000 ? '$' + (c.value/1000000).toFixed(1) + 'M' : c.value >= 1000 ? Math.round(c.value/1000) + 'K' : c.value + c.suffix;
+  el.innerHTML = '<div class="counter-value" data-target="' + formatted + '">0</div><div class="counter-label">' + c.label + '</div><div class="counter-change ' + (c.up ? 'up' : 'down') + '">' + c.change + '</div>';
+  countersEl.appendChild(el);
+});
+
+function drawLineChart(progress) {
+  var container = document.getElementById('lineChart');
+  container.innerHTML = '';
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 100 50');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.style.width = '100%'; svg.style.height = '100%';
+  var data = CONFIG.lineData;
+  var max = Math.max.apply(null, data) * 1.1;
+  var visibleCount = Math.floor(data.length * progress);
+  if (visibleCount < 2) { container.appendChild(svg); return; }
+  var pts = data.slice(0, visibleCount).map(function(v, i) {
+    return ((i / (data.length - 1)) * 96 + 2) + ',' + (48 - (v / max) * 44);
+  });
+  var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  var grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+  grad.setAttribute('id', 'lineGrad'); grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0'); grad.setAttribute('x2', '0'); grad.setAttribute('y2', '1');
+  var s1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+  s1.setAttribute('offset', '0%'); s1.setAttribute('stop-color', '#6366f1'); s1.setAttribute('stop-opacity', '0.3');
+  var s2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+  s2.setAttribute('offset', '100%'); s2.setAttribute('stop-color', '#6366f1'); s2.setAttribute('stop-opacity', '0');
+  grad.appendChild(s1); grad.appendChild(s2); defs.appendChild(grad); svg.appendChild(defs);
+  var area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  area.setAttribute('points', pts.join(' ') + ' ' + pts[pts.length-1].split(',')[0] + ',50 ' + pts[0].split(',')[0] + ',50');
+  area.setAttribute('fill', 'url(#lineGrad)');
+  svg.appendChild(area);
+  var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  line.setAttribute('points', pts.join(' '));
+  line.setAttribute('fill', 'none'); line.setAttribute('stroke', '#6366f1'); line.setAttribute('stroke-width', '0.8'); line.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(line);
+  container.appendChild(svg);
+}
+
+function runCycle() {
+  var header = document.getElementById('header');
+  var panels = document.querySelectorAll('.panel');
+  var counterCards = document.querySelectorAll('.counter-card');
+  header.classList.remove('visible');
+  panels.forEach(function(p) { p.classList.remove('visible'); });
+  counterCards.forEach(function(c) { c.classList.remove('visible'); });
+
+  setTimeout(function() { header.classList.add('visible'); }, 200);
+  panels.forEach(function(p, i) { setTimeout(function() { p.classList.add('visible'); }, 500 + i * 250); });
+  counterCards.forEach(function(c, i) { setTimeout(function() { c.classList.add('visible'); }, 1200 + i * 200); });
+
+  var donutStart = performance.now();
+  function animDonut() {
+    var p = Math.min((performance.now() - donutStart) / 2000, 1);
+    drawDonut(p);
+    var total = CONFIG.donutSegments.reduce(function(s, seg) { return s + seg.value; }, 0);
+    document.getElementById('donutTotal').textContent = '$' + Math.floor(total * p * 24) + 'K';
+    if (p < 1) requestAnimationFrame(animDonut);
+  }
+  setTimeout(function() { donutStart = performance.now(); animDonut(); }, 800);
+
+  var lineStart = performance.now();
+  function animLine() {
+    var p = Math.min((performance.now() - lineStart) / 2500, 1);
+    drawLineChart(p);
+    if (p < 1) requestAnimationFrame(animLine);
+  }
+  setTimeout(function() { lineStart = performance.now(); animLine(); }, 1500);
+
+  setTimeout(function() {
+    counterCards.forEach(function(c) {
+      var el = c.querySelector('.counter-value');
+      el.textContent = el.dataset.target;
+    });
+  }, 1500);
+
+  setTimeout(function() {
+    header.classList.remove('visible');
+    panels.forEach(function(p) { p.style.transition = 'opacity 0.8s'; p.classList.remove('visible'); });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

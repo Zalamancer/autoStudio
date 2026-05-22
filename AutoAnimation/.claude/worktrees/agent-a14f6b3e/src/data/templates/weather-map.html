@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @keyframes radarSweep {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+  @keyframes rainDrop {
+    0% { transform: translateY(-1vh); opacity: 0; }
+    20% { opacity: 0.8; }
+    100% { transform: translateY(4vh); opacity: 0; }
+  }
+  @keyframes lightningFlash {
+    0%, 100% { opacity: 0; }
+    10% { opacity: 1; }
+    20% { opacity: 0; }
+    30% { opacity: 0.7; }
+    40% { opacity: 0; }
+  }
+  @keyframes windArrow {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(1vw); }
+  }
+  @keyframes floatCloud {
+    0%, 100% { transform: translateX(0) translateY(0); }
+    50% { transform: translateX(1.5vw) translateY(-0.5vh); }
+  }
+  @keyframes sunRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes alertScroll {
+    from { transform: translateX(100%); }
+    to { transform: translateX(-100%); }
+  }
+  @keyframes pressurePulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; }
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #ffffff;
+  }
+  .map-bg {
+    width: 100%; height: 100%;
+    position: relative;
+    background: linear-gradient(170deg, #1a2a4a 0%, #0f1f3a 30%, #0a1628 60%, #071020 100%);
+  }
+  .grid-overlay {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(60,120,200,0.04) 1px, transparent 1px),
+      linear-gradient(rgba(60,120,200,0.04) 1px, transparent 1px);
+    background-size: 5vw 5vh;
+    pointer-events: none;
+  }
+
+  /* Map continent outlines */
+  .map-container {
+    position: absolute;
+    top: 8vh; left: 5vw;
+    width: 90vw; height: 65vh;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  .continent {
+    position: absolute;
+    border: 1.5px solid rgba(80,140,220,0.25);
+    border-radius: 30% 70% 50% 40%;
+    background: rgba(40,80,150,0.08);
+    box-shadow: inset 0 0 20px rgba(60,120,200,0.05);
+  }
+  .continent-na {
+    top: 10%; left: 5%; width: 28%; height: 45%;
+    border-radius: 35% 55% 45% 65%;
+  }
+  .continent-sa {
+    top: 50%; left: 15%; width: 16%; height: 40%;
+    border-radius: 40% 60% 55% 45%;
+  }
+  .continent-eu {
+    top: 8%; left: 40%; width: 18%; height: 28%;
+    border-radius: 50% 45% 55% 50%;
+  }
+  .continent-af {
+    top: 30%; left: 42%; width: 16%; height: 45%;
+    border-radius: 45% 55% 50% 50%;
+  }
+  .continent-as {
+    top: 5%; left: 58%; width: 30%; height: 50%;
+    border-radius: 40% 50% 60% 45%;
+  }
+  .continent-au {
+    top: 58%; left: 72%; width: 14%; height: 22%;
+    border-radius: 50% 45% 55% 60%;
+  }
+
+  /* Radar sweep */
+  .radar-sweep {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 80vw; height: 80vw;
+    transform: translate(-50%, -50%) rotate(0deg);
+    animation: radarSweep 4s linear infinite;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .radar-sweep::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 50%; height: 2px;
+    transform-origin: left center;
+    background: linear-gradient(90deg, rgba(0,200,100,0.6), transparent);
+  }
+  .radar-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0.8vh; height: 0.8vh;
+    background: rgba(0,200,100,0.8);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,200,100,0.5);
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+
+  /* Weather icons */
+  .weather-icon {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    transform: translateY(-2vh);
+    text-align: center;
+  }
+  .weather-icon.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .icon-symbol {
+    font-size: 4vh;
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
+  }
+  .icon-cloud { animation: floatCloud 4s ease-in-out infinite; }
+  .icon-sun { animation: sunRotate 20s linear infinite; display: inline-block; }
+
+  /* Rain drops */
+  .rain-group {
+    position: absolute;
+    pointer-events: none;
+  }
+  .rain-drop {
+    position: absolute;
+    width: 1px;
+    height: 1.5vh;
+    background: linear-gradient(to bottom, transparent, rgba(120,180,255,0.6));
+    animation: rainDrop 0.8s linear infinite;
+  }
+
+  /* Lightning */
+  .lightning {
+    position: absolute;
+    font-size: 3vh;
+    animation: lightningFlash 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255,255,100,0.8));
+  }
+
+  /* Temperature readings */
+  .temp-reading {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    text-align: center;
+  }
+  .temp-value {
+    font-size: 2.2vh;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+  .temp-city {
+    font-size: 0.9vh;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.6);
+    margin-top: 0.2vh;
+  }
+
+  /* Wind arrows */
+  .wind-arrow {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    color: rgba(100,200,255,0.6);
+    font-size: 2vh;
+    animation: windArrow 2s ease-in-out infinite;
+  }
+
+  /* Pressure indicators */
+  .pressure {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    text-align: center;
+  }
+  .pressure-circle {
+    width: 5vh; height: 5vh;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8vh;
+    font-weight: 800;
+    animation: pressurePulse 3s ease-in-out infinite;
+    margin: 0 auto;
+  }
+  .pressure-high .pressure-circle {
+    background: rgba(255,80,60,0.2);
+    border: 2px solid rgba(255,80,60,0.5);
+    color: #ff6b5a;
+  }
+  .pressure-low .pressure-circle {
+    background: rgba(60,140,255,0.2);
+    border: 2px solid rgba(60,140,255,0.5);
+    color: #5a9eff;
+  }
+  .pressure-label {
+    font-size: 0.8vh;
+    letter-spacing: 0.15em;
+    margin-top: 0.3vh;
+    color: rgba(255,255,255,0.5);
+  }
+
+  /* Forecast bar */
+  .forecast-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 14vh;
+    background: linear-gradient(to top, rgba(10,20,40,0.95), rgba(10,20,40,0.8));
+    border-top: 1px solid rgba(80,140,220,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4vw;
+    transform: translateY(100%);
+    transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .forecast-day {
+    text-align: center;
+    opacity: 0;
+    transform: translateY(1vh);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .forecast-day.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .fc-day-name {
+    font-size: 1vh;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 0.5vh;
+  }
+  .fc-icon {
+    font-size: 3vh;
+    margin-bottom: 0.3vh;
+  }
+  .fc-temp {
+    font-size: 1.4vh;
+    font-weight: 700;
+  }
+  .fc-temp-low {
+    font-size: 1vh;
+    color: rgba(255,255,255,0.4);
+  }
+
+  /* Alert banner */
+  .alert-banner {
+    position: absolute;
+    top: 3vh; left: 0; right: 0;
+    height: 3.5vh;
+    background: rgba(255,60,40,0.15);
+    border-bottom: 1px solid rgba(255,60,40,0.3);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  .alert-label {
+    background: #e04030;
+    padding: 0 1.5vw;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 1vh;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+    z-index: 2;
+    flex-shrink: 0;
+  }
+  .alert-text {
+    white-space: nowrap;
+    font-size: 1.2vh;
+    font-weight: 500;
+    color: #ffaa99;
+    animation: alertScroll 15s linear infinite;
+    padding-left: 2vw;
+  }
+
+  /* Title */
+  .map-title {
+    position: absolute;
+    top: 3vh; left: 4vw;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .title-main {
+    font-size: 2.5vh;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .title-sub {
+    font-size: 1vh;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.1em;
+    margin-top: 0.2vh;
+  }
+</style>
+</head>
+<body>
+<div class="map-bg">
+  <div class="grid-overlay"></div>
+
+  <div class="map-title" id="mapTitle">
+    <div class="title-main" id="titleMain">NATIONAL WEATHER SERVICE</div>
+    <div class="title-sub" id="titleSub">LIVE RADAR &amp; FORECAST</div>
+  </div>
+
+  <div class="map-container" id="mapContainer">
+    <div class="continent continent-na"></div>
+    <div class="continent continent-sa"></div>
+    <div class="continent continent-eu"></div>
+    <div class="continent continent-af"></div>
+    <div class="continent continent-as"></div>
+    <div class="continent continent-au"></div>
+
+    <!-- Weather icons placed on map -->
+    <div class="weather-icon" id="icon0" style="top:18%;left:12%;">
+      <div class="icon-symbol icon-sun">&#9728;&#65039;</div>
+    </div>
+    <div class="weather-icon" id="icon1" style="top:15%;left:28%;">
+      <div class="icon-symbol icon-cloud">&#9925;</div>
+    </div>
+    <div class="weather-icon" id="icon2" style="top:35%;left:45%;">
+      <div class="icon-symbol">&#127783;&#65039;</div>
+      <div class="rain-group" id="rainGroup0"></div>
+    </div>
+    <div class="weather-icon" id="icon3" style="top:12%;left:65%;">
+      <div class="icon-symbol icon-cloud">&#9925;</div>
+    </div>
+    <div class="weather-icon" id="icon4" style="top:60%;left:78%;">
+      <div class="icon-symbol icon-sun">&#9728;&#65039;</div>
+    </div>
+    <div class="lightning" id="lightning0" style="top:38%;left:48%;">&#9889;</div>
+
+    <!-- Temperature readings -->
+    <div class="temp-reading" id="temp0" style="top:25%;left:10%;">
+      <div class="temp-value" id="tempVal0">72&#176;F</div>
+      <div class="temp-city" id="tempCity0">Los Angeles</div>
+    </div>
+    <div class="temp-reading" id="temp1" style="top:14%;left:22%;">
+      <div class="temp-value" id="tempVal1">45&#176;F</div>
+      <div class="temp-city" id="tempCity1">Chicago</div>
+    </div>
+    <div class="temp-reading" id="temp2" style="top:18%;left:32%;">
+      <div class="temp-value" id="tempVal2">38&#176;F</div>
+      <div class="temp-city" id="tempCity2">New York</div>
+    </div>
+    <div class="temp-reading" id="temp3" style="top:10%;left:48%;">
+      <div class="temp-value" id="tempVal3">52&#176;F</div>
+      <div class="temp-city" id="tempCity3">London</div>
+    </div>
+    <div class="temp-reading" id="temp4" style="top:20%;left:72%;">
+      <div class="temp-value" id="tempVal4">68&#176;F</div>
+      <div class="temp-city" id="tempCity4">Tokyo</div>
+    </div>
+
+    <!-- Wind arrows -->
+    <div class="wind-arrow" id="wind0" style="top:20%;left:18%;">&#10148;</div>
+    <div class="wind-arrow" id="wind1" style="top:30%;left:50%;transform:rotate(45deg);">&#10148;</div>
+    <div class="wind-arrow" id="wind2" style="top:45%;left:70%;transform:rotate(-30deg);">&#10148;</div>
+
+    <!-- Pressure indicators -->
+    <div class="pressure pressure-high" id="pressHigh" style="top:22%;left:58%;">
+      <div class="pressure-circle">H</div>
+      <div class="pressure-label">1032 hPa</div>
+    </div>
+    <div class="pressure pressure-low" id="pressLow" style="top:40%;left:35%;">
+      <div class="pressure-circle">L</div>
+      <div class="pressure-label">998 hPa</div>
+    </div>
+
+    <!-- Radar sweep -->
+    <div class="radar-sweep" id="radarSweep"></div>
+    <div class="radar-center" id="radarCenter"></div>
+  </div>
+
+  <!-- Forecast bar -->
+  <div class="forecast-bar" id="forecastBar"></div>
+
+  <!-- Alert banner -->
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-label" id="alertLabel">WEATHER ALERT</div>
+    <div class="alert-text" id="alertText"></div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  var CONFIG = {
+    title: 'NATIONAL WEATHER SERVICE',
+    subtitle: 'LIVE RADAR & FORECAST',
+    temperatures: [
+      { value: '72\u00b0F', city: 'Los Angeles' },
+      { value: '45\u00b0F', city: 'Chicago' },
+      { value: '38\u00b0F', city: 'New York' },
+      { value: '52\u00b0F', city: 'London' },
+      { value: '68\u00b0F', city: 'Tokyo' }
+    ],
+    forecast: [
+      { day: 'MON', icon: '\u2600\ufe0f', high: 74, low: 58 },
+      { day: 'TUE', icon: '\u26c5', high: 68, low: 52 },
+      { day: 'WED', icon: '\ud83c\udf27\ufe0f', high: 55, low: 44 },
+      { day: 'THU', icon: '\u26c5', high: 62, low: 48 },
+      { day: 'FRI', icon: '\u2600\ufe0f', high: 70, low: 55 }
+    ],
+    alertLabel: 'WEATHER ALERT',
+    alertText: 'Severe thunderstorm warning in effect for the central plains region through Friday evening. Damaging winds and large hail expected.',
+    highPressure: '1032 hPa',
+    lowPressure: '998 hPa',
+    bgColor1: '#1a2a4a',
+    bgColor2: '#0a1628',
+    accentColor: '#3c8cff',
+    cycleDuration: 16000
+  };
+
+  // Apply config
+  document.getElementById('titleMain').textContent = CONFIG.title;
+  document.getElementById('titleSub').textContent = CONFIG.subtitle;
+  document.getElementById('alertLabel').textContent = CONFIG.alertLabel;
+  document.getElementById('alertText').textContent = CONFIG.alertText + '   \u2022   ' + CONFIG.alertText;
+
+  CONFIG.temperatures.forEach(function(t, i) {
+    var valEl = document.getElementById('tempVal' + i);
+    var cityEl = document.getElementById('tempCity' + i);
+    if (valEl) valEl.textContent = t.value;
+    if (cityEl) cityEl.textContent = t.city;
+  });
+
+  // Build forecast bar
+  var forecastBar = document.getElementById('forecastBar');
+  var forecastDays = [];
+  CONFIG.forecast.forEach(function(f) {
+    var day = document.createElement('div');
+    day.className = 'forecast-day';
+    day.innerHTML =
+      '<div class="fc-day-name">' + f.day + '</div>' +
+      '<div class="fc-icon">' + f.icon + '</div>' +
+      '<div class="fc-temp">' + f.high + '\u00b0</div>' +
+      '<div class="fc-temp-low">' + f.low + '\u00b0</div>';
+    forecastDays.push(day);
+    forecastBar.appendChild(day);
+  });
+
+  // Build rain drops for storm icon
+  var rainGroup = document.getElementById('rainGroup0');
+  for (var i = 0; i < 6; i++) {
+    var drop = document.createElement('div');
+    drop.className = 'rain-drop';
+    drop.style.left = (i * 1) + 'vw';
+    drop.style.top = '4vh';
+    drop.style.animationDelay = (Math.random() * 0.8) + 's';
+    rainGroup.appendChild(drop);
+  }
+
+  function runCycle() {
+    var mapTitle = document.getElementById('mapTitle');
+    var mapContainer = document.getElementById('mapContainer');
+    var radarSweep = document.getElementById('radarSweep');
+    var radarCenter = document.getElementById('radarCenter');
+    var forecastBarEl = document.getElementById('forecastBar');
+    var alertBanner = document.getElementById('alertBanner');
+    var icons = [document.getElementById('icon0'), document.getElementById('icon1'),
+                 document.getElementById('icon2'), document.getElementById('icon3'),
+                 document.getElementById('icon4')];
+    var temps = [document.getElementById('temp0'), document.getElementById('temp1'),
+                 document.getElementById('temp2'), document.getElementById('temp3'),
+                 document.getElementById('temp4')];
+    var winds = [document.getElementById('wind0'), document.getElementById('wind1'),
+                 document.getElementById('wind2')];
+    var pressHigh = document.getElementById('pressHigh');
+    var pressLow = document.getElementById('pressLow');
+
+    // Reset all
+    mapTitle.style.transition = 'none';
+    mapTitle.style.opacity = '0';
+    mapContainer.style.transition = 'none';
+    mapContainer.style.opacity = '0';
+    radarSweep.style.transition = 'none';
+    radarSweep.style.opacity = '0';
+    radarCenter.style.transition = 'none';
+    radarCenter.style.opacity = '0';
+    forecastBarEl.style.transition = 'none';
+    forecastBarEl.style.transform = 'translateY(100%)';
+    alertBanner.style.transition = 'none';
+    alertBanner.style.opacity = '0';
+
+    icons.forEach(function(el) { el.classList.remove('visible'); });
+    temps.forEach(function(el) { el.style.transition = 'none'; el.style.opacity = '0'; });
+    winds.forEach(function(el) { el.style.transition = 'none'; el.style.opacity = '0'; });
+    pressHigh.style.transition = 'none'; pressHigh.style.opacity = '0';
+    pressLow.style.transition = 'none'; pressLow.style.opacity = '0';
+    forecastDays.forEach(function(d) { d.classList.remove('visible'); });
+
+    void mapTitle.offsetWidth;
+
+    // 1. Map appears with title
+    setTimeout(function() {
+      mapTitle.style.transition = 'opacity 0.8s ease';
+      mapTitle.style.opacity = '1';
+    }, 200);
+    setTimeout(function() {
+      mapContainer.style.transition = 'opacity 1.2s ease';
+      mapContainer.style.opacity = '1';
+    }, 500);
+
+    // 2. Weather icons drop in
+    setTimeout(function() {
+      icons.forEach(function(el, i) {
+        setTimeout(function() { el.classList.add('visible'); }, i * 300);
+      });
+    }, 1800);
+
+    // 3. Temperatures fade in
+    setTimeout(function() {
+      temps.forEach(function(el, i) {
+        setTimeout(function() {
+          el.style.transition = 'opacity 0.5s ease';
+          el.style.opacity = '1';
+        }, i * 250);
+      });
+    }, 3500);
+
+    // 4. Wind arrows and pressure
+    setTimeout(function() {
+      winds.forEach(function(el, i) {
+        setTimeout(function() {
+          el.style.transition = 'opacity 0.5s ease';
+          el.style.opacity = '1';
+        }, i * 200);
+      });
+    }, 5000);
+
+    setTimeout(function() {
+      pressHigh.style.transition = 'opacity 0.6s ease';
+      pressHigh.style.opacity = '1';
+    }, 5500);
+    setTimeout(function() {
+      pressLow.style.transition = 'opacity 0.6s ease';
+      pressLow.style.opacity = '1';
+    }, 5800);
+
+    // 5. Forecast bar slides up
+    setTimeout(function() {
+      forecastBarEl.style.transition = 'transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)';
+      forecastBarEl.style.transform = 'translateY(0)';
+      forecastDays.forEach(function(d, i) {
+        setTimeout(function() { d.classList.add('visible'); }, i * 200);
+      });
+    }, 7000);
+
+    // 6. Alert banner
+    setTimeout(function() {
+      alertBanner.style.transition = 'opacity 0.6s ease';
+      alertBanner.style.opacity = '1';
+    }, 8500);
+
+    // 7. Radar sweep
+    setTimeout(function() {
+      radarSweep.style.transition = 'opacity 1s ease';
+      radarSweep.style.opacity = '1';
+      radarCenter.style.transition = 'opacity 1s ease';
+      radarCenter.style.opacity = '1';
+    }, 9500);
+
+    // 8. Fade out everything
+    setTimeout(function() {
+      [mapTitle, mapContainer, alertBanner].forEach(function(el) {
+        el.style.transition = 'opacity 1.2s ease';
+        el.style.opacity = '0';
+      });
+      radarSweep.style.transition = 'opacity 1s ease';
+      radarSweep.style.opacity = '0';
+      radarCenter.style.transition = 'opacity 1s ease';
+      radarCenter.style.opacity = '0';
+      forecastBarEl.style.transition = 'transform 0.8s ease-in';
+      forecastBarEl.style.transform = 'translateY(100%)';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

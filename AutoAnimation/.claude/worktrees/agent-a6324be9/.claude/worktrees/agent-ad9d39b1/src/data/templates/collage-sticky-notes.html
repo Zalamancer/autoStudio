@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sticky Notes Collage</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #f0f0f0; }
+  body::before { content:''; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.04;
+    background-image: linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 30px 30px; }
+  #stage { position: absolute; inset: 0; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(3, 1fr); gap: 16px; padding: 30px; }
+
+  .sticky { opacity: 0; will-change: transform, opacity; display: flex; align-items: flex-start; justify-content: center; padding-top: 10px; }
+  .sticky-inner { width: 85%; padding: 16px; position: relative; min-height: 100px; font-family: 'Arial', sans-serif; }
+  .sticky-inner::before { content:''; position: absolute; bottom: 0; left: 30%; width: 40%; height: 4px; background: rgba(0,0,0,0.08); filter: blur(3px); }
+  .sticky-title { font-size: 14px; font-weight: 700; color: rgba(0,0,0,0.7); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .sticky-text { font-size: 12px; color: rgba(0,0,0,0.5); line-height: 1.5; }
+  .sticky-check { font-size: 11px; color: rgba(0,0,0,0.4); margin-top: 6px; }
+  .sticky-check::before { content: '\u2610 '; }
+  .sticky-check.done::before { content: '\u2611 '; }
+
+  @keyframes stickyDrop { 0% { opacity: 0; transform: translateY(-40px) rotate(var(--rot)); } 60% { transform: translateY(3px) rotate(var(--rot)); } 100% { opacity: 1; transform: translateY(0) rotate(var(--rot)); } }
+  @keyframes stickyPeel { 0% { opacity: 1; transform: translateY(0) rotate(var(--rot)); } 100% { opacity: 0; transform: translateY(-50px) rotate(calc(var(--rot) + 10deg)); } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const CONFIG = {
+  notes: [
+    { bg: '#FFEB3B', title: 'TODO', text: 'Finish design mockups', checks: ['Wireframes', 'Colors'], done: [true, false] },
+    { bg: '#F48FB1', title: 'IDEAS', text: 'New feature brainstorm', checks: ['User profiles', 'Dark mode'], done: [false, false] },
+    { bg: '#81D4FA', title: 'MEETING', text: 'Team sync at 2pm', checks: ['Agenda ready'], done: [true] },
+    { bg: '#A5D6A7', title: 'DONE', text: 'Sprint review complete', checks: ['Deployed', 'Tested'], done: [true, true] },
+    { bg: '#CE93D8', title: 'BUG', text: 'Fix login redirect', checks: ['Reproduce', 'Debug'], done: [true, false] },
+    { bg: '#FFE082', title: 'NOTE', text: 'API keys expire Friday', checks: ['Rotate keys'], done: [false] },
+    { bg: '#EF9A9A', title: 'URGENT', text: 'Client feedback due', checks: ['Review docs'], done: [false] },
+    { bg: '#80CBC4', title: 'LEARN', text: 'New framework tutorial', checks: ['Watch videos', 'Try code'], done: [false, false] },
+    { bg: '#FFCC80', title: 'REMINDER', text: 'Update dependencies', checks: ['npm audit'], done: [false] },
+    { bg: '#B0BEC5', title: 'LATER', text: 'Refactor auth module', checks: ['Plan scope'], done: [false] },
+    { bg: '#FFF59D', title: 'GOAL', text: 'Ship v2.0 this month', checks: ['Feature freeze'], done: [false] },
+    { bg: '#F8BBD0', title: 'DESIGN', text: 'New icon set needed', checks: ['Source icons'], done: [false] },
+  ],
+  bgColor: '#f0f0f0',
+  cycleDuration: 10000,
+};
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('stage');
+
+function seededRandom(seed) {
+  let s = seed % 2147483647; if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function build() {
+  stage.innerHTML = '';
+  const els = [];
+  CONFIG.notes.forEach((n, i) => {
+    const rng = seededRandom(i * 131 + 37);
+    const el = document.createElement('div'); el.className = 'sticky';
+    const rot = (rng() - 0.5) * 6;
+    el.style.setProperty('--rot', rot + 'deg');
+    const inner = document.createElement('div'); inner.className = 'sticky-inner';
+    inner.style.background = n.bg;
+    const title = document.createElement('div'); title.className = 'sticky-title'; title.textContent = n.title;
+    const text = document.createElement('div'); text.className = 'sticky-text'; text.textContent = n.text;
+    inner.appendChild(title); inner.appendChild(text);
+    n.checks.forEach((c, ci) => {
+      const check = document.createElement('div');
+      check.className = 'sticky-check' + (n.done[ci] ? ' done' : '');
+      check.textContent = c; inner.appendChild(check);
+    });
+    el.appendChild(inner); stage.appendChild(el); els.push(el);
+  });
+  return els;
+}
+
+function runAnimation(els) {
+  const n=els.length, inS=200, inD=400, hold=3500, outS=150, outD=350, pause=800;
+  const tIn=(n-1)*inS+inD, tOut=(n-1)*outS+outD;
+  let af, st;
+  function reset(){els.forEach(e=>{e.style.animation='none';e.style.opacity='0';});}
+  function tick(ts){
+    if(!st)st=ts;const e=ts-st;
+    if(e<tIn){els.forEach((el,i)=>{if(e>=i*inS&&!el.dataset.i){el.dataset.i='1';el.style.animation=`stickyDrop ${inD}ms ease-out forwards`;}});}
+    else if(e<tIn+hold){}
+    else if(e<tIn+hold+tOut){const oe=e-tIn-hold;els.forEach((el,i)=>{if(oe>=i*outS&&!el.dataset.o){el.dataset.o='1';el.style.animation=`stickyPeel ${outD}ms ease-in forwards`;}});}
+    else if(e<tIn+hold+tOut+pause){}
+    else{reset();els.forEach(el=>{delete el.dataset.i;delete el.dataset.o;});st=ts;}
+    af=requestAnimationFrame(tick);
+  }
+  reset();af=requestAnimationFrame(tick);
+}
+
+let els=build();runAnimation(els);
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{els=build();runAnimation(els);},300);});
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080,height=1080">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1080px; overflow: hidden; font-family: 'Impact', 'Arial Black', sans-serif; }
+.scene { width: 100%; height: 100%; background: linear-gradient(180deg, #74b9ff 0%, #74b9ff 60%, #55efc4 60%, #55efc4 100%); position: relative; display: flex; align-items: center; justify-content: center; }
+.table { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); width: 500px; height: 200px; background: #dfe6e9; border-radius: 8px; border: 4px solid #636e72; display: flex; align-items: center; justify-content: center; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.sign-text { font-size: 38px; color: #2d3436; text-align: center; line-height: 1.3; text-transform: uppercase; letter-spacing: 1px; word-wrap: break-word; }
+.person { position: absolute; bottom: 38%; left: 62%; font-size: 100px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); }
+.cup { position: absolute; bottom: 32%; left: 42%; font-size: 40px; }
+.title-banner { position: absolute; bottom: 6%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 14px 36px; border-radius: 10px; font-size: 24px; letter-spacing: 3px; text-transform: uppercase; opacity: 0; }
+.title-banner.show { opacity: 1; transition: opacity 0.5s ease; }
+.table { opacity: 0; transform: translateX(-50%) scale(0.9); }
+.table.show { opacity: 1; transform: translateX(-50%) scale(1); transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.cloud { position: absolute; font-size: 60px; opacity: 0.4; }
+.cloud1 { top: 8%; left: 10%; animation: drift 20s linear infinite; }
+.cloud2 { top: 15%; right: 15%; animation: drift 25s linear infinite reverse; }
+@keyframes drift { 0% { transform: translateX(0); } 50% { transform: translateX(30px); } 100% { transform: translateX(0); } }
+</style>
+</head>
+<body>
+<script>
+const CONFIG = {
+  signText: 'Memes are a valid form of communication. Change my mind.',
+  bannerText: 'CHANGE MY MIND',
+  skyColor: '#74b9ff',
+  grassColor: '#55efc4',
+  tableColor: '#dfe6e9',
+  textColor: '#2d3436',
+  fontSize: 38,
+  animationSpeed: 600
+};
+</script>
+<div class="scene" id="scene">
+  <span class="cloud cloud1">\u2601\uFE0F</span>
+  <span class="cloud cloud2">\u2601\uFE0F</span>
+  <div class="table" id="table">
+    <div class="sign-text" id="signText"></div>
+  </div>
+  <span class="person">\u{1F9D4}</span>
+  <span class="cup">\u2615</span>
+  <div class="title-banner" id="banner"></div>
+</div>
+<script>
+document.getElementById('signText').textContent = CONFIG.signText;
+document.getElementById('banner').textContent = CONFIG.bannerText;
+document.getElementById('signText').style.color = CONFIG.textColor;
+document.getElementById('signText').style.fontSize = CONFIG.fontSize + 'px';
+document.getElementById('table').style.background = CONFIG.tableColor;
+var scene = document.getElementById('scene');
+scene.style.background = 'linear-gradient(180deg,' + CONFIG.skyColor + ' 0%,' + CONFIG.skyColor + ' 60%,' + CONFIG.grassColor + ' 60%,' + CONFIG.grassColor + ' 100%)';
+
+setTimeout(() => document.getElementById('table').classList.add('show'), 300);
+setTimeout(() => document.getElementById('banner').classList.add('show'), 900);
+</script>
+</body>
+</html>

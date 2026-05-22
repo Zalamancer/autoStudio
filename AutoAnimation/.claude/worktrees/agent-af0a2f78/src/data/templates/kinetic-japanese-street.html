@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Japanese Street Poster - Kinetic Typography</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #f2ede4;
+  }
+
+  /* Washi paper texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse at 30% 40%, rgba(200,180,150,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, rgba(200,180,150,0.06) 0%, transparent 50%);
+  }
+
+  body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.15;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  #poster-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .word-block {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1;
+    opacity: 0;
+    transform-origin: center center;
+    cursor: default;
+    user-select: none;
+    will-change: transform, opacity;
+  }
+
+  .word-block .word-inner {
+    display: inline-block;
+    padding: 6px 16px;
+    position: relative;
+  }
+
+  /* Red stamp seal effect */
+  .word-block.stamp-seal .word-inner {
+    border: 3px solid #cc2200;
+    padding: 10px 18px;
+  }
+
+  .word-block.stamp-seal .word-inner::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #cc2200;
+    opacity: 0.6;
+  }
+
+  /* Vertical text decoration line */
+  .word-block.vert-accent .word-inner::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #cc2200;
+  }
+
+  @keyframes brushStroke {
+    0% { opacity: 0; transform: var(--brush-start); filter: blur(4px); }
+    40% { opacity: 0.9; transform: var(--brush-mid); filter: blur(1px); }
+    70% { opacity: 1; transform: var(--brush-settle); filter: blur(0); }
+    100% { opacity: var(--final-opacity); transform: var(--brush-end); filter: blur(0); }
+  }
+
+  @keyframes fadeDissolve {
+    0% { opacity: var(--final-opacity); transform: var(--brush-end); filter: blur(0); }
+    50% { opacity: 0.4; filter: blur(2px); }
+    100% { opacity: 0; filter: blur(8px); transform: var(--brush-end) scale(1.05); }
+  }
+
+  /* Decorative elements */
+  .deco-circle {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    border-radius: 50%;
+    border: 2px solid #cc2200;
+    opacity: 0.15;
+  }
+
+  .deco-hanko {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    width: 50px;
+    height: 50px;
+    border: 3px solid #cc2200;
+    border-radius: 4px;
+    opacity: 0.12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #cc2200;
+    font-family: serif;
+  }
+
+  .deco-line-jp {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    background: #1a1a1a;
+    opacity: 0.08;
+  }
+</style>
+</head>
+<body>
+
+<div id="poster-stage"></div>
+
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  words: ['TOKYO', 'STREET', 'STYLE', 'URBAN', 'WAVE', 'FLOW'],
+  colors: ['#1a1a1a', '#cc2200', '#1a1a1a', '#cc2200', '#1a1a1a', '#cc2200'],
+  bgColor: '#f2ede4',
+  maxRotation: 5,
+  overlapAmount: 0.25,
+  cycleDuration: 9000,
+  brushEffect: true,
+};
+// =========================================
+
+document.body.style.backgroundColor = CONFIG.bgColor;
+const stage = document.getElementById('poster-stage');
+
+const fontPresets = [
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '12px' },
+  { family: 'Georgia', weight: '700', style: 'normal', transform: 'uppercase', letterSpacing: '4px' },
+  { family: 'Arial Black, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '6px' },
+  { family: 'Impact', weight: '400', style: 'normal', transform: 'uppercase', letterSpacing: '2px' },
+  { family: 'Georgia', weight: '700', style: 'italic', transform: 'lowercase', letterSpacing: '3px' },
+  { family: 'Arial Narrow, Arial', weight: '900', style: 'normal', transform: 'uppercase', letterSpacing: '10px' },
+];
+
+const fontSizes = [150, 90, 170, 75, 190, 100];
+const wordStyles = ['stamp-seal', '', 'vert-accent', 'stamp-seal', '', 'vert-accent'];
+
+function seededRandom(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function createDecorations() {
+  const circles = [
+    { top: '10%', right: '10%', size: 80 },
+    { bottom: '12%', left: '8%', size: 60 },
+    { top: '50%', left: '5%', size: 40 },
+  ];
+  circles.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'deco-circle';
+    el.style.width = c.size + 'px';
+    el.style.height = c.size + 'px';
+    if (c.top) el.style.top = c.top;
+    if (c.bottom) el.style.bottom = c.bottom;
+    if (c.left) el.style.left = c.left;
+    if (c.right) el.style.right = c.right;
+    stage.appendChild(el);
+  });
+
+  // Hanko seals
+  const hankos = [
+    { bottom: '8%', right: '8%', char: '\u5370' },
+    { top: '6%', left: '5%', char: '\u82B1' },
+  ];
+  hankos.forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'deco-hanko';
+    el.textContent = h.char;
+    if (h.top) el.style.top = h.top;
+    if (h.bottom) el.style.bottom = h.bottom;
+    if (h.left) el.style.left = h.left;
+    if (h.right) el.style.right = h.right;
+    stage.appendChild(el);
+  });
+
+  // Thin decorative lines
+  const lines = [
+    { top: '20%', left: '3%', width: 1, height: 80 },
+    { top: '60%', right: '4%', width: 1, height: 100 },
+    { bottom: '20%', left: '15%', width: 60, height: 1 },
+  ];
+  lines.forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'deco-line-jp';
+    el.style.width = l.width + 'px';
+    el.style.height = l.height + 'px';
+    if (l.top) el.style.top = l.top;
+    if (l.bottom) el.style.bottom = l.bottom;
+    if (l.left) el.style.left = l.left;
+    if (l.right) el.style.right = l.right;
+    stage.appendChild(el);
+  });
+}
+
+function createWordElements() {
+  const elements = [];
+  const count = CONFIG.words.length;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const totalHeight = vh * 0.70;
+  const baseTop = vh * 0.15;
+
+  for (let i = 0; i < count; i++) {
+    const rng = seededRandom(i * 137 + 42);
+    const el = document.createElement('div');
+    el.className = 'word-block ' + wordStyles[i % wordStyles.length];
+
+    const preset = fontPresets[i % fontPresets.length];
+    const fontSize = Math.min(fontSizes[i % fontSizes.length], vw * 0.28, vh * 0.12);
+
+    el.style.fontFamily = preset.family;
+    el.style.fontWeight = preset.weight;
+    el.style.fontStyle = preset.style;
+    el.style.textTransform = preset.transform;
+    el.style.letterSpacing = preset.letterSpacing;
+    el.style.fontSize = fontSize + 'px';
+    el.style.color = CONFIG.colors[i % CONFIG.colors.length];
+
+    const inner = document.createElement('span');
+    inner.className = 'word-inner';
+    inner.appendChild(document.createTextNode(CONFIG.words[i]));
+    el.appendChild(inner);
+
+    const stackPos = baseTop + (totalHeight / count) * i * (1 - CONFIG.overlapAmount);
+    const xOffset = (rng() - 0.5) * vw * 0.2;
+    const xCenter = vw / 2 - fontSize * CONFIG.words[i].length * 0.28 + xOffset;
+
+    el.style.left = Math.max(10, Math.min(vw * 0.85 - fontSize * 2, xCenter)) + 'px';
+    el.style.top = stackPos + 'px';
+
+    const rotation = (rng() - 0.5) * 2 * CONFIG.maxRotation;
+    const finalOpacity = 0.88 + rng() * 0.12;
+
+    const brushDir = rng() > 0.5 ? 1 : -1;
+    const brushDist = 100 + rng() * 150;
+
+    el.style.setProperty('--brush-start', `translate(${brushDir * brushDist}px, 0) rotate(${rotation + brushDir * 5}deg) scaleX(0.8)`);
+    el.style.setProperty('--brush-mid', `translate(${brushDir * 20}px, 0) rotate(${rotation}deg) scaleX(1.02)`);
+    el.style.setProperty('--brush-settle', `translate(${brushDir * -5}px, 0) rotate(${rotation - brushDir}deg) scaleX(1)`);
+    el.style.setProperty('--brush-end', `translate(0, 0) rotate(${rotation}deg) scaleX(1)`);
+    el.style.setProperty('--final-opacity', String(finalOpacity));
+
+    el.dataset.index = String(i);
+    stage.appendChild(el);
+    elements.push(el);
+  }
+  return elements;
+}
+
+function runAnimation(wordElements) {
+  const count = wordElements.length;
+  const brushStagger = 380;
+  const brushDuration = 550;
+  const holdDuration = 2200;
+  const fadeStagger = 200;
+  const fadeDuration = 600;
+  const pauseBeforeLoop = 800;
+
+  const totalBrushTime = (count - 1) * brushStagger + brushDuration;
+  const totalFadeTime = (count - 1) * fadeStagger + fadeDuration;
+
+  let animationFrame, startTime;
+
+  function resetAll() {
+    wordElements.forEach(el => { el.style.animation = 'none'; el.style.opacity = '0'; });
+  }
+
+  function tick(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    if (elapsed < totalBrushTime) {
+      wordElements.forEach((el, i) => {
+        const wordStart = i * brushStagger;
+        if (elapsed >= wordStart && !el.dataset.stamped) {
+          el.dataset.stamped = '1';
+          el.style.animation = `brushStroke ${brushDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`;
+        }
+      });
+    } else if (elapsed < totalBrushTime + holdDuration) {
+      // hold
+    } else if (elapsed < totalBrushTime + holdDuration + totalFadeTime) {
+      const fadeElapsed = elapsed - totalBrushTime - holdDuration;
+      wordElements.forEach((el, i) => {
+        const reverseI = count - 1 - i;
+        const wordStart = reverseI * fadeStagger;
+        if (fadeElapsed >= wordStart && !el.dataset.peeled) {
+          el.dataset.peeled = '1';
+          el.style.animation = `fadeDissolve ${fadeDuration}ms ease-in forwards`;
+        }
+      });
+    } else if (elapsed < totalBrushTime + holdDuration + totalFadeTime + pauseBeforeLoop) {
+      // pause
+    } else {
+      resetAll();
+      wordElements.forEach(el => { delete el.dataset.stamped; delete el.dataset.peeled; });
+      startTime = timestamp;
+    }
+    animationFrame = requestAnimationFrame(tick);
+  }
+
+  resetAll();
+  animationFrame = requestAnimationFrame(tick);
+  return function stop() { cancelAnimationFrame(animationFrame); };
+}
+
+createDecorations();
+const wordEls = createWordElements();
+runAnimation(wordEls);
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    stage.innerHTML = '';
+    createDecorations();
+    const nw = createWordElements();
+    runAnimation(nw);
+  }, 300);
+});
+</script>
+</body>
+</html>

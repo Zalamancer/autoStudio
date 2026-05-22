@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitness Workout Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; color: #e0ffe0; }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  @keyframes energyFloat {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    20% { opacity: 0.6; }
+    100% { transform: translateY(-30vh) scale(0.3); opacity: 0; }
+  }
+  .energy-particle {
+    position: absolute; border-radius: 50%; pointer-events: none;
+    animation: energyFloat 3s ease-out forwards;
+  }
+  .top-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 6vh;
+    background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(0,255,100,0.1);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 4vw; z-index: 5; opacity: 0; transition: opacity 0.5s;
+  }
+  .top-bar.visible { opacity: 1; }
+  .workout-label { font-size: 1.2vh; letter-spacing: 0.25em; text-transform: uppercase; opacity: 0.5; }
+  .elapsed-time { font-size: 1.8vh; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .exercise-name {
+    position: absolute; top: 10vh; left: 50%; transform: translateX(-50%);
+    text-align: center; z-index: 5; opacity: 0; transition: opacity 0.6s;
+  }
+  .exercise-name.visible { opacity: 1; }
+  .ex-label { font-size: 1.2vh; letter-spacing: 0.2em; opacity: 0.4; text-transform: uppercase; }
+  .ex-title { font-size: 3.5vh; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.5vh; }
+  .rep-area {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center; z-index: 5;
+  }
+  .rep-number {
+    font-size: 18vh; font-weight: 900; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 40px currentColor;
+    transition: transform 0.15s;
+  }
+  .rep-number.pop { transform: scale(1.15); }
+  .rep-of { font-size: 2vh; opacity: 0.4; letter-spacing: 0.15em; margin-top: 0.5vh; }
+  .set-ring-container {
+    position: absolute; top: 22vh; right: 8vw;
+    width: 14vh; height: 14vh; z-index: 5;
+    opacity: 0; transition: opacity 0.6s;
+  }
+  .set-ring-container.visible { opacity: 1; }
+  .set-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .set-ring-bg { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 3; }
+  .set-ring-fg { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 0.8s ease; }
+  .set-ring-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .set-num { font-size: 3vh; font-weight: 800; }
+  .set-text { font-size: 0.9vh; letter-spacing: 0.2em; opacity: 0.4; text-transform: uppercase; }
+  .heart-area {
+    position: absolute; top: 22vh; left: 8vw;
+    z-index: 5; opacity: 0; transition: opacity 0.6s;
+  }
+  .heart-area.visible { opacity: 1; }
+  .heart-label { font-size: 0.9vh; letter-spacing: 0.2em; opacity: 0.4; text-transform: uppercase; margin-bottom: 0.5vh; }
+  .heart-row { display: flex; align-items: center; gap: 1vw; }
+  @keyframes heartbeat { 0%,100%{transform:scale(1)} 15%{transform:scale(1.25)} 30%{transform:scale(1)} 45%{transform:scale(1.15)} 60%{transform:scale(1)} }
+  .heart-icon { font-size: 3vh; animation: heartbeat 1s infinite; filter: drop-shadow(0 0 6px rgba(255,50,80,0.5)); }
+  .bpm-value { font-size: 4vh; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .bpm-unit { font-size: 1.2vh; opacity: 0.4; margin-left: 0.3vw; }
+  .cal-area {
+    position: absolute; bottom: 16vh; left: 8vw;
+    z-index: 5; opacity: 0; transition: opacity 0.6s;
+  }
+  .cal-area.visible { opacity: 1; }
+  .cal-label { font-size: 0.9vh; letter-spacing: 0.2em; opacity: 0.4; text-transform: uppercase; margin-bottom: 0.3vh; }
+  .cal-value { font-size: 3vh; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .cal-unit { font-size: 1.2vh; opacity: 0.4; }
+  .bottom-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 4vh;
+    background: rgba(0,0,0,0.5); border-top: 1px solid rgba(0,255,100,0.08);
+    z-index: 5; opacity: 0; transition: opacity 0.5s;
+  }
+  .bottom-bar.visible { opacity: 1; }
+  .progress-fill { height: 100%; width: 0%; transition: width 0.3s; opacity: 0.15; }
+  .grid-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(0,255,100,0.015) 1px, transparent 1px),
+      linear-gradient(rgba(0,255,100,0.015) 1px, transparent 1px);
+    background-size: 5vw 5vw; pointer-events: none;
+  }
+  .vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none; z-index: 3;
+  }
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="grid-bg"></div>
+  <div class="vignette"></div>
+  <div id="particles"></div>
+  <div class="top-bar" id="topBar">
+    <div class="workout-label">WORKOUT IN PROGRESS</div>
+    <div class="elapsed-time" id="elapsed">00:00</div>
+  </div>
+  <div class="exercise-name" id="exName">
+    <div class="ex-label">EXERCISE</div>
+    <div class="ex-title" id="exTitle">BARBELL SQUAT</div>
+  </div>
+  <div class="rep-area" id="repArea">
+    <div class="rep-number" id="repNum">0</div>
+    <div class="rep-of" id="repOf">OF 12 REPS</div>
+  </div>
+  <div class="set-ring-container" id="setRing">
+    <svg class="set-ring-svg" viewBox="0 0 100 100">
+      <circle class="set-ring-bg" cx="50" cy="50" r="45"/>
+      <circle class="set-ring-fg" id="setRingFg" cx="50" cy="50" r="45"/>
+    </svg>
+    <div class="set-ring-label">
+      <div class="set-num" id="setNum">1/4</div>
+      <div class="set-text">SETS</div>
+    </div>
+  </div>
+  <div class="heart-area" id="heartArea">
+    <div class="heart-label">HEART RATE</div>
+    <div class="heart-row">
+      <div class="heart-icon">&#x2764;</div>
+      <div><span class="bpm-value" id="bpmVal">72</span><span class="bpm-unit">BPM</span></div>
+    </div>
+  </div>
+  <div class="cal-area" id="calArea">
+    <div class="cal-label">CALORIES BURNED</div>
+    <div><span class="cal-value" id="calVal">0</span> <span class="cal-unit">KCAL</span></div>
+  </div>
+  <div class="bottom-bar" id="bottomBar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  exerciseName: 'BARBELL SQUAT',
+  targetReps: 12,
+  targetSets: 4,
+  heartRate: 145,
+  bgColor: '#0a0f0a',
+  accentColor: '#00ff64',
+  secondaryColor: '#ff6633',
+  cycleDuration: 14000
+};
+
+const scene = document.getElementById('scene');
+scene.style.background = 'radial-gradient(ellipse at 50% 40%, ' + CONFIG.bgColor + 'dd 0%, ' + CONFIG.bgColor + ' 70%)';
+document.getElementById('exTitle').textContent = CONFIG.exerciseName;
+document.getElementById('exTitle').style.color = CONFIG.accentColor;
+document.getElementById('repNum').style.color = CONFIG.accentColor;
+document.getElementById('setRingFg').style.stroke = CONFIG.accentColor;
+document.getElementById('progressFill').style.background = CONFIG.accentColor;
+document.querySelector('.heart-icon').style.color = CONFIG.secondaryColor;
+
+const circumference = 2 * Math.PI * 45;
+const particleContainer = document.getElementById('particles');
+
+function spawnParticle() {
+  const p = document.createElement('div');
+  p.className = 'energy-particle';
+  const size = 0.3 + Math.random() * 0.6;
+  p.style.width = size + 'vh';
+  p.style.height = size + 'vh';
+  p.style.left = 30 + Math.random() * 40 + '%';
+  p.style.bottom = '20%';
+  p.style.background = Math.random() > 0.5 ? CONFIG.accentColor : CONFIG.secondaryColor;
+  p.style.animationDuration = (2 + Math.random() * 2) + 's';
+  particleContainer.appendChild(p);
+  setTimeout(function() { p.remove(); }, 4000);
+}
+
+function runCycle() {
+  const topBar = document.getElementById('topBar');
+  const exName = document.getElementById('exName');
+  const setRing = document.getElementById('setRing');
+  const heartArea = document.getElementById('heartArea');
+  const calArea = document.getElementById('calArea');
+  const bottomBar = document.getElementById('bottomBar');
+  const repNum = document.getElementById('repNum');
+  const setRingFg = document.getElementById('setRingFg');
+  const els = [topBar, exName, setRing, heartArea, calArea, bottomBar];
+
+  // Reset
+  els.forEach(function(el) { el.classList.remove('visible'); });
+  repNum.textContent = '0';
+  document.getElementById('repOf').textContent = 'OF ' + CONFIG.targetReps + ' REPS';
+  document.getElementById('setNum').textContent = '0/' + CONFIG.targetSets;
+  setRingFg.style.strokeDashoffset = circumference;
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('calVal').textContent = '0';
+  document.getElementById('bpmVal').textContent = '72';
+  document.getElementById('elapsed').textContent = '00:00';
+
+  // Entrance
+  setTimeout(function() { topBar.classList.add('visible'); }, 200);
+  setTimeout(function() { exName.classList.add('visible'); }, 400);
+  setTimeout(function() { setRing.classList.add('visible'); }, 700);
+  setTimeout(function() { heartArea.classList.add('visible'); }, 900);
+  setTimeout(function() { calArea.classList.add('visible'); }, 1100);
+  setTimeout(function() { bottomBar.classList.add('visible'); }, 1300);
+
+  // Simulate reps
+  var workoutStart = performance.now();
+  var totalTarget = CONFIG.targetReps * CONFIG.targetSets;
+  var repInterval = (CONFIG.cycleDuration - 3500) / totalTarget;
+  var totalReps = 0;
+  var currentSet = 1;
+  var currentRep = 0;
+  var calCount = 0;
+  var bpm = 72;
+
+  function doRep() {
+    if (totalReps >= totalTarget) return;
+    currentRep++;
+    if (currentRep > CONFIG.targetReps) {
+      currentRep = 1;
+      currentSet = Math.min(currentSet + 1, CONFIG.targetSets);
+    }
+    totalReps++;
+    repNum.textContent = currentRep;
+    repNum.classList.add('pop');
+    setTimeout(function() { repNum.classList.remove('pop'); }, 150);
+    var setProgress = currentSet / CONFIG.targetSets;
+    setRingFg.style.strokeDashoffset = circumference - (setProgress * circumference);
+    document.getElementById('setNum').textContent = currentSet + '/' + CONFIG.targetSets;
+    calCount += 2 + Math.floor(Math.random() * 3);
+    document.getElementById('calVal').textContent = calCount;
+    bpm = Math.min(CONFIG.heartRate + 10, bpm + Math.floor(Math.random() * 5));
+    document.getElementById('bpmVal').textContent = bpm;
+    var pct = (totalReps / totalTarget) * 100;
+    document.getElementById('progressFill').style.width = pct + '%';
+    spawnParticle();
+    setTimeout(doRep, repInterval);
+  }
+
+  var elapsedInt = setInterval(function() {
+    var elapsed = Math.floor((performance.now() - workoutStart) / 1000);
+    var m = Math.floor(elapsed / 60);
+    var s = elapsed % 60;
+    document.getElementById('elapsed').textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }, 1000);
+
+  setTimeout(doRep, 1800);
+
+  var bpmInt = setInterval(function() {
+    bpm = Math.max(CONFIG.heartRate - 15, Math.min(CONFIG.heartRate + 15, bpm + Math.floor(Math.random() * 7) - 3));
+    document.getElementById('bpmVal').textContent = bpm;
+  }, 2000);
+
+  // Fade out
+  setTimeout(function() {
+    clearInterval(elapsedInt);
+    clearInterval(bpmInt);
+    els.forEach(function(el) { el.classList.remove('visible'); });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steampunk Gears</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; background: #1a1008; }
+  .machine { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Background texture */
+  .bg-texture {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(180,120,50,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, rgba(180,120,50,0.04) 0%, transparent 50%);
+  }
+
+  /* Vignette */
+  .vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(10,5,0,0.6) 100%);
+    pointer-events: none; z-index: 10;
+  }
+
+  /* Gear base styles */
+  .gear {
+    position: absolute; border-radius: 50%;
+    border: 3px solid rgba(180,140,80,0.4);
+    background: radial-gradient(circle at 40% 35%, rgba(180,140,80,0.12), rgba(80,60,30,0.08));
+  }
+  .gear::before {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 20%; height: 20%; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, #8a6830, #5a4020);
+    border: 2px solid rgba(200,160,80,0.3);
+  }
+  .gear::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 8%; height: 8%; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: #2a1a08; border: 1px solid rgba(180,140,80,0.3);
+  }
+
+  /* Gear tooth ring (dashed border) */
+  .tooth-ring {
+    position: absolute; top: -6px; left: -6px; right: -6px; bottom: -6px;
+    border-radius: 50%;
+    border: 6px dashed rgba(180,140,80,0.25);
+  }
+
+  /* Gear positions and sizes */
+  .gear.g1 { width: 28vmin; height: 28vmin; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .gear.g2 { width: 16vmin; height: 16vmin; top: 22%; left: 28%; }
+  .gear.g3 { width: 14vmin; height: 14vmin; top: 18%; right: 22%; }
+  .gear.g4 { width: 20vmin; height: 20vmin; bottom: 18%; left: 18%; }
+  .gear.g5 { width: 12vmin; height: 12vmin; bottom: 22%; right: 26%; }
+  .gear.g6 { width: 10vmin; height: 10vmin; top: 38%; left: 18%; }
+
+  .gear.cw { animation: rotateCW var(--speed, 8s) linear infinite; }
+  .gear.ccw { animation: rotateCCW var(--speed, 8s) linear infinite; }
+  @keyframes rotateCW { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  @keyframes rotateCCW { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+  .gear.g1.cw { animation: rotateCW_center var(--speed, 8s) linear infinite; }
+  @keyframes rotateCW_center { 0% { transform: translate(-50%,-50%) rotate(0deg); } 100% { transform: translate(-50%,-50%) rotate(360deg); } }
+
+  /* Spoke lines inside gears */
+  .gear-spokes {
+    position: absolute; inset: 15%; border-radius: 50%;
+    border: 1px solid rgba(180,140,80,0.1);
+  }
+
+  /* Steam vents */
+  .steam-vent { position: absolute; width: 4vw; overflow: visible; }
+  .steam-puff {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,190,170,0.15), transparent);
+    filter: blur(8px); animation: steamRise 3s ease-out infinite; opacity: 0;
+  }
+  @keyframes steamRise {
+    0% { transform: translateY(0) scale(0.5); opacity: 0; }
+    20% { opacity: 0.6; }
+    100% { transform: translateY(-18vh) scale(2.5); opacity: 0; }
+  }
+  .vent-base {
+    width: 3vw; height: 1.5vh;
+    background: linear-gradient(180deg, #8a7040, #5a4828);
+    border-radius: 2px; border: 1px solid rgba(200,160,80,0.2);
+  }
+
+  /* Pressure gauge */
+  .gauge {
+    position: absolute; top: 8vh; right: 6vw; width: 14vmin; height: 14vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle at 45% 40%, #3a2a14, #1a1008);
+    border: 3px solid rgba(180,140,80,0.3);
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 0 0 8px rgba(180,140,80,0.1);
+    opacity: 0;
+  }
+  .gauge-face { position: absolute; inset: 8%; border-radius: 50%; border: 1px solid rgba(180,140,80,0.15); }
+  .gauge-mark {
+    position: absolute; top: 8%; left: 50%; width: 2px; height: 10%;
+    background: rgba(180,140,80,0.3); transform-origin: center 290%;
+  }
+  .gauge-needle {
+    position: absolute; top: 50%; left: 50%;
+    width: 2px; height: 35%;
+    background: linear-gradient(180deg, #cc3300, #991100);
+    transform-origin: bottom center;
+    transform: translateX(-50%) rotate(-60deg);
+    transition: transform 2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 1px;
+  }
+  .gauge-center {
+    position: absolute; top: 50%; left: 50%; width: 8%; height: 8%;
+    transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(circle, #b8943c, #8a6830);
+    border: 1px solid rgba(200,160,80,0.4);
+  }
+  .gauge-label {
+    position: absolute; bottom: 22%; left: 50%; transform: translateX(-50%);
+    font-size: 1vh; color: rgba(180,140,80,0.4); text-transform: uppercase; letter-spacing: 2px;
+  }
+
+  /* Brass pipes */
+  .pipe {
+    position: absolute;
+    background: linear-gradient(90deg, #5a4828, #8a7040, #5a4828);
+    border-radius: 3px;
+  }
+  .pipe.h { height: 1.2vh; }
+  .pipe.v { width: 1.2vh; }
+  .pipe-joint {
+    position: absolute; width: 2.4vh; height: 2.4vh; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #a0883c, #5a4828);
+    border: 1px solid rgba(200,160,80,0.2);
+    transform: translate(-50%, -50%);
+  }
+
+  /* Rivets */
+  .rivet {
+    position: absolute; width: 5px; height: 5px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #a08840, #604828);
+    box-shadow: inset -1px -1px 1px rgba(0,0,0,0.3);
+  }
+
+  /* Title */
+  .title-area {
+    position: absolute; bottom: 8vh; left: 50%; transform: translateX(-50%);
+    text-align: center; opacity: 0;
+  }
+  .title-text {
+    font-size: 3.5vh; font-weight: bold; color: #c8a050;
+    letter-spacing: 6px; text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(200,160,80,0.3), 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .title-sub {
+    font-size: 1.4vh; color: rgba(180,140,80,0.4); letter-spacing: 8px;
+    margin-top: 1vh; text-transform: uppercase; font-style: italic;
+  }
+
+  /* Gas lamp glow */
+  .lamp { position: absolute; width: 3vw; pointer-events: none; }
+  .lamp-glow {
+    width: 8vmin; height: 8vmin; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,180,60,0.12), rgba(255,140,30,0.04), transparent);
+    animation: lampFlicker 2s ease-in-out infinite;
+    position: absolute; top: -3vmin; left: 50%; transform: translateX(-50%);
+  }
+  @keyframes lampFlicker {
+    0%,100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
+    30% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+    50% { opacity: 0.5; transform: translateX(-50%) scale(0.95); }
+    80% { opacity: 0.9; transform: translateX(-50%) scale(1.02); }
+  }
+  .lamp-fixture {
+    width: 2vw; height: 3vh; margin: 0 auto;
+    background: linear-gradient(180deg, #8a7040, #5a4020);
+    border-radius: 1vw 1vw 0 0; border: 1px solid rgba(200,160,80,0.2);
+    position: relative;
+  }
+  .lamp-flame {
+    position: absolute; top: -1vh; left: 50%; transform: translateX(-50%);
+    width: 0.8vw; height: 1.5vh;
+    background: radial-gradient(ellipse at center bottom, #ffcc44, #ff8800, transparent);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: flameWaver 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes flameWaver {
+    0% { transform: translateX(-50%) scaleX(1) scaleY(1); }
+    100% { transform: translateX(-50%) scaleX(0.8) scaleY(1.1); }
+  }
+
+  /* Machine name plate */
+  .name-plate {
+    position: absolute; top: 6vh; left: 50%; transform: translateX(-50%);
+    padding: 1vh 3vw; border: 2px solid rgba(180,140,80,0.25);
+    background: rgba(30,20,10,0.8); text-align: center; opacity: 0;
+  }
+  .name-plate-text {
+    font-size: 1.6vh; color: rgba(200,160,80,0.6); letter-spacing: 4px; text-transform: uppercase;
+  }
+
+  /* Decorative bolt plate */
+  .bolt-plate {
+    position: absolute; border: 1px solid rgba(180,140,80,0.12);
+    background: rgba(180,140,80,0.02); border-radius: 2px;
+  }
+  .bolt-plate.tl { top: 3vh; left: 2vw; width: 8vw; height: 6vh; }
+  .bolt-plate.br { bottom: 3vh; right: 2vw; width: 8vw; height: 6vh; }
+</style>
+</head>
+<body>
+<div class="machine">
+  <div class="bg-texture"></div>
+
+  <!-- Bolt plates -->
+  <div class="bolt-plate tl"></div>
+  <div class="bolt-plate br"></div>
+
+  <!-- Pipes -->
+  <div class="pipe h" style="top: 35vh; left: 10vw; width: 18vw;"></div>
+  <div class="pipe h" style="top: 65vh; right: 8vw; width: 20vw;"></div>
+  <div class="pipe v" style="left: 28vw; top: 35vh; height: 15vh;"></div>
+  <div class="pipe v" style="right: 28vw; top: 50vh; height: 15vh;"></div>
+  <div class="pipe-joint" style="top: 35vh; left: 28vw;"></div>
+  <div class="pipe-joint" style="top: 65vh; right: 28vw;"></div>
+
+  <!-- Gears -->
+  <div class="gear g1 cw" style="--speed: 12s;" id="gearMain">
+    <div class="tooth-ring"></div><div class="gear-spokes"></div>
+  </div>
+  <div class="gear g2 ccw" style="--speed: 7s;">
+    <div class="tooth-ring"></div><div class="gear-spokes"></div>
+  </div>
+  <div class="gear g3 cw" style="--speed: 6s;">
+    <div class="tooth-ring"></div><div class="gear-spokes"></div>
+  </div>
+  <div class="gear g4 ccw" style="--speed: 9s;">
+    <div class="tooth-ring"></div><div class="gear-spokes"></div>
+  </div>
+  <div class="gear g5 cw" style="--speed: 5s;">
+    <div class="tooth-ring"></div><div class="gear-spokes"></div>
+  </div>
+  <div class="gear g6 ccw" style="--speed: 4s;">
+    <div class="tooth-ring"></div><div class="gear-spokes"></div>
+  </div>
+
+  <!-- Steam vents -->
+  <div class="steam-vent" id="steamLeft" style="bottom: 12vh; left: 8vw;">
+    <div class="vent-base"></div>
+    <div id="steamLeftPuffs"></div>
+  </div>
+  <div class="steam-vent" id="steamRight" style="bottom: 12vh; right: 8vw;">
+    <div class="vent-base"></div>
+    <div id="steamRightPuffs"></div>
+  </div>
+
+  <!-- Pressure gauge -->
+  <div class="gauge" id="gauge">
+    <div class="gauge-face">
+      <div id="gaugeMarks"></div>
+    </div>
+    <div class="gauge-needle" id="gaugeNeedle"></div>
+    <div class="gauge-center"></div>
+    <div class="gauge-label">PSI</div>
+  </div>
+
+  <!-- Gas lamps -->
+  <div class="lamp" style="top: 15vh; left: 5vw;">
+    <div class="lamp-glow"></div>
+    <div class="lamp-fixture"><div class="lamp-flame"></div></div>
+  </div>
+  <div class="lamp" style="top: 15vh; right: 5vw;">
+    <div class="lamp-glow" style="animation-delay: 0.5s;"></div>
+    <div class="lamp-fixture"><div class="lamp-flame" style="animation-delay: 0.3s;"></div></div>
+  </div>
+
+  <!-- Rivets (top row) -->
+  <div id="rivetsTop"></div>
+  <!-- Rivets (bottom row) -->
+  <div id="rivetsBottom"></div>
+
+  <!-- Name plate -->
+  <div class="name-plate" id="namePlate">
+    <div class="name-plate-text" id="machineNameText">AETHER ENGINE MK-IV</div>
+  </div>
+
+  <!-- Title -->
+  <div class="title-area" id="titleArea">
+    <div class="title-text" id="titleText">The Clockwork Heart</div>
+    <div class="title-sub">Est. 1887</div>
+  </div>
+
+  <div class="vignette"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  machineName: 'AETHER ENGINE MK-IV',
+  pressureLevel: 72,
+  steamIntensity: 'high',
+  gearSpeed: 1,
+  title: 'The Clockwork Heart',
+  cycleDuration: 11000,
+};
+
+window.addEventListener('message', (e) => { if (e.data?.type === 'CONFIG_UPDATE') { Object.assign(CONFIG, e.data.config); applyConfig(); } });
+function applyConfig() {
+  document.getElementById('machineNameText').textContent = CONFIG.machineName;
+  document.getElementById('titleText').textContent = CONFIG.title;
+}
+document.getElementById('machineNameText').textContent = CONFIG.machineName;
+document.getElementById('titleText').textContent = CONFIG.title;
+
+// Apply gear speed multiplier
+document.querySelectorAll('.gear').forEach(function(g) {
+  var current = parseFloat(g.style.getPropertyValue('--speed'));
+  if (current && CONFIG.gearSpeed) {
+    g.style.setProperty('--speed', (current / CONFIG.gearSpeed) + 's');
+  }
+});
+
+// Generate gauge marks
+var gaugeMarks = document.getElementById('gaugeMarks');
+for (var i = 0; i < 9; i++) {
+  var mark = document.createElement('div');
+  mark.className = 'gauge-mark';
+  mark.style.transform = 'rotate(' + (i * 30 - 120) + 'deg)';
+  gaugeMarks.appendChild(mark);
+}
+
+// Generate steam puffs
+function createSteamPuffs(containerId, count) {
+  var container = document.getElementById(containerId);
+  var intensity = CONFIG.steamIntensity === 'high' ? 1 : CONFIG.steamIntensity === 'medium' ? 0.6 : 0.3;
+  for (var i = 0; i < count; i++) {
+    var puff = document.createElement('div');
+    puff.className = 'steam-puff';
+    var size = (3 + Math.random() * 4) * intensity;
+    puff.style.width = size + 'vw';
+    puff.style.height = size + 'vw';
+    puff.style.left = (Math.random() * 2 - 0.5) + 'vw';
+    puff.style.bottom = '1.5vh';
+    puff.style.animationDelay = (i * (3 / count)) + 's';
+    puff.style.animationDuration = (2.5 + Math.random()) + 's';
+    container.appendChild(puff);
+  }
+}
+createSteamPuffs('steamLeftPuffs', 5);
+createSteamPuffs('steamRightPuffs', 5);
+
+// Generate rivets along top and bottom
+function createRivets(containerId, y, count) {
+  var container = document.getElementById(containerId);
+  for (var i = 0; i < count; i++) {
+    var rivet = document.createElement('div');
+    rivet.className = 'rivet';
+    rivet.style.left = ((i / (count - 1)) * 94 + 3) + 'vw';
+    rivet.style.top = y;
+    container.appendChild(rivet);
+  }
+}
+createRivets('rivetsTop', '3vh', 20);
+createRivets('rivetsBottom', '97vh', 20);
+
+// Pressure gauge needle animation
+function animateGauge() {
+  var baseAngle = -60;
+  var maxAngle = 120;
+  var targetAngle = baseAngle + (CONFIG.pressureLevel / 100) * maxAngle;
+  var wobble = (Math.random() - 0.5) * 8;
+  document.getElementById('gaugeNeedle').style.transform =
+    'translateX(-50%) rotate(' + (targetAngle + wobble) + 'deg)';
+}
+setInterval(animateGauge, 2000);
+
+// runCycle
+function runCycle() {
+  var gauge = document.getElementById('gauge');
+  var namePlate = document.getElementById('namePlate');
+  var titleArea = document.getElementById('titleArea');
+
+  // Reset
+  gauge.style.transition = 'none'; gauge.style.opacity = '0'; gauge.style.transform = 'scale(0.8)';
+  namePlate.style.transition = 'none'; namePlate.style.opacity = '0'; namePlate.style.transform = 'translateX(-50%) translateY(-10px)';
+  titleArea.style.transition = 'none'; titleArea.style.opacity = '0'; titleArea.style.transform = 'translateX(-50%) translateY(15px)';
+  void gauge.offsetWidth;
+
+  // Animate in
+  setTimeout(function() {
+    namePlate.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    namePlate.style.opacity = '1'; namePlate.style.transform = 'translateX(-50%) translateY(0)';
+  }, 300);
+
+  setTimeout(function() {
+    gauge.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
+    gauge.style.opacity = '1'; gauge.style.transform = 'scale(1)';
+    animateGauge();
+  }, 800);
+
+  setTimeout(function() {
+    titleArea.style.transition = 'opacity 1s ease, transform 1s ease';
+    titleArea.style.opacity = '1'; titleArea.style.transform = 'translateX(-50%) translateY(0)';
+  }, 1400);
+
+  // Animate out
+  setTimeout(function() {
+    gauge.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    gauge.style.opacity = '0'; gauge.style.transform = 'scale(0.8)';
+    namePlate.style.transition = 'opacity 0.6s ease'; namePlate.style.opacity = '0';
+    titleArea.style.transition = 'opacity 0.8s ease'; titleArea.style.opacity = '0';
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

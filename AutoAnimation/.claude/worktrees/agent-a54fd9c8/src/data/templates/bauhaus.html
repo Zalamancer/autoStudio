@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bauhaus</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #FAFAFA;
+    font-family: 'Futura', 'Century Gothic', 'Arial', sans-serif;
+  }
+  .bauhaus-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* Grid lines */
+  .grid-lines {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+  .grid-h, .grid-v {
+    position: absolute; background: rgba(0,0,0,0.04);
+  }
+  .grid-h { height: 1px; width: 100%; }
+  .grid-v { width: 1px; height: 100%; }
+  /* Shapes */
+  .shape {
+    position: absolute; z-index: 2;
+  }
+  /* Red circle */
+  .red-circle {
+    width: clamp(100px, 25vw, 250px); height: clamp(100px, 25vw, 250px);
+    background: #E63946; border-radius: 50%;
+    top: 15%; left: 10%;
+    animation: circleMove 12s ease-in-out infinite;
+  }
+  @keyframes circleMove {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, 20px) scale(1.05); }
+    50% { transform: translate(-20px, 40px) scale(0.95); }
+    75% { transform: translate(15px, -10px) scale(1.02); }
+  }
+  /* Blue rectangle */
+  .blue-rect {
+    width: clamp(120px, 30vw, 300px); height: clamp(80px, 18vw, 180px);
+    background: #1D3557; bottom: 18%; right: 8%;
+    animation: rectMove 15s ease-in-out infinite;
+  }
+  @keyframes rectMove {
+    0%, 100% { transform: rotate(0deg) translate(0, 0); }
+    33% { transform: rotate(3deg) translate(-20px, -15px); }
+    66% { transform: rotate(-2deg) translate(15px, 10px); }
+  }
+  /* Yellow triangle */
+  .yellow-tri {
+    width: 0; height: 0;
+    border-left: clamp(50px, 12vw, 120px) solid transparent;
+    border-right: clamp(50px, 12vw, 120px) solid transparent;
+    border-bottom: clamp(90px, 22vw, 220px) solid #F4A100;
+    top: 20%; right: 20%;
+    animation: triSpin 20s linear infinite;
+  }
+  @keyframes triSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  /* Black shapes */
+  .black-bar-h {
+    height: clamp(8px, 1.5vw, 16px); background: #111;
+    left: 0; width: 60%;
+    animation: barSlideH 10s ease-in-out infinite;
+  }
+  .bar-1 { top: 40%; }
+  .bar-2 { top: 60%; width: 45%; animation-delay: 5s; }
+  @keyframes barSlideH {
+    0%, 100% { transform: translateX(-10%); }
+    50% { transform: translateX(20%); }
+  }
+  .black-bar-v {
+    width: clamp(8px, 1.5vw, 16px); background: #111;
+    top: 0; height: 50%;
+    animation: barSlideV 12s ease-in-out infinite;
+  }
+  .bar-3 { left: 35%; }
+  .bar-4 { left: 65%; height: 40%; animation-delay: 6s; }
+  @keyframes barSlideV {
+    0%, 100% { transform: translateY(-5%); }
+    50% { transform: translateY(15%); }
+  }
+  /* Small accent circle */
+  .small-circle {
+    border-radius: 50%;
+  }
+  .sc-1 {
+    width: 40px; height: 40px; background: #E63946;
+    bottom: 15%; left: 25%;
+    animation: scBounce 4s ease-in-out infinite;
+  }
+  .sc-2 {
+    width: 30px; height: 30px; background: #F4A100;
+    top: 10%; left: 50%;
+    animation: scBounce 3s ease-in-out infinite 1s;
+  }
+  .sc-3 {
+    width: 50px; height: 50px; border: 4px solid #1D3557;
+    background: transparent;
+    bottom: 35%; right: 30%;
+    animation: scBounce 5s ease-in-out infinite 2s;
+  }
+  @keyframes scBounce {
+    0%, 100% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.2) translateY(-10px); }
+  }
+  /* Diagonal lines */
+  .diagonal {
+    position: absolute; height: 3px; background: #111;
+    transform-origin: left center; z-index: 1;
+  }
+  .diag-1 {
+    top: 30%; left: 60%; width: clamp(100px, 25vw, 250px);
+    transform: rotate(35deg);
+    animation: diagMove 8s ease-in-out infinite;
+  }
+  .diag-2 {
+    bottom: 25%; left: 5%; width: clamp(80px, 20vw, 200px);
+    transform: rotate(-25deg);
+    animation: diagMove 10s ease-in-out infinite 4s;
+  }
+  @keyframes diagMove {
+    0%, 100% { transform: rotate(35deg) scaleX(1); }
+    50% { transform: rotate(35deg) scaleX(1.3); }
+  }
+  .diag-2 {
+    animation-name: diagMove2;
+  }
+  @keyframes diagMove2 {
+    0%, 100% { transform: rotate(-25deg) scaleX(1); }
+    50% { transform: rotate(-25deg) scaleX(1.3); }
+  }
+  /* Center text */
+  .bauhaus-text {
+    position: fixed; z-index: 10;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .bauhaus-title {
+    font-size: clamp(48px, 10vw, 100px); font-weight: 900;
+    text-transform: uppercase; color: #111;
+    letter-spacing: clamp(4px, 2vw, 20px);
+    animation: titleScale 6s ease-in-out infinite;
+    line-height: 1;
+  }
+  @keyframes titleScale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  .bauhaus-year {
+    font-size: clamp(14px, 2.5vw, 28px); font-weight: 300;
+    letter-spacing: clamp(6px, 2vw, 20px); color: #E63946;
+    margin-top: 8px;
+    animation: yearPulse 4s ease-in-out infinite;
+  }
+  @keyframes yearPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  /* Grid composition shift */
+  .grid-block {
+    position: absolute; z-index: 1;
+  }
+  .gb-1 {
+    width: clamp(40px, 8vw, 80px); height: clamp(40px, 8vw, 80px);
+    background: rgba(244,161,0,0.15);
+    top: 8%; right: 8%;
+    animation: gbShift 7s ease-in-out infinite;
+  }
+  .gb-2 {
+    width: clamp(60px, 12vw, 120px); height: clamp(30px, 6vw, 60px);
+    background: rgba(230,57,70,0.1);
+    bottom: 8%; left: 35%;
+    animation: gbShift 9s ease-in-out infinite 3s;
+  }
+  @keyframes gbShift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(20px, -15px); }
+  }
+</style>
+</head>
+<body>
+<div class="bauhaus-container">
+  <!-- Grid lines -->
+  <div class="grid-lines">
+    <div class="grid-h" style="top:20%"></div>
+    <div class="grid-h" style="top:40%"></div>
+    <div class="grid-h" style="top:60%"></div>
+    <div class="grid-h" style="top:80%"></div>
+    <div class="grid-v" style="left:20%"></div>
+    <div class="grid-v" style="left:40%"></div>
+    <div class="grid-v" style="left:60%"></div>
+    <div class="grid-v" style="left:80%"></div>
+  </div>
+
+  <!-- Main shapes -->
+  <div class="shape red-circle"></div>
+  <div class="shape blue-rect"></div>
+  <div class="shape yellow-tri"></div>
+
+  <!-- Black bars -->
+  <div class="shape black-bar-h bar-1"></div>
+  <div class="shape black-bar-h bar-2"></div>
+  <div class="shape black-bar-v bar-3"></div>
+  <div class="shape black-bar-v bar-4"></div>
+
+  <!-- Diagonals -->
+  <div class="diagonal diag-1"></div>
+  <div class="diagonal diag-2"></div>
+
+  <!-- Small accents -->
+  <div class="shape small-circle sc-1"></div>
+  <div class="shape small-circle sc-2"></div>
+  <div class="shape small-circle sc-3"></div>
+
+  <!-- Grid blocks -->
+  <div class="grid-block gb-1"></div>
+  <div class="grid-block gb-2"></div>
+
+  <!-- Text -->
+  <div class="bauhaus-text">
+    <div class="bauhaus-title" id="mainTitle">Bauhaus</div>
+    <div class="bauhaus-year" id="yearText">1919 - 2026</div>
+  </div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TITLE = 'Bauhaus';
+const YEAR_TEXT = '1919 - 2026';
+const RED = '#E63946';
+const BLUE = '#1D3557';
+const YELLOW = '#F4A100';
+const BG_COLOR = '#FAFAFA';
+// ==============================
+
+document.getElementById('mainTitle').textContent = TITLE;
+document.getElementById('yearText').textContent = YEAR_TEXT;
+document.body.style.background = BG_COLOR;
+</script>
+</body>
+</html>

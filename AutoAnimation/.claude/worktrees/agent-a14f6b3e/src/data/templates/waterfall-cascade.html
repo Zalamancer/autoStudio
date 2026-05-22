@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waterfall Cascade</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  bgColor: '#87ceeb',
+  waterColor: '#4488cc',
+  mistOpacity: 0.4,
+  rockColor: '#665544',
+  rainbowVisible: true,
+  cycleDuration: 14000
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+let startTime = performance.now();
+let particles = [];
+let mistParticles = [];
+let ripples = [];
+let sparkles = [];
+let birds = [];
+let foliage = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  initScene();
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function initScene() {
+  particles = [];
+  mistParticles = [];
+  ripples = [];
+  sparkles = [];
+  birds = [];
+  foliage = [];
+
+  // Water particles
+  for (let i = 0; i < 300; i++) {
+    particles.push(createWaterParticle());
+  }
+
+  // Mist particles
+  for (let i = 0; i < 80; i++) {
+    mistParticles.push(createMistParticle());
+  }
+
+  // Sparkles
+  for (let i = 0; i < 40; i++) {
+    sparkles.push({
+      x: W * 0.25 + Math.random() * W * 0.5,
+      y: H * 0.2 + Math.random() * H * 0.6,
+      phase: Math.random() * Math.PI * 2,
+      speed: 1 + Math.random() * 3,
+      size: 1 + Math.random() * 2
+    });
+  }
+
+  // Birds
+  for (let i = 0; i < 5; i++) {
+    birds.push({
+      x: -50 - Math.random() * W,
+      y: H * 0.05 + Math.random() * H * 0.2,
+      speed: 0.5 + Math.random() * 1.5,
+      wingPhase: Math.random() * Math.PI * 2,
+      size: 8 + Math.random() * 10
+    });
+  }
+
+  // Foreground foliage
+  for (let i = 0; i < 20; i++) {
+    foliage.push({
+      x: Math.random() * W,
+      y: H * 0.88 + Math.random() * H * 0.12,
+      height: 20 + Math.random() * 40,
+      width: 3 + Math.random() * 5,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.5 + Math.random() * 1.5,
+      hue: 90 + Math.random() * 40
+    });
+  }
+}
+
+function createWaterParticle() {
+  const stream = Math.random() < 0.5 ? 0 : 1;
+  const tierCount = 3;
+  const tier = Math.floor(Math.random() * tierCount);
+  const tierH = H * 0.15;
+  const baseY = H * 0.18 + tier * tierH;
+  const centerX = W * 0.5;
+  const spread = 20 + tier * 15;
+
+  return {
+    x: centerX - spread + Math.random() * spread * 2,
+    y: baseY + Math.random() * tierH,
+    vy: 2 + Math.random() * 4,
+    vx: (Math.random() - 0.5) * 1.5,
+    size: 1.5 + Math.random() * 3,
+    alpha: 0.3 + Math.random() * 0.5,
+    tier: tier,
+    life: Math.random()
+  };
+}
+
+function createMistParticle() {
+  return {
+    x: W * 0.2 + Math.random() * W * 0.6,
+    y: H * 0.65 + Math.random() * H * 0.15,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: -0.3 - Math.random() * 1.0,
+    size: 15 + Math.random() * 40,
+    alpha: Math.random() * CONFIG.mistOpacity,
+    life: Math.random()
+  };
+}
+
+function drawSky(t) {
+  const bg = hexToRgb(CONFIG.bgColor);
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.5);
+  grad.addColorStop(0, `rgb(${bg.r}, ${bg.g}, ${bg.b})`);
+  grad.addColorStop(0.5, `rgb(${Math.min(255, bg.r + 40)}, ${Math.min(255, bg.g + 40)}, ${Math.min(255, bg.b + 40)})`);
+  grad.addColorStop(1, `rgba(255, 255, 255, 0.8)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Lower pool area
+  const poolGrad = ctx.createLinearGradient(0, H * 0.72, 0, H);
+  const wc = hexToRgb(CONFIG.waterColor);
+  poolGrad.addColorStop(0, `rgba(${wc.r}, ${wc.g}, ${wc.b}, 0.6)`);
+  poolGrad.addColorStop(1, `rgba(${Math.max(0, wc.r - 30)}, ${Math.max(0, wc.g - 30)}, ${Math.max(0, wc.b - 20)}, 0.9)`);
+  ctx.fillStyle = poolGrad;
+  ctx.fillRect(0, H * 0.72, W, H * 0.28);
+}
+
+function drawRocks() {
+  const rc = hexToRgb(CONFIG.rockColor);
+
+  // Left cliff
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(W * 0.28, 0);
+  ctx.lineTo(W * 0.32, H * 0.12);
+  ctx.lineTo(W * 0.28, H * 0.2);
+  ctx.lineTo(W * 0.35, H * 0.28);
+  ctx.lineTo(W * 0.30, H * 0.38);
+  ctx.lineTo(W * 0.33, H * 0.48);
+  ctx.lineTo(W * 0.28, H * 0.58);
+  ctx.lineTo(W * 0.32, H * 0.68);
+  ctx.lineTo(W * 0.25, H * 0.75);
+  ctx.lineTo(W * 0.15, H * 0.82);
+  ctx.lineTo(0, H * 0.85);
+  ctx.closePath();
+
+  let rockGrad = ctx.createLinearGradient(0, 0, W * 0.35, 0);
+  rockGrad.addColorStop(0, `rgb(${rc.r - 20}, ${rc.g - 20}, ${rc.b - 20})`);
+  rockGrad.addColorStop(0.6, `rgb(${rc.r}, ${rc.g}, ${rc.b})`);
+  rockGrad.addColorStop(1, `rgb(${rc.r + 20}, ${rc.g + 20}, ${rc.b + 20})`);
+  ctx.fillStyle = rockGrad;
+  ctx.fill();
+
+  // Right cliff
+  ctx.beginPath();
+  ctx.moveTo(W, 0);
+  ctx.lineTo(W * 0.72, 0);
+  ctx.lineTo(W * 0.68, H * 0.1);
+  ctx.lineTo(W * 0.72, H * 0.22);
+  ctx.lineTo(W * 0.65, H * 0.3);
+  ctx.lineTo(W * 0.70, H * 0.42);
+  ctx.lineTo(W * 0.67, H * 0.52);
+  ctx.lineTo(W * 0.72, H * 0.62);
+  ctx.lineTo(W * 0.68, H * 0.7);
+  ctx.lineTo(W * 0.75, H * 0.78);
+  ctx.lineTo(W * 0.85, H * 0.84);
+  ctx.lineTo(W, H * 0.85);
+  ctx.closePath();
+
+  rockGrad = ctx.createLinearGradient(W * 0.65, 0, W, 0);
+  rockGrad.addColorStop(0, `rgb(${rc.r + 20}, ${rc.g + 20}, ${rc.b + 20})`);
+  rockGrad.addColorStop(0.4, `rgb(${rc.r}, ${rc.g}, ${rc.b})`);
+  rockGrad.addColorStop(1, `rgb(${rc.r - 20}, ${rc.g - 20}, ${rc.b - 20})`);
+  ctx.fillStyle = rockGrad;
+  ctx.fill();
+
+  // Rock detail lines
+  ctx.strokeStyle = `rgba(${rc.r - 40}, ${rc.g - 40}, ${rc.b - 40}, 0.3)`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 15; i++) {
+    ctx.beginPath();
+    const sx = Math.random() * W * 0.25;
+    const sy = Math.random() * H * 0.8;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + 10 + Math.random() * 30, sy + 5 + Math.random() * 20);
+    ctx.stroke();
+  }
+  for (let i = 0; i < 15; i++) {
+    ctx.beginPath();
+    const sx = W * 0.7 + Math.random() * W * 0.3;
+    const sy = Math.random() * H * 0.8;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + 10 + Math.random() * 30, sy + 5 + Math.random() * 20);
+    ctx.stroke();
+  }
+}
+
+function drawVegetation(t) {
+  const sway = Math.sin(t * 0.001) * 3;
+
+  // Ferns on left cliff
+  for (let i = 0; i < 12; i++) {
+    const fx = W * 0.1 + Math.random() * W * 0.18;
+    const fy = H * 0.15 + i * H * 0.05;
+    drawFern(fx, fy, 15 + Math.random() * 10, sway, t);
+  }
+
+  // Ferns on right cliff
+  for (let i = 0; i < 12; i++) {
+    const fx = W * 0.72 + Math.random() * W * 0.18;
+    const fy = H * 0.15 + i * H * 0.05;
+    drawFern(fx, fy, 15 + Math.random() * 10, sway, t);
+  }
+}
+
+function drawFern(x, y, size, sway, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((sway + Math.sin(t * 0.002 + x)) * 0.02);
+
+  for (let side = -1; side <= 1; side += 2) {
+    for (let j = 0; j < 5; j++) {
+      ctx.beginPath();
+      const leafAngle = side * (0.3 + j * 0.15);
+      const leafLen = size * (1 - j * 0.15);
+      ctx.moveTo(0, -j * 4);
+      ctx.quadraticCurveTo(
+        Math.cos(leafAngle) * leafLen * 0.6,
+        -j * 4 - Math.sin(leafAngle) * leafLen * 0.6,
+        Math.cos(leafAngle) * leafLen,
+        -j * 4 - Math.sin(leafAngle) * leafLen
+      );
+      ctx.strokeStyle = `rgba(${34 + j * 10}, ${120 + j * 15}, ${34 + j * 5}, 0.8)`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawWaterfallStreams(t) {
+  const wc = hexToRgb(CONFIG.waterColor);
+  const centerX = W * 0.5;
+
+  // Main waterfall streams (3 tiers)
+  for (let tier = 0; tier < 3; tier++) {
+    const tierTop = H * 0.15 + tier * H * 0.18;
+    const tierBottom = tierTop + H * 0.16;
+    const width = 30 + tier * 20;
+
+    // Stream body
+    const streamGrad = ctx.createLinearGradient(centerX - width, 0, centerX + width, 0);
+    streamGrad.addColorStop(0, `rgba(${wc.r + 60}, ${wc.g + 60}, ${wc.b + 60}, 0.2)`);
+    streamGrad.addColorStop(0.3, `rgba(${wc.r + 80}, ${wc.g + 80}, ${wc.b + 80}, 0.5)`);
+    streamGrad.addColorStop(0.5, `rgba(255, 255, 255, 0.6)`);
+    streamGrad.addColorStop(0.7, `rgba(${wc.r + 80}, ${wc.g + 80}, ${wc.b + 80}, 0.5)`);
+    streamGrad.addColorStop(1, `rgba(${wc.r + 60}, ${wc.g + 60}, ${wc.b + 60}, 0.2)`);
+
+    ctx.fillStyle = streamGrad;
+    ctx.beginPath();
+    ctx.moveTo(centerX - width * 0.5, tierTop);
+    ctx.lineTo(centerX + width * 0.5, tierTop);
+    ctx.lineTo(centerX + width * 0.7, tierBottom);
+    ctx.lineTo(centerX - width * 0.7, tierBottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Animated foam lines
+    const foamOffset = (t * 0.003) % 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const ly = tierTop + ((i * 0.125 + foamOffset) % 1) * (tierBottom - tierTop);
+      const lx = centerX + Math.sin(ly * 0.05 + t * 0.002) * 5;
+      ctx.beginPath();
+      ctx.moveTo(lx - width * 0.3, ly);
+      ctx.lineTo(lx + width * 0.3, ly);
+      ctx.stroke();
+    }
+
+    // Ledge splash
+    ctx.beginPath();
+    const splashY = tierBottom + 2;
+    for (let sx = centerX - width; sx < centerX + width; sx += 4) {
+      const sh = Math.sin((sx + t * 2) * 0.1) * 3 + 3;
+      ctx.moveTo(sx, splashY);
+      ctx.lineTo(sx, splashY + sh);
+    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+function updateAndDrawWaterParticles(t) {
+  const wc = hexToRgb(CONFIG.waterColor);
+
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    p.y += p.vy;
+    p.x += p.vx;
+    p.vx += (Math.random() - 0.5) * 0.1;
+    p.life += 0.01;
+
+    if (p.y > H * 0.73 || p.life > 1) {
+      particles[i] = createWaterParticle();
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    const a = p.alpha * (1 - p.life * 0.5);
+    ctx.fillStyle = `rgba(${wc.r + 80}, ${wc.g + 80}, ${Math.min(255, wc.b + 100)}, ${a})`;
+    ctx.fill();
+  }
+}
+
+function updateAndDrawMist(t) {
+  for (let i = 0; i < mistParticles.length; i++) {
+    const p = mistParticles[i];
+    p.y += p.vy;
+    p.x += p.vx + Math.sin(t * 0.001 + i) * 0.3;
+    p.life += 0.005;
+
+    if (p.life > 1 || p.y < H * 0.3) {
+      mistParticles[i] = createMistParticle();
+      continue;
+    }
+
+    const a = p.alpha * (1 - p.life) * Math.sin(p.life * Math.PI);
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${a})`);
+    grad.addColorStop(1, `rgba(255, 255, 255, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawRainbow(t) {
+  if (!CONFIG.rainbowVisible) return;
+
+  const cx = W * 0.5;
+  const cy = H * 0.75;
+  const radius = W * 0.35;
+  const bandWidth = 5;
+  const colors = [
+    'rgba(255,0,0,0.15)',
+    'rgba(255,127,0,0.15)',
+    'rgba(255,255,0,0.15)',
+    'rgba(0,255,0,0.15)',
+    'rgba(0,0,255,0.15)',
+    'rgba(75,0,130,0.15)',
+    'rgba(148,0,211,0.15)'
+  ];
+
+  const pulse = 0.12 + Math.sin(t * 0.001) * 0.05;
+
+  for (let i = 0; i < colors.length; i++) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - i * bandWidth, Math.PI, 0);
+    ctx.strokeStyle = colors[i].replace(/[\d.]+\)$/, `${pulse})`);
+    ctx.lineWidth = bandWidth;
+    ctx.stroke();
+  }
+}
+
+function drawRipples(t) {
+  // Create periodic ripples
+  if (Math.random() < 0.03) {
+    ripples.push({
+      x: W * 0.25 + Math.random() * W * 0.5,
+      y: H * 0.73 + Math.random() * H * 0.05,
+      radius: 2,
+      maxRadius: 20 + Math.random() * 30,
+      alpha: 0.5
+    });
+  }
+
+  const wc = hexToRgb(CONFIG.waterColor);
+
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i];
+    r.radius += 0.5;
+    r.alpha *= 0.98;
+
+    if (r.radius > r.maxRadius || r.alpha < 0.01) {
+      ripples.splice(i, 1);
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.ellipse(r.x, r.y, r.radius, r.radius * 0.3, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${r.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function drawSparkles(t) {
+  for (const s of sparkles) {
+    const brightness = Math.sin(t * 0.001 * s.speed + s.phase);
+    if (brightness > 0.5) {
+      const a = (brightness - 0.5) * 2;
+      const size = s.size * a;
+      ctx.save();
+      ctx.translate(s.x, s.y);
+
+      // Cross sparkle
+      ctx.strokeStyle = `rgba(255, 255, 240, ${a * 0.9})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-size * 2, 0);
+      ctx.lineTo(size * 2, 0);
+      ctx.moveTo(0, -size * 2);
+      ctx.lineTo(0, size * 2);
+      ctx.stroke();
+
+      // Center dot
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+}
+
+function drawBirds(t) {
+  for (const b of birds) {
+    b.x += b.speed;
+    if (b.x > W + 50) b.x = -50;
+
+    const wingAngle = Math.sin(t * 0.005 + b.wingPhase) * 0.6;
+
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.fillStyle = 'rgba(20, 20, 30, 0.7)';
+
+    // Left wing
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-b.size * 0.5, -b.size * wingAngle, -b.size, -b.size * wingAngle * 0.5);
+    ctx.quadraticCurveTo(-b.size * 0.5, b.size * 0.1, 0, 0);
+    ctx.fill();
+
+    // Right wing
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(b.size * 0.5, -b.size * wingAngle, b.size, -b.size * wingAngle * 0.5);
+    ctx.quadraticCurveTo(b.size * 0.5, b.size * 0.1, 0, 0);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function drawForegroundFoliage(t) {
+  for (const f of foliage) {
+    const sway = Math.sin(t * 0.001 * f.speed + f.phase) * 8;
+
+    ctx.save();
+    ctx.translate(f.x, f.y);
+
+    // Blade of grass / leaf
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(sway * 0.5, -f.height * 0.5, sway, -f.height);
+    ctx.strokeStyle = `hsla(${f.hue}, 60%, 30%, 0.8)`;
+    ctx.lineWidth = f.width;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Leaf tip
+    ctx.beginPath();
+    ctx.ellipse(sway, -f.height, f.width * 1.5, f.width * 0.8, sway * 0.05, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${f.hue}, 65%, 35%, 0.7)`;
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+// Sun glow
+function drawSunGlow(t) {
+  const sx = W * 0.8;
+  const sy = H * 0.08;
+  const pulse = 40 + Math.sin(t * 0.001) * 5;
+
+  const grad = ctx.createRadialGradient(sx, sy, 10, sx, sy, pulse);
+  grad.addColorStop(0, 'rgba(255, 255, 200, 0.8)');
+  grad.addColorStop(0.3, 'rgba(255, 255, 150, 0.3)');
+  grad.addColorStop(1, 'rgba(255, 255, 100, 0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(sx, sy, pulse, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function draw(now) {
+  const elapsed = now - startTime;
+  const t = elapsed % CONFIG.cycleDuration;
+
+  // Reset on cycle boundary
+  if (elapsed > 0 && t < 16) {
+    initScene();
+  }
+
+  ctx.clearRect(0, 0, W, H);
+
+  drawSky(t);
+  drawSunGlow(t);
+  drawRocks();
+  drawVegetation(t);
+  drawWaterfallStreams(t);
+  updateAndDrawWaterParticles(t);
+  drawRainbow(t);
+  drawRipples(t);
+  updateAndDrawMist(t);
+  drawSparkles(t);
+  drawBirds(t);
+  drawForegroundFoliage(t);
+
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('message', (e) => {
+  if (e.data && typeof e.data === 'object') {
+    Object.assign(CONFIG, e.data);
+  }
+});
+
+resize();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

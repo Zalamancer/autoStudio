@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midnight Editorial</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #FFF8F0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    color: #2D5016;
+  }
+  .grain-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.03;
+  }
+  .hairline-h {
+    position: fixed;
+    left: 5%; right: 5%;
+    height: 1px;
+    background: rgba(45,80,22,0.15);
+    z-index: 5;
+  }
+  .hairline-v {
+    position: fixed;
+    top: 5%; bottom: 5%;
+    width: 1px;
+    background: rgba(45,80,22,0.15);
+    z-index: 5;
+  }
+  .hl-1 { top: 20%; animation: hairlineFadeH 10s ease-in-out infinite; }
+  .hl-2 { top: 50%; animation: hairlineFadeH 10s ease-in-out infinite 2s; }
+  .hl-3 { top: 80%; animation: hairlineFadeH 10s ease-in-out infinite 4s; }
+  .vl-1 { left: 25%; animation: hairlineFadeV 10s ease-in-out infinite 1s; }
+  .vl-2 { left: 75%; animation: hairlineFadeV 10s ease-in-out infinite 3s; }
+  @keyframes hairlineFadeH {
+    0%, 100% { left: 50%; right: 50%; opacity: 0; }
+    20%, 80% { left: 5%; right: 5%; opacity: 1; }
+  }
+  @keyframes hairlineFadeV {
+    0%, 100% { top: 50%; bottom: 50%; opacity: 0; }
+    20%, 80% { top: 5%; bottom: 5%; opacity: 1; }
+  }
+  .content-center {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    text-align: center;
+    width: 85%;
+    max-width: 600px;
+  }
+  .serif-title {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: clamp(32px, 8vw, 72px);
+    font-weight: 400;
+    font-style: italic;
+    color: #2D5016;
+    line-height: 1.1;
+    animation: textReveal 8s ease-in-out infinite;
+  }
+  .mono-detail {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(9px, 1.2vw, 12px);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(45,80,22,0.5);
+    margin-top: 24px;
+    animation: textReveal 8s ease-in-out infinite 0.5s;
+  }
+  .divider-line {
+    width: 60px;
+    height: 1px;
+    background: #2D5016;
+    margin: 20px auto;
+    animation: dividerGrow 8s ease-in-out infinite 0.3s;
+  }
+  @keyframes dividerGrow {
+    0%, 100% { width: 0; opacity: 0; }
+    20%, 80% { width: 60px; opacity: 1; }
+  }
+  @keyframes textReveal {
+    0%, 100% { opacity: 0; transform: translateY(12px); }
+    15%, 85% { opacity: 1; transform: translateY(0); }
+  }
+  /* Botanical elements */
+  .botanical {
+    position: fixed;
+    z-index: 3;
+    opacity: 0;
+  }
+  .leaf {
+    width: 60px;
+    height: 100px;
+  }
+  .leaf-left {
+    left: 8%; top: 30%;
+    animation: leafSway 8s ease-in-out infinite;
+  }
+  .leaf-right {
+    right: 8%; top: 55%;
+    animation: leafSway 8s ease-in-out infinite 2s;
+    transform: scaleX(-1);
+  }
+  .leaf-bottom {
+    left: 50%; bottom: 15%;
+    transform: translateX(-50%);
+    animation: leafSway 8s ease-in-out infinite 4s;
+  }
+  @keyframes leafSway {
+    0%, 100% { opacity: 0; transform: rotate(-5deg) translateY(10px); }
+    20%, 80% { opacity: 0.3; transform: rotate(3deg) translateY(0); }
+    50% { opacity: 0.3; transform: rotate(-2deg) translateY(-5px); }
+  }
+  .vine-line {
+    position: fixed;
+    z-index: 4;
+    stroke: #2D5016;
+    stroke-width: 1;
+    fill: none;
+    opacity: 0.2;
+  }
+  .section-label {
+    position: fixed;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(45,80,22,0.35);
+    z-index: 15;
+  }
+  .label-top {
+    top: 5%; left: 5%;
+    animation: textReveal 8s ease-in-out infinite 1s;
+  }
+  .label-bottom {
+    bottom: 5%; right: 5%;
+    animation: textReveal 8s ease-in-out infinite 1.5s;
+  }
+  .floating-serif {
+    position: fixed;
+    font-family: 'Georgia', serif;
+    font-size: clamp(80px, 20vw, 200px);
+    font-weight: 400;
+    color: rgba(45,80,22,0.04);
+    z-index: 1;
+    animation: floatLetter 12s ease-in-out infinite;
+  }
+  .letter-1 { top: 10%; left: 5%; }
+  .letter-2 { bottom: 10%; right: 5%; animation-delay: 4s; }
+  @keyframes floatLetter {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(2deg); }
+  }
+  .transition-section {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #2D5016;
+    z-index: 50;
+    transform: scaleY(0);
+    transform-origin: center;
+    animation: sectionWipe 10s ease-in-out infinite;
+  }
+  @keyframes sectionWipe {
+    0%, 100% { transform: scaleY(0); }
+    45%, 48% { transform: scaleY(1); }
+    52%, 55% { transform: scaleY(1); }
+    70% { transform: scaleY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="hairline-h hl-1"></div>
+<div class="hairline-h hl-2"></div>
+<div class="hairline-h hl-3"></div>
+<div class="hairline-v vl-1"></div>
+<div class="hairline-v vl-2"></div>
+
+<div class="floating-serif letter-1" id="bgLetter1">E</div>
+<div class="floating-serif letter-2" id="bgLetter2">d</div>
+
+<div class="botanical leaf leaf-left">
+  <svg viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M30 5 Q5 30 10 60 Q15 85 30 95 Q45 85 50 60 Q55 30 30 5Z" stroke="#2D5016" stroke-width="1" fill="none"/>
+    <path d="M30 15 L30 85" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+    <path d="M30 30 Q20 35 15 45" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+    <path d="M30 45 Q40 50 45 58" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+    <path d="M30 55 Q22 60 18 70" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+  </svg>
+</div>
+<div class="botanical leaf leaf-right">
+  <svg viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M30 5 Q5 30 10 60 Q15 85 30 95 Q45 85 50 60 Q55 30 30 5Z" stroke="#2D5016" stroke-width="1" fill="none"/>
+    <path d="M30 15 L30 85" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+    <path d="M30 30 Q20 35 15 45" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+    <path d="M30 45 Q40 50 45 58" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+  </svg>
+</div>
+<div class="botanical leaf leaf-bottom">
+  <svg viewBox="0 0 80 50" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 25 Q20 5 40 10 Q60 5 75 25 Q60 45 40 40 Q20 45 5 25Z" stroke="#2D5016" stroke-width="1" fill="none"/>
+    <path d="M15 25 L65 25" stroke="#2D5016" stroke-width="0.5" fill="none"/>
+  </svg>
+</div>
+
+<div class="content-center">
+  <div class="serif-title" id="titleText">Midnight<br>Garden</div>
+  <div class="divider-line"></div>
+  <div class="mono-detail" id="detailText">An Editorial Collection</div>
+</div>
+
+<div class="section-label label-top" id="labelTop">Issue No. 01</div>
+<div class="section-label label-bottom" id="labelBottom">Spring / Summer</div>
+
+<div class="transition-section"></div>
+<canvas class="grain-overlay" id="grain"></canvas>
+
+<script>
+  // === EDITABLE TEXT VARIABLES ===
+  var TITLE_TEXT = 'Midnight<br>Garden';
+  var DETAIL_TEXT = 'An Editorial Collection';
+  var LABEL_TOP = 'Issue No. 01';
+  var LABEL_BOTTOM = 'Spring / Summer';
+  var BG_LETTER_1 = 'E';
+  var BG_LETTER_2 = 'd';
+  // === END EDITABLE ===
+
+  document.getElementById('titleText').innerHTML = TITLE_TEXT;
+  document.getElementById('detailText').textContent = DETAIL_TEXT;
+  document.getElementById('labelTop').textContent = LABEL_TOP;
+  document.getElementById('labelBottom').textContent = LABEL_BOTTOM;
+  document.getElementById('bgLetter1').textContent = BG_LETTER_1;
+  document.getElementById('bgLetter2').textContent = BG_LETTER_2;
+
+  // Subtle grain
+  var grainCanvas = document.getElementById('grain');
+  var gCtx = grainCanvas.getContext('2d');
+  function resizeGrain() {
+    grainCanvas.width = window.innerWidth / 3;
+    grainCanvas.height = window.innerHeight / 3;
+  }
+  resizeGrain();
+  window.addEventListener('resize', resizeGrain);
+
+  var frameCount = 0;
+  function renderGrain() {
+    frameCount++;
+    if (frameCount % 4 !== 0) { requestAnimationFrame(renderGrain); return; }
+    var w = grainCanvas.width;
+    var h = grainCanvas.height;
+    if (!w || !h) { requestAnimationFrame(renderGrain); return; }
+    var imageData = gCtx.createImageData(w, h);
+    var data = imageData.data;
+    for (var i = 0; i < data.length; i += 4) {
+      var v = Math.random() * 200 + 50;
+      data[i] = v;
+      data[i+1] = v;
+      data[i+2] = v;
+      data[i+3] = 255;
+    }
+    gCtx.putImageData(imageData, 0, 0);
+    requestAnimationFrame(renderGrain);
+  }
+  renderGrain();
+</script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genome Sequencer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; color: #c0d8e8; }
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+  /* Helix background */
+  canvas { position: absolute; inset: 0; z-index: 0; }
+
+  /* Header */
+  .header {
+    position: absolute; top: 2vh; left: 3vw; right: 3vw; z-index: 5;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    opacity: 0; transition: opacity 0.6s;
+  }
+  .header.visible { opacity: 1; }
+  .seq-title { font-size: 1vh; letter-spacing: 0.35em; color: #4a7a9a; text-transform: uppercase; }
+  .seq-name { font-size: 2.5vh; font-weight: 700; color: #e0f0ff; margin-top: 0.3vh; }
+  .sample-id { font-size: 1vh; color: #4a7a9a; margin-top: 0.2vh; font-variant-numeric: tabular-nums; }
+  .status-badge {
+    padding: 0.4vh 1.2vw; border-radius: 0.5vh; font-size: 1vh;
+    letter-spacing: 0.15em; font-weight: 700;
+    background: rgba(34,204,102,0.1); border: 1px solid rgba(34,204,102,0.3);
+    color: #22cc66;
+  }
+
+  /* Sequence display */
+  .sequence-area {
+    position: absolute; top: 14vh; left: 3vw; right: 3vw;
+    z-index: 5; opacity: 0; transition: opacity 0.6s;
+  }
+  .sequence-area.visible { opacity: 1; }
+  .seq-row-label { font-size: 0.8vh; color: #4a7a9a; letter-spacing: 0.15em; margin-bottom: 0.5vh; }
+  .seq-row {
+    display: flex; flex-wrap: wrap; gap: 0.15vw;
+    font-size: 1.6vh; font-weight: 700; letter-spacing: 0.05em;
+    line-height: 1.6; font-variant-numeric: tabular-nums;
+  }
+  .base {
+    display: inline-block; width: 1.5vw; text-align: center;
+    opacity: 0; transition: opacity 0.15s, background 0.3s;
+    border-radius: 0.2vh;
+  }
+  .base.visible { opacity: 1; }
+  .base.match { background: rgba(34,204,102,0.08); }
+  .base.mismatch { background: rgba(255,80,80,0.15); border-bottom: 2px solid #ff5050; }
+
+  /* Alignment */
+  .alignment-area {
+    position: absolute; top: 42vh; left: 3vw; right: 3vw;
+    z-index: 5; opacity: 0; transition: opacity 0.6s;
+  }
+  .alignment-area.visible { opacity: 1; }
+  .align-label { font-size: 0.8vh; color: #4a7a9a; letter-spacing: 0.15em; margin-bottom: 0.5vh; }
+  .align-row { display: flex; gap: 0.15vw; font-size: 1.4vh; font-weight: 600; line-height: 1.8; }
+  .connector-row { display: flex; gap: 0.15vw; font-size: 1vh; line-height: 1; margin: 0.2vh 0; }
+  .connector { display: inline-block; width: 1.5vw; text-align: center; color: #4a7a9a; }
+  .connector.match { color: #22cc66; }
+
+  /* Stats panel */
+  .stats-panel {
+    position: absolute; bottom: 12vh; left: 3vw; right: 3vw;
+    display: flex; gap: 2vw; z-index: 5;
+    opacity: 0; transition: opacity 0.6s;
+  }
+  .stats-panel.visible { opacity: 1; }
+  .stat-card {
+    flex: 1; padding: 1.5vh 1.5vw;
+    background: rgba(20,40,60,0.6); border: 1px solid rgba(100,160,255,0.08);
+    border-radius: 0.8vh;
+  }
+  .stat-label { font-size: 0.8vh; letter-spacing: 0.15em; color: #4a7a9a; text-transform: uppercase; margin-bottom: 0.5vh; }
+  .stat-value { font-size: 2.5vh; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat-unit { font-size: 1vh; opacity: 0.4; margin-left: 0.3vw; }
+
+  /* Progress bar */
+  .progress-area {
+    position: absolute; bottom: 5vh; left: 3vw; right: 3vw;
+    z-index: 5; opacity: 0; transition: opacity 0.6s;
+  }
+  .progress-area.visible { opacity: 1; }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 0.5vh; }
+  .progress-label { font-size: 0.8vh; letter-spacing: 0.15em; color: #4a7a9a; text-transform: uppercase; }
+  .progress-pct { font-size: 1.2vh; font-weight: 700; color: #22cc66; font-variant-numeric: tabular-nums; }
+  .progress-track {
+    width: 100%; height: 0.8vh; background: rgba(100,160,255,0.06);
+    border-radius: 0.4vh; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; border-radius: 0.4vh;
+    background: linear-gradient(90deg, #22cc66, #44aaff);
+    transition: width 0.5s ease;
+  }
+
+  .vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none; z-index: 2;
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <canvas id="helixCanvas"></canvas>
+  <div class="vignette"></div>
+
+  <div class="header" id="header">
+    <div>
+      <div class="seq-title">GENOME SEQUENCER</div>
+      <div class="seq-name" id="seqName">BRCA1 Gene Analysis</div>
+      <div class="sample-id" id="sampleId">SAMPLE: GS-2024-0847</div>
+    </div>
+    <div class="status-badge" id="statusBadge">SEQUENCING</div>
+  </div>
+
+  <div class="sequence-area" id="seqArea">
+    <div class="seq-row-label">REFERENCE SEQUENCE</div>
+    <div class="seq-row" id="seqRow1"></div>
+    <div style="height:1.5vh"></div>
+    <div class="seq-row-label">SAMPLE READS</div>
+    <div class="seq-row" id="seqRow2"></div>
+  </div>
+
+  <div class="alignment-area" id="alignArea">
+    <div class="align-label">ALIGNMENT</div>
+    <div class="align-row" id="alignRef"></div>
+    <div class="connector-row" id="alignConn"></div>
+    <div class="align-row" id="alignSample"></div>
+  </div>
+
+  <div class="stats-panel" id="statsPanel">
+    <div class="stat-card">
+      <div class="stat-label">Coverage</div>
+      <div><span class="stat-value" id="statCov">0</span><span class="stat-unit">x</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Quality Score</div>
+      <div><span class="stat-value" id="statQual">0</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Read Count</div>
+      <div><span class="stat-value" id="statReads">0</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Mutations Found</div>
+      <div><span class="stat-value" id="statMut">0</span></div>
+    </div>
+  </div>
+
+  <div class="progress-area" id="progressArea">
+    <div class="progress-header">
+      <div class="progress-label">Sequencing Progress</div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  sequenceName: 'BRCA1 Gene Analysis',
+  sampleId: 'GS-2024-0847',
+  coverage: 42,
+  qualityScore: 38,
+  bgColor: '#060e18',
+  baseColors: { A: '#22cc66', T: '#ff6644', G: '#44aaff', C: '#ffaa22' },
+  cycleDuration: 16000
+};
+
+document.getElementById('seqName').textContent = CONFIG.sequenceName;
+document.getElementById('sampleId').textContent = 'SAMPLE: ' + CONFIG.sampleId;
+
+// Helix background canvas
+const canvas = document.getElementById('helixCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, helixTime = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function drawHelix() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  const centerX = W * 0.5;
+  const centerY = H * 0.5;
+  const radius = Math.min(W, H) * 0.3;
+  const segments = 60;
+
+  ctx.globalAlpha = 0.06;
+  for (let strand = 0; strand < 2; strand++) {
+    const offset = strand * Math.PI;
+    ctx.beginPath();
+    for (let i = 0; i <= segments; i++) {
+      const t = (i / segments) * Math.PI * 4 + helixTime;
+      const x = centerX + Math.cos(t + offset) * radius * 0.4;
+      const y = centerY - H * 0.35 + (i / segments) * H * 0.7;
+      const z = Math.sin(t + offset);
+      ctx.lineWidth = 2 + z * 1;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = strand === 0 ? '#44aaff' : '#22cc66';
+    ctx.stroke();
+
+    // Rungs
+    if (strand === 0) {
+      for (let i = 0; i < segments; i += 3) {
+        const t = (i / segments) * Math.PI * 4 + helixTime;
+        const x1 = centerX + Math.cos(t) * radius * 0.4;
+        const x2 = centerX + Math.cos(t + Math.PI) * radius * 0.4;
+        const y = centerY - H * 0.35 + (i / segments) * H * 0.7;
+        ctx.beginPath();
+        ctx.moveTo(x1, y);
+        ctx.lineTo(x2, y);
+        ctx.strokeStyle = 'rgba(100,180,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  helixTime += 0.008;
+  requestAnimationFrame(drawHelix);
+}
+drawHelix();
+
+// Generate random sequences
+const bases = ['A', 'T', 'G', 'C'];
+function randomBase() { return bases[Math.floor(Math.random() * 4)]; }
+function generateSeq(len) { return Array.from({length: len}, randomBase); }
+function mutateSeq(seq, rate) {
+  return seq.map(function(b) {
+    return Math.random() < rate ? bases.filter(function(x) { return x !== b; })[Math.floor(Math.random() * 3)] : b;
+  });
+}
+
+// Populate sequence rows
+function populateSequences(row1El, row2El, len) {
+  row1El.innerHTML = '';
+  row2El.innerHTML = '';
+  var ref = generateSeq(len);
+  var sample = mutateSeq(ref, 0.05);
+
+  ref.forEach(function(b, i) {
+    var el1 = document.createElement('span');
+    el1.className = 'base';
+    el1.textContent = b;
+    el1.style.color = CONFIG.baseColors[b];
+    row1El.appendChild(el1);
+
+    var el2 = document.createElement('span');
+    el2.className = 'base';
+    el2.textContent = sample[i];
+    el2.style.color = CONFIG.baseColors[sample[i]];
+    if (b !== sample[i]) el2.classList.add('mismatch');
+    else el2.classList.add('match');
+    row2El.appendChild(el2);
+  });
+
+  return { ref: ref, sample: sample };
+}
+
+// Populate alignment
+function populateAlignment(refEl, connEl, sampleEl, ref, sample, start, len) {
+  refEl.innerHTML = '';
+  connEl.innerHTML = '';
+  sampleEl.innerHTML = '';
+
+  for (var i = start; i < Math.min(start + len, ref.length); i++) {
+    var r = document.createElement('span');
+    r.className = 'base';
+    r.textContent = ref[i];
+    r.style.color = CONFIG.baseColors[ref[i]];
+    refEl.appendChild(r);
+
+    var c = document.createElement('span');
+    c.className = 'connector';
+    c.textContent = ref[i] === sample[i] ? '|' : 'x';
+    if (ref[i] === sample[i]) c.classList.add('match');
+    connEl.appendChild(c);
+
+    var s = document.createElement('span');
+    s.className = 'base';
+    s.textContent = sample[i];
+    s.style.color = CONFIG.baseColors[sample[i]];
+    sampleEl.appendChild(s);
+  }
+}
+
+// Animate numbers
+function animateNum(el, target, duration, suffix) {
+  var start = parseInt(el.textContent) || 0;
+  var startTime = performance.now();
+  function step(now) {
+    var p = Math.min((now - startTime) / duration, 1);
+    var ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * ease) + (suffix || '');
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function runCycle() {
+  var header = document.getElementById('header');
+  var seqArea = document.getElementById('seqArea');
+  var alignArea = document.getElementById('alignArea');
+  var statsPanel = document.getElementById('statsPanel');
+  var progressArea = document.getElementById('progressArea');
+  var badge = document.getElementById('statusBadge');
+
+  // Reset
+  [header, seqArea, alignArea, statsPanel, progressArea].forEach(function(el) { el.classList.remove('visible'); });
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressPct').textContent = '0%';
+  badge.textContent = 'SEQUENCING';
+  badge.style.color = '#22cc66';
+  badge.style.borderColor = 'rgba(34,204,102,0.3)';
+  badge.style.background = 'rgba(34,204,102,0.1)';
+
+  // Generate data
+  var seqLen = Math.floor(window.innerWidth / 15);
+  var data = populateSequences(document.getElementById('seqRow1'), document.getElementById('seqRow2'), seqLen);
+  populateAlignment(
+    document.getElementById('alignRef'), document.getElementById('alignConn'),
+    document.getElementById('alignSample'), data.ref, data.sample, 0, Math.min(40, seqLen)
+  );
+
+  // Entrance
+  setTimeout(function() { header.classList.add('visible'); }, 300);
+  setTimeout(function() { seqArea.classList.add('visible'); }, 600);
+
+  // Reveal bases one by one
+  var allBases = document.querySelectorAll('.base');
+  var revealDelay = Math.min(30, (CONFIG.cycleDuration - 6000) / allBases.length);
+  allBases.forEach(function(b, i) {
+    setTimeout(function() { b.classList.add('visible'); }, 800 + i * revealDelay);
+  });
+
+  setTimeout(function() { alignArea.classList.add('visible'); }, 3000);
+  setTimeout(function() {
+    statsPanel.classList.add('visible');
+    animateNum(document.getElementById('statCov'), CONFIG.coverage, 2000);
+    animateNum(document.getElementById('statQual'), CONFIG.qualityScore, 2000);
+    animateNum(document.getElementById('statReads'), 12847 + Math.floor(Math.random() * 5000), 2500);
+    var mutations = data.ref.filter(function(b, i) { return b !== data.sample[i]; }).length;
+    animateNum(document.getElementById('statMut'), mutations, 1500);
+  }, 4000);
+
+  setTimeout(function() { progressArea.classList.add('visible'); }, 5000);
+
+  // Progress animation
+  var progStart = performance.now();
+  var progDuration = CONFIG.cycleDuration - 7000;
+  function tickProgress(now) {
+    var elapsed = now - progStart - 5500;
+    if (elapsed < 0) { requestAnimationFrame(tickProgress); return; }
+    var p = Math.min(elapsed / progDuration, 1);
+    var pct = Math.round(p * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+    if (pct >= 100) {
+      badge.textContent = 'COMPLETE';
+      badge.style.color = '#44aaff';
+      badge.style.borderColor = 'rgba(68,170,255,0.3)';
+      badge.style.background = 'rgba(68,170,255,0.1)';
+    }
+    if (p < 1) requestAnimationFrame(tickProgress);
+  }
+  requestAnimationFrame(tickProgress);
+
+  // Fade out
+  setTimeout(function() {
+    [header, seqArea, alignArea, statsPanel, progressArea].forEach(function(el) { el.classList.remove('visible'); });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>

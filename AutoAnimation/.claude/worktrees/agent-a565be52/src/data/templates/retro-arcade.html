@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro Arcade</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+    image-rendering: pixelated;
+  }
+  canvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15) 0px,
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 10;
+  }
+  .crt-flicker {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 11;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="scanlines"></div>
+<div class="crt-flicker" id="crtFlicker"></div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    title: 'SPACE DEFENDERS',
+    insertCoinText: 'INSERT COIN',
+    initialScore: 0,
+    lives: 3,
+    hiScore: 99999,
+    starCount: 80,
+    invaderRows: 3,
+    invaderCols: 8,
+    invaderSpeed: 0.3,
+    colors: {
+      bg: '#000000',
+      text: '#ffffff',
+      score: '#ffff00',
+      heart: '#ff0044',
+      invader1: '#00ff00',
+      invader2: '#00ccff',
+      invader3: '#ff6600',
+      bullet: '#ffffff',
+      player: '#00ff88',
+      border: '#333366'
+    }
+  };
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Pixel scale
+  const PW = 256;
+  const PH = 480;
+  canvas.width = PW;
+  canvas.height = PH;
+
+  let score = CONFIG.initialScore;
+  let frame = 0;
+  let blinkTimer = 0;
+  let showInsertCoin = true;
+
+  // Stars
+  const stars = [];
+  for (let i = 0; i < CONFIG.starCount; i++) {
+    stars.push({
+      x: Math.random() * PW,
+      y: Math.random() * PH,
+      speed: 0.2 + Math.random() * 0.8,
+      brightness: 0.3 + Math.random() * 0.7
+    });
+  }
+
+  // Invaders
+  const invaders = [];
+  const invaderSize = 10;
+  const invaderGap = 6;
+  const startX = 20;
+  const startY = 60;
+  for (let r = 0; r < CONFIG.invaderRows; r++) {
+    for (let c = 0; c < CONFIG.invaderCols; c++) {
+      invaders.push({
+        x: startX + c * (invaderSize + invaderGap),
+        y: startY + r * (invaderSize + invaderGap + 2),
+        row: r,
+        alive: true,
+        animFrame: 0
+      });
+    }
+  }
+  let invaderDir = 1;
+  let invaderDy = 0;
+
+  // Bullets
+  const bullets = [];
+  let bulletTimer = 0;
+
+  // Player
+  const player = { x: PW / 2, y: PH - 50, w: 14, h: 8 };
+
+  // Pixel art font (simplified - use fillRect patterns)
+  function drawPixelChar(ch, x, y, size, color) {
+    ctx.fillStyle = color;
+    ctx.font = `${size}px monospace`;
+    ctx.fillText(ch, x, y);
+  }
+
+  function drawText(text, x, y, size, color, align) {
+    ctx.fillStyle = color;
+    ctx.font = `bold ${size}px monospace`;
+    ctx.textAlign = align || 'left';
+    ctx.fillText(text, x, y);
+  }
+
+  // Draw invader sprite (pixel art)
+  function drawInvader(x, y, row, anim) {
+    const colors = [CONFIG.colors.invader1, CONFIG.colors.invader2, CONFIG.colors.invader3];
+    ctx.fillStyle = colors[row % 3];
+    const s = 2; // pixel size
+
+    if (row === 0) {
+      // Type A: classic invader shape
+      const pattern = anim === 0 ? [
+        [0,0,1,0,0,0,1,0,0],
+        [0,0,0,1,1,1,0,0,0],
+        [0,0,1,1,1,1,1,0,0],
+        [0,1,1,0,1,0,1,1,0],
+        [1,1,1,1,1,1,1,1,1],
+        [1,0,1,1,1,1,1,0,1],
+        [1,0,1,0,0,0,1,0,1],
+        [0,0,0,1,0,1,0,0,0]
+      ] : [
+        [0,0,1,0,0,0,1,0,0],
+        [1,0,0,1,1,1,0,0,1],
+        [1,0,1,1,1,1,1,0,1],
+        [1,1,1,0,1,0,1,1,1],
+        [1,1,1,1,1,1,1,1,1],
+        [0,1,1,1,1,1,1,1,0],
+        [0,0,1,0,0,0,1,0,0],
+        [0,1,0,0,0,0,0,1,0]
+      ];
+      for (let py = 0; py < pattern.length; py++) {
+        for (let px = 0; px < pattern[py].length; px++) {
+          if (pattern[py][px]) ctx.fillRect(x + px * s - 4, y + py * s, s, s);
+        }
+      }
+    } else if (row === 1) {
+      // Type B
+      const pattern = anim === 0 ? [
+        [0,0,0,1,1,0,0,0],
+        [0,1,1,1,1,1,1,0],
+        [1,1,1,1,1,1,1,1],
+        [1,1,0,1,1,0,1,1],
+        [1,1,1,1,1,1,1,1],
+        [0,0,1,0,0,1,0,0],
+        [0,1,0,1,1,0,1,0],
+        [1,0,1,0,0,1,0,1]
+      ] : [
+        [0,0,0,1,1,0,0,0],
+        [0,1,1,1,1,1,1,0],
+        [1,1,1,1,1,1,1,1],
+        [1,1,0,1,1,0,1,1],
+        [1,1,1,1,1,1,1,1],
+        [0,0,1,0,0,1,0,0],
+        [0,1,0,0,0,0,1,0],
+        [0,0,1,0,0,1,0,0]
+      ];
+      for (let py = 0; py < pattern.length; py++) {
+        for (let px = 0; px < pattern[py].length; px++) {
+          if (pattern[py][px]) ctx.fillRect(x + px * s - 4, y + py * s, s, s);
+        }
+      }
+    } else {
+      // Type C
+      const pattern = anim === 0 ? [
+        [0,0,1,1,1,1,0,0],
+        [1,1,1,1,1,1,1,1],
+        [1,1,0,1,1,0,1,1],
+        [1,1,1,1,1,1,1,1],
+        [0,1,1,0,0,1,1,0],
+        [1,0,0,1,1,0,0,1]
+      ] : [
+        [0,0,1,1,1,1,0,0],
+        [1,1,1,1,1,1,1,1],
+        [1,1,0,1,1,0,1,1],
+        [1,1,1,1,1,1,1,1],
+        [1,0,1,0,0,1,0,1],
+        [0,1,0,0,0,0,1,0]
+      ];
+      for (let py = 0; py < pattern.length; py++) {
+        for (let px = 0; px < pattern[py].length; px++) {
+          if (pattern[py][px]) ctx.fillRect(x + px * s - 4, y + py * s, s, s);
+        }
+      }
+    }
+  }
+
+  // Draw heart
+  function drawHeart(x, y, size) {
+    ctx.fillStyle = CONFIG.colors.heart;
+    const s = size;
+    // Simple pixel heart
+    const heart = [
+      [0,1,0,1,0],
+      [1,1,1,1,1],
+      [1,1,1,1,1],
+      [0,1,1,1,0],
+      [0,0,1,0,0]
+    ];
+    for (let py = 0; py < heart.length; py++) {
+      for (let px = 0; px < heart[py].length; px++) {
+        if (heart[py][px]) ctx.fillRect(x + px * s, y + py * s, s, s);
+      }
+    }
+  }
+
+  // Draw player ship
+  function drawPlayer(x, y) {
+    ctx.fillStyle = CONFIG.colors.player;
+    const s = 2;
+    const ship = [
+      [0,0,0,1,0,0,0],
+      [0,0,1,1,1,0,0],
+      [0,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1]
+    ];
+    for (let py = 0; py < ship.length; py++) {
+      for (let px = 0; px < ship[py].length; px++) {
+        if (ship[py][px]) ctx.fillRect(x + px * s - 7, y + py * s, s, s);
+      }
+    }
+  }
+
+  // Border frame
+  function drawBorder() {
+    ctx.strokeStyle = CONFIG.colors.border;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(4, 4, PW - 8, PH - 8);
+
+    ctx.strokeStyle = CONFIG.colors.border;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(8, 8, PW - 16, PH - 16);
+  }
+
+  function update() {
+    frame++;
+    blinkTimer++;
+
+    // Score increment
+    if (frame % 30 === 0) score += 10;
+    if (score > CONFIG.hiScore) score = 0;
+
+    // Blink insert coin
+    if (blinkTimer % 40 === 0) showInsertCoin = !showInsertCoin;
+
+    // Stars
+    stars.forEach(s => {
+      s.y += s.speed;
+      if (s.y > PH) { s.y = 0; s.x = Math.random() * PW; }
+    });
+
+    // Invaders movement
+    let hitEdge = false;
+    invaders.forEach(inv => {
+      if (inv.alive) {
+        inv.x += CONFIG.invaderSpeed * invaderDir;
+        if (inv.x > PW - 30 || inv.x < 15) hitEdge = true;
+      }
+    });
+    if (hitEdge) {
+      invaderDir *= -1;
+      invaders.forEach(inv => { if (inv.alive) inv.y += 4; });
+    }
+
+    // Reset invaders if they go too low
+    invaders.forEach(inv => {
+      if (inv.y > PH - 80) {
+        inv.y = startY + inv.row * (invaderSize + invaderGap + 2);
+        inv.x = startX + (invaders.indexOf(inv) % CONFIG.invaderCols) * (invaderSize + invaderGap);
+      }
+    });
+
+    // Animation frame toggle
+    if (frame % 30 === 0) {
+      invaders.forEach(inv => { inv.animFrame = inv.animFrame === 0 ? 1 : 0; });
+    }
+
+    // Bullets
+    bulletTimer++;
+    if (bulletTimer % 60 === 0) {
+      bullets.push({ x: player.x, y: player.y - 4, speed: -2 });
+    }
+    // Enemy bullets
+    if (bulletTimer % 90 === 0) {
+      const aliveInvaders = invaders.filter(i => i.alive);
+      if (aliveInvaders.length > 0) {
+        const shooter = aliveInvaders[Math.floor(Math.random() * aliveInvaders.length)];
+        bullets.push({ x: shooter.x + 4, y: shooter.y + 12, speed: 1.5, enemy: true });
+      }
+    }
+
+    bullets.forEach(b => { b.y += b.speed; });
+    // Remove off-screen
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      if (bullets[i].y < 0 || bullets[i].y > PH) bullets.splice(i, 1);
+    }
+
+    // Player drift
+    player.x = PW / 2 + Math.sin(frame * 0.015) * 40;
+  }
+
+  function draw() {
+    // Clear
+    ctx.fillStyle = CONFIG.colors.bg;
+    ctx.fillRect(0, 0, PW, PH);
+
+    // Stars
+    stars.forEach(s => {
+      ctx.fillStyle = `rgba(255,255,255,${s.brightness})`;
+      ctx.fillRect(Math.floor(s.x), Math.floor(s.y), 1, 1);
+    });
+
+    // Border
+    drawBorder();
+
+    // Title
+    drawText(CONFIG.title, PW / 2, 22, 10, CONFIG.colors.text, 'center');
+
+    // Score
+    drawText('SCORE', 16, 38, 6, '#aaa', 'left');
+    drawText(String(score).padStart(6, '0'), 16, 48, 8, CONFIG.colors.score, 'left');
+
+    // Hi Score
+    drawText('HI-SCORE', PW - 16, 38, 6, '#aaa', 'right');
+    drawText(String(CONFIG.hiScore).padStart(6, '0'), PW - 16, 48, 8, CONFIG.colors.score, 'right');
+
+    // Lives
+    for (let i = 0; i < CONFIG.lives; i++) {
+      drawHeart(16 + i * 14, PH - 20, 2);
+    }
+
+    // Invaders
+    invaders.forEach(inv => {
+      if (inv.alive) {
+        drawInvader(inv.x, inv.y, inv.row, inv.animFrame);
+      }
+    });
+
+    // Bullets
+    bullets.forEach(b => {
+      ctx.fillStyle = b.enemy ? CONFIG.colors.invader1 : CONFIG.colors.bullet;
+      ctx.fillRect(Math.floor(b.x), Math.floor(b.y), 2, b.enemy ? 4 : 6);
+    });
+
+    // Player
+    drawPlayer(player.x, player.y);
+
+    // Insert Coin
+    if (showInsertCoin) {
+      drawText(CONFIG.insertCoinText, PW / 2, PH - 40, 8, CONFIG.colors.text, 'center');
+    }
+
+    // Ground line
+    ctx.fillStyle = CONFIG.colors.player;
+    ctx.fillRect(12, PH - 28, PW - 24, 1);
+  }
+
+  function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  gameLoop();
+</script>
+</body>
+</html>

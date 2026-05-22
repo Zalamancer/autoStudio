@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Coordinate Plane</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,700;1,400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1c1c2e;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'STIX Two Text', 'Times New Roman', serif;
+  }
+  svg { display: block; width: 100%; height: 100%; }
+
+  .axis line, .axis path { stroke: rgba(255,255,255,0.3); stroke-width: 1; }
+  .axis text { fill: rgba(255,255,255,0.35); font-size: 11px; font-family: 'STIX Two Text', serif; }
+  .grid line { stroke: rgba(88,196,221,0.07); stroke-width: 0.5; }
+  .grid path { stroke: none; }
+
+  .func-path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .func-label {
+    font-size: 14px;
+    font-style: italic;
+    font-family: 'STIX Two Text', serif;
+  }
+  .vector-line { stroke-linecap: round; }
+  .point-glow { mix-blend-mode: screen; }
+  .title-text {
+    font-size: 20px;
+    font-weight: 700;
+    fill: #eee;
+    font-family: 'STIX Two Text', serif;
+  }
+  .annotation-text {
+    font-family: 'STIX Two Text', serif;
+  }
+</style>
+</head>
+<body>
+<svg id="viz"></svg>
+<script>
+// ============ EDITABLE CONFIG ============
+const CONFIG = {
+  title: '',
+  xRange: [-6, 6],
+  yRange: [-4, 4],
+  gridSpacing: 1,
+  showGrid: true,
+  showAxes: true,
+  showNumbers: true,
+  backgroundColor: '#1c1c2e',
+  functions: [
+    { expr: 'Math.sin(x)', color: '#58C4DD', label: 'sin(x)', width: 2.5 },
+    { expr: 'Math.cos(x)', color: '#FC6255', label: 'cos(x)', width: 2.5 }
+  ],
+  parametric: [],
+  vectors: [],
+  points: [],
+  shapes: [],
+  annotations: [],
+  animationSpeed: 1.0,
+  animationDuration: 2000
+};
+// =========================================
+
+const svg = d3.select('#viz');
+let W, H;
+const margin = { top: 45, right: 30, bottom: 35, left: 40 };
+
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  svg.attr('width', W).attr('height', H);
+}
+window.addEventListener('resize', () => { resize(); rebuild(); });
+resize();
+
+let xScale, yScale;
+let gGrid, gAxes, gShapes, gFuncs, gVectors, gPoints, gAnnotations, gTitle;
+let animProgress = 0, totalFrames = 0, time = 0;
+
+// 3B1B-inspired palette
+const PALETTE = ['#58C4DD','#FC6255','#FFFF00','#83C167','#9A72AC','#FF862F','#E65A7C','#76DDC8'];
+
+function buildScales() {
+  xScale = d3.scaleLinear()
+    .domain(CONFIG.xRange)
+    .range([margin.left, W - margin.right]);
+  yScale = d3.scaleLinear()
+    .domain(CONFIG.yRange)
+    .range([H - margin.bottom, margin.top]);
+}
+
+function rebuild() {
+  svg.selectAll('*').remove();
+  document.body.style.background = CONFIG.backgroundColor;
+
+  buildScales();
+
+  // Glow filter
+  const defs = svg.append('defs');
+  const glow = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+  glow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+  const merge = glow.append('feMerge');
+  merge.append('feMergeNode').attr('in', 'blur');
+  merge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+  const glowStrong = defs.append('filter').attr('id', 'glow-strong').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+  glowStrong.append('feGaussianBlur').attr('stdDeviation', '6').attr('result', 'blur');
+  const merge2 = glowStrong.append('feMerge');
+  merge2.append('feMergeNode').attr('in', 'blur');
+  merge2.append('feMergeNode').attr('in', 'SourceGraphic');
+
+  // Arrow marker
+  CONFIG.vectors.forEach((v, i) => {
+    const c = v.color || PALETTE[i % PALETTE.length];
+    defs.append('marker')
+      .attr('id', 'arrow-' + i)
+      .attr('viewBox', '0 0 10 10')
+      .attr('refX', 9).attr('refY', 5)
+      .attr('markerWidth', 8).attr('markerHeight', 8)
+      .attr('orient', 'auto-start-reverse')
+      .append('path')
+      .attr('d', 'M 0 0 L 10 5 L 0 10 z')
+      .attr('fill', c);
+  });
+
+  gGrid = svg.append('g').attr('class', 'grid-group');
+  gAxes = svg.append('g').attr('class', 'axes-group');
+  gShapes = svg.append('g').attr('class', 'shapes-group');
+  gFuncs = svg.append('g').attr('class', 'funcs-group');
+  gVectors = svg.append('g').attr('class', 'vectors-group');
+  gPoints = svg.append('g').attr('class', 'points-group');
+  gAnnotations = svg.append('g').attr('class', 'annotations-group');
+  gTitle = svg.append('g').attr('class', 'title-group');
+
+  drawAll();
+}
+
+function drawAll() {
+  drawGrid();
+  drawAxes();
+  drawShapes();
+  drawFunctions();
+  drawVectors();
+  drawPoints();
+  drawAnnotations();
+  drawTitle();
+}
+
+function drawGrid() {
+  if (!CONFIG.showGrid) return;
+
+  const xAxis = d3.axisBottom(xScale)
+    .tickSize(-(H - margin.top - margin.bottom))
+    .tickValues(d3.range(CONFIG.xRange[0], CONFIG.xRange[1] + 1, CONFIG.gridSpacing))
+    .tickFormat('');
+
+  const yAxis = d3.axisLeft(yScale)
+    .tickSize(-(W - margin.left - margin.right))
+    .tickValues(d3.range(CONFIG.yRange[0], CONFIG.yRange[1] + 1, CONFIG.gridSpacing))
+    .tickFormat('');
+
+  gGrid.append('g')
+    .attr('class', 'grid')
+    .attr('transform', `translate(0,${H - margin.bottom})`)
+    .call(xAxis)
+    .style('opacity', 0)
+    .transition().duration(CONFIG.animationDuration * 0.3)
+    .style('opacity', 1);
+
+  gGrid.append('g')
+    .attr('class', 'grid')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(yAxis)
+    .style('opacity', 0)
+    .transition().duration(CONFIG.animationDuration * 0.3)
+    .style('opacity', 1);
+}
+
+function drawAxes() {
+  if (!CONFIG.showAxes) return;
+
+  const y0 = yScale(0);
+  const x0 = xScale(0);
+
+  // X axis line
+  const xLine = gAxes.append('line')
+    .attr('x1', margin.left).attr('y1', y0)
+    .attr('x2', margin.left).attr('y2', y0)
+    .attr('stroke', 'rgba(255,255,255,0.5)')
+    .attr('stroke-width', 1.5);
+
+  xLine.transition().duration(CONFIG.animationDuration * 0.4).delay(CONFIG.animationDuration * 0.1)
+    .attr('x2', W - margin.right);
+
+  // X arrow
+  gAxes.append('text')
+    .attr('x', W - margin.right + 5).attr('y', y0 + 4)
+    .attr('fill', 'rgba(255,255,255,0.5)')
+    .attr('font-size', '14px').attr('font-style', 'italic')
+    .text('x')
+    .style('opacity', 0)
+    .transition().delay(CONFIG.animationDuration * 0.5).duration(300)
+    .style('opacity', 1);
+
+  // Y axis line
+  const yLine = gAxes.append('line')
+    .attr('x1', x0).attr('y1', H - margin.bottom)
+    .attr('x2', x0).attr('y2', H - margin.bottom)
+    .attr('stroke', 'rgba(255,255,255,0.5)')
+    .attr('stroke-width', 1.5);
+
+  yLine.transition().duration(CONFIG.animationDuration * 0.4).delay(CONFIG.animationDuration * 0.1)
+    .attr('y2', margin.top);
+
+  // Y arrow
+  gAxes.append('text')
+    .attr('x', x0 + 8).attr('y', margin.top - 5)
+    .attr('fill', 'rgba(255,255,255,0.5)')
+    .attr('font-size', '14px').attr('font-style', 'italic')
+    .text('y')
+    .style('opacity', 0)
+    .transition().delay(CONFIG.animationDuration * 0.5).duration(300)
+    .style('opacity', 1);
+
+  // Tick numbers
+  if (CONFIG.showNumbers) {
+    const spacing = CONFIG.gridSpacing;
+    for (let x = Math.ceil(CONFIG.xRange[0] / spacing) * spacing; x <= CONFIG.xRange[1]; x += spacing) {
+      if (Math.abs(x) < 0.01) continue;
+      gAxes.append('text')
+        .attr('x', xScale(x)).attr('y', y0 + 18)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'rgba(255,255,255,0.3)')
+        .attr('font-size', '11px')
+        .text(x)
+        .style('opacity', 0)
+        .transition().delay(CONFIG.animationDuration * 0.35 + Math.abs(x) * 40).duration(300)
+        .style('opacity', 1);
+    }
+    for (let y = Math.ceil(CONFIG.yRange[0] / spacing) * spacing; y <= CONFIG.yRange[1]; y += spacing) {
+      if (Math.abs(y) < 0.01) continue;
+      gAxes.append('text')
+        .attr('x', x0 - 10).attr('y', yScale(y) + 4)
+        .attr('text-anchor', 'end')
+        .attr('fill', 'rgba(255,255,255,0.3)')
+        .attr('font-size', '11px')
+        .text(y)
+        .style('opacity', 0)
+        .transition().delay(CONFIG.animationDuration * 0.35 + Math.abs(y) * 40).duration(300)
+        .style('opacity', 1);
+    }
+  }
+}
+
+function drawFunctions() {
+  const line = d3.line()
+    .x(d => xScale(d[0]))
+    .y(d => yScale(d[1]))
+    .curve(d3.curveBasis)
+    .defined(d => isFinite(d[1]) && d[1] > CONFIG.yRange[0] - 1 && d[1] < CONFIG.yRange[1] + 1);
+
+  CONFIG.functions.forEach((func, fi) => {
+    const color = func.color || PALETTE[fi % PALETTE.length];
+    const evalFn = new Function('x', 'return ' + func.expr);
+    const samples = [];
+    const steps = 600;
+    const dx = (CONFIG.xRange[1] - CONFIG.xRange[0]) / steps;
+
+    for (let i = 0; i <= steps; i++) {
+      const x = CONFIG.xRange[0] + i * dx;
+      let y;
+      try { y = evalFn(x); } catch { y = NaN; }
+      samples.push([x, y]);
+    }
+
+    // Glow path (behind)
+    const glowPath = gFuncs.append('path')
+      .datum(samples)
+      .attr('d', line)
+      .attr('fill', 'none')
+      .attr('stroke', color)
+      .attr('stroke-width', (func.width || 2.5) + 4)
+      .attr('opacity', 0.15)
+      .attr('filter', 'url(#glow-strong)');
+
+    // Main path
+    const path = gFuncs.append('path')
+      .datum(samples)
+      .attr('d', line)
+      .attr('class', 'func-path')
+      .attr('stroke', color)
+      .attr('stroke-width', func.width || 2.5)
+      .attr('filter', 'url(#glow)');
+
+    // Draw-on animation via strokeDasharray
+    const totalLen = path.node().getTotalLength();
+    path
+      .attr('stroke-dasharray', totalLen)
+      .attr('stroke-dashoffset', totalLen)
+      .transition()
+      .duration(CONFIG.animationDuration * 0.6)
+      .delay(CONFIG.animationDuration * 0.4 + fi * 400)
+      .ease(d3.easeCubicInOut)
+      .attr('stroke-dashoffset', 0);
+
+    glowPath
+      .attr('stroke-dasharray', totalLen)
+      .attr('stroke-dashoffset', totalLen)
+      .transition()
+      .duration(CONFIG.animationDuration * 0.6)
+      .delay(CONFIG.animationDuration * 0.4 + fi * 400)
+      .ease(d3.easeCubicInOut)
+      .attr('stroke-dashoffset', 0);
+
+    // Label
+    if (func.label) {
+      const labelX = CONFIG.xRange[0] + (CONFIG.xRange[1] - CONFIG.xRange[0]) * 0.82;
+      let labelY;
+      try { labelY = evalFn(labelX); } catch { labelY = 0; }
+      if (!isFinite(labelY)) labelY = 0;
+
+      gFuncs.append('text')
+        .attr('class', 'func-label')
+        .attr('x', xScale(labelX) + 10)
+        .attr('y', yScale(labelY) - 10)
+        .attr('fill', color)
+        .text('y = ' + func.label)
+        .style('opacity', 0)
+        .transition()
+        .delay(CONFIG.animationDuration * 0.8 + fi * 400)
+        .duration(500)
+        .style('opacity', 1);
+    }
+  });
+
+  // Parametric curves
+  CONFIG.parametric.forEach((curve, ci) => {
+    const color = curve.color || PALETTE[(CONFIG.functions.length + ci) % PALETTE.length];
+    const evalX = new Function('t', 'return ' + curve.x);
+    const evalY = new Function('t', 'return ' + curve.y);
+    const tMin = curve.tRange ? curve.tRange[0] : 0;
+    const tMax = curve.tRange ? curve.tRange[1] : Math.PI * 2;
+    const steps = curve.steps || 300;
+    const samples = [];
+
+    for (let i = 0; i <= steps; i++) {
+      const t = tMin + (tMax - tMin) * i / steps;
+      let px, py;
+      try { px = evalX(t); py = evalY(t); } catch { continue; }
+      if (isFinite(px) && isFinite(py)) samples.push([px, py]);
+    }
+
+    const line = d3.line().x(d => xScale(d[0])).y(d => yScale(d[1])).curve(d3.curveBasis);
+
+    const path = gFuncs.append('path')
+      .datum(samples)
+      .attr('d', line)
+      .attr('class', 'func-path')
+      .attr('stroke', color)
+      .attr('stroke-width', curve.width || 2)
+      .attr('filter', 'url(#glow)');
+
+    const len = path.node().getTotalLength();
+    path.attr('stroke-dasharray', len).attr('stroke-dashoffset', len)
+      .transition().duration(CONFIG.animationDuration * 0.5)
+      .delay(CONFIG.animationDuration * 0.5 + ci * 300)
+      .ease(d3.easeCubicInOut)
+      .attr('stroke-dashoffset', 0);
+
+    if (curve.label) {
+      const lt = tMin + (tMax - tMin) * 0.25;
+      let lx, ly;
+      try { lx = evalX(lt); ly = evalY(lt); } catch { return; }
+      gFuncs.append('text')
+        .attr('class', 'func-label')
+        .attr('x', xScale(lx) + 10).attr('y', yScale(ly) - 10)
+        .attr('fill', color)
+        .text(curve.label)
+        .style('opacity', 0)
+        .transition().delay(CONFIG.animationDuration * 0.9 + ci * 300).duration(400)
+        .style('opacity', 1);
+    }
+  });
+}
+
+function drawVectors() {
+  CONFIG.vectors.forEach((vec, vi) => {
+    const color = vec.color || PALETTE[vi % PALETTE.length];
+    const from = vec.from || [0, 0];
+    const to = vec.to;
+
+    // Glow line
+    gVectors.append('line')
+      .attr('x1', xScale(from[0])).attr('y1', yScale(from[1]))
+      .attr('x2', xScale(from[0])).attr('y2', yScale(from[1]))
+      .attr('stroke', color).attr('stroke-width', (vec.width || 2.5) + 3)
+      .attr('opacity', 0.2)
+      .attr('stroke-linecap', 'round')
+      .transition().duration(600)
+      .delay(CONFIG.animationDuration * 0.55 + vi * 250)
+      .ease(d3.easeCubicOut)
+      .attr('x2', xScale(to[0])).attr('y2', yScale(to[1]));
+
+    // Main line
+    gVectors.append('line')
+      .attr('class', 'vector-line')
+      .attr('x1', xScale(from[0])).attr('y1', yScale(from[1]))
+      .attr('x2', xScale(from[0])).attr('y2', yScale(from[1]))
+      .attr('stroke', color)
+      .attr('stroke-width', vec.width || 2.5)
+      .attr('marker-end', `url(#arrow-${vi})`)
+      .transition().duration(600)
+      .delay(CONFIG.animationDuration * 0.55 + vi * 250)
+      .ease(d3.easeCubicOut)
+      .attr('x2', xScale(to[0])).attr('y2', yScale(to[1]));
+
+    // Label
+    if (vec.label) {
+      const midX = (from[0] + to[0]) / 2;
+      const midY = (from[1] + to[1]) / 2;
+      gVectors.append('text')
+        .attr('x', xScale(midX) + 10).attr('y', yScale(midY) - 10)
+        .attr('fill', color)
+        .attr('font-size', '14px').attr('font-weight', 'bold')
+        .attr('font-family', "'STIX Two Text', serif")
+        .text(vec.label)
+        .style('opacity', 0)
+        .transition().delay(CONFIG.animationDuration * 0.7 + vi * 250).duration(400)
+        .style('opacity', 1);
+    }
+  });
+}
+
+function drawShapes() {
+  CONFIG.shapes.forEach((shape, si) => {
+    const color = shape.color || PALETTE[si % PALETTE.length];
+    const delay = CONFIG.animationDuration * 0.45 + si * 200;
+
+    if (shape.type === 'circle') {
+      const cx = xScale(shape.center[0]);
+      const cy = yScale(shape.center[1]);
+      const r = Math.abs(xScale(shape.radius) - xScale(0));
+
+      // Circle path for draw-on
+      const circle = gShapes.append('circle')
+        .attr('cx', cx).attr('cy', cy).attr('r', r)
+        .attr('fill', shape.fill ? color : 'none')
+        .attr('fill-opacity', shape.fill ? 0.08 : 0)
+        .attr('stroke', color)
+        .attr('stroke-width', shape.width || 2)
+        .attr('filter', 'url(#glow)');
+
+      // Animate radius from 0
+      circle.attr('r', 0)
+        .transition().duration(800).delay(delay).ease(d3.easeCubicOut)
+        .attr('r', r);
+
+      if (shape.label) {
+        gShapes.append('text')
+          .attr('x', cx).attr('y', cy - r - 10)
+          .attr('text-anchor', 'middle')
+          .attr('fill', color).attr('font-size', '13px')
+          .attr('font-family', "'STIX Two Text', serif")
+          .text(shape.label)
+          .style('opacity', 0)
+          .transition().delay(delay + 600).duration(400).style('opacity', 1);
+      }
+
+    } else if (shape.type === 'line') {
+      const l = gShapes.append('line')
+        .attr('x1', xScale(shape.from[0])).attr('y1', yScale(shape.from[1]))
+        .attr('x2', xScale(shape.from[0])).attr('y2', yScale(shape.from[1]))
+        .attr('stroke', color).attr('stroke-width', shape.width || 1.5)
+        .attr('filter', 'url(#glow)');
+
+      if (shape.dashed) l.attr('stroke-dasharray', '6,4');
+
+      l.transition().duration(600).delay(delay).ease(d3.easeCubicOut)
+        .attr('x2', xScale(shape.to[0])).attr('y2', yScale(shape.to[1]));
+
+    } else if (shape.type === 'area') {
+      const evalFn = new Function('x', 'return ' + shape.expr);
+      const a = shape.range[0], b = shape.range[1];
+      const samples = [];
+      const steps = 200;
+      for (let i = 0; i <= steps; i++) {
+        const x = a + (b - a) * i / steps;
+        let y; try { y = evalFn(x); } catch { y = 0; }
+        if (isFinite(y)) samples.push([x, y]);
+      }
+
+      const area = d3.area()
+        .x(d => xScale(d[0]))
+        .y0(yScale(0))
+        .y1(d => yScale(d[1]))
+        .curve(d3.curveBasis);
+
+      gShapes.append('path')
+        .datum(samples)
+        .attr('d', area)
+        .attr('fill', color)
+        .attr('fill-opacity', 0)
+        .attr('stroke', color)
+        .attr('stroke-width', 1)
+        .attr('stroke-opacity', 0)
+        .transition().duration(800).delay(delay).ease(d3.easeCubicInOut)
+        .attr('fill-opacity', 0.15)
+        .attr('stroke-opacity', 0.5);
+    }
+  });
+}
+
+function drawPoints() {
+  CONFIG.points.forEach((pt, pi) => {
+    const color = pt.color || PALETTE[pi % PALETTE.length];
+    const r = pt.radius || 5;
+    const delay = CONFIG.animationDuration * 0.65 + pi * 200;
+    const cx = xScale(pt.x), cy = yScale(pt.y);
+
+    // Outer glow ring
+    gPoints.append('circle')
+      .attr('cx', cx).attr('cy', cy).attr('r', 0)
+      .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1).attr('opacity', 0.3)
+      .transition().delay(delay).duration(500).ease(d3.easeElasticOut.amplitude(1).period(0.4))
+      .attr('r', r + 6);
+
+    // Main dot
+    gPoints.append('circle')
+      .attr('cx', cx).attr('cy', cy).attr('r', 0)
+      .attr('fill', color).attr('filter', 'url(#glow)')
+      .transition().delay(delay).duration(500).ease(d3.easeElasticOut.amplitude(1).period(0.4))
+      .attr('r', r);
+
+    // Label
+    if (pt.label) {
+      const coordStr = pt.showCoords !== false ? ` (${pt.x}, ${pt.y})` : '';
+      gPoints.append('text')
+        .attr('x', cx + r + 8).attr('y', cy - 6)
+        .attr('fill', color).attr('font-size', '13px')
+        .attr('font-family', "'STIX Two Text', serif")
+        .text(pt.label + coordStr)
+        .style('opacity', 0)
+        .transition().delay(delay + 300).duration(400).style('opacity', 1);
+    }
+  });
+}
+
+function drawAnnotations() {
+  CONFIG.annotations.forEach((ann, ai) => {
+    const color = ann.color || '#eee';
+    const delay = CONFIG.animationDuration * 0.75 + ai * 150;
+
+    gAnnotations.append('text')
+      .attr('class', 'annotation-text')
+      .attr('x', xScale(ann.x)).attr('y', yScale(ann.y))
+      .attr('fill', color)
+      .attr('font-size', (ann.fontSize || 14) + 'px')
+      .attr('font-weight', ann.bold ? 'bold' : 'normal')
+      .attr('text-anchor', ann.align || 'start')
+      .text(ann.text)
+      .style('opacity', 0)
+      .transition().delay(delay).duration(500).style('opacity', 1);
+  });
+}
+
+function drawTitle() {
+  if (!CONFIG.title) return;
+  gTitle.append('text')
+    .attr('class', 'title-text')
+    .attr('x', W / 2).attr('y', 28)
+    .attr('text-anchor', 'middle')
+    .text(CONFIG.title)
+    .style('opacity', 0)
+    .transition().duration(600).style('opacity', 1);
+}
+
+// Frame sync
+window.__onFrameUpdate = function(frame, isPlaying, fps, total) {
+  totalFrames = total || 1;
+};
+
+rebuild();
+</script>
+</body>
+</html>

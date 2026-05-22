@@ -1,0 +1,68 @@
+{
+  "r8": {
+    "config": {
+      "promptMode": "direction",
+      "concept": "blend modes, 3D rotation, contained effects, minimal innovation",
+      "visualDensity": "balanced",
+      "animationSpeed": "standard",
+      "textRole": "text-is-effect",
+      "textCount": "single"
+    },
+    "templateIds": [
+      "tpl-kinetic-double-exposure", "tpl-kinetic-magnetic-snap", "tpl-kinetic-negative-space",
+      "tpl-kinetic-prism-facet", "tpl-kinetic-elevator-doors", "tpl-kinetic-luminosity-shift",
+      "tpl-kinetic-carousel-spin", "tpl-kinetic-split-flap", "tpl-kinetic-vapor-condense",
+      "tpl-kinetic-window-blinds", "tpl-kinetic-weight-drop"
+    ],
+    "generatedAt": "2026-03-20T04:00:00.000Z"
+  },
+  "r9": {
+    "config": {
+      "promptMode": "direction",
+      "concept": "diverse styles — warm/organic, tech/digital, mood/atmosphere, cultural/era",
+      "visualDensity": "balanced",
+      "animationSpeed": "standard",
+      "textRole": "text-is-effect",
+      "textCount": "single"
+    },
+    "templateIds": [
+      "tpl-kinetic-holo-project", "tpl-kinetic-synapse-web", "tpl-kinetic-aggressive-impact",
+      "tpl-kinetic-elegant-luxury", "tpl-kinetic-matrix-form", "tpl-kinetic-quantum-resolve",
+      "tpl-kinetic-dreamy-ethereal", "tpl-kinetic-neon-glass-tube", "tpl-kinetic-playful-bouncy",
+      "tpl-kinetic-marquee-bulb"
+    ],
+    "generatedAt": "2026-03-20T06:00:00.000Z"
+  },
+  "r10": {
+    "config": {
+      "promptMode": "reference",
+      "concept": "CMYK Split — 10 variations of print color separation",
+      "visualDensity": "balanced",
+      "animationSpeed": "standard",
+      "textRole": "text-is-effect",
+      "textCount": "single"
+    },
+    "templateIds": [
+      "tpl-kinetic-cmyk-register", "tpl-kinetic-cmyk-press-roll", "tpl-kinetic-cmyk-halftone",
+      "tpl-kinetic-cmyk-glitch", "tpl-kinetic-cmyk-peel", "tpl-kinetic-cmyk-separation",
+      "tpl-kinetic-cmyk-overprint", "tpl-kinetic-cmyk-moire", "tpl-kinetic-cmyk-ink-trap",
+      "tpl-kinetic-cmyk-spectrum"
+    ],
+    "generatedAt": "2026-03-20T08:00:00.000Z"
+  },
+  "r11": {
+    "config": {
+      "promptMode": "reference",
+      "concept": "colorful, playful, professional. Microsoft ad style",
+      "visualDensity": "balanced",
+      "animationSpeed": "snappy",
+      "textRole": "text-in-scene",
+      "textCount": "single"
+    },
+    "templateIds": [
+      "tpl-kinetic-fluent-pop-up", "tpl-kinetic-surface-slide", "tpl-kinetic-teams-reaction",
+      "tpl-kinetic-copilot-sparkle", "tpl-kinetic-window-tile"
+    ],
+    "generatedAt": "2026-03-20T12:00:00.000Z"
+  }
+}

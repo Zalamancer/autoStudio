@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Security Monitor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Courier New', monospace; }
+.container { width: 100%; height: 100%; display: grid; grid-template-columns: 1fr 35%; grid-template-rows: 7vh 1fr 20vh; position: relative; }
+.scanline { position: fixed; inset: 0; pointer-events: none; z-index: 100; background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,255,65,0.01) 2px, rgba(0,255,65,0.01) 4px); }
+.header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 0 3vw; border-bottom: 1px solid rgba(239,68,68,0.15); opacity: 0; transition: opacity 0.5s; }
+.header.visible { opacity: 1; }
+.header-title { font-size: 2vh; font-weight: 700; color: #ef4444; letter-spacing: 0.2em; }
+.threat-level { display: flex; align-items: center; gap: 1vw; }
+.threat-badge { font-size: 1.3vh; font-weight: 700; padding: 0.4vh 1.5vw; border-radius: 0.5vh; animation: threatPulse 2s infinite; }
+.threat-critical { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.4); }
+@keyframes threatPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.map-area { position: relative; padding: 2vh 3vw; overflow: hidden; }
+.world-outline { position: absolute; inset: 2vh 3vw; opacity: 0.08; }
+.world-outline svg { width: 100%; height: 100%; }
+.threat-ping { position: absolute; width: 1.5vh; height: 1.5vh; border-radius: 50%; opacity: 0; transition: opacity 0.3s; }
+.threat-ping.visible { opacity: 1; }
+.threat-ping::before { content: ''; position: absolute; inset: -0.5vh; border-radius: 50%; border: 1px solid; animation: pingRipple 1.5s infinite; }
+@keyframes pingRipple { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(3); opacity: 0; } }
+.threat-ping.critical { background: #ef4444; color: #ef4444; }
+.threat-ping.warning { background: #f59e0b; color: #f59e0b; }
+.threat-ping.info { background: #3b82f6; color: #3b82f6; }
+.sidebar { border-left: 1px solid rgba(239,68,68,0.1); padding: 2vh 2vw; display: flex; flex-direction: column; gap: 1.5vh; grid-row: 2 / 4; }
+.sidebar-section { opacity: 0; transform: translateX(15px); transition: all 0.5s; }
+.sidebar-section.visible { opacity: 1; transform: translateX(0); }
+.section-label { font-size: 1.1vh; color: rgba(239,68,68,0.5); letter-spacing: 0.15em; margin-bottom: 1vh; }
+.alert-item { display: flex; gap: 1vw; padding: 1vh 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 1.2vh; }
+.alert-sev { font-weight: 700; min-width: 3vw; }
+.alert-sev.critical { color: #ef4444; }
+.alert-sev.warning { color: #f59e0b; }
+.alert-sev.info { color: #3b82f6; }
+.alert-text { color: rgba(255,255,255,0.5); }
+.fw-status { display: flex; flex-direction: column; gap: 0.8vh; }
+.fw-item { display: flex; justify-content: space-between; font-size: 1.2vh; }
+.fw-label { color: rgba(255,255,255,0.4); }
+.fw-value { font-weight: 700; }
+.fw-value.active { color: #10b981; }
+.fw-value.blocked { color: #ef4444; }
+.log-area { grid-column: 1 / 2; border-top: 1px solid rgba(239,68,68,0.1); padding: 1.5vh 3vw; overflow: hidden; opacity: 0; transition: opacity 0.5s; }
+.log-area.visible { opacity: 1; }
+.log-line { font-size: 1.2vh; color: rgba(0,255,65,0.5); margin-bottom: 0.3vh; opacity: 0; transform: translateY(5px); transition: all 0.3s; }
+.log-line.visible { opacity: 1; transform: translateY(0); }
+.log-time { color: rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="scanline"></div>
+  <div class="header" id="header">
+    <div class="header-title">&#x1F6E1; THREAT MONITOR</div>
+    <div class="threat-level">
+      <span style="font-size:1.2vh;color:rgba(255,255,255,0.3)">THREAT LEVEL:</span>
+      <div class="threat-badge threat-critical" id="threatBadge">ELEVATED</div>
+    </div>
+  </div>
+  <div class="map-area" id="mapArea"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-section" id="alertsSection">
+      <div class="section-label">ACTIVE THREATS</div>
+      <div id="alerts"></div>
+    </div>
+    <div class="sidebar-section" id="fwSection">
+      <div class="section-label">FIREWALL STATUS</div>
+      <div class="fw-status" id="fwStatus"></div>
+    </div>
+  </div>
+  <div class="log-area" id="logArea">
+    <div id="logs"></div>
+  </div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  threatLevel: 'ELEVATED',
+  threats: [
+    { x: 25, y: 35, type: 'critical', label: 'DDoS — US East' },
+    { x: 48, y: 28, type: 'warning', label: 'Brute Force — EU' },
+    { x: 72, y: 40, type: 'critical', label: 'Ransomware — Asia' },
+    { x: 15, y: 55, type: 'info', label: 'Port Scan — S. America' },
+    { x: 55, y: 60, type: 'warning', label: 'Phishing — Africa' },
+  ],
+  logEntries: [
+    '[FIREWALL] Blocked 2,847 requests from 185.x.x.x',
+    '[IDS] Signature match: CVE-2026-1234 exploit attempt',
+    '[AUTH] Failed login attempt #47 for admin@corp.com',
+    '[WAF] SQL injection blocked on /api/users',
+    '[NET] Unusual outbound traffic to 45.x.x.x:4444',
+    '[SCAN] Port scan detected from 92.x.x.x (1024 ports)',
+    '[CERT] SSL certificate expiring in 7 days for api.example.com',
+  ],
+  firewallStatus: [
+    { name: 'Inbound Filter', status: 'ACTIVE', active: true },
+    { name: 'DDoS Protection', status: 'ACTIVE', active: true },
+    { name: 'IPS Engine', status: 'ACTIVE', active: true },
+    { name: 'Blocked IPs', status: '2,847', active: false },
+    { name: 'Rules Applied', status: '1,204', active: false },
+  ],
+  cycleDuration: 14000,
+  bgColor: '#080c12',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('container').style.color = '#e2e8f0';
+document.getElementById('threatBadge').textContent = CONFIG.threatLevel;
+
+var mapArea = document.getElementById('mapArea');
+CONFIG.threats.forEach(function(t, i) {
+  var ping = document.createElement('div');
+  ping.className = 'threat-ping ' + t.type;
+  ping.id = 'ping-' + i;
+  ping.style.left = t.x + '%';
+  ping.style.top = t.y + '%';
+  ping.title = t.label;
+  mapArea.appendChild(ping);
+});
+
+var alertsEl = document.getElementById('alerts');
+CONFIG.threats.forEach(function(t) {
+  var el = document.createElement('div');
+  el.className = 'alert-item';
+  el.innerHTML = '<div class="alert-sev ' + t.type + '">' + t.type.toUpperCase() + '</div><div class="alert-text">' + t.label + '</div>';
+  alertsEl.appendChild(el);
+});
+
+var fwEl = document.getElementById('fwStatus');
+CONFIG.firewallStatus.forEach(function(f) {
+  var el = document.createElement('div');
+  el.className = 'fw-item';
+  el.innerHTML = '<span class="fw-label">' + f.name + '</span><span class="fw-value ' + (f.active ? 'active' : 'blocked') + '">' + f.status + '</span>';
+  fwEl.appendChild(el);
+});
+
+function runCycle() {
+  var header = document.getElementById('header');
+  var logArea = document.getElementById('logArea');
+  var sections = document.querySelectorAll('.sidebar-section');
+  var pings = document.querySelectorAll('.threat-ping');
+  header.classList.remove('visible');
+  logArea.classList.remove('visible');
+  sections.forEach(function(s) { s.classList.remove('visible'); });
+  pings.forEach(function(p) { p.classList.remove('visible'); });
+  document.getElementById('logs').innerHTML = '';
+
+  setTimeout(function() { header.classList.add('visible'); }, 200);
+  pings.forEach(function(p, i) { setTimeout(function() { p.classList.add('visible'); }, 600 + i * 400); });
+  sections.forEach(function(s, i) { setTimeout(function() { s.classList.add('visible'); }, 1000 + i * 300); });
+  setTimeout(function() { logArea.classList.add('visible'); }, 1500);
+
+  var logsEl = document.getElementById('logs');
+  CONFIG.logEntries.forEach(function(entry, i) {
+    setTimeout(function() {
+      var line = document.createElement('div');
+      line.className = 'log-line';
+      var now = new Date();
+      var ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+      line.innerHTML = '<span class="log-time">' + ts + '</span> ' + entry;
+      logsEl.insertBefore(line, logsEl.firstChild);
+      requestAnimationFrame(function() { line.classList.add('visible'); });
+      if (logsEl.children.length > 6) logsEl.removeChild(logsEl.lastChild);
+    }, 2000 + i * 800);
+  });
+
+  setTimeout(function() {
+    header.classList.remove('visible');
+    logArea.classList.remove('visible');
+    sections.forEach(function(s) { s.classList.remove('visible'); });
+    pings.forEach(function(p) { p.classList.remove('visible'); });
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

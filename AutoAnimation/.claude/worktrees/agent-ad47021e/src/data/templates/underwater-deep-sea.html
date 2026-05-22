@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Underwater Deep Sea</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+  canvas#bubbleCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .light-rays {
+    position: fixed; top: -20%; left: 0; width: 100%; height: 60%;
+    z-index: 1; pointer-events: none; opacity: 0.18;
+  }
+  .ray {
+    position: absolute; top: 0;
+    width: 120px; height: 100%;
+    background: linear-gradient(180deg, rgba(120,200,255,0.5) 0%, transparent 100%);
+    transform-origin: top center;
+    animation: rayDrift 8s ease-in-out infinite alternate;
+  }
+  .ray:nth-child(1) { left: 10%; animation-delay: 0s; transform: rotate(-8deg); width: 100px; }
+  .ray:nth-child(2) { left: 30%; animation-delay: -2s; transform: rotate(-3deg); width: 150px; opacity: 0.7; }
+  .ray:nth-child(3) { left: 55%; animation-delay: -4s; transform: rotate(5deg); width: 130px; opacity: 0.5; }
+  .ray:nth-child(4) { left: 75%; animation-delay: -6s; transform: rotate(10deg); width: 90px; opacity: 0.8; }
+  .ray:nth-child(5) { left: 45%; animation-delay: -1s; transform: rotate(-1deg); width: 180px; opacity: 0.3; }
+  @keyframes rayDrift {
+    0% { transform: rotate(var(--r, -5deg)) skewX(-2deg); }
+    100% { transform: rotate(var(--r2, 5deg)) skewX(2deg); }
+  }
+  .jellyfish-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 2; pointer-events: none;
+  }
+  .jellyfish {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .jelly-body {
+    width: 60px; height: 40px;
+    border-radius: 50% 50% 30% 30%;
+    background: radial-gradient(ellipse at 50% 30%, rgba(180, 120, 255, 0.6), rgba(100, 50, 200, 0.3));
+    box-shadow: 0 0 30px rgba(150, 100, 255, 0.4), 0 0 60px rgba(150, 100, 255, 0.2), inset 0 -8px 15px rgba(255,255,255,0.1);
+    animation: jellyPulse 2.5s ease-in-out infinite;
+    position: relative;
+  }
+  .jelly-body::after {
+    content: '';
+    position: absolute; bottom: -2px; left: 5px; right: 5px; height: 8px;
+    background: rgba(180,120,255,0.3);
+    border-radius: 0 0 50% 50%;
+    animation: jellyFrill 1.2s ease-in-out infinite;
+  }
+  @keyframes jellyPulse {
+    0%, 100% { transform: scaleX(1) scaleY(1); }
+    50% { transform: scaleX(1.1) scaleY(0.85); }
+  }
+  @keyframes jellyFrill {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(0.8); }
+  }
+  .tentacles {
+    display: flex; gap: 4px; margin-top: -2px;
+  }
+  .tentacle {
+    width: 2px; height: 50px;
+    background: linear-gradient(180deg, rgba(180,120,255,0.5), transparent);
+    border-radius: 0 0 2px 2px;
+    animation: tentacleWave 3s ease-in-out infinite;
+    transform-origin: top center;
+  }
+  .tentacle:nth-child(1) { animation-delay: 0s; height: 55px; }
+  .tentacle:nth-child(2) { animation-delay: -0.3s; height: 45px; }
+  .tentacle:nth-child(3) { animation-delay: -0.6s; height: 60px; }
+  .tentacle:nth-child(4) { animation-delay: -0.9s; height: 40px; }
+  .tentacle:nth-child(5) { animation-delay: -1.2s; height: 50px; }
+  @keyframes tentacleWave {
+    0%, 100% { transform: rotate(-10deg) scaleY(1); }
+    25% { transform: rotate(8deg) scaleY(0.95); }
+    50% { transform: rotate(-5deg) scaleY(1.05); }
+    75% { transform: rotate(12deg) scaleY(0.9); }
+  }
+  .seaweed-container {
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 30%;
+    z-index: 1; pointer-events: none;
+  }
+  .seaweed {
+    position: absolute; bottom: 0;
+    width: 18px;
+    background: linear-gradient(180deg, rgba(20,120,60,0.6), rgba(10,80,40,0.8));
+    border-radius: 8px 8px 2px 2px;
+    transform-origin: bottom center;
+    animation: seaweedSway 4s ease-in-out infinite;
+  }
+  @keyframes seaweedSway {
+    0%, 100% { transform: rotate(-8deg) scaleY(1); }
+    50% { transform: rotate(8deg) scaleY(1.03); }
+  }
+  .text-overlay {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 5; text-align: center; color: rgba(150, 210, 255, 0.9);
+  }
+  .text-overlay h1 {
+    font-size: 52px; font-weight: 300; letter-spacing: 8px;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(100,180,255,0.5), 0 0 60px rgba(80,150,255,0.3);
+    animation: textGlow 4s ease-in-out infinite;
+  }
+  .text-overlay .subtitle {
+    font-size: 16px; letter-spacing: 6px; opacity: 0.6;
+    margin-top: 16px; text-transform: uppercase; font-style: italic;
+    animation: textGlow 4s ease-in-out infinite 0.5s;
+  }
+  @keyframes textGlow {
+    0%, 100% { opacity: 0.7; text-shadow: 0 0 20px rgba(100,180,255,0.3); }
+    50% { opacity: 1; text-shadow: 0 0 40px rgba(100,180,255,0.6), 0 0 80px rgba(80,150,255,0.3); }
+  }
+  .depth-indicator {
+    position: fixed; right: 3vw; top: 50%; transform: translateY(-50%);
+    z-index: 4; color: rgba(100,180,220,0.4); font-size: 12px;
+    letter-spacing: 2px; font-family: 'Courier New', monospace;
+  }
+  .depth-line {
+    width: 1px; height: 200px; background: linear-gradient(180deg, transparent, rgba(100,180,220,0.3), transparent);
+    margin: 8px auto;
+  }
+  .depth-mark { text-align: center; margin: 4px 0; }
+</style>
+</head>
+<body>
+<canvas id="bubbleCanvas"></canvas>
+<div class="light-rays">
+  <div class="ray"></div>
+  <div class="ray"></div>
+  <div class="ray"></div>
+  <div class="ray"></div>
+  <div class="ray"></div>
+</div>
+<div class="jellyfish-container" id="jellyfishContainer"></div>
+<div class="seaweed-container" id="seaweedContainer"></div>
+<div class="text-overlay">
+  <h1 id="titleText">Deep Ocean</h1>
+  <div class="subtitle" id="subtitleText">Mysteries of the Abyss</div>
+</div>
+<div class="depth-indicator">
+  <div class="depth-mark">0m</div>
+  <div class="depth-line"></div>
+  <div class="depth-mark">500m</div>
+  <div class="depth-line"></div>
+  <div class="depth-mark">1000m</div>
+  <div class="depth-line"></div>
+  <div class="depth-mark">2000m</div>
+</div>
+
+<script>
+// ===== EDITABLE CONFIG =====
+const CONFIG = {
+  titleText: 'Deep Ocean',
+  subtitleText: 'Mysteries of the Abyss',
+  bgColorTop: '#0a1628',
+  bgColorBottom: '#020810',
+  glowColor: '#b478ff',
+  bubbleCount: 50,
+  jellyfishCount: 5,
+  seaweedCount: 12,
+};
+// ==============================
+
+document.body.style.background = `linear-gradient(180deg, ${CONFIG.bgColorTop} 0%, ${CONFIG.bgColorBottom} 100%)`;
+document.getElementById('titleText').textContent = CONFIG.titleText;
+document.getElementById('subtitleText').textContent = CONFIG.subtitleText;
+
+// --- Bubbles (canvas) ---
+const canvas = document.getElementById('bubbleCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+class Bubble {
+  constructor() { this.reset(true); }
+  reset(initial) {
+    this.x = Math.random() * W;
+    this.y = initial ? Math.random() * H : H + 20;
+    this.r = Math.random() * 4 + 1.5;
+    this.speed = Math.random() * 0.8 + 0.3;
+    this.wobbleAmp = Math.random() * 20 + 5;
+    this.wobbleFreq = Math.random() * 0.02 + 0.005;
+    this.phase = Math.random() * Math.PI * 2;
+    this.opacity = Math.random() * 0.4 + 0.1;
+    this.shimmer = Math.random() * Math.PI * 2;
+  }
+  update() {
+    this.y -= this.speed;
+    this.phase += this.wobbleFreq;
+    this.shimmer += 0.03;
+    if (this.y < -20) this.reset(false);
+  }
+  draw() {
+    const wx = this.x + Math.sin(this.phase) * this.wobbleAmp;
+    const a = this.opacity * (0.7 + 0.3 * Math.sin(this.shimmer));
+    ctx.beginPath();
+    ctx.arc(wx, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(150, 210, 255, ${a * 0.3})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(wx, this.y, this.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(180, 220, 255, ${a})`;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    // highlight
+    ctx.beginPath();
+    ctx.arc(wx - this.r * 0.3, this.y - this.r * 0.3, this.r * 0.25, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${a * 0.6})`;
+    ctx.fill();
+    // glow
+    ctx.beginPath();
+    ctx.arc(wx, this.y, this.r * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(100, 180, 255, ${a * 0.05})`;
+    ctx.fill();
+  }
+}
+
+const bubbles = [];
+for (let i = 0; i < CONFIG.bubbleCount; i++) bubbles.push(new Bubble());
+
+// --- Jellyfish (DOM) ---
+const jellyContainer = document.getElementById('jellyfishContainer');
+const jellyfish = [];
+
+for (let i = 0; i < CONFIG.jellyfishCount; i++) {
+  const jelly = document.createElement('div');
+  jelly.className = 'jellyfish';
+  const hue = 240 + Math.random() * 80;
+  const size = 0.5 + Math.random() * 0.8;
+  jelly.innerHTML = `
+    <div class="jelly-body" style="background: radial-gradient(ellipse at 50% 30%, hsla(${hue},60%,70%,0.6), hsla(${hue},50%,40%,0.3)); box-shadow: 0 0 30px hsla(${hue},60%,60%,0.4), 0 0 60px hsla(${hue},60%,60%,0.2);"></div>
+    <div class="tentacles">
+      <div class="tentacle" style="background: linear-gradient(180deg, hsla(${hue},60%,70%,0.5), transparent);"></div>
+      <div class="tentacle" style="background: linear-gradient(180deg, hsla(${hue},60%,70%,0.4), transparent);"></div>
+      <div class="tentacle" style="background: linear-gradient(180deg, hsla(${hue},60%,70%,0.5), transparent);"></div>
+      <div class="tentacle" style="background: linear-gradient(180deg, hsla(${hue},60%,70%,0.3), transparent);"></div>
+      <div class="tentacle" style="background: linear-gradient(180deg, hsla(${hue},60%,70%,0.5), transparent);"></div>
+    </div>
+  `;
+  jelly.style.transform = `scale(${size})`;
+  jelly.style.left = (10 + Math.random() * 80) + '%';
+  jelly.style.top = (10 + Math.random() * 70) + '%';
+  jellyContainer.appendChild(jelly);
+  jellyfish.push({
+    el: jelly,
+    x: 10 + Math.random() * 80,
+    y: 10 + Math.random() * 70,
+    vx: (Math.random() - 0.5) * 0.15,
+    vy: -Math.random() * 0.12 - 0.03,
+    wobblePhase: Math.random() * Math.PI * 2,
+    wobbleSpeed: Math.random() * 0.008 + 0.003,
+  });
+}
+
+// --- Seaweed (DOM) ---
+const seaweedContainer = document.getElementById('seaweedContainer');
+for (let i = 0; i < CONFIG.seaweedCount; i++) {
+  const sw = document.createElement('div');
+  sw.className = 'seaweed';
+  const h = 80 + Math.random() * 120;
+  const left = (i / CONFIG.seaweedCount) * 100 + Math.random() * (100 / CONFIG.seaweedCount);
+  const hue = 120 + Math.random() * 40;
+  sw.style.left = left + '%';
+  sw.style.height = h + 'px';
+  sw.style.width = (12 + Math.random() * 10) + 'px';
+  sw.style.animationDelay = (-Math.random() * 4) + 's';
+  sw.style.animationDuration = (3 + Math.random() * 3) + 's';
+  sw.style.background = `linear-gradient(180deg, hsla(${hue},60%,30%,0.5), hsla(${hue},70%,20%,0.8))`;
+  seaweedContainer.appendChild(sw);
+}
+
+// --- Animation loop ---
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  bubbles.forEach(b => { b.update(); b.draw(); });
+  jellyfish.forEach(j => {
+    j.wobblePhase += j.wobbleSpeed;
+    j.x += j.vx + Math.sin(j.wobblePhase) * 0.1;
+    j.y += j.vy;
+    if (j.y < -15) { j.y = 105; j.x = 10 + Math.random() * 80; }
+    if (j.x < -5) j.x = 105;
+    if (j.x > 105) j.x = -5;
+    j.el.style.left = j.x + '%';
+    j.el.style.top = j.y + '%';
+  });
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

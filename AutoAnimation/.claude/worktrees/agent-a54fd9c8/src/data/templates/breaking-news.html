@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breaking News</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes slideLeft { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+  @keyframes urgentFlash { 0%, 100% { opacity: 0; } 50% { opacity: 0.15; } }
+  @keyframes scanline { 0% { top: -2px; } 100% { top: 100%; } }
+  @keyframes slideInLeft { from { transform: translateX(-110%); } to { transform: translateX(0); } }
+  @keyframes slideUp { from { transform: translateY(110%); } to { transform: translateY(0); } }
+  @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 10px rgba(204,0,0,0.3); } 50% { box-shadow: 0 0 30px rgba(204,0,0,0.8); } }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a0a0a;
+    font-family: 'Arial', 'Helvetica Neue', sans-serif;
+    color: #ffffff;
+  }
+  .studio-bg {
+    width: 100%; height: 100%;
+    position: relative;
+    background: radial-gradient(ellipse at center, #2a1515 0%, #1a0a0a 60%, #0a0505 100%);
+  }
+  .grid-overlay {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(204,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(rgba(204,0,0,0.03) 1px, transparent 1px);
+    background-size: 4vw 4vw;
+  }
+  .urgent-flash {
+    position: absolute; inset: 0;
+    background: #cc0000;
+    animation: urgentFlash 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .scanline {
+    position: absolute;
+    left: 0; width: 100%; height: 2px;
+    background: rgba(255,255,255,0.05);
+    animation: scanline 4s linear infinite;
+    pointer-events: none;
+  }
+  .logo {
+    position: absolute;
+    top: 2vh; left: 3vw;
+    font-size: 2.5vh;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    color: #cc0000;
+    text-shadow: 0 0 10px rgba(204,0,0,0.5);
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .live-indicator {
+    position: absolute;
+    top: 2vh; right: 3vw;
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    font-size: 2vh;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .live-dot {
+    width: 1.2vh; height: 1.2vh;
+    background: #cc0000;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px #cc0000;
+  }
+  .clock {
+    position: absolute;
+    top: 2vh; right: 15vw;
+    font-size: 2vh;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: #ccc;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .breaking-banner {
+    position: absolute;
+    top: 35%;
+    left: 0; right: 0;
+    transform: translateX(-110%);
+    z-index: 10;
+  }
+  .banner-inner {
+    background: #cc0000;
+    padding: 1.5vh 4vw;
+    display: flex;
+    align-items: center;
+    gap: 3vw;
+    animation: glowPulse 2s infinite;
+  }
+  .banner-label {
+    font-size: 4vh;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+  .banner-story {
+    font-size: 2.5vh;
+    font-weight: 600;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .split-line {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    width: 2px;
+    height: 0;
+    background: linear-gradient(to bottom, transparent, #cc0000, transparent);
+    transform: translateX(-50%);
+    transition: height 1s ease;
+  }
+  .ticker-area {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 6vh;
+    background: rgba(0,0,0,0.9);
+    border-top: 2px solid #cc0000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+  .ticker-label {
+    background: #cc0000;
+    padding: 0 2vw;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    font-size: 1.6vh;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .ticker-text {
+    white-space: nowrap;
+    font-size: 1.8vh;
+    animation: slideLeft 20s linear infinite;
+    padding-left: 2vw;
+    color: #eee;
+  }
+  .lower-third {
+    position: absolute;
+    bottom: 8vh;
+    left: 3vw;
+    transform: translateY(110%);
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .lt-name {
+    background: #cc0000;
+    padding: 0.8vh 2.5vw;
+    font-size: 2.2vh;
+    font-weight: 700;
+    display: inline-block;
+  }
+  .lt-title {
+    background: rgba(30,30,30,0.95);
+    padding: 0.6vh 2.5vw;
+    font-size: 1.6vh;
+    color: #ccc;
+    display: inline-block;
+    border-bottom: 2px solid #cc0000;
+  }
+  .headline-main {
+    position: absolute;
+    top: 48%;
+    left: 3vw; right: 3vw;
+    font-size: 3.5vh;
+    font-weight: 700;
+    line-height: 1.3;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  .watermark {
+    position: absolute;
+    top: 8vh;
+    right: 3vw;
+    font-size: 1.2vh;
+    color: rgba(255,255,255,0.15);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+</style>
+</head>
+<body>
+<div class="studio-bg">
+  <div class="grid-overlay"></div>
+  <div class="urgent-flash" id="urgentFlash"></div>
+  <div class="scanline"></div>
+
+  <div class="logo" id="logo">NEWS 24</div>
+  <div class="clock" id="clock">00:00:00</div>
+  <div class="live-indicator" id="liveInd">
+    <div class="live-dot"></div>
+    LIVE
+  </div>
+  <div class="watermark" id="watermark">NEWS 24 NETWORK</div>
+
+  <div class="split-line" id="splitLine"></div>
+
+  <div class="breaking-banner" id="breakingBanner">
+    <div class="banner-inner">
+      <span class="banner-label">BREAKING NEWS</span>
+      <span class="banner-story" id="bannerStory">Major development reported — details coming in</span>
+    </div>
+  </div>
+
+  <div class="headline-main" id="headlineMain">Authorities confirm significant new development as situation continues to unfold across the region</div>
+
+  <div class="lower-third" id="lowerThird">
+    <div class="lt-name" id="ltName">SARAH MITCHELL</div>
+    <br>
+    <div class="lt-title" id="ltTitle">Senior Correspondent, Washington Bureau</div>
+  </div>
+
+  <div class="ticker-area">
+    <div class="ticker-label">LATEST</div>
+    <div class="ticker-text" id="tickerText"></div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    channelName: 'NEWS 24',
+    breakingText: 'BREAKING NEWS',
+    storyText: 'Major development reported — details coming in',
+    headline: 'Authorities confirm significant new development as situation continues to unfold across the region',
+    reporterName: 'SARAH MITCHELL',
+    reporterTitle: 'Senior Correspondent, Washington Bureau',
+    tickerItems: [
+      'Markets respond to overnight developments with significant volatility across major indices',
+      'Emergency services deployed to multiple locations as officials assess the situation',
+      'International leaders call for calm amid escalating tensions',
+      'Weather alert: Severe conditions expected in northern regions through the weekend',
+      'Technology sector sees record growth in quarterly earnings report'
+    ],
+    cycleDuration: 14000,
+    bgColor: '#1a0a0a',
+    accentColor: '#CC0000'
+  };
+
+  // Apply config
+  document.getElementById('logo').textContent = CONFIG.channelName;
+  document.getElementById('watermark').textContent = CONFIG.channelName + ' NETWORK';
+  document.getElementById('bannerStory').textContent = CONFIG.storyText;
+  document.getElementById('headlineMain').textContent = CONFIG.headline;
+  document.getElementById('ltName').textContent = CONFIG.reporterName;
+  document.getElementById('ltTitle').textContent = CONFIG.reporterTitle;
+  document.getElementById('tickerText').textContent = CONFIG.tickerItems.join('  \u2022  ') + '  \u2022  ' + CONFIG.tickerItems.join('  \u2022  ');
+
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      String(now.getHours()).padStart(2, '0') + ':' +
+      String(now.getMinutes()).padStart(2, '0') + ':' +
+      String(now.getSeconds()).padStart(2, '0');
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  function runCycle() {
+    const logo = document.getElementById('logo');
+    const clock = document.getElementById('clock');
+    const liveInd = document.getElementById('liveInd');
+    const watermark = document.getElementById('watermark');
+    const banner = document.getElementById('breakingBanner');
+    const headline = document.getElementById('headlineMain');
+    const lowerThird = document.getElementById('lowerThird');
+    const splitLine = document.getElementById('splitLine');
+    const urgentFlash = document.getElementById('urgentFlash');
+
+    // Reset
+    [logo, clock, liveInd, watermark].forEach(el => { el.style.transition = 'none'; el.style.opacity = '0'; });
+    banner.style.transition = 'none';
+    banner.style.transform = 'translateX(-110%)';
+    headline.style.transition = 'none';
+    headline.style.opacity = '0';
+    lowerThird.style.transition = 'none';
+    lowerThird.style.transform = 'translateY(110%)';
+    splitLine.style.transition = 'none';
+    splitLine.style.height = '0';
+    urgentFlash.style.animation = 'none';
+
+    void logo.offsetWidth;
+
+    // Sequence
+    setTimeout(() => { urgentFlash.style.animation = 'urgentFlash 0.3s ease-in-out 3'; }, 100);
+
+    setTimeout(() => { logo.style.transition = 'opacity 0.5s'; logo.style.opacity = '1'; }, 400);
+    setTimeout(() => { clock.style.transition = 'opacity 0.5s'; clock.style.opacity = '1'; }, 600);
+    setTimeout(() => { liveInd.style.transition = 'opacity 0.5s'; liveInd.style.opacity = '1'; }, 700);
+    setTimeout(() => { watermark.style.transition = 'opacity 1s'; watermark.style.opacity = '1'; }, 900);
+
+    setTimeout(() => {
+      banner.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+      banner.style.transform = 'translateX(0)';
+    }, 1200);
+
+    setTimeout(() => {
+      splitLine.style.transition = 'height 1s ease';
+      splitLine.style.height = '20%';
+    }, 2000);
+
+    setTimeout(() => {
+      headline.style.transition = 'opacity 0.8s';
+      headline.style.opacity = '1';
+    }, 2500);
+
+    setTimeout(() => {
+      lowerThird.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+      lowerThird.style.transform = 'translateY(0)';
+    }, 3500);
+
+    // More flashes mid-cycle
+    setTimeout(() => { urgentFlash.style.animation = 'urgentFlash 0.4s ease-in-out 2'; }, 7000);
+
+    // Fade out everything
+    setTimeout(() => {
+      [logo, clock, liveInd, watermark, headline].forEach(el => {
+        el.style.transition = 'opacity 1s';
+        el.style.opacity = '0';
+      });
+      banner.style.transition = 'transform 0.8s ease-in';
+      banner.style.transform = 'translateX(110%)';
+      lowerThird.style.transition = 'transform 0.6s ease-in';
+      lowerThird.style.transform = 'translateY(110%)';
+      splitLine.style.transition = 'height 0.6s ease';
+      splitLine.style.height = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(runCycle, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

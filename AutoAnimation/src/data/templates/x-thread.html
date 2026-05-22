@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X Thread</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #000000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #e7e9ea;
+  }
+  .container {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .thread-header {
+    display: flex; align-items: center;
+    padding: 1.5vh 4vw;
+    border-bottom: 1px solid #2f3336;
+    opacity: 0;
+  }
+  .back-arrow { font-size: 2.2vh; margin-right: 4vw; color: #e7e9ea; }
+  .header-title { font-size: 2vh; font-weight: 800; }
+  .thread-line {
+    position: absolute;
+    left: calc(4vw + 2.5vh);
+    width: 2px;
+    background: #2f3336;
+    z-index: 0;
+  }
+  .tweet {
+    display: flex; gap: 2vw;
+    padding: 1.5vh 4vw;
+    position: relative;
+    z-index: 1;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  .tweet-avatar {
+    width: 5vh; height: 5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+  }
+  .tweet-body { flex: 1; }
+  .tweet-header {
+    display: flex; align-items: center; gap: 1vw;
+    margin-bottom: 0.3vh;
+  }
+  .tweet-name { font-size: 1.5vh; font-weight: 700; }
+  .tweet-verified {
+    width: 1.5vh; height: 1.5vh;
+    background: #1d9bf0;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8vh; color: #fff;
+  }
+  .tweet-handle { font-size: 1.2vh; color: #71767b; }
+  .tweet-text {
+    font-size: 1.5vh; line-height: 1.5;
+    margin-bottom: 0.8vh;
+  }
+  .tweet-text .mention { color: #1d9bf0; }
+  .tweet-text .hashtag { color: #1d9bf0; }
+  .tweet-text .bold { font-weight: 700; }
+  .tweet-thread-num {
+    font-size: 1vh;
+    color: #1d9bf0;
+    margin-bottom: 0.5vh;
+  }
+  .tweet-time {
+    font-size: 1.1vh; color: #71767b;
+    margin-bottom: 0.8vh;
+  }
+  .tweet-actions {
+    display: flex; justify-content: space-between;
+    max-width: 85%;
+    font-size: 1.1vh; color: #71767b;
+  }
+  .tweet-action { display: flex; align-items: center; gap: 0.8vw; }
+  .tweet-divider {
+    border-bottom: 1px solid #2f3336;
+    margin: 0 4vw;
+  }
+  .tweet-engagement {
+    display: flex; gap: 3vw;
+    padding: 1vh 4vw;
+    margin-left: 7vh;
+    font-size: 1.1vh; color: #71767b;
+    border-bottom: 1px solid #2f3336;
+    opacity: 0;
+  }
+  .tweet-engagement strong { color: #e7e9ea; }
+  .show-thread {
+    padding: 1.5vh 4vw;
+    font-size: 1.3vh;
+    color: #1d9bf0;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="thread-header" id="threadHeader">
+    <div class="back-arrow">&#x2190;</div>
+    <div class="header-title">Thread</div>
+  </div>
+
+  <div class="thread-line" id="threadLine" style="top:12vh;height:0;"></div>
+
+  <div class="tweet" id="tweet1">
+    <div class="tweet-avatar" id="avatar1" style="background: #1d9bf0;"></div>
+    <div class="tweet-body">
+      <div class="tweet-header">
+        <span class="tweet-name" id="name1">Tech Analyst</span>
+        <div class="tweet-verified">&#x2713;</div>
+        <span class="tweet-handle" id="handle1">@techanalyst</span>
+      </div>
+      <div class="tweet-thread-num">1/5</div>
+      <div class="tweet-text" id="text1">THREAD: I spent the last month testing every major AI model on real-world tasks. Here's what I found — and why the results surprised me. <span class="hashtag">#AI</span> <span class="hashtag">#Tech</span></div>
+      <div class="tweet-actions">
+        <div class="tweet-action">&#x1F4AC; <span>2.4K</span></div>
+        <div class="tweet-action">&#x1F501; <span>8.7K</span></div>
+        <div class="tweet-action">&#x2665; <span>24K</span></div>
+        <div class="tweet-action">&#x1F4CA; <span>1.2M</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tweet" id="tweet2">
+    <div class="tweet-avatar" id="avatar2" style="background: #1d9bf0;"></div>
+    <div class="tweet-body">
+      <div class="tweet-header">
+        <span class="tweet-name">Tech Analyst</span>
+        <div class="tweet-verified">&#x2713;</div>
+        <span class="tweet-handle">@techanalyst</span>
+      </div>
+      <div class="tweet-thread-num">2/5</div>
+      <div class="tweet-text" id="text2"><span class="bold">Finding #1: Code generation.</span> The gap between models is massive. The top performer solved 94% of coding challenges correctly, while the average was just 67%. Context window size was the biggest differentiator.</div>
+      <div class="tweet-actions">
+        <div class="tweet-action">&#x1F4AC; 847</div>
+        <div class="tweet-action">&#x1F501; 3.2K</div>
+        <div class="tweet-action">&#x2665; 12K</div>
+        <div class="tweet-action">&#x1F4CA; 890K</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tweet" id="tweet3">
+    <div class="tweet-avatar" id="avatar3" style="background: #1d9bf0;"></div>
+    <div class="tweet-body">
+      <div class="tweet-header">
+        <span class="tweet-name">Tech Analyst</span>
+        <div class="tweet-verified">&#x2713;</div>
+        <span class="tweet-handle">@techanalyst</span>
+      </div>
+      <div class="tweet-thread-num">3/5</div>
+      <div class="tweet-text" id="text3"><span class="bold">Finding #2: Creative writing.</span> This is where things got interesting. Smaller models actually outperformed larger ones on originality. Bigger isn't always better when it comes to creativity.</div>
+      <div class="tweet-actions">
+        <div class="tweet-action">&#x1F4AC; 1.1K</div>
+        <div class="tweet-action">&#x1F501; 4.5K</div>
+        <div class="tweet-action">&#x2665; 18K</div>
+        <div class="tweet-action">&#x1F4CA; 1.1M</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tweet" id="tweet4">
+    <div class="tweet-avatar" id="avatar4" style="background: #1d9bf0;"></div>
+    <div class="tweet-body">
+      <div class="tweet-header">
+        <span class="tweet-name">Tech Analyst</span>
+        <div class="tweet-verified">&#x2713;</div>
+        <span class="tweet-handle">@techanalyst</span>
+      </div>
+      <div class="tweet-thread-num">4/5</div>
+      <div class="tweet-text" id="text4"><span class="bold">Finding #3: Reasoning.</span> Multi-step logical reasoning remains the hardest challenge. Only one model consistently solved 5+ step reasoning chains. This is where the next breakthrough will come from.</div>
+      <div class="tweet-actions">
+        <div class="tweet-action">&#x1F4AC; 963</div>
+        <div class="tweet-action">&#x1F501; 3.8K</div>
+        <div class="tweet-action">&#x2665; 15K</div>
+        <div class="tweet-action">&#x1F4CA; 950K</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tweet" id="tweet5">
+    <div class="tweet-avatar" id="avatar5" style="background: #1d9bf0;"></div>
+    <div class="tweet-body">
+      <div class="tweet-header">
+        <span class="tweet-name">Tech Analyst</span>
+        <div class="tweet-verified">&#x2713;</div>
+        <span class="tweet-handle">@techanalyst</span>
+      </div>
+      <div class="tweet-thread-num">5/5</div>
+      <div class="tweet-text" id="text5"><span class="bold">Bottom line:</span> The AI landscape is far more nuanced than "Model X is best." Each has genuine strengths. The smart move is using the right model for the right task. Full benchmarks in the article linked below.</div>
+      <div class="tweet-time" id="tweetTime">1:42 PM &middot; Jan 15, 2025</div>
+      <div class="tweet-engagement" id="tweetEng" style="margin-left:0;padding:1vh 0;border-top:1px solid #2f3336;">
+        <span><strong>8,742</strong> Reposts</span>
+        <span><strong>1,203</strong> Quotes</span>
+        <span><strong>24,102</strong> Likes</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    authorName: 'Tech Analyst',
+    authorHandle: '@techanalyst',
+    avatarColor: '#1d9bf0',
+    tweet1: 'THREAD: I spent the last month testing every major AI model on real-world tasks. Here\'s what I found — and why the results surprised me. #AI #Tech',
+    tweet2: 'Finding #1: Code generation. The gap between models is massive. The top performer solved 94% of coding challenges correctly, while the average was just 67%. Context window size was the biggest differentiator.',
+    tweet3: 'Finding #2: Creative writing. This is where things got interesting. Smaller models actually outperformed larger ones on originality. Bigger isn\'t always better when it comes to creativity.',
+    tweet4: 'Finding #3: Reasoning. Multi-step logical reasoning remains the hardest challenge. Only one model consistently solved 5+ step reasoning chains. This is where the next breakthrough will come from.',
+    tweet5: 'Bottom line: The AI landscape is far more nuanced than "Model X is best." Each has genuine strengths. The smart move is using the right model for the right task. Full benchmarks in the article linked below.',
+    tweetTime: '1:42 PM \u00B7 Jan 15, 2025',
+    bgColor: '#000000',
+    accentColor: '#1d9bf0',
+    cycleDuration: 18000
+  };
+
+  document.getElementById('name1').textContent = CONFIG.authorName;
+  document.getElementById('handle1').textContent = CONFIG.authorHandle;
+  ['avatar1','avatar2','avatar3','avatar4','avatar5'].forEach(id => {
+    document.getElementById(id).style.background = CONFIG.avatarColor;
+  });
+  document.querySelectorAll('.tweet-name').forEach(el => el.textContent = CONFIG.authorName);
+  document.querySelectorAll('.tweet-handle').forEach(el => el.textContent = CONFIG.authorHandle);
+
+  function formatTweet(text) {
+    return text
+      .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
+      .replace(/@(\w+)/g, '<span class="mention">@$1</span>')
+      .replace(/\*\*(.*?)\*\*/g, '<span class="bold">$1</span>')
+      .replace(/(Finding #\d:.*?\.)/g, '<span class="bold">$1</span>')
+      .replace(/(Bottom line:)/g, '<span class="bold">$1</span>');
+  }
+
+  document.getElementById('text1').innerHTML = formatTweet(CONFIG.tweet1);
+  document.getElementById('text2').innerHTML = formatTweet(CONFIG.tweet2);
+  document.getElementById('text3').innerHTML = formatTweet(CONFIG.tweet3);
+  document.getElementById('text4').innerHTML = formatTweet(CONFIG.tweet4);
+  document.getElementById('text5').innerHTML = formatTweet(CONFIG.tweet5);
+  document.getElementById('tweetTime').textContent = CONFIG.tweetTime;
+  document.body.style.background = CONFIG.bgColor;
+
+  function anim(el, props, delay) {
+    setTimeout(() => {
+      Object.assign(el.style, { transition: 'all 0.6s cubic-bezier(0.22,1,0.36,1)', ...props });
+    }, delay);
+  }
+
+  function runCycle() {
+    ['threadHeader','tweet1','tweet2','tweet3','tweet4','tweet5'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.transition = 'none'; el.style.opacity = '0';
+      el.style.transform = 'translateY(10px)';
+    });
+    const tl = document.getElementById('threadLine');
+    tl.style.transition = 'none'; tl.style.height = '0';
+    const eng = document.getElementById('tweetEng');
+    eng.style.transition = 'none'; eng.style.opacity = '0';
+    void document.getElementById('threadHeader').offsetWidth;
+
+    anim(document.getElementById('threadHeader'), { opacity: '1', transform: 'translateY(0)' }, 200);
+    anim(document.getElementById('tweet1'), { opacity: '1', transform: 'translateY(0)' }, 600);
+
+    setTimeout(() => {
+      tl.style.transition = 'height 2s ease-out';
+      tl.style.height = '70vh';
+    }, 800);
+
+    anim(document.getElementById('tweet2'), { opacity: '1', transform: 'translateY(0)' }, 2500);
+    anim(document.getElementById('tweet3'), { opacity: '1', transform: 'translateY(0)' }, 5000);
+    anim(document.getElementById('tweet4'), { opacity: '1', transform: 'translateY(0)' }, 7500);
+    anim(document.getElementById('tweet5'), { opacity: '1', transform: 'translateY(0)' }, 10000);
+
+    setTimeout(() => {
+      eng.style.transition = 'opacity 0.5s ease';
+      eng.style.opacity = '1';
+    }, 11500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'opacity 1s ease';
+      document.querySelector('.container').style.opacity = '0';
+    }, CONFIG.cycleDuration - 1500);
+
+    setTimeout(() => {
+      document.querySelector('.container').style.transition = 'none';
+      document.querySelector('.container').style.opacity = '1';
+      runCycle();
+    }, CONFIG.cycleDuration);
+  }
+
+  runCycle();
+</script>
+</body>
+</html>

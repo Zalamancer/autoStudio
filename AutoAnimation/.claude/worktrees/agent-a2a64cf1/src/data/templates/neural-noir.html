@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Noir</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #0A0A0A;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  canvas#particleCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .grid-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+    background-image:
+      linear-gradient(rgba(255,215,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,215,0,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+  }
+  .card-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;
+  }
+  .glass-card {
+    position: absolute;
+    background: rgba(255, 215, 0, 0.04);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 215, 0, 0.12);
+    border-radius: 16px;
+    padding: 24px;
+    color: rgba(255, 215, 0, 0.7);
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .glass-card::before {
+    content: '';
+    position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px;
+    border-radius: 17px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.3), transparent 40%, transparent 60%, rgba(255,215,0,0.15));
+    z-index: -1;
+    animation: borderGlow 3s ease-in-out infinite alternate;
+  }
+  @keyframes borderGlow {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; }
+  }
+  .card1 {
+    width: 220px; height: 140px; top: 12%; left: 8%;
+    animation: floatCard1 12s ease-in-out infinite;
+  }
+  .card2 {
+    width: 180px; height: 200px; top: 55%; left: 65%;
+    animation: floatCard2 15s ease-in-out infinite;
+  }
+  .card3 {
+    width: 260px; height: 100px; top: 30%; left: 55%;
+    animation: floatCard3 10s ease-in-out infinite;
+  }
+  .card4 {
+    width: 200px; height: 160px; top: 65%; left: 15%;
+    animation: floatCard4 14s ease-in-out infinite;
+  }
+  .card5 {
+    width: 150px; height: 120px; top: 8%; left: 70%;
+    animation: floatCard5 11s ease-in-out infinite;
+  }
+  @keyframes floatCard1 {
+    0%, 100% { transform: translate(0, 0) rotate(-2deg); }
+    25% { transform: translate(15px, 20px) rotate(1deg); }
+    50% { transform: translate(-10px, 35px) rotate(-1deg); }
+    75% { transform: translate(20px, 10px) rotate(2deg); }
+  }
+  @keyframes floatCard2 {
+    0%, 100% { transform: translate(0, 0) rotate(1deg); }
+    33% { transform: translate(-20px, -25px) rotate(-2deg); }
+    66% { transform: translate(15px, -15px) rotate(1.5deg); }
+  }
+  @keyframes floatCard3 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(-25px, 20px) rotate(-1.5deg); }
+  }
+  @keyframes floatCard4 {
+    0%, 100% { transform: translate(0, 0) rotate(1.5deg); }
+    33% { transform: translate(20px, -20px) rotate(-1deg); }
+    66% { transform: translate(-15px, 15px) rotate(2deg); }
+  }
+  @keyframes floatCard5 {
+    0%, 100% { transform: translate(0, 0) rotate(-1deg); }
+    50% { transform: translate(15px, 25px) rotate(2deg); }
+  }
+  .card-line {
+    height: 2px; background: linear-gradient(90deg, rgba(255,215,0,0.5), transparent);
+    margin: 8px 0; border-radius: 1px;
+  }
+  .card-dot {
+    display: inline-block; width: 6px; height: 6px;
+    background: rgba(255,215,0,0.5); border-radius: 50%; margin-right: 6px;
+  }
+  .center-text {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 3; text-align: center; color: #FFD700;
+  }
+  .center-text h1 {
+    font-size: 48px; font-weight: 200; letter-spacing: 16px;
+    text-transform: uppercase;
+    animation: textFade 6s ease-in-out infinite;
+  }
+  .center-text .subtitle {
+    font-size: 14px; letter-spacing: 8px; opacity: 0.5;
+    margin-top: 12px; text-transform: uppercase;
+    animation: textFade 6s ease-in-out infinite 0.5s;
+  }
+  @keyframes textFade {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  .gold-line {
+    position: fixed; height: 1px; z-index: 2;
+    background: linear-gradient(90deg, transparent, rgba(255,215,0,0.4), transparent);
+  }
+  .line1 { top: 25%; left: 0; width: 100%; animation: lineSlide 8s linear infinite; }
+  .line2 { top: 75%; left: 0; width: 100%; animation: lineSlide 8s linear infinite 4s; }
+  @keyframes lineSlide {
+    0% { transform: translateX(-100%); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateX(100%); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<canvas id="particleCanvas"></canvas>
+<div class="grid-overlay"></div>
+<div class="gold-line line1"></div>
+<div class="gold-line line2"></div>
+<div class="card-container">
+  <div class="glass-card card1">
+    <span class="card-dot"></span><span class="card-dot"></span><span class="card-dot"></span>
+    <div class="card-line" style="width:80%"></div>
+    <div class="card-line" style="width:60%"></div>
+    <div class="card-line" style="width:70%"></div>
+    <div style="margin-top:12px;font-size:11px;opacity:0.5;">Neural.01</div>
+  </div>
+  <div class="glass-card card2">
+    <div style="font-size:28px;font-weight:100;margin-bottom:12px;">97.8</div>
+    <div class="card-line" style="width:90%"></div>
+    <div class="card-line" style="width:45%"></div>
+    <div class="card-line" style="width:75%"></div>
+    <div class="card-line" style="width:30%"></div>
+    <div style="margin-top:12px;font-size:11px;opacity:0.5;">Signal.02</div>
+  </div>
+  <div class="glass-card card3">
+    <div class="card-line" style="width:100%"></div>
+    <div style="margin-top:8px;font-size:11px;opacity:0.5;">Processing Noir Data Stream</div>
+  </div>
+  <div class="glass-card card4">
+    <span class="card-dot"></span><span class="card-dot"></span>
+    <div class="card-line" style="width:65%;margin-top:12px"></div>
+    <div class="card-line" style="width:85%"></div>
+    <div class="card-line" style="width:50%"></div>
+    <div class="card-line" style="width:70%"></div>
+    <div style="margin-top:12px;font-size:11px;opacity:0.5;">Index.04</div>
+  </div>
+  <div class="glass-card card5">
+    <div style="font-size:20px;font-weight:100;">AX-7</div>
+    <div class="card-line" style="width:80%;margin-top:8px"></div>
+    <div class="card-line" style="width:55%"></div>
+  </div>
+</div>
+<div class="center-text">
+  <h1 id="mainTitle">Neural</h1>
+  <div class="subtitle" id="subTitle">Dark Intelligence</div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TITLE_TEXT = 'Neural';
+const SUBTITLE_TEXT = 'Dark Intelligence';
+const ACCENT_COLOR = '#FFD700';
+const BG_COLOR = '#0A0A0A';
+const PARTICLE_COUNT = 80;
+const PARTICLE_SPEED = 0.3;
+// ==============================
+
+document.getElementById('mainTitle').textContent = TITLE_TEXT;
+document.getElementById('subTitle').textContent = SUBTITLE_TEXT;
+
+const canvas = document.getElementById('particleCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+const particles = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = Math.random() * H;
+    this.size = Math.random() * 2.5 + 0.5;
+    this.speedX = (Math.random() - 0.5) * PARTICLE_SPEED;
+    this.speedY = (Math.random() - 0.5) * PARTICLE_SPEED - 0.15;
+    this.opacity = Math.random() * 0.6 + 0.1;
+    this.pulse = Math.random() * Math.PI * 2;
+    this.pulseSpeed = Math.random() * 0.02 + 0.005;
+  }
+  update() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+    this.pulse += this.pulseSpeed;
+    if (this.x < -10 || this.x > W + 10 || this.y < -10 || this.y > H + 10) {
+      this.reset();
+      this.y = H + 5;
+    }
+  }
+  draw() {
+    const a = this.opacity * (0.5 + 0.5 * Math.sin(this.pulse));
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 215, 0, ${a})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 215, 0, ${a * 0.15})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+
+function drawConnections() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120) {
+        const a = (1 - dist / 120) * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(255, 215, 0, ${a})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  drawConnections();
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Cyberpunk City Night</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0014; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  cityName: 'NEO TOKYO',
+  bgColor: '#0a0014',
+  neonColor1: '#ff00ff',
+  neonColor2: '#00ffff',
+  rainIntensity: 200,
+  cycleDuration: 20
+};
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0, cycleTime = 0;
+
+// Scene data
+const buildings = [];
+const neonSigns = [];
+const rainDrops = [];
+const flyingCars = [];
+let lightningTimer = 0;
+let lightningFlash = 0;
+let lightningBolt = null;
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  initScene();
+}
+
+function initScene() {
+  buildings.length = 0;
+  neonSigns.length = 0;
+  rainDrops.length = 0;
+  flyingCars.length = 0;
+
+  const horizonY = H * 0.45;
+
+  // Generate buildings with varying heights and widths
+  let x = -W * 0.03;
+  let idx = 0;
+  while (x < W * 1.05) {
+    const w = W * (0.035 + Math.random() * 0.055);
+    const h = H * (0.2 + Math.random() * 0.42);
+    const y = horizonY + H * 0.08 - h;
+
+    // Building windows
+    const wins = [];
+    const winW = w * 0.1;
+    const winH = winW * 0.65;
+    const cols = Math.floor(w / (winW * 2));
+    const rows = Math.floor((h * 0.85) / (winH * 2.5));
+    const startX = x + (w - cols * winW * 2) / 2 + winW * 0.3;
+    const startY = y + h * 0.06;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        wins.push({
+          x: startX + c * winW * 2,
+          y: startY + r * winH * 2.5,
+          w: winW,
+          h: winH,
+          on: Math.random() > 0.35,
+          flicker: Math.random() * Math.PI * 2,
+          flickerSpeed: 0.5 + Math.random() * 2,
+          tint: Math.random() > 0.5 ? CONFIG.neonColor1 : CONFIG.neonColor2,
+          brightness: 0.3 + Math.random() * 0.7,
+          nextToggle: 100 + Math.random() * 600
+        });
+      }
+    }
+
+    // Neon signs on some buildings
+    if (Math.random() > 0.4 && w > W * 0.04) {
+      const signY = y + h * (0.1 + Math.random() * 0.3);
+      const signColor = Math.random() > 0.5 ? CONFIG.neonColor1 : CONFIG.neonColor2;
+      const signType = Math.floor(Math.random() * 4); // 0=bar, 1=circle, 2=text, 3=cross
+      neonSigns.push({
+        x: x + w * 0.15,
+        y: signY,
+        w: w * 0.7,
+        h: H * 0.03 + Math.random() * H * 0.02,
+        color: signColor,
+        type: signType,
+        flicker: Math.random() * Math.PI * 2,
+        flickerSpeed: 2 + Math.random() * 6,
+        intensity: 0.6 + Math.random() * 0.4,
+        broken: Math.random() > 0.75
+      });
+    }
+
+    // Secondary neon sign
+    if (Math.random() > 0.65 && w > W * 0.04) {
+      const signY2 = y + h * (0.45 + Math.random() * 0.25);
+      neonSigns.push({
+        x: x + w * 0.2,
+        y: signY2,
+        w: w * 0.6,
+        h: H * 0.015 + Math.random() * H * 0.015,
+        color: Math.random() > 0.5 ? '#ff3366' : '#ffcc00',
+        type: Math.floor(Math.random() * 4),
+        flicker: Math.random() * Math.PI * 2,
+        flickerSpeed: 3 + Math.random() * 8,
+        intensity: 0.5 + Math.random() * 0.5,
+        broken: Math.random() > 0.7
+      });
+    }
+
+    buildings.push({
+      x, y, w, h: h + H * 0.55,
+      windows: wins,
+      shade: 0.4 + Math.random() * 0.6,
+      hasAntenna: Math.random() > 0.55,
+      antennaH: H * (0.02 + Math.random() * 0.04),
+      roofStyle: Math.floor(Math.random() * 3) // 0=flat, 1=antenna, 2=spire
+    });
+
+    x += w + W * (0.003 + Math.random() * 0.01);
+    idx++;
+  }
+
+  // Rain drops
+  initRain();
+
+  // Flying cars
+  for (let i = 0; i < 4; i++) {
+    spawnFlyingCar();
+  }
+
+  // Lightning init
+  lightningTimer = 3 + Math.random() * 8;
+}
+
+function initRain() {
+  rainDrops.length = 0;
+  const count = CONFIG.rainIntensity;
+  for (let i = 0; i < count; i++) {
+    rainDrops.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      len: H * (0.01 + Math.random() * 0.025),
+      speed: H * (0.008 + Math.random() * 0.012),
+      opacity: 0.15 + Math.random() * 0.35,
+      wind: W * 0.001
+    });
+  }
+}
+
+function spawnFlyingCar() {
+  const fromLeft = Math.random() > 0.5;
+  const y = H * (0.08 + Math.random() * 0.3);
+  const speed = W * (0.002 + Math.random() * 0.004);
+  const color = Math.random() > 0.5 ? CONFIG.neonColor1 : CONFIG.neonColor2;
+  const altColors = ['#ff3366', '#ffcc00', '#00ff88', '#ff6600'];
+  const tailColor = Math.random() > 0.6 ? altColors[Math.floor(Math.random() * altColors.length)] : color;
+
+  flyingCars.push({
+    x: fromLeft ? -W * 0.1 : W * 1.1,
+    y,
+    speed: fromLeft ? speed : -speed,
+    tailLen: W * (0.04 + Math.random() * 0.06),
+    color: tailColor,
+    size: W * 0.004 + Math.random() * W * 0.003,
+    fromLeft,
+    trail: []
+  });
+}
+
+function generateLightningBolt(x1, y1, x2, y2, detail) {
+  const points = [{ x: x1, y: y1 }];
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const segments = detail || 8;
+
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    points.push({
+      x: x1 + dx * t + (Math.random() - 0.5) * W * 0.06,
+      y: y1 + dy * t + (Math.random() - 0.5) * H * 0.02
+    });
+  }
+  points.push({ x: x2, y: y2 });
+
+  // Add branches
+  const branches = [];
+  for (let i = 2; i < points.length - 1; i++) {
+    if (Math.random() > 0.55) {
+      const branchLen = H * (0.03 + Math.random() * 0.06);
+      const angle = (Math.random() - 0.5) * 1.2;
+      branches.push({
+        start: { x: points[i].x, y: points[i].y },
+        end: {
+          x: points[i].x + Math.sin(angle) * branchLen,
+          y: points[i].y + branchLen
+        }
+      });
+    }
+  }
+
+  return { points, branches };
+}
+
+// --- DRAW FUNCTIONS ---
+
+function drawSky() {
+  const c1 = hexToRgb(CONFIG.bgColor);
+  const grad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  grad.addColorStop(0, `rgb(${Math.max(0, c1.r - 5)},${Math.max(0, c1.g - 5)},${Math.max(0, c1.b + 10)})`);
+  grad.addColorStop(0.4, CONFIG.bgColor);
+  grad.addColorStop(0.7, `rgb(${c1.r + 15},${c1.g},${c1.b + 30})`);
+  grad.addColorStop(1, `rgb(${c1.r + 25},${c1.g + 5},${c1.b + 45})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Atmospheric haze at horizon
+  const n1 = hexToRgb(CONFIG.neonColor1);
+  const n2 = hexToRgb(CONFIG.neonColor2);
+  const hazeGrad = ctx.createLinearGradient(0, H * 0.35, 0, H * 0.55);
+  hazeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  hazeGrad.addColorStop(1, `rgba(${Math.floor((n1.r + n2.r) / 4)},${Math.floor((n1.g + n2.g) / 6)},${Math.floor((n1.b + n2.b) / 3)},0.15)`);
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(0, H * 0.35, W, H * 0.2);
+
+  // Lightning flash overlay
+  if (lightningFlash > 0) {
+    ctx.fillStyle = `rgba(200,180,255,${lightningFlash * 0.12})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawStars() {
+  const seed = 42;
+  for (let i = 0; i < 120; i++) {
+    const sx = ((i * 7919 + seed) % 1000) / 1000 * W;
+    const sy = ((i * 6271 + seed) % 1000) / 1000 * H * 0.4;
+    const sr = 0.5 + ((i * 3571) % 100) / 100 * 1.5;
+    const twinkle = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(time * (1 + (i % 5)) + i));
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,180,255,${twinkle * 0.5})`;
+    ctx.fill();
+  }
+}
+
+function drawLightning() {
+  if (lightningBolt && lightningFlash > 0.1) {
+    const alpha = Math.min(1, lightningFlash);
+
+    // Main bolt
+    ctx.strokeStyle = `rgba(200,180,255,${alpha})`;
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = `rgba(180,150,255,${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(lightningBolt.points[0].x, lightningBolt.points[0].y);
+    for (let i = 1; i < lightningBolt.points.length; i++) {
+      ctx.lineTo(lightningBolt.points[i].x, lightningBolt.points[i].y);
+    }
+    ctx.stroke();
+
+    // Core glow
+    ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.8})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Branches
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = `rgba(180,160,255,${alpha * 0.6})`;
+    lightningBolt.branches.forEach(b => {
+      ctx.beginPath();
+      ctx.moveTo(b.start.x, b.start.y);
+      ctx.lineTo(b.end.x, b.end.y);
+      ctx.stroke();
+    });
+
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawBuildings() {
+  const horizonY = H * 0.45;
+
+  buildings.forEach(b => {
+    // Building body - dark silhouette with subtle edge highlight
+    const n1 = hexToRgb(CONFIG.neonColor1);
+    const n2 = hexToRgb(CONFIG.neonColor2);
+
+    ctx.fillStyle = `rgba(${5 + Math.floor(b.shade * 8)},${2 + Math.floor(b.shade * 4)},${10 + Math.floor(b.shade * 15)},1)`;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // Subtle edge glow on buildings
+    const edgeGrad = ctx.createLinearGradient(b.x, 0, b.x + b.w, 0);
+    edgeGrad.addColorStop(0, `rgba(${n1.r},${n1.g},${n1.b},0.06)`);
+    edgeGrad.addColorStop(0.05, 'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(0.95, 'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(1, `rgba(${n2.r},${n2.g},${n2.b},0.04)`);
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+
+    // Roof line highlight
+    ctx.strokeStyle = `rgba(${n1.r},${n1.g},${n1.b},0.15)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x + b.w, b.y);
+    ctx.stroke();
+
+    // Antenna / spire
+    if (b.hasAntenna) {
+      const ax = b.x + b.w * 0.5;
+      ctx.strokeStyle = `rgba(40,20,60,0.8)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(ax, b.y);
+      ctx.lineTo(ax, b.y - b.antennaH);
+      ctx.stroke();
+
+      // Blinking red light on antenna
+      const blink = Math.sin(time * 3 + b.x * 0.01) > 0.2;
+      if (blink) {
+        ctx.beginPath();
+        ctx.arc(ax, b.y - b.antennaH, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff2200';
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#ff2200';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Windows
+    b.windows.forEach(win => {
+      win.nextToggle -= 1;
+      if (win.nextToggle <= 0) {
+        win.on = !win.on;
+        win.nextToggle = 150 + Math.random() * 800;
+        win.brightness = 0.2 + Math.random() * 0.8;
+      }
+
+      if (win.on) {
+        const wc = hexToRgb(win.tint);
+        const flick = 0.6 + 0.4 * Math.sin(time * win.flickerSpeed + win.flicker);
+        const alpha = win.brightness * flick;
+
+        ctx.fillStyle = `rgba(${wc.r},${wc.g},${wc.b},${alpha * 0.5})`;
+        ctx.fillRect(win.x, win.y, win.w, win.h);
+
+        // Warm white core
+        ctx.fillStyle = `rgba(255,240,220,${alpha * 0.3})`;
+        ctx.fillRect(win.x + win.w * 0.15, win.y + win.h * 0.15, win.w * 0.7, win.h * 0.7);
+      } else {
+        ctx.fillStyle = 'rgba(5,2,15,0.6)';
+        ctx.fillRect(win.x, win.y, win.w, win.h);
+      }
+    });
+  });
+}
+
+function drawNeonSigns() {
+  neonSigns.forEach(sign => {
+    const c = hexToRgb(sign.color);
+
+    // Flicker calculation
+    let flicker = 1;
+    if (sign.broken) {
+      // Broken sign flickers erratically
+      const f = Math.sin(time * sign.flickerSpeed) * Math.cos(time * sign.flickerSpeed * 1.7);
+      flicker = f > 0 ? (0.6 + f * 0.4) : (Math.random() > 0.85 ? 0.8 : 0.05);
+    } else {
+      flicker = 0.7 + 0.3 * Math.sin(time * sign.flickerSpeed + sign.flicker);
+    }
+
+    const alpha = sign.intensity * flicker;
+    if (alpha < 0.08) return;
+
+    ctx.save();
+    ctx.shadowBlur = 15 + alpha * 20;
+    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},${alpha * 0.8})`;
+
+    switch (sign.type) {
+      case 0: // Horizontal bar
+        ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        ctx.fillRect(sign.x, sign.y, sign.w, sign.h * 0.3);
+        // Double line
+        ctx.fillRect(sign.x, sign.y + sign.h * 0.6, sign.w, sign.h * 0.3);
+        break;
+
+      case 1: // Circle / ring
+        ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sign.x + sign.w * 0.5, sign.y + sign.h * 0.5, Math.min(sign.w, sign.h) * 0.4, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+
+      case 2: // Text-like horizontal lines (simulates kanji/text)
+        ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        const lineCount = 3 + Math.floor(sign.w / (W * 0.015));
+        const lineW = sign.w / lineCount * 0.6;
+        for (let i = 0; i < lineCount; i++) {
+          const lx = sign.x + i * (sign.w / lineCount);
+          const lh = sign.h * (0.4 + Math.random() * 0.5);
+          ctx.fillRect(lx, sign.y + (sign.h - lh) * 0.5, lineW, lh);
+        }
+        break;
+
+      case 3: // Cross / plus sign
+        ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        const cw = sign.w * 0.15;
+        ctx.fillRect(sign.x + sign.w * 0.5 - cw * 0.5, sign.y, cw, sign.h);
+        ctx.fillRect(sign.x + sign.w * 0.15, sign.y + sign.h * 0.5 - cw * 0.5, sign.w * 0.7, cw);
+        break;
+    }
+
+    ctx.restore();
+  });
+}
+
+function drawHolographicBillboard() {
+  const bx = W * 0.62;
+  const by = H * 0.18;
+  const bw = W * 0.14;
+  const bh = H * 0.1;
+
+  const n1 = hexToRgb(CONFIG.neonColor1);
+  const n2 = hexToRgb(CONFIG.neonColor2);
+
+  // Billboard frame
+  ctx.strokeStyle = `rgba(${n2.r},${n2.g},${n2.b},0.3)`;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(bx, by, bw, bh);
+
+  // Holographic fill with scan lines
+  const scanOffset = (time * 40) % (bh * 0.15);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(bx, by, bw, bh);
+  ctx.clip();
+
+  // Gradient fill
+  const hGrad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+  hGrad.addColorStop(0, `rgba(${n1.r},${n1.g},${n1.b},0.08)`);
+  hGrad.addColorStop(0.5, `rgba(${n2.r},${n2.g},${n2.b},0.12)`);
+  hGrad.addColorStop(1, `rgba(${n1.r},${n1.g},${n1.b},0.06)`);
+  ctx.fillStyle = hGrad;
+  ctx.fillRect(bx, by, bw, bh);
+
+  // Scan lines
+  ctx.fillStyle = `rgba(255,255,255,0.03)`;
+  for (let sy = 0; sy < bh; sy += bh * 0.06) {
+    ctx.fillRect(bx, by + sy + scanOffset, bw, 1);
+  }
+
+  // Holographic glitch bars
+  if (Math.random() > 0.92) {
+    const glitchY = by + Math.random() * bh;
+    const glitchH = bh * 0.02 + Math.random() * bh * 0.06;
+    ctx.fillStyle = `rgba(${n1.r},${n1.g},${n1.b},0.2)`;
+    ctx.fillRect(bx + Math.random() * bw * 0.1, glitchY, bw * (0.7 + Math.random() * 0.3), glitchH);
+  }
+
+  // City name text
+  ctx.fillStyle = `rgba(${n2.r},${n2.g},${n2.b},${0.5 + 0.3 * Math.sin(time * 2)})`;
+  ctx.font = `bold ${bh * 0.35}px 'Helvetica Neue', Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = `rgba(${n2.r},${n2.g},${n2.b},0.5)`;
+  ctx.fillText(CONFIG.cityName, bx + bw * 0.5, by + bh * 0.45);
+
+  // Subtitle line
+  ctx.fillStyle = `rgba(${n1.r},${n1.g},${n1.b},${0.3 + 0.2 * Math.sin(time * 3 + 1)})`;
+  ctx.font = `${bh * 0.12}px 'Courier New', monospace`;
+  ctx.fillText('SECTOR 7 // ONLINE', bx + bw * 0.5, by + bh * 0.75);
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function drawWetGround() {
+  const groundY = H * 0.53;
+  const n1 = hexToRgb(CONFIG.neonColor1);
+  const n2 = hexToRgb(CONFIG.neonColor2);
+
+  // Dark ground
+  const gGrad = ctx.createLinearGradient(0, groundY, 0, H);
+  gGrad.addColorStop(0, `rgba(${5},${2},${12},0.95)`);
+  gGrad.addColorStop(0.15, `rgba(${3},${1},${8},1)`);
+  gGrad.addColorStop(1, `rgba(${2},${0},${5},1)`);
+  ctx.fillStyle = gGrad;
+  ctx.fillRect(0, groundY, W, H - groundY);
+
+  // Neon reflections on wet ground
+  // Reflection of neon color 1 (left area)
+  const ref1 = ctx.createRadialGradient(W * 0.25, groundY, 0, W * 0.25, groundY + H * 0.1, W * 0.3);
+  ref1.addColorStop(0, `rgba(${n1.r},${n1.g},${n1.b},0.12)`);
+  ref1.addColorStop(0.4, `rgba(${n1.r},${n1.g},${n1.b},0.05)`);
+  ref1.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ref1;
+  ctx.fillRect(0, groundY, W * 0.55, H * 0.25);
+
+  // Reflection of neon color 2 (right area)
+  const ref2 = ctx.createRadialGradient(W * 0.72, groundY, 0, W * 0.72, groundY + H * 0.1, W * 0.3);
+  ref2.addColorStop(0, `rgba(${n2.r},${n2.g},${n2.b},0.1)`);
+  ref2.addColorStop(0.4, `rgba(${n2.r},${n2.g},${n2.b},0.04)`);
+  ref2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ref2;
+  ctx.fillRect(W * 0.4, groundY, W * 0.6, H * 0.25);
+
+  // Wet streaks/puddle lines
+  ctx.strokeStyle = `rgba(${n1.r},${n1.g},${n1.b},0.04)`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 15; i++) {
+    const py = groundY + H * 0.02 + i * H * 0.03;
+    const wobble = Math.sin(time * 0.5 + i * 0.8) * W * 0.005;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.05 + wobble, py);
+    ctx.lineTo(W * 0.95 + wobble, py);
+    ctx.stroke();
+  }
+
+  // Animated puddle ripples
+  for (let i = 0; i < 6; i++) {
+    const px = ((i * 4729 + 31) % 100) / 100 * W;
+    const py = groundY + H * (0.05 + ((i * 2137) % 100) / 100 * 0.3);
+    const ripplePhase = (time * 1.5 + i * 1.3) % 3;
+    if (ripplePhase < 2) {
+      const rippleR = ripplePhase * W * 0.01;
+      const rippleAlpha = (1 - ripplePhase / 2) * 0.15;
+      const rc = i % 2 === 0 ? n1 : n2;
+      ctx.strokeStyle = `rgba(${rc.r},${rc.g},${rc.b},${rippleAlpha})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.ellipse(px, py, rippleR, rippleR * 0.3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // Building reflections (mirrored, faded)
+  ctx.save();
+  ctx.globalAlpha = 0.06;
+  ctx.translate(0, groundY * 2);
+  ctx.scale(1, -1);
+  buildings.forEach(b => {
+    const n = b.shade > 0.6 ? n1 : n2;
+    ctx.fillStyle = `rgba(${n.r},${n.g},${n.b},0.3)`;
+    ctx.fillRect(b.x, b.y, b.w, b.h * 0.3);
+  });
+  ctx.restore();
+}
+
+function drawRain() {
+  const n1 = hexToRgb(CONFIG.neonColor1);
+  const n2 = hexToRgb(CONFIG.neonColor2);
+
+  rainDrops.forEach(drop => {
+    // Update position
+    drop.y += drop.speed;
+    drop.x += drop.wind;
+
+    if (drop.y > H) {
+      drop.y = -drop.len;
+      drop.x = Math.random() * W;
+    }
+    if (drop.x > W) drop.x = 0;
+
+    // Choose color based on position (left = neon1, right = neon2)
+    const t = drop.x / W;
+    const r = Math.floor(n1.r * (1 - t) + n2.r * t);
+    const g = Math.floor(n1.g * (1 - t) + n2.g * t);
+    const b = Math.floor(n1.b * (1 - t) + n2.b * t);
+
+    ctx.strokeStyle = `rgba(${r},${g},${b},${drop.opacity * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(drop.x, drop.y);
+    ctx.lineTo(drop.x + drop.wind * 2, drop.y + drop.len);
+    ctx.stroke();
+
+    // White core for closer rain
+    if (drop.opacity > 0.35) {
+      ctx.strokeStyle = `rgba(200,210,255,${drop.opacity * 0.15})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(drop.x, drop.y);
+      ctx.lineTo(drop.x + drop.wind * 2, drop.y + drop.len);
+      ctx.stroke();
+    }
+  });
+}
+
+function drawFlyingCars() {
+  const n1 = hexToRgb(CONFIG.neonColor1);
+  const n2 = hexToRgb(CONFIG.neonColor2);
+
+  for (let i = flyingCars.length - 1; i >= 0; i--) {
+    const car = flyingCars[i];
+    car.x += car.speed;
+
+    // Store trail points
+    car.trail.push({ x: car.x, y: car.y + Math.sin(time * 2 + i) * H * 0.003 });
+    if (car.trail.length > 60) car.trail.shift();
+
+    // Remove and respawn if off screen
+    if ((car.fromLeft && car.x > W * 1.15) || (!car.fromLeft && car.x < -W * 0.15)) {
+      flyingCars.splice(i, 1);
+      spawnFlyingCar();
+      continue;
+    }
+
+    const c = hexToRgb(car.color);
+
+    // Light trail
+    if (car.trail.length > 2) {
+      ctx.beginPath();
+      ctx.moveTo(car.trail[0].x, car.trail[0].y);
+      for (let t = 1; t < car.trail.length; t++) {
+        ctx.lineTo(car.trail[t].x, car.trail[t].y);
+      }
+      ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.15)`;
+      ctx.lineWidth = car.size * 0.8;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},0.3)`;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Brighter core trail
+      ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.3)`;
+      ctx.lineWidth = car.size * 0.3;
+      ctx.stroke();
+    }
+
+    // Car headlight
+    const carY = car.trail.length > 0 ? car.trail[car.trail.length - 1].y : car.y;
+    ctx.beginPath();
+    ctx.arc(car.x, carY, car.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,0.9)`;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},0.8)`;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawFog() {
+  const n1 = hexToRgb(CONFIG.neonColor1);
+  const n2 = hexToRgb(CONFIG.neonColor2);
+
+  // Low atmospheric fog between buildings
+  for (let i = 0; i < 4; i++) {
+    const fogX = (time * (5 + i * 3) + i * W * 0.3) % (W * 1.6) - W * 0.3;
+    const fogY = H * (0.4 + i * 0.03);
+    const nc = i % 2 === 0 ? n1 : n2;
+    const fogGrad = ctx.createRadialGradient(fogX, fogY, 0, fogX, fogY, W * 0.25);
+    fogGrad.addColorStop(0, `rgba(${nc.r},${nc.g},${nc.b},${0.03 - i * 0.005})`);
+    fogGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fogGrad;
+    ctx.fillRect(0, H * 0.3, W, H * 0.25);
+  }
+}
+
+function updateLightning(dt) {
+  lightningTimer -= dt;
+  if (lightningFlash > 0) {
+    lightningFlash -= dt * 2.5;
+    if (lightningFlash < 0) lightningFlash = 0;
+  }
+
+  if (lightningTimer <= 0) {
+    // Trigger lightning
+    const lx = W * (0.15 + Math.random() * 0.7);
+    lightningBolt = generateLightningBolt(lx, 0, lx + (Math.random() - 0.5) * W * 0.1, H * 0.5, 10);
+    lightningFlash = 1;
+    lightningTimer = 4 + Math.random() * 12;
+  }
+}
+
+function drawVignette() {
+  const vGrad = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.2, W * 0.5, H * 0.5, W * 0.75);
+  vGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vGrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = vGrad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// --- MAIN LOOP ---
+
+function draw() {
+  const dt = 0.016;
+  time += dt;
+  cycleTime += dt;
+
+  // Restart cycle
+  if (cycleTime >= CONFIG.cycleDuration) {
+    cycleTime = 0;
+    // Re-randomize some elements for variety
+    neonSigns.forEach(s => {
+      s.flicker = Math.random() * Math.PI * 2;
+      s.broken = Math.random() > 0.7;
+    });
+    lightningTimer = 1 + Math.random() * 3;
+  }
+
+  drawSky();
+  drawStars();
+  drawLightning();
+  drawBuildings();
+  drawNeonSigns();
+  drawHolographicBillboard();
+  drawFog();
+  drawFlyingCars();
+  drawWetGround();
+  drawRain();
+  drawVignette();
+
+  updateLightning(dt);
+
+  requestAnimationFrame(draw);
+}
+
+// --- CONFIG UPDATE VIA postMessage ---
+window.addEventListener('message', function(e) {
+  if (e.data && typeof e.data === 'object') {
+    const d = e.data;
+    if (d.type === 'CONFIG_UPDATE' && d.payload) {
+      Object.assign(CONFIG, d.payload);
+      if ('rainIntensity' in d.payload) initRain();
+    }
+  }
+});
+
+window.addEventListener('resize', resize);
+resize();
+draw();
+</script>
+</body>
+</html>

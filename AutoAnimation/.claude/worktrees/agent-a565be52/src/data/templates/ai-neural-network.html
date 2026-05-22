@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Neural Network</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; background: #0a0a1a; }
+canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const CONFIG = {
+  layers: [4, 6, 8, 6, 3],
+  nodeRadius: 14,
+  connectionColor: '#1a3a6a',
+  pulseSpeed: 1.5,
+  bgColor: '#0a0a1a',
+  nodeColors: ['#00aaff', '#00ccaa', '#ff6644', '#aa44ff', '#ffaa00']
+};
+
+window.addEventListener('message', e => {
+  if (e.data && typeof e.data === 'object') Object.assign(CONFIG, e.data);
+});
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, time = 0;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Compute node positions
+function getNodes() {
+  const layers = CONFIG.layers;
+  const numLayers = layers.length;
+  const marginX = W * 0.12;
+  const layerSpacing = (W - marginX * 2) / (numLayers - 1);
+  const nodes = [];
+
+  for (let l = 0; l < numLayers; l++) {
+    const count = layers[l];
+    const x = marginX + l * layerSpacing;
+    const totalH = H * 0.7;
+    const startY = (H - totalH) / 2;
+    const spacing = count > 1 ? totalH / (count - 1) : 0;
+    const layerNodes = [];
+    for (let n = 0; n < count; n++) {
+      layerNodes.push({
+        x,
+        y: count > 1 ? startY + n * spacing : H / 2,
+        layer: l,
+        index: n,
+        activation: 0,
+        glowPhase: Math.random() * Math.PI * 2
+      });
+    }
+    nodes.push(layerNodes);
+  }
+  return nodes;
+}
+
+// Connection particles (data flow dots)
+class DataDot {
+  constructor(fromNode, toNode, delay) {
+    this.from = fromNode;
+    this.to = toNode;
+    this.delay = delay;
+    this.progress = -delay;
+    this.speed = 0.3 + Math.random() * 0.4;
+    this.active = true;
+  }
+  update(dt) {
+    this.progress += this.speed * dt * CONFIG.pulseSpeed;
+    if (this.progress > 1.3) {
+      this.progress = -this.delay;
+    }
+  }
+  draw() {
+    if (this.progress < 0 || this.progress > 1) return;
+    const t = this.progress;
+    const x = this.from.x + (this.to.x - this.from.x) * t;
+    const y = this.from.y + (this.to.y - this.from.y) * t;
+    const alpha = Math.sin(t * Math.PI);
+    const fromColor = CONFIG.nodeColors[this.from.layer % CONFIG.nodeColors.length];
+    const toColor = CONFIG.nodeColors[this.to.layer % CONFIG.nodeColors.length];
+
+    ctx.save();
+    ctx.shadowColor = toColor;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = toColor;
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+let nodes, dataDots;
+
+function init() {
+  nodes = getNodes();
+  dataDots = [];
+
+  // Create data dots for each connection
+  for (let l = 0; l < nodes.length - 1; l++) {
+    for (let n = 0; n < nodes[l].length; n++) {
+      for (let m = 0; m < nodes[l + 1].length; m++) {
+        // Only create a fraction of possible dots to avoid overload
+        if (Math.random() < 0.4) {
+          dataDots.push(new DataDot(nodes[l][n], nodes[l + 1][m], Math.random() * 3));
+        }
+      }
+    }
+  }
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(30, 50, 80, 0.15)';
+  ctx.lineWidth = 0.5;
+  const gridSize = 40;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawConnections() {
+  for (let l = 0; l < nodes.length - 1; l++) {
+    for (let n = 0; n < nodes[l].length; n++) {
+      for (let m = 0; m < nodes[l + 1].length; m++) {
+        const from = nodes[l][n];
+        const to = nodes[l + 1][m];
+
+        // Pulse effect on connection line
+        const dist = Math.sqrt((to.x - from.x) ** 2 + (to.y - from.y) ** 2);
+        const pulse = Math.sin(time * CONFIG.pulseSpeed + n * 0.5 + m * 0.3 + l) * 0.5 + 0.5;
+
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.strokeStyle = CONFIG.connectionColor;
+        ctx.globalAlpha = 0.08 + pulse * 0.12;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+}
+
+function drawNodes() {
+  for (let l = 0; l < nodes.length; l++) {
+    const color = CONFIG.nodeColors[l % CONFIG.nodeColors.length];
+    for (let n = 0; n < nodes[l].length; n++) {
+      const node = nodes[l][n];
+      const r = CONFIG.nodeRadius;
+
+      // Activation wave: propagate through layers
+      const wavePos = ((time * CONFIG.pulseSpeed * 0.5) % (nodes.length + 2)) - 1;
+      const distToWave = Math.abs(l - wavePos);
+      const activation = Math.max(0, 1 - distToWave * 0.6);
+
+      // Ambient glow pulse
+      const ambientPulse = Math.sin(time * 1.2 + node.glowPhase) * 0.3 + 0.7;
+
+      // Outer glow
+      const glowR = r * (1.8 + activation * 1.5);
+      const glow = ctx.createRadialGradient(node.x, node.y, r * 0.5, node.x, node.y, glowR);
+      glow.addColorStop(0, color + Math.floor((0.15 + activation * 0.35) * 255).toString(16).padStart(2, '0'));
+      glow.addColorStop(1, color + '00');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, glowR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Node body
+      const bodyGrad = ctx.createRadialGradient(
+        node.x - r * 0.2, node.y - r * 0.2, 0,
+        node.x, node.y, r
+      );
+      const brightness = 0.4 + activation * 0.6;
+      bodyGrad.addColorStop(0, adjustBrightness(color, 1.3 * brightness));
+      bodyGrad.addColorStop(0.7, adjustBrightness(color, 0.8 * brightness));
+      bodyGrad.addColorStop(1, adjustBrightness(color, 0.4 * brightness));
+
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8 + activation * 20;
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r * (0.9 + activation * 0.15), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Ring
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r * (0.9 + activation * 0.15), 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.3 + activation * 0.5;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Center bright dot
+      ctx.fillStyle = '#fff';
+      ctx.globalAlpha = 0.3 + activation * 0.7;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, r * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function adjustBrightness(hex, factor) {
+  hex = hex.replace('#', '');
+  let r = parseInt(hex.substring(0, 2), 16);
+  let g = parseInt(hex.substring(2, 4), 16);
+  let b = parseInt(hex.substring(4, 6), 16);
+  r = Math.min(255, Math.floor(r * factor));
+  g = Math.min(255, Math.floor(g * factor));
+  b = Math.min(255, Math.floor(b * factor));
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawLabels() {
+  ctx.save();
+  ctx.font = '11px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(150, 180, 220, 0.5)';
+
+  const labels = ['Input', ...CONFIG.layers.slice(1, -1).map((_, i) => `Hidden ${i + 1}`), 'Output'];
+  for (let l = 0; l < nodes.length; l++) {
+    if (nodes[l].length > 0) {
+      const node = nodes[l][0];
+      const label = labels[l] || `Layer ${l}`;
+      ctx.fillText(label, node.x, H * 0.06);
+    }
+  }
+  ctx.restore();
+}
+
+// Background particles
+const bgParticles = Array.from({ length: 40 }, () => ({
+  x: Math.random() * 2000,
+  y: Math.random() * 2000,
+  r: 0.5 + Math.random() * 1,
+  speed: 0.1 + Math.random() * 0.2,
+  opacity: 0.1 + Math.random() * 0.15,
+  angle: Math.random() * Math.PI * 2
+}));
+
+function drawBgParticles() {
+  bgParticles.forEach(p => {
+    p.x += Math.cos(p.angle) * p.speed;
+    p.y += Math.sin(p.angle) * p.speed;
+    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    ctx.fillStyle = `rgba(100, 160, 255, ${p.opacity})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+init();
+let lastTime = performance.now();
+
+function animate(now) {
+  const dt = Math.min((now - lastTime) / 16.67, 3);
+  lastTime = now;
+  time = now / 1000;
+
+  drawBackground();
+  drawBgParticles();
+  drawConnections();
+
+  dataDots.forEach(d => { d.update(dt); d.draw(); });
+
+  drawNodes();
+  drawLabels();
+
+  // Vignette
+  const vig = ctx.createRadialGradient(W / 2, H / 2, W * 0.3, W / 2, H / 2, W * 0.7);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,10,0.5)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

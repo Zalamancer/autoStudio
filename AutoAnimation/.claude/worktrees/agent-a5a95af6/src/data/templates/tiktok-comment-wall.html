@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TikTok Comment Wall</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { width: 100vw; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.container { width: 100%; height: 100%; position: relative; overflow: hidden; }
+.comment {
+  position: absolute; white-space: nowrap;
+  padding: 0.8vh 1.5vw; border-radius: 2vh;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(8px);
+  font-size: 1.8vh; color: #fff;
+  display: flex; align-items: center; gap: 0.8vw;
+  opacity: 0; transition: opacity 0.3s;
+  will-change: transform;
+}
+.comment.visible { opacity: 0.9; }
+.comment-user { font-weight: 700; font-size: 1.5vh; }
+.comment-text { font-weight: 400; }
+.reaction {
+  position: absolute; font-size: 3vh;
+  opacity: 0; will-change: transform;
+  animation: floatUp 3s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(0) scale(0.5); }
+  15% { opacity: 1; transform: translateY(-5vh) scale(1); }
+  70% { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-60vh) scale(0.6) rotate(15deg); }
+}
+.viewer-count { position: absolute; top: 3vh; left: 3vw; display: flex; align-items: center; gap: 1vw; background: rgba(0,0,0,0.4); padding: 0.6vh 1.5vw; border-radius: 2vh; font-size: 1.4vh; color: #fff; backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.5s; }
+.viewer-count.visible { opacity: 1; }
+.viewer-dot { width: 0.8vh; height: 0.8vh; border-radius: 50%; background: #ef4444; animation: viewPulse 1s infinite; }
+@keyframes viewPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.bottom-gradient { position: absolute; bottom: 0; left: 0; right: 0; height: 20vh; background: linear-gradient(transparent, rgba(0,0,0,0.6)); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="container" id="container">
+  <div class="viewer-count" id="viewers"><div class="viewer-dot"></div><span id="viewerNum">12.4K watching</span></div>
+  <div id="commentArea"></div>
+  <div id="reactionArea"></div>
+  <div class="bottom-gradient"></div>
+</div>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  comments: [
+    { username: 'sarah_m', text: 'This is amazing!! 🔥', color: '#f472b6' },
+    { username: 'tech_guru', text: 'No way this is real', color: '#60a5fa' },
+    { username: 'alex.dev', text: 'How did you do that?!', color: '#34d399' },
+    { username: 'luna_star', text: 'First comment! ❤️', color: '#a78bfa' },
+    { username: 'coder42', text: 'The future is here', color: '#fb923c' },
+    { username: 'maya.art', text: 'Incredible work 👏', color: '#f87171' },
+    { username: 'zen_master', text: 'Need a tutorial ASAP', color: '#22d3ee' },
+    { username: 'pixel_lord', text: 'This broke my brain 🤯', color: '#e879f9' },
+    { username: 'nova.design', text: 'Saving this for later', color: '#a3e635' },
+    { username: 'jamie_k', text: 'I can watch this all day', color: '#fbbf24' },
+  ],
+  reactions: ['❤️', '🔥', '😍', '👏', '🎉', '💯', '🤩', '💜'],
+  viewerCount: '12.4K watching',
+  commentSpeed: 4,
+  cycleDuration: 14000,
+  bgColor: '#0f0f0f',
+};
+
+document.getElementById('container').style.background = CONFIG.bgColor;
+document.getElementById('viewerNum').textContent = CONFIG.viewerCount;
+
+var commentArea = document.getElementById('commentArea');
+var reactionArea = document.getElementById('reactionArea');
+var activeComments = [];
+var commentIdx = 0;
+
+function spawnComment() {
+  var c = CONFIG.comments[commentIdx % CONFIG.comments.length];
+  commentIdx++;
+  var el = document.createElement('div');
+  el.className = 'comment';
+  el.innerHTML = '<span class="comment-user" style="color:' + c.color + '">' + c.username + '</span><span class="comment-text">' + c.text + '</span>';
+  var y = 15 + Math.random() * 55;
+  el.style.top = y + 'vh';
+  el.style.right = '-50vw';
+  commentArea.appendChild(el);
+  requestAnimationFrame(function() { el.classList.add('visible'); });
+
+  var speed = CONFIG.commentSpeed + Math.random() * 2;
+  var obj = { el: el, x: window.innerWidth + 200, speed: speed };
+  activeComments.push(obj);
+}
+
+function spawnReaction() {
+  var emoji = CONFIG.reactions[Math.floor(Math.random() * CONFIG.reactions.length)];
+  var el = document.createElement('div');
+  el.className = 'reaction';
+  el.textContent = emoji;
+  el.style.left = (75 + Math.random() * 20) + 'vw';
+  el.style.bottom = '5vh';
+  reactionArea.appendChild(el);
+  setTimeout(function() { el.remove(); }, 3000);
+}
+
+function updateComments() {
+  for (var i = activeComments.length - 1; i >= 0; i--) {
+    var c = activeComments[i];
+    c.x -= c.speed;
+    c.el.style.transform = 'translateX(' + (-window.innerWidth - 200 + c.x) + 'px)';
+    if (c.x < -300) {
+      c.el.remove();
+      activeComments.splice(i, 1);
+    }
+  }
+  requestAnimationFrame(updateComments);
+}
+updateComments();
+
+var commentInterval, reactionInterval;
+
+function runCycle() {
+  var viewers = document.getElementById('viewers');
+  viewers.classList.remove('visible');
+  activeComments.forEach(function(c) { c.el.remove(); });
+  activeComments = [];
+  reactionArea.innerHTML = '';
+  if (commentInterval) clearInterval(commentInterval);
+  if (reactionInterval) clearInterval(reactionInterval);
+
+  setTimeout(function() { viewers.classList.add('visible'); }, 300);
+  setTimeout(function() {
+    commentInterval = setInterval(spawnComment, 800);
+    reactionInterval = setInterval(spawnReaction, 400);
+  }, 600);
+
+  setTimeout(function() {
+    clearInterval(commentInterval);
+    clearInterval(reactionInterval);
+    viewers.classList.remove('visible');
+  }, CONFIG.cycleDuration - 1500);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+runCycle();
+</script>
+</body>
+</html>

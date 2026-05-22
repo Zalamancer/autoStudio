@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban Board</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .board {
+    display: flex;
+    gap: clamp(10px, 2vw, 24px);
+    padding: 0 3vw;
+    width: 100%;
+    max-width: 1000px;
+    height: 80vh;
+  }
+
+  .column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  .column.show {
+    animation: colIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .column.hide {
+    animation: colOut 0.4s ease-in forwards;
+  }
+
+  @keyframes colIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes colOut {
+    to { opacity: 0; transform: translateY(20px) scale(0.97); }
+  }
+
+  .col-header {
+    padding: clamp(10px, 1.5vw, 16px);
+    font-size: clamp(11px, 1.4vw, 15px);
+    font-weight: 700;
+    color: #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .col-count {
+    margin-left: auto;
+    font-size: clamp(9px, 1.1vw, 12px);
+    background: rgba(255,255,255,0.08);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+    color: #94a3b8;
+  }
+
+  .col-body {
+    flex: 1;
+    padding: clamp(8px, 1vw, 12px);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 1vw, 10px);
+  }
+
+  .task-card {
+    border-radius: 10px;
+    padding: clamp(10px, 1.5vw, 16px);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  .task-card.show {
+    animation: taskIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .task-card.moving {
+    animation: taskMove 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    z-index: 10;
+  }
+  .task-card.hide {
+    animation: taskOut 0.3s ease-in forwards;
+  }
+
+  @keyframes taskIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes taskOut {
+    to { opacity: 0; transform: scale(0.85) translateY(10px); }
+  }
+
+  .task-color-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    border-radius: 10px 0 0 10px;
+  }
+
+  .task-title {
+    font-size: clamp(10px, 1.3vw, 14px);
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+    padding-left: 8px;
+  }
+
+  .task-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 8px;
+  }
+
+  .task-avatar {
+    width: clamp(22px, 3vw, 30px);
+    height: clamp(22px, 3vw, 30px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(8px, 1vw, 11px);
+    font-weight: 700;
+    color: white;
+  }
+
+  .checkmark {
+    opacity: 0;
+    transform: scale(0);
+    color: #34d399;
+    font-size: clamp(14px, 2vw, 20px);
+    font-weight: bold;
+  }
+  .checkmark.show {
+    animation: checkIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes checkIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .drag-shadow {
+    position: fixed;
+    border-radius: 10px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 100;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    transform: rotate(3deg) scale(1.05);
+  }
+  .drag-shadow.show {
+    animation: dragFloat 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes dragFloat {
+    0% { opacity: 0.8; }
+    50% { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  columns: ["To Do", "In Progress", "Done"],
+  tasks: [
+    { title: "Design landing page", assignee: "AK", color: "#6366f1" },
+    { title: "Set up CI/CD pipeline", assignee: "MR", color: "#f59e0b" },
+    { title: "Write API documentation", assignee: "SL", color: "#ec4899" },
+    { title: "Database migration", assignee: "JW", color: "#14b8a6" },
+    { title: "User testing round 2", assignee: "NP", color: "#8b5cf6" }
+  ],
+  bgColor: "#1a1b2e",
+  accentColor: "#6366f1",
+  cycleDuration: 12
+};
+// === END EDITABLE CONFIG ===
+
+document.body.style.background = CONFIG.bgColor;
+
+var board = document.createElement('div');
+board.className = 'board';
+document.body.appendChild(board);
+
+var dragShadow = document.createElement('div');
+dragShadow.className = 'drag-shadow';
+document.body.appendChild(dragShadow);
+
+var colDotColors = ['#f59e0b', '#3b82f6', '#34d399'];
+var columns = [];
+var colBodies = [];
+
+function buildBoard() {
+  board.innerHTML = '';
+  columns = [];
+  colBodies = [];
+
+  CONFIG.columns.forEach(function(colName, ci) {
+    var col = document.createElement('div');
+    col.className = 'column';
+
+    var header = document.createElement('div');
+    header.className = 'col-header';
+
+    var dot = document.createElement('span');
+    dot.className = 'col-dot';
+    dot.style.background = colDotColors[ci] || CONFIG.accentColor;
+    header.appendChild(dot);
+    header.appendChild(document.createTextNode(colName));
+
+    var count = document.createElement('span');
+    count.className = 'col-count';
+    count.textContent = ci === 0 ? CONFIG.tasks.length : '0';
+    header.appendChild(count);
+
+    col.appendChild(header);
+
+    var body = document.createElement('div');
+    body.className = 'col-body';
+    col.appendChild(body);
+
+    board.appendChild(col);
+    columns.push(col);
+    colBodies.push(body);
+  });
+}
+
+function createTaskCard(task) {
+  var card = document.createElement('div');
+  card.className = 'task-card';
+
+  var bar = document.createElement('div');
+  bar.className = 'task-color-bar';
+  bar.style.background = task.color;
+  card.appendChild(bar);
+
+  var title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = task.title;
+  card.appendChild(title);
+
+  var footer = document.createElement('div');
+  footer.className = 'task-footer';
+
+  var avatar = document.createElement('div');
+  avatar.className = 'task-avatar';
+  avatar.style.background = task.color;
+  avatar.textContent = task.assignee;
+  footer.appendChild(avatar);
+
+  var check = document.createElement('span');
+  check.className = 'checkmark';
+  check.innerHTML = '&#10003;';
+  footer.appendChild(check);
+
+  card.appendChild(footer);
+  card._check = check;
+  return card;
+}
+
+buildBoard();
+
+var dur = CONFIG.cycleDuration * 1000;
+
+function moveCard(card, fromCol, toCol, callback) {
+  var fromRect = card.getBoundingClientRect();
+  fromCol.removeChild(card);
+  toCol.appendChild(card);
+  var toRect = card.getBoundingClientRect();
+
+  var dx = fromRect.left - toRect.left;
+  var dy = fromRect.top - toRect.top;
+
+  card.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+  card.style.opacity = '1';
+  card.style.transition = 'none';
+  card.style.zIndex = '10';
+  card.style.boxShadow = '0 8px 30px rgba(0,0,0,0.4)';
+
+  // Show drag shadow
+  dragShadow.style.width = fromRect.width + 'px';
+  dragShadow.style.height = fromRect.height + 'px';
+  dragShadow.style.left = fromRect.left + 'px';
+  dragShadow.style.top = fromRect.top + 'px';
+  dragShadow.style.background = 'rgba(99,102,241,0.15)';
+  dragShadow.style.border = '1px dashed rgba(99,102,241,0.3)';
+  dragShadow.className = 'drag-shadow show';
+
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      card.style.transition = 'transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.55s ease';
+      card.style.transform = 'translate(0, 0)';
+      card.style.boxShadow = '';
+      setTimeout(function() {
+        card.style.zIndex = '';
+        card.style.transition = '';
+        dragShadow.className = 'drag-shadow';
+        if (callback) callback();
+      }, 600);
+    });
+  });
+}
+
+function updateCounts() {
+  columns.forEach(function(col, ci) {
+    var count = col.querySelector('.col-count');
+    var cards = colBodies[ci].querySelectorAll('.task-card');
+    count.textContent = cards.length;
+  });
+}
+
+function runCycle() {
+  buildBoard();
+
+  // Show columns staggered
+  columns.forEach(function(col, i) {
+    setTimeout(function() { col.classList.add('show'); }, 100 + i * 150);
+  });
+
+  // Create task cards in "To Do" column
+  var taskCards = [];
+  CONFIG.tasks.forEach(function(task, i) {
+    var card = createTaskCard(task);
+    colBodies[0].appendChild(card);
+    taskCards.push(card);
+    setTimeout(function() { card.classList.add('show'); }, 700 + i * 200);
+  });
+
+  // Move cards to "In Progress" one by one
+  var moveToProgressStart = 700 + CONFIG.tasks.length * 200 + 800;
+  var moveInterval = 900;
+
+  taskCards.forEach(function(card, i) {
+    setTimeout(function() {
+      moveCard(card, colBodies[0], colBodies[1], function() {
+        updateCounts();
+      });
+    }, moveToProgressStart + i * moveInterval);
+  });
+
+  // Move cards to "Done" one by one
+  var moveToDoneStart = moveToProgressStart + CONFIG.tasks.length * moveInterval + 600;
+
+  taskCards.forEach(function(card, i) {
+    setTimeout(function() {
+      moveCard(card, colBodies[1], colBodies[2], function() {
+        updateCounts();
+        setTimeout(function() { card._check.classList.add('show'); }, 150);
+      });
+    }, moveToDoneStart + i * moveInterval);
+  });
+
+  // Exit
+  var exitStart = dur - 500;
+  setTimeout(function() {
+    columns.forEach(function(col, i) {
+      setTimeout(function() { col.classList.add('hide'); }, i * 100);
+    });
+  }, exitStart);
+
+  setTimeout(runCycle, dur);
+}
+
+runCycle();
+
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CONFIG_UPDATE') {
+    Object.assign(CONFIG, e.data.payload);
+    document.body.style.background = CONFIG.bgColor;
+  }
+});
+</script>
+</body>
+</html>

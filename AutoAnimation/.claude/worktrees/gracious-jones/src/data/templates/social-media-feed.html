@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Media Feed</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #f0f2f5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1c1e21;
+  }
+  .feed-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2vh 4vw;
+    position: relative;
+  }
+  .header {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5vh 0;
+    margin-bottom: 1vh;
+  }
+  .header-logo {
+    font-size: 2.8vh;
+    font-weight: 800;
+    color: #1DA1F2;
+  }
+  .header-icons {
+    display: flex; gap: 2vw;
+  }
+  .header-icon {
+    width: 3vh; height: 3vh;
+    border-radius: 50%;
+    background: #e4e6ea;
+  }
+  .cards-wrapper {
+    width: 100%;
+    max-width: 500px;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 1.2vh;
+    padding: 2vh;
+    margin-bottom: 1.5vh;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    position: absolute;
+    left: 0; right: 0;
+    opacity: 0;
+    transform: translateY(100%);
+    transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease;
+  }
+  .card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .card.exit {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5vw;
+    margin-bottom: 1.5vh;
+  }
+  .avatar {
+    width: 5vh; height: 5vh;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .username {
+    font-weight: 700;
+    font-size: 1.6vh;
+  }
+  .timestamp {
+    font-size: 1.2vh;
+    color: #65676b;
+  }
+  .card-text {
+    font-size: 1.5vh;
+    line-height: 1.5;
+    margin-bottom: 1.5vh;
+    color: #333;
+  }
+  .card-image {
+    width: 100%;
+    height: 18vh;
+    border-radius: 0.8vh;
+    margin-bottom: 1.5vh;
+  }
+  .card-actions {
+    display: flex;
+    gap: 4vw;
+    padding-top: 1vh;
+    border-top: 1px solid #e4e6ea;
+  }
+  .action {
+    display: flex;
+    align-items: center;
+    gap: 0.8vw;
+    font-size: 1.3vh;
+    color: #65676b;
+    cursor: pointer;
+  }
+  .action-icon {
+    width: 2vh; height: 2vh;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2vh;
+  }
+  .heart-float {
+    position: absolute;
+    font-size: 2.5vh;
+    color: #e74c3c;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 100;
+  }
+  @keyframes floatHeart {
+    0% { opacity: 1; transform: translateY(0) scale(0.5); }
+    50% { opacity: 1; transform: translateY(-10vh) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-20vh) scale(0.8); }
+  }
+  .counter {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #1DA1F2;
+  }
+  .notification-dot {
+    position: absolute;
+    top: 1vh; right: 5vw;
+    width: 1.2vh; height: 1.2vh;
+    background: #e74c3c;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+</style>
+</head>
+<body>
+<div class="feed-container">
+  <div class="header">
+    <div class="header-logo" id="logoText">SocialFeed</div>
+    <div class="header-icons">
+      <div class="header-icon"></div>
+      <div class="header-icon"></div>
+      <div class="header-icon" style="position:relative;">
+        <div class="notification-dot" id="notifDot"></div>
+      </div>
+    </div>
+  </div>
+  <div class="cards-wrapper" id="cardsWrapper"></div>
+</div>
+
+<script>
+  // === EDITABLE CONFIG ===
+  const CONFIG = {
+    logoText: 'SocialFeed',
+    accentColor: '#1DA1F2',
+    heartColor: '#e74c3c',
+    cardInterval: 3500,
+    maxVisibleCards: 3,
+    posts: [
+      {
+        username: 'Alex Rivera',
+        avatar: '#4a90d9',
+        time: '2 min ago',
+        text: 'Just witnessed the most incredible sunset from the rooftop. Nature never fails to amaze! Some moments are worth pausing for.',
+        image: '#7cb9e8',
+        likes: 247,
+        comments: 42,
+        shares: 18
+      },
+      {
+        username: 'Jordan Chen',
+        avatar: '#e67e22',
+        time: '8 min ago',
+        text: 'New project launch day! Months of work finally paying off. Grateful for the amazing team that made this possible.',
+        image: '#f0c27f',
+        likes: 512,
+        comments: 89,
+        shares: 34
+      },
+      {
+        username: 'Maya Patel',
+        avatar: '#27ae60',
+        time: '15 min ago',
+        text: 'Hot take: the best code is the code you delete. Refactored our entire auth module and removed 40% of the lines.',
+        image: null,
+        likes: 1834,
+        comments: 203,
+        shares: 156
+      },
+      {
+        username: 'Sam Williams',
+        avatar: '#9b59b6',
+        time: '22 min ago',
+        text: 'Morning run through the park. 5K personal best! Consistency over perfection, every single day.',
+        image: '#a8e6cf',
+        likes: 178,
+        comments: 31,
+        shares: 5
+      },
+      {
+        username: 'Taylor Kim',
+        avatar: '#e74c3c',
+        time: '30 min ago',
+        text: 'Just tried that new restaurant downtown. The pasta was absolutely divine and the ambiance was perfect for a cozy evening out.',
+        image: '#ffb3ba',
+        likes: 623,
+        comments: 78,
+        shares: 22
+      },
+      {
+        username: 'Riley Cooper',
+        avatar: '#2c3e50',
+        time: '45 min ago',
+        text: 'Finished reading three books this month! My favorite was the one about systems thinking. Changed how I approach problems.',
+        image: '#dfe6e9',
+        likes: 345,
+        comments: 56,
+        shares: 41
+      }
+    ]
+  };
+
+  document.getElementById('logoText').textContent = CONFIG.logoText;
+  document.getElementById('logoText').style.color = CONFIG.accentColor;
+
+  const wrapper = document.getElementById('cardsWrapper');
+  let cardIndex = 0;
+  let activeCards = [];
+  let yOffset = 0;
+
+  function createCard(post) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const hasImage = post.image !== null;
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="avatar" style="background: ${post.avatar};"></div>
+        <div>
+          <div class="username">${post.username}</div>
+          <div class="timestamp">${post.time}</div>
+        </div>
+      </div>
+      <div class="card-text">${post.text}</div>
+      ${hasImage ? `<div class="card-image" style="background: ${post.image};"></div>` : ''}
+      <div class="card-actions">
+        <div class="action">
+          <div class="action-icon" style="color: ${CONFIG.heartColor};">\u2665</div>
+          <span class="counter like-count">${post.likes.toLocaleString()}</span>
+        </div>
+        <div class="action">
+          <div class="action-icon">\u{1F4AC}</div>
+          <span>${post.comments}</span>
+        </div>
+        <div class="action">
+          <div class="action-icon">\u{1F501}</div>
+          <span>${post.shares}</span>
+        </div>
+      </div>
+    `;
+    return card;
+  }
+
+  function floatHeart(card) {
+    const heart = document.createElement('div');
+    heart.className = 'heart-float';
+    heart.textContent = '\u2665';
+    const rect = card.getBoundingClientRect();
+    heart.style.left = (rect.left + Math.random() * rect.width * 0.6 + rect.width * 0.2) + 'px';
+    heart.style.top = (rect.top + rect.height * 0.3) + 'px';
+    heart.style.animation = 'floatHeart 1.5s ease-out forwards';
+    document.body.appendChild(heart);
+    setTimeout(() => heart.remove(), 1600);
+  }
+
+  function incrementLike(card) {
+    const counter = card.querySelector('.like-count');
+    if (counter) {
+      const val = parseInt(counter.textContent.replace(/,/g, ''));
+      counter.textContent = (val + 1).toLocaleString();
+    }
+  }
+
+  function addCard() {
+    const post = CONFIG.posts[cardIndex % CONFIG.posts.length];
+    const card = createCard(post);
+    wrapper.appendChild(card);
+
+    // Calculate position
+    let topPos = 0;
+    activeCards.forEach(ac => {
+      topPos += ac.el.offsetHeight + 12;
+    });
+    card.style.top = topPos + 'px';
+
+    void card.offsetWidth;
+    card.classList.add('visible');
+
+    const cardObj = { el: card, post: post };
+    activeCards.push(cardObj);
+
+    // Like animation after appearing
+    setTimeout(() => {
+      floatHeart(card);
+      incrementLike(card);
+      setTimeout(() => {
+        floatHeart(card);
+        incrementLike(card);
+      }, 400);
+    }, 1200);
+
+    // Notification dot
+    const dot = document.getElementById('notifDot');
+    dot.style.opacity = '1';
+    setTimeout(() => { dot.style.opacity = '0'; }, 2000);
+
+    // Remove old cards if too many
+    if (activeCards.length > CONFIG.maxVisibleCards) {
+      const old = activeCards.shift();
+      old.el.classList.remove('visible');
+      old.el.classList.add('exit');
+      setTimeout(() => old.el.remove(), 900);
+
+      // Shift remaining cards up
+      setTimeout(() => {
+        let pos = 0;
+        activeCards.forEach(ac => {
+          ac.el.style.transition = 'top 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease';
+          ac.el.style.top = pos + 'px';
+          pos += ac.el.offsetHeight + 12;
+        });
+      }, 200);
+    }
+
+    cardIndex++;
+  }
+
+  // Initial cards with stagger
+  setTimeout(() => addCard(), 300);
+  setTimeout(() => addCard(), 1200);
+  setTimeout(() => addCard(), 2100);
+
+  // Continue adding
+  setInterval(addCard, CONFIG.cardInterval);
+</script>
+</body>
+</html>

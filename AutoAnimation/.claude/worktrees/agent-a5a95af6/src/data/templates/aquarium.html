@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquarium</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  waterColor1: '#001f3f',
+  waterColor2: '#003366',
+  sandColor: '#c2a052',
+  fishCount: 14,
+  bubbleCount: 25,
+  plantCount: 8,
+  fishColors: ['#ff6b35','#ffd700','#00bfff','#ff69b4','#7cfc00','#ff4500','#9370db','#00ced1'],
+  cycleDuration: 12000
+};
+
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W, H, time = 0, fish = [], bubbles = [], plants = [];
+
+function resize() {
+  var dpr = window.devicePixelRatio || 1;
+  W = canvas.width = window.innerWidth * dpr;
+  H = canvas.height = window.innerHeight * dpr;
+  init();
+}
+
+function init() {
+  fish = [];
+  for (var i = 0; i < CONFIG.fishCount; i++) {
+    fish.push({
+      x: Math.random()*W, y: H*0.2 + Math.random()*H*0.55,
+      vx: (Math.random()-0.5)*3, size: 12+Math.random()*18,
+      color: CONFIG.fishColors[i%CONFIG.fishColors.length],
+      freq: 2+Math.random()*3, amp: 5+Math.random()*10,
+      phase: Math.random()*Math.PI*2
+    });
+  }
+  bubbles = [];
+  for (var j = 0; j < CONFIG.bubbleCount; j++) {
+    bubbles.push({ x: Math.random()*W, y: H+Math.random()*H, r: 2+Math.random()*5, speed: 0.5+Math.random()*1.5, wobble: Math.random()*Math.PI*2 });
+  }
+  plants = [];
+  for (var k = 0; k < CONFIG.plantCount; k++) {
+    plants.push({ x: W*0.05 + Math.random()*W*0.9, h: H*0.1 + Math.random()*H*0.2, w: 8+Math.random()*12, color: 'hsl('+(100+Math.random()*40)+',60%,'+(20+Math.random()*15)+'%)' });
+  }
+}
+
+function drawWater() {
+  var grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, CONFIG.waterColor1);
+  grad.addColorStop(0.7, CONFIG.waterColor2);
+  grad.addColorStop(1, CONFIG.sandColor+'40');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+
+  // Light rays
+  ctx.globalAlpha = 0.03;
+  for (var i = 0; i < 5; i++) {
+    var rx = W*0.1 + i*W*0.2 + Math.sin(time*0.3+i)*W*0.05;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(rx-W*0.02, 0);
+    ctx.lineTo(rx+W*0.08, H);
+    ctx.lineTo(rx-W*0.06, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSand() {
+  ctx.fillStyle = CONFIG.sandColor+'60';
+  ctx.beginPath();
+  ctx.moveTo(0, H*0.88);
+  for (var x = 0; x <= W; x += W*0.02) {
+    ctx.lineTo(x, H*0.88 + Math.sin(x*0.01+time*0.5)*H*0.015);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+}
+
+function drawPlants() {
+  plants.forEach(function(p) {
+    var segments = 8;
+    for (var s = 0; s < segments; s++) {
+      var t2 = s/segments;
+      var baseY = H*0.88 - p.h*t2;
+      var sway = Math.sin(time*1.5+p.x*0.01+s*0.3)*p.w*t2*0.5;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.ellipse(p.x+sway, baseY, p.w*(1-t2*0.5), p.h/segments*0.8, sway*0.01, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawFish(f) {
+  var dir = f.vx > 0 ? 1 : -1;
+  var fy = f.y + Math.sin(time*f.freq+f.phase)*f.amp;
+  var s = f.size;
+
+  ctx.save();
+  ctx.translate(f.x, fy);
+  ctx.scale(dir, 1);
+
+  // Body
+  ctx.fillStyle = f.color;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, s, s*0.45, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Tail
+  var tailWag = Math.sin(time*8+f.phase)*0.3;
+  ctx.fillStyle = f.color+'cc';
+  ctx.beginPath();
+  ctx.moveTo(-s*0.7, 0);
+  ctx.lineTo(-s*1.3, -s*0.4+tailWag*s);
+  ctx.lineTo(-s*1.3, s*0.4+tailWag*s);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(s*0.4, -s*0.1, s*0.15, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(s*0.45, -s*0.1, s*0.07, 0, Math.PI*2); ctx.fill();
+
+  // Fin
+  ctx.fillStyle = f.color+'80';
+  ctx.beginPath();
+  ctx.moveTo(0, s*0.2);
+  ctx.lineTo(-s*0.3, s*0.6+Math.sin(time*5+f.phase)*s*0.1);
+  ctx.lineTo(s*0.2, s*0.3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawBubbles() {
+  bubbles.forEach(function(b) {
+    b.y -= b.speed;
+    b.x += Math.sin(time*2+b.wobble)*0.3;
+    if (b.y < -20) { b.y = H + 20; b.x = Math.random()*W; }
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fill();
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.beginPath(); ctx.arc(b.x-b.r*0.3, b.y-b.r*0.3, b.r*0.25, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+function updateFish() {
+  fish.forEach(function(f) {
+    f.x += f.vx;
+    if (f.x > W+f.size*2) f.x = -f.size*2;
+    if (f.x < -f.size*2) f.x = W+f.size*2;
+  });
+}
+
+function draw() {
+  drawWater();
+  drawPlants();
+  drawSand();
+  fish.forEach(drawFish);
+  drawBubbles();
+  updateFish();
+  time += 0.016;
+  requestAnimationFrame(draw);
+}
+
+window.addEventListener('resize', resize);
+resize(); draw();
+</script>
+</body>
+</html>

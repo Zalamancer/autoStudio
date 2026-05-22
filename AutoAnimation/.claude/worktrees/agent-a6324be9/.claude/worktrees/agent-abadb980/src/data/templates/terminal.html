@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #0a0a0a;
+    font-family: 'Courier New', 'Consolas', monospace;
+    color: #00FF41;
+  }
+  canvas#matrixCanvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+  }
+  .scanlines {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 65, 0.015) 2px,
+      rgba(0, 255, 65, 0.015) 4px
+    );
+  }
+  .crt-flicker {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1; pointer-events: none;
+    animation: crtFlicker 0.1s infinite;
+  }
+  @keyframes crtFlicker {
+    0% { opacity: 0.97; }
+    50% { opacity: 1; }
+    100% { opacity: 0.98; }
+  }
+  .terminal-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 5; padding: 16px; display: flex; flex-direction: column;
+  }
+  .terminal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 8px; border-bottom: 1px solid rgba(0,255,65,0.2);
+    margin-bottom: 12px; font-size: 11px;
+  }
+  .header-left { color: rgba(0,255,65,0.5); }
+  .header-right { color: rgba(0,255,65,0.3); }
+  /* Stats bar */
+  .stats-bar {
+    display: flex; gap: 16px; padding: 8px 0;
+    border-bottom: 1px solid rgba(0,255,65,0.1);
+    margin-bottom: 12px; font-size: 11px;
+    flex-wrap: wrap;
+  }
+  .stat-item { display: flex; align-items: center; gap: 6px; }
+  .stat-label { color: rgba(0,255,65,0.4); }
+  .stat-value { color: #00FF41; font-weight: bold; }
+  .stat-bar {
+    width: 60px; height: 6px; background: rgba(0,255,65,0.1);
+    border-radius: 3px; overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%; background: #00FF41; border-radius: 3px;
+    transition: width 0.5s;
+  }
+  /* Main terminal output */
+  .terminal-output {
+    flex: 1; overflow: hidden; font-size: clamp(10px, 1.3vw, 13px);
+    line-height: 1.6; position: relative;
+  }
+  .log-entries {
+    position: absolute; bottom: 0; left: 0; width: 100%;
+  }
+  .log-entry {
+    opacity: 0;
+    animation: logFadeIn 0.3s forwards;
+  }
+  @keyframes logFadeIn {
+    to { opacity: 1; }
+  }
+  .timestamp { color: rgba(0,255,65,0.3); }
+  .log-info { color: #00FF41; }
+  .log-warn { color: #FFD700; }
+  .log-error { color: #FF4136; }
+  .log-success { color: #2ECC40; }
+  /* Command prompt */
+  .prompt-line {
+    padding-top: 8px; border-top: 1px solid rgba(0,255,65,0.1);
+    margin-top: 8px; font-size: clamp(11px, 1.4vw, 14px);
+    display: flex; align-items: center;
+  }
+  .prompt-symbol { color: #00FF41; margin-right: 8px; }
+  .prompt-text { color: #00FF41; }
+  .cursor {
+    display: inline-block; width: 8px; height: 14px;
+    background: #00FF41; vertical-align: text-bottom;
+    animation: cursorBlink 0.7s step-end infinite;
+    margin-left: 2px;
+  }
+  @keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .vignette {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 2; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+  }
+</style>
+</head>
+<body>
+<canvas id="matrixCanvas"></canvas>
+<div class="scanlines"></div>
+<div class="crt-flicker"></div>
+<div class="vignette"></div>
+
+<div class="terminal-container">
+  <div class="terminal-header">
+    <span class="header-left" id="termTitle">root@darknet:~#</span>
+    <span class="header-right" id="termVersion">v4.2.1 | PID: 31337</span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-label">CPU</span>
+      <div class="stat-bar"><div class="stat-bar-fill" id="cpuBar" style="width:45%"></div></div>
+      <span class="stat-value" id="cpuVal">45%</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">MEM</span>
+      <div class="stat-bar"><div class="stat-bar-fill" id="memBar" style="width:62%"></div></div>
+      <span class="stat-value" id="memVal">62%</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">NET</span>
+      <span class="stat-value" id="netVal">1.2 MB/s</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">UPTIME</span>
+      <span class="stat-value" id="uptimeVal">00:00:00</span>
+    </div>
+  </div>
+
+  <div class="terminal-output" id="termOutput">
+    <div class="log-entries" id="logEntries"></div>
+  </div>
+
+  <div class="prompt-line">
+    <span class="prompt-symbol">$</span>
+    <span class="prompt-text" id="promptText"></span>
+    <span class="cursor"></span>
+  </div>
+</div>
+
+<script>
+// ===== EDITABLE VARIABLES =====
+const TERMINAL_TITLE = 'root@darknet:~#';
+const TERMINAL_VERSION = 'v4.2.1 | PID: 31337';
+const TEXT_COLOR = '#00FF41';
+const BG_COLOR = '#0a0a0a';
+const MATRIX_SPEED = 1.2;
+const COMMANDS = [
+  'nmap -sS -O 192.168.1.0/24',
+  'cat /etc/shadow | grep root',
+  'ssh -i key.pem admin@10.0.0.1',
+  'tcpdump -i eth0 port 443',
+  'find / -perm -4000 -type f 2>/dev/null',
+  'python3 exploit.py --target 10.0.0.5',
+  'openssl enc -aes-256-cbc -d -in data.enc',
+  'curl -s https://api.darknet/v1/status',
+];
+const LOG_MESSAGES = [
+  { type: 'info', msg: 'Initializing network scanner...' },
+  { type: 'info', msg: 'Scanning port range 1-65535...' },
+  { type: 'success', msg: 'Port 22 (SSH) - OPEN' },
+  { type: 'success', msg: 'Port 80 (HTTP) - OPEN' },
+  { type: 'success', msg: 'Port 443 (HTTPS) - OPEN' },
+  { type: 'warn', msg: 'Port 3306 (MySQL) - FILTERED' },
+  { type: 'info', msg: 'Running service detection...' },
+  { type: 'info', msg: 'OS fingerprint: Linux 5.4.x' },
+  { type: 'success', msg: 'Authentication successful' },
+  { type: 'info', msg: 'Establishing encrypted tunnel...' },
+  { type: 'info', msg: 'Downloading payload (2.4MB)...' },
+  { type: 'success', msg: 'Connection established via TLS 1.3' },
+  { type: 'warn', msg: 'Firewall rule detected on port 8080' },
+  { type: 'error', msg: 'Connection timeout on 10.0.0.7:445' },
+  { type: 'info', msg: 'Retrying with alternate route...' },
+  { type: 'success', msg: 'Bypass successful - access granted' },
+  { type: 'info', msg: 'Extracting metadata from target...' },
+  { type: 'info', msg: 'Hash: a3f2b8c9e1d4567890abcdef12345678' },
+  { type: 'warn', msg: 'High entropy detected in /tmp/data.bin' },
+  { type: 'success', msg: 'Decryption complete - 847 records found' },
+];
+// ==============================
+
+document.getElementById('termTitle').textContent = TERMINAL_TITLE;
+document.getElementById('termVersion').textContent = TERMINAL_VERSION;
+
+// Matrix rain
+const canvas = document.getElementById('matrixCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()';
+let columns, drops;
+
+function initMatrix() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  const fontSize = 12;
+  columns = Math.floor(W / fontSize);
+  drops = Array(columns).fill(0).map(() => Math.random() * -100);
+}
+initMatrix();
+window.addEventListener('resize', initMatrix);
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(10, 10, 10, 0.06)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = '12px monospace';
+  for (let i = 0; i < columns; i++) {
+    const char = chars[Math.floor(Math.random() * chars.length)];
+    const x = i * 12;
+    const y = drops[i] * 12;
+    const brightness = Math.random() * 0.15 + 0.03;
+    ctx.fillStyle = `rgba(0, 255, 65, ${brightness})`;
+    ctx.fillText(char, x, y);
+    if (y > H && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+    drops[i] += MATRIX_SPEED;
+  }
+  requestAnimationFrame(drawMatrix);
+}
+drawMatrix();
+
+// Stats animation
+const startTime = Date.now();
+function updateStats() {
+  const t = Date.now() / 1000;
+  const cpu = Math.round(30 + 40 * Math.abs(Math.sin(t * 0.3)));
+  const mem = Math.round(50 + 20 * Math.sin(t * 0.2));
+  const net = (0.5 + 2 * Math.abs(Math.sin(t * 0.5))).toFixed(1);
+  document.getElementById('cpuBar').style.width = cpu + '%';
+  document.getElementById('cpuVal').textContent = cpu + '%';
+  document.getElementById('memBar').style.width = mem + '%';
+  document.getElementById('memVal').textContent = mem + '%';
+  document.getElementById('netVal').textContent = net + ' MB/s';
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('uptimeVal').textContent = `${h}:${m}:${s}`;
+}
+setInterval(updateStats, 500);
+
+// Log entries
+const logContainer = document.getElementById('logEntries');
+const maxLogs = 18;
+let logIndex = 0;
+
+function addLogEntry() {
+  const log = LOG_MESSAGES[logIndex % LOG_MESSAGES.length];
+  logIndex++;
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.innerHTML = `<span class="timestamp">[${ts}]</span> <span class="log-${log.type}">${log.msg}</span>`;
+  logContainer.appendChild(el);
+  const entries = logContainer.querySelectorAll('.log-entry');
+  if (entries.length > maxLogs) {
+    entries[0].remove();
+  }
+}
+setInterval(addLogEntry, 1200);
+
+// Command prompt typing
+const promptText = document.getElementById('promptText');
+let cmdIndex = 0;
+let charIdx = 0;
+let currentCmd = '';
+
+function typeCommand() {
+  const cmd = COMMANDS[cmdIndex % COMMANDS.length];
+  if (charIdx < cmd.length) {
+    currentCmd += cmd[charIdx];
+    promptText.textContent = currentCmd;
+    charIdx++;
+    setTimeout(typeCommand, 40 + Math.random() * 60);
+  } else {
+    setTimeout(() => {
+      currentCmd = '';
+      promptText.textContent = '';
+      charIdx = 0;
+      cmdIndex++;
+      typeCommand();
+    }, 2000);
+  }
+}
+typeCommand();
+</script>
+</body>
+</html>

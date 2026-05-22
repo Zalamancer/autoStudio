@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fashion Runway</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Georgia', 'Times New Roman', serif; }
+  body { background: #000; color: #fff; }
+
+  @keyframes spotlightPulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.25; } }
+  @keyframes flash { 0% { opacity: 0; } 5% { opacity: 0.9; } 12% { opacity: 0; } 100% { opacity: 0; } }
+  @keyframes fabricFloat1 { 0% { transform: translate(0, 0) rotate(0deg) scale(1); } 50% { transform: translate(3vw, -5vh) rotate(15deg) scale(1.1); } 100% { transform: translate(0, 0) rotate(0deg) scale(1); } }
+  @keyframes fabricFloat2 { 0% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(-4vw, 3vh) rotate(-12deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
+  @keyframes particleDrift { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 10% { opacity: 0.6; } 90% { opacity: 0.3; } 100% { transform: translateY(-40vh) rotate(180deg); opacity: 0; } }
+  @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+
+  .scene { width: 100%; height: 100%; position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #0f0f0f 0%, #000 70%); }
+
+  .spotlight {
+    position: absolute; top: -10vh; left: 50%; transform: translateX(-50%);
+    width: 60vw; height: 70vh;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,248,230,0.2) 0%, rgba(255,248,230,0.05) 40%, transparent 70%);
+    animation: spotlightPulse 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .runway-line {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 3px; height: 0;
+    background: linear-gradient(to bottom, transparent, #c8a96e, #e8d5a8, #c8a96e, transparent);
+    transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .runway-glow {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 15vw; height: 0;
+    background: linear-gradient(to top, rgba(200,169,110,0.08), transparent);
+    transition: height 1.5s ease;
+    pointer-events: none;
+  }
+
+  .flash-overlay {
+    position: absolute; inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .designer-name {
+    position: absolute;
+    top: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .designer-name h1 {
+    font-size: 7vh;
+    font-weight: 400;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #fff;
+    line-height: 1;
+    background: linear-gradient(90deg, #c8a96e, #f5e6c8, #c8a96e, #f5e6c8, #c8a96e);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+  .collection-label {
+    font-size: 1.8vh;
+    letter-spacing: 0.6em;
+    color: #8a7d6b;
+    margin-top: 1.5vh;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 300;
+    text-transform: uppercase;
+  }
+  .season-label {
+    font-size: 2.2vh;
+    letter-spacing: 0.35em;
+    color: #c8a96e;
+    margin-top: 0.8vh;
+    font-weight: 300;
+  }
+
+  .separator {
+    width: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c8a96e, transparent);
+    margin: 2vh auto 0;
+    transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .model-card {
+    position: absolute;
+    bottom: 12vh;
+    padding: 1.5vh 3vw;
+    background: rgba(0,0,0,0.7);
+    border-top: 1px solid rgba(200,169,110,0.4);
+    border-bottom: 1px solid rgba(200,169,110,0.4);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .model-card.left { left: 3vw; transform: translateX(-40px); }
+  .model-card.right { right: 3vw; transform: translateX(40px); }
+  .model-card.visible { opacity: 1; transform: translateX(0); }
+  .model-name { font-size: 2vh; font-weight: 400; letter-spacing: 0.25em; text-transform: uppercase; color: #f5e6c8; }
+  .model-look { font-size: 1.3vh; color: #8a7d6b; letter-spacing: 0.15em; margin-top: 0.4vh; font-family: 'Helvetica Neue', Arial, sans-serif; }
+
+  .fabric {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 2s ease;
+  }
+  .fabric-1 { width: 25vw; height: 25vw; top: 10%; left: -5%; background: radial-gradient(circle, rgba(200,169,110,0.12), transparent); animation: fabricFloat1 8s ease-in-out infinite; }
+  .fabric-2 { width: 20vw; height: 20vw; top: 30%; right: -3%; background: radial-gradient(circle, rgba(180,140,100,0.1), transparent); animation: fabricFloat2 10s ease-in-out infinite; }
+  .fabric-3 { width: 30vw; height: 15vw; bottom: 20%; left: 10%; background: radial-gradient(circle, rgba(200,169,110,0.08), transparent); animation: fabricFloat1 12s ease-in-out infinite reverse; }
+
+  .venue-info {
+    position: absolute;
+    bottom: 2vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  .venue-text { font-size: 1.2vh; letter-spacing: 0.4em; color: #555; text-transform: uppercase; }
+
+  .particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .particle {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: #c8a96e;
+    border-radius: 50%;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="spotlight"></div>
+  <div class="runway-line" id="runwayLine"></div>
+  <div class="runway-glow" id="runwayGlow"></div>
+
+  <div class="fabric fabric-1" id="fab1"></div>
+  <div class="fabric fabric-2" id="fab2"></div>
+  <div class="fabric fabric-3" id="fab3"></div>
+
+  <div class="particles" id="particles"></div>
+
+  <div class="flash-overlay" id="flash1"></div>
+  <div class="flash-overlay" id="flash2"></div>
+
+  <div class="designer-name" id="designerBlock">
+    <h1 id="designerName">VALENTINO</h1>
+    <div class="collection-label" id="collectionName">HAUTE COUTURE COLLECTION</div>
+    <div class="season-label" id="seasonLabel">SPRING / SUMMER 2025</div>
+    <div class="separator" id="separator"></div>
+  </div>
+
+  <div class="model-card left" id="modelLeft">
+    <div class="model-name" id="modelName1">BELLA HADID</div>
+    <div class="model-look" id="modelLook1">LOOK 01 / 42</div>
+  </div>
+  <div class="model-card right" id="modelRight">
+    <div class="model-name" id="modelName2">KAIA GERBER</div>
+    <div class="model-look" id="modelLook2">LOOK 02 / 42</div>
+  </div>
+
+  <div class="venue-info" id="venueInfo">
+    <div class="venue-text" id="venueText">PALAIS DE TOKYO, PARIS</div>
+  </div>
+</div>
+
+<script>
+// === EDITABLE CONFIG ===
+const CONFIG = {
+  designerName: 'VALENTINO',
+  collectionName: 'HAUTE COUTURE COLLECTION',
+  season: 'SPRING / SUMMER 2025',
+  modelNames: [
+    { name: 'BELLA HADID', look: 'LOOK 01 / 42' },
+    { name: 'KAIA GERBER', look: 'LOOK 02 / 42' },
+    { name: 'GIGI HADID', look: 'LOOK 03 / 42' },
+    { name: 'ADUT AKECH', look: 'LOOK 04 / 42' }
+  ],
+  venue: 'PALAIS DE TOKYO, PARIS',
+  accentColor: '#c8a96e',
+  cycleDuration: 14000,
+  bgColor: '#000000'
+};
+
+document.getElementById('designerName').textContent = CONFIG.designerName;
+document.getElementById('collectionName').textContent = CONFIG.collectionName;
+document.getElementById('seasonLabel').textContent = CONFIG.season;
+document.getElementById('venueText').textContent = CONFIG.venue;
+
+// Create particles
+var particlesEl = document.getElementById('particles');
+for (var i = 0; i < 15; i++) {
+  var p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = (10 + Math.random() * 80) + '%';
+  p.style.top = (40 + Math.random() * 50) + '%';
+  p.style.animationDelay = (Math.random() * 6) + 's';
+  p.style.animation = 'particleDrift ' + (4 + Math.random() * 4) + 's ease-in-out infinite';
+  p.style.animationDelay = (Math.random() * 5) + 's';
+  particlesEl.appendChild(p);
+}
+
+var currentModelPair = 0;
+
+function triggerFlash(el, delay) {
+  setTimeout(function() {
+    el.style.transition = 'none';
+    el.style.opacity = '0.85';
+    void el.offsetWidth;
+    el.style.transition = 'opacity 0.3s ease-out';
+    el.style.opacity = '0';
+  }, delay);
+}
+
+function runCycle() {
+  var designerBlock = document.getElementById('designerBlock');
+  var runwayLine = document.getElementById('runwayLine');
+  var runwayGlow = document.getElementById('runwayGlow');
+  var modelLeft = document.getElementById('modelLeft');
+  var modelRight = document.getElementById('modelRight');
+  var separator = document.getElementById('separator');
+  var venueInfo = document.getElementById('venueInfo');
+  var fab1 = document.getElementById('fab1');
+  var fab2 = document.getElementById('fab2');
+  var fab3 = document.getElementById('fab3');
+  var flash1 = document.getElementById('flash1');
+  var flash2 = document.getElementById('flash2');
+
+  // Update model names
+  var pair = currentModelPair % Math.floor(CONFIG.modelNames.length / 2);
+  var m1 = CONFIG.modelNames[pair * 2] || CONFIG.modelNames[0];
+  var m2 = CONFIG.modelNames[pair * 2 + 1] || CONFIG.modelNames[1];
+  document.getElementById('modelName1').textContent = m1.name;
+  document.getElementById('modelLook1').textContent = m1.look;
+  document.getElementById('modelName2').textContent = m2.name;
+  document.getElementById('modelLook2').textContent = m2.look;
+  currentModelPair++;
+
+  // Reset
+  designerBlock.style.transition = 'none'; designerBlock.style.opacity = '0';
+  runwayLine.style.transition = 'none'; runwayLine.style.height = '0';
+  runwayGlow.style.transition = 'none'; runwayGlow.style.height = '0';
+  modelLeft.className = 'model-card left';
+  modelRight.className = 'model-card right';
+  separator.style.transition = 'none'; separator.style.width = '0';
+  venueInfo.style.transition = 'none'; venueInfo.style.opacity = '0';
+  fab1.style.opacity = '0'; fab2.style.opacity = '0'; fab3.style.opacity = '0';
+
+  void designerBlock.offsetWidth;
+
+  // Animate in
+  setTimeout(function() {
+    fab1.style.opacity = '1'; fab2.style.opacity = '1'; fab3.style.opacity = '1';
+  }, 100);
+
+  setTimeout(function() {
+    runwayLine.style.transition = 'height 1.5s cubic-bezier(0.22, 1, 0.36, 1)';
+    runwayLine.style.height = '100%';
+    runwayGlow.style.transition = 'height 1.5s ease';
+    runwayGlow.style.height = '100%';
+  }, 300);
+
+  setTimeout(function() {
+    designerBlock.style.transition = 'opacity 1.2s ease';
+    designerBlock.style.opacity = '1';
+  }, 800);
+
+  setTimeout(function() {
+    separator.style.transition = 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1)';
+    separator.style.width = '20vw';
+  }, 1200);
+
+  // Camera flashes
+  triggerFlash(flash1, 2000);
+  triggerFlash(flash2, 2800);
+  triggerFlash(flash1, 4200);
+  triggerFlash(flash2, 5500);
+  triggerFlash(flash1, 7500);
+  triggerFlash(flash2, 9000);
+
+  // Model cards
+  setTimeout(function() {
+    modelLeft.className = 'model-card left visible';
+  }, 3500);
+
+  setTimeout(function() {
+    modelRight.className = 'model-card right visible';
+  }, 4200);
+
+  setTimeout(function() {
+    venueInfo.style.transition = 'opacity 0.8s ease';
+    venueInfo.style.opacity = '1';
+  }, 5000);
+
+  // Fade out
+  setTimeout(function() {
+    designerBlock.style.transition = 'opacity 1.2s ease';
+    designerBlock.style.opacity = '0';
+    modelLeft.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    modelLeft.style.opacity = '0';
+    modelLeft.style.transform = 'translateX(-40px)';
+    modelRight.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    modelRight.style.opacity = '0';
+    modelRight.style.transform = 'translateX(40px)';
+    venueInfo.style.transition = 'opacity 0.8s ease';
+    venueInfo.style.opacity = '0';
+    runwayLine.style.transition = 'height 1s ease-in';
+    runwayLine.style.height = '0';
+    runwayGlow.style.transition = 'height 1s ease-in';
+    runwayGlow.style.height = '0';
+    separator.style.transition = 'width 0.8s ease-in';
+    separator.style.width = '0';
+    fab1.style.opacity = '0'; fab2.style.opacity = '0'; fab3.style.opacity = '0';
+  }, CONFIG.cycleDuration - 1800);
+
+  setTimeout(runCycle, CONFIG.cycleDuration);
+}
+
+runCycle();
+</script>
+</body>
+</html>
